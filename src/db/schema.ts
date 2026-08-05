@@ -1,0 +1,506 @@
+import {
+  pgTable,
+  pgEnum,
+  text,
+  integer,
+  boolean,
+  date,
+  time,
+  timestamp,
+  jsonb,
+  index,
+  uniqueIndex,
+  primaryKey,
+} from "drizzle-orm/pg-core";
+import { relations, sql } from "drizzle-orm";
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   ENUMY
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/** inbox → todo → doing → waiting → done | dropped */
+export const taskStatus = pgEnum("task_status", [
+  "inbox",
+  "todo",
+  "doing",
+  "waiting",
+  "done",
+  "dropped",
+]);
+
+/** Na ktorý horizont úloha patrí. */
+export const horizon = pgEnum("horizon", ["day", "week", "month", "someday"]);
+
+/** Koľko energie si úloha vyžaduje. */
+export const energy = pgEnum("energy", ["low", "mid", "high"]);
+
+export const projectStatus = pgEnum("project_status", [
+  "active",
+  "on_hold",
+  "done",
+  "dropped",
+]);
+
+/** raw → incubating → promoted | rejected | faded */
+export const ideaStage = pgEnum("idea_stage", [
+  "raw",
+  "incubating",
+  "promoted",
+  "rejected",
+  "faded",
+]);
+
+export const reviewType = pgEnum("review_type", [
+  "daily_plan",
+  "daily_shutdown",
+  "weekly",
+  "monthly",
+]);
+
+/** Audit log úloh — poháňa štatistiky, archív aj počítadlo odkladov. */
+export const taskEventType = pgEnum("task_event_type", [
+  "created",
+  "status_changed",
+  "postponed",
+  "rescheduled",
+  "completed",
+  "reopened",
+  "edited",
+  "deleted",
+]);
+
+/** Na čo odkaz ukazuje — pre [[obojsmerné odkazy]] a tagy. */
+export const entityType = pgEnum("entity_type", [
+  "task",
+  "idea",
+  "project",
+  "area",
+  "journal",
+]);
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   POUŽÍVATEĽ
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/**
+ * Systém je jednopoužívateľský, ale `userId` nesie každá tabuľka —
+ * je to lacná poistka a robí dotazy explicitnými.
+ */
+export const users = pgTable("users", {
+  id: text("id").primaryKey(),
+  email: text("email").notNull().unique(),
+  name: text("name"),
+  image: text("image"),
+  /** Nastavenia: WIP limit, hodiny dňa, prahy odkladov… viď src/lib/settings.ts */
+  settings: jsonb("settings").notNull().default(sql`'{}'::jsonb`),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+/**
+ * OAuth tokeny (Google Calendar, M8). Zatiaľ sa nezapisuje —
+ * prihlásenie beží na JWT session bez adaptéra.
+ */
+export const accounts = pgTable(
+  "accounts",
+  {
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    provider: text("provider").notNull(),
+    providerAccountId: text("provider_account_id").notNull(),
+    accessToken: text("access_token"),
+    refreshToken: text("refresh_token"),
+    expiresAt: timestamp("expires_at", { withTimezone: true }),
+    scope: text("scope"),
+  },
+  (t) => [primaryKey({ columns: [t.provider, t.providerAccountId] })],
+);
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   OBLASTI A PROJEKTY
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/** Dlhodobé okruhy života. Nemajú koniec, len sa udržiavajú. */
+export const areas = pgTable(
+  "areas",
+  {
+    id: text("id").primaryKey(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    color: text("color").notNull().default("slate"),
+    icon: text("icon"),
+    sort: integer("sort").notNull().default(0),
+    archivedAt: timestamp("archived_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+    deletedAt: timestamp("deleted_at", { withTimezone: true }),
+  },
+  (t) => [index("areas_user_idx").on(t.userId)],
+);
+
+export const projects = pgTable(
+  "projects",
+  {
+    id: text("id").primaryKey(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    areaId: text("area_id").references(() => areas.id, { onDelete: "set null" }),
+    name: text("name").notNull(),
+    goal: text("goal"),
+    /** Kedy je projekt hotový — bez tohto sa projekty nikdy nezavrú. */
+    definitionOfDone: text("definition_of_done"),
+    status: projectStatus("status").notNull().default("active"),
+    deadline: date("deadline"),
+    sort: integer("sort").notNull().default(0),
+    archivedAt: timestamp("archived_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+    deletedAt: timestamp("deleted_at", { withTimezone: true }),
+  },
+  (t) => [
+    index("projects_user_idx").on(t.userId),
+    index("projects_status_idx").on(t.userId, t.status),
+  ],
+);
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   ÚLOHY
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+export const tasks = pgTable(
+  "tasks",
+  {
+    id: text("id").primaryKey(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+
+    title: text("title").notNull(),
+    note: text("note"),
+
+    status: taskStatus("status").notNull().default("inbox"),
+    /** 1 = najvyššia, 3 = najnižšia. Zámerne len tri stupne. */
+    priority: integer("priority").notNull().default(3),
+
+    /** Dokedy MUSÍ byť hotová. */
+    dueDate: date("due_date"),
+    dueTime: time("due_time"),
+    /** Ktorý deň to IDEM ROBIŤ. Toto je to, čo plní obrazovku „Dnes". */
+    plannedDate: date("planned_date"),
+    plannedTime: time("planned_time"),
+
+    horizon: horizon("horizon").notNull().default("week"),
+    /** Odhad v minútach: 5 / 15 / 30 / 60 / 120 / 240 */
+    estimateMin: integer("estimate_min"),
+    energy: energy("energy"),
+    /** @pocitac, @telefon, @mesto, @doma */
+    context: text("context"),
+
+    projectId: text("project_id").references(() => projects.id, { onDelete: "set null" }),
+    areaId: text("area_id").references(() => areas.id, { onDelete: "set null" }),
+    /** Podúlohy — self reference. */
+    parentTaskId: text("parent_task_id"),
+
+    /** „Žaba" — jedna najdôležitejšia vec dňa. Max jedna na deň. */
+    isFrog: boolean("is_frog").notNull().default(false),
+
+    /** RRULE pre opakovanie (M7). */
+    recurrenceRule: text("recurrence_rule"),
+    recurrenceParentId: text("recurrence_parent_id"),
+
+    /** Koľkokrát bola úloha odložená. Pohon anti-prokrastinácie. */
+    postponeCount: integer("postpone_count").notNull().default(0),
+
+    sort: integer("sort").notNull().default(0),
+
+    completedAt: timestamp("completed_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+    deletedAt: timestamp("deleted_at", { withTimezone: true }),
+  },
+  (t) => [
+    index("tasks_user_idx").on(t.userId),
+    index("tasks_planned_idx").on(t.userId, t.plannedDate),
+    index("tasks_due_idx").on(t.userId, t.dueDate),
+    index("tasks_status_idx").on(t.userId, t.status),
+    index("tasks_project_idx").on(t.projectId),
+    index("tasks_parent_idx").on(t.parentTaskId),
+  ],
+);
+
+/** Audit log. Nič sa nemaže — odtiaľto sa počítajú štatistiky aj archív. */
+export const taskEvents = pgTable(
+  "task_events",
+  {
+    id: text("id").primaryKey(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    taskId: text("task_id")
+      .notNull()
+      .references(() => tasks.id, { onDelete: "cascade" }),
+    type: taskEventType("type").notNull(),
+    fromValue: text("from_value"),
+    toValue: text("to_value"),
+    at: timestamp("at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    index("task_events_task_idx").on(t.taskId),
+    index("task_events_user_at_idx").on(t.userId, t.at),
+  ],
+);
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   NÁPADY
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+export const ideas = pgTable(
+  "ideas",
+  {
+    id: text("id").primaryKey(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    areaId: text("area_id").references(() => areas.id, { onDelete: "set null" }),
+
+    title: text("title").notNull(),
+    body: text("body"),
+    stage: ideaStage("stage").notNull().default("raw"),
+    /** 1–5, ako veľmi ma to ťahá. Váži výber v inkubátore. */
+    spark: integer("spark").notNull().default(3),
+    /** Najmenší možný ďalší krok. */
+    nextStep: text("next_step"),
+
+    /** Pohon inkubátora (30 dní) aj automatického zhnitia (6 mesiacov). */
+    lastTouchedAt: timestamp("last_touched_at", { withTimezone: true }).notNull().defaultNow(),
+    promotedProjectId: text("promoted_project_id").references(() => projects.id, {
+      onDelete: "set null",
+    }),
+
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+    deletedAt: timestamp("deleted_at", { withTimezone: true }),
+  },
+  (t) => [
+    index("ideas_user_idx").on(t.userId),
+    index("ideas_stage_idx").on(t.userId, t.stage),
+    index("ideas_touched_idx").on(t.userId, t.lastTouchedAt),
+  ],
+);
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   TAGY A ODKAZY
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+export const tags = pgTable(
+  "tags",
+  {
+    id: text("id").primaryKey(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    color: text("color").notNull().default("slate"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [uniqueIndex("tags_user_name_idx").on(t.userId, t.name)],
+);
+
+export const taggables = pgTable(
+  "taggables",
+  {
+    tagId: text("tag_id")
+      .notNull()
+      .references(() => tags.id, { onDelete: "cascade" }),
+    entityType: entityType("entity_type").notNull(),
+    entityId: text("entity_id").notNull(),
+  },
+  (t) => [
+    primaryKey({ columns: [t.tagId, t.entityType, t.entityId] }),
+    index("taggables_entity_idx").on(t.entityType, t.entityId),
+  ],
+);
+
+/** Obojsmerné odkazy [[názov]] medzi ľubovoľnými entitami. */
+export const links = pgTable(
+  "links",
+  {
+    id: text("id").primaryKey(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    fromType: entityType("from_type").notNull(),
+    fromId: text("from_id").notNull(),
+    toType: entityType("to_type").notNull(),
+    toId: text("to_id").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    uniqueIndex("links_unique_idx").on(t.fromType, t.fromId, t.toType, t.toId),
+    index("links_to_idx").on(t.toType, t.toId),
+  ],
+);
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   NÁVYKY, DENNÍK, REVÍZIE
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+export const habits = pgTable(
+  "habits",
+  {
+    id: text("id").primaryKey(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    areaId: text("area_id").references(() => areas.id, { onDelete: "set null" }),
+    title: text("title").notNull(),
+    /** Cieľ „X× do týždňa" — jedno vynechanie nezhodí sériu. */
+    targetPerWeek: integer("target_per_week").notNull().default(7),
+    color: text("color").notNull().default("emerald"),
+    sort: integer("sort").notNull().default(0),
+    archivedAt: timestamp("archived_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("habits_user_idx").on(t.userId)],
+);
+
+export const habitEntries = pgTable(
+  "habit_entries",
+  {
+    habitId: text("habit_id")
+      .notNull()
+      .references(() => habits.id, { onDelete: "cascade" }),
+    date: date("date").notNull(),
+    done: boolean("done").notNull().default(true),
+  },
+  (t) => [primaryKey({ columns: [t.habitId, t.date] })],
+);
+
+export const journal = pgTable(
+  "journal",
+  {
+    id: text("id").primaryKey(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    date: date("date").notNull(),
+    body: text("body"),
+    /** 1–5 */
+    mood: integer("mood"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [uniqueIndex("journal_user_date_idx").on(t.userId, t.date)],
+);
+
+export const reviews = pgTable(
+  "reviews",
+  {
+    id: text("id").primaryKey(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    type: reviewType("type").notNull(),
+    periodStart: date("period_start").notNull(),
+    periodEnd: date("period_end").notNull(),
+    /** Odpovede zo sprievodcu — tvar sa líši podľa typu revízie. */
+    payload: jsonb("payload").notNull().default(sql`'{}'::jsonb`),
+    completedAt: timestamp("completed_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [uniqueIndex("reviews_user_type_period_idx").on(t.userId, t.type, t.periodStart)],
+);
+
+/** Šablóny opakujúcich sa postupov (M9). */
+export const templates = pgTable(
+  "templates",
+  {
+    id: text("id").primaryKey(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    description: text("description"),
+    /** Pole definícií úloh, ktoré sa pri použití vytvoria. */
+    payload: jsonb("payload").notNull().default(sql`'[]'::jsonb`),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("templates_user_idx").on(t.userId)],
+);
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   RELÁCIE
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+export const areasRelations = relations(areas, ({ many }) => ({
+  projects: many(projects),
+  tasks: many(tasks),
+  ideas: many(ideas),
+}));
+
+export const projectsRelations = relations(projects, ({ one, many }) => ({
+  area: one(areas, { fields: [projects.areaId], references: [areas.id] }),
+  tasks: many(tasks),
+}));
+
+export const tasksRelations = relations(tasks, ({ one, many }) => ({
+  project: one(projects, { fields: [tasks.projectId], references: [projects.id] }),
+  area: one(areas, { fields: [tasks.areaId], references: [areas.id] }),
+  parent: one(tasks, {
+    fields: [tasks.parentTaskId],
+    references: [tasks.id],
+    relationName: "subtasks",
+  }),
+  subtasks: many(tasks, { relationName: "subtasks" }),
+  events: many(taskEvents),
+}));
+
+export const taskEventsRelations = relations(taskEvents, ({ one }) => ({
+  task: one(tasks, { fields: [taskEvents.taskId], references: [tasks.id] }),
+}));
+
+export const ideasRelations = relations(ideas, ({ one }) => ({
+  area: one(areas, { fields: [ideas.areaId], references: [areas.id] }),
+  promotedProject: one(projects, {
+    fields: [ideas.promotedProjectId],
+    references: [projects.id],
+  }),
+}));
+
+export const habitsRelations = relations(habits, ({ one, many }) => ({
+  area: one(areas, { fields: [habits.areaId], references: [areas.id] }),
+  entries: many(habitEntries),
+}));
+
+export const habitEntriesRelations = relations(habitEntries, ({ one }) => ({
+  habit: one(habits, { fields: [habitEntries.habitId], references: [habits.id] }),
+}));
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   TYPY
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+export type Task = typeof tasks.$inferSelect;
+export type NewTask = typeof tasks.$inferInsert;
+export type Project = typeof projects.$inferSelect;
+export type NewProject = typeof projects.$inferInsert;
+export type Area = typeof areas.$inferSelect;
+export type NewArea = typeof areas.$inferInsert;
+export type Idea = typeof ideas.$inferSelect;
+export type NewIdea = typeof ideas.$inferInsert;
+export type Habit = typeof habits.$inferSelect;
+export type JournalEntry = typeof journal.$inferSelect;
+export type Review = typeof reviews.$inferSelect;
+export type TaskEvent = typeof taskEvents.$inferSelect;
+export type User = typeof users.$inferSelect;
+
+export type TaskStatus = Task["status"];
+export type Horizon = Task["horizon"];
+export type Energy = NonNullable<Task["energy"]>;
+export type IdeaStage = Idea["stage"];
