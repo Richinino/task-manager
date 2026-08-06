@@ -3,17 +3,18 @@ import type { ReactNode } from "react";
 import { signOut } from "@/auth";
 import { CaptureProvider } from "@/components/capture/capture-provider";
 import { AppShell } from "@/components/shell/app-shell";
-import { addDays, today } from "@/lib/dates";
+import { addDays, todayIn } from "@/lib/dates";
 import { requireUser } from "@/server/auth-guard";
 import { getCounts, getInboxTasks, getTasksForRange } from "@/server/queries/tasks";
 
 export default async function AppLayout({ children }: { children: ReactNode }) {
   const user = await requireUser();
-  const counts = await getCounts(user.id, today());
+  const todayIso = todayIn(user.settings.timezone);
+  const counts = await getCounts(user.id, todayIso);
 
   // Zásoba pre vyhľadávanie v Ctrl+K palete: naplánované okolo dneška + inbox.
   const searchTasks = [
-    ...(await getTasksForRange(user.id, addDays(today(), -60), addDays(today(), 180))),
+    ...(await getTasksForRange(user.id, addDays(todayIso, -60), addDays(todayIso, 180))),
     ...(await getInboxTasks(user.id)),
   ];
 

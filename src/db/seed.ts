@@ -5,12 +5,13 @@
  * Spustenie:  npm run db:seed
  * Je idempotentný — opakované spustenie nič nezduplikuje.
  */
-import { eq } from "drizzle-orm";
+import { and, eq, isNull } from "drizzle-orm";
 
 import { getDb } from "./client";
 import { areas, tasks, users } from "./schema";
+import { addDays, todayIn } from "../lib/dates";
 import { uuidv7 } from "../lib/id";
-import { DEFAULT_SETTINGS } from "../lib/settings";
+import { DEFAULT_SETTINGS, parseSettings } from "../lib/settings";
 
 const AREAS = [
   { name: "Práca", color: "indigo", icon: "briefcase" },
@@ -19,12 +20,6 @@ const AREAS = [
   { name: "Domov", color: "rose", icon: "house" },
   { name: "Učenie", color: "violet", icon: "graduation-cap" },
 ] as const;
-
-function isoDate(offsetDays: number): string {
-  const d = new Date();
-  d.setDate(d.getDate() + offsetDays);
-  return d.toISOString().slice(0, 10);
-}
 
 async function main() {
   const db = await getDb();
@@ -44,8 +39,20 @@ async function main() {
   }
   if (!user) throw new Error("Používateľa sa nepodarilo vytvoriť.");
 
+  /**
+   * Dnešok berieme z pásma používateľa, nie z pásma procesu ani z UTC.
+   * Cez `toISOString()` by sa po polnoci lokálneho času všetky ukážkové
+   * úlohy posunuli o deň dozadu — /dnes by bola prázdna a žaba by sedela
+   * na inom dni, než pre ktorý ju `setFrog` stráži.
+   */
+  const settings = parseSettings(user.settings);
+  const todayIso = todayIn(settings.timezone);
+  const isoDate = (offsetDays: number): string => addDays(todayIso, offsetDays);
+
+  // Mäkko zmazané oblasti sa nesmú počítať za existujúce — inak by seed
+  // priradil nové úlohy oblasti, ktorú používateľ v UI ani nevidí.
   const existingAreas = await db.query.areas.findMany({
-    where: eq(areas.userId, user.id),
+    where: and(eq(areas.userId, user.id), isNull(areas.deletedAt)),
   });
 
   const areaIds = new Map<string, string>();
@@ -66,7 +73,12 @@ async function main() {
     console.log(`✓ Oblasť ${a.name}`);
   }
 
-  const taskCount = await db.$count(tasks, eq(tasks.userId, user.id));
+  // Bez `deletedAt IS NULL` by seed po zmazaní ukážkových úloh tvrdil,
+  // že dáta existujú, a používateľ by ostal s prázdnou aplikáciou.
+  const taskCount = await db.$count(
+    tasks,
+    and(eq(tasks.userId, user.id), isNull(tasks.deletedAt)),
+  );
   if (taskCount > 0) {
     console.log(`• Úlohy už existujú (${taskCount}), preskakujem ukážkové dáta.`);
     console.log("Hotovo.");

@@ -5,7 +5,7 @@ import { DayList } from "@/components/views/dnes/day-list";
 import { FrogCard } from "@/components/views/dnes/frog-card";
 import { OverdueSection } from "@/components/views/dnes/overdue-section";
 import { TimeBudget } from "@/components/views/dnes/time-budget";
-import { today } from "@/lib/dates";
+import { todayIn } from "@/lib/dates";
 import { requireUser } from "@/server/auth-guard";
 import { getOverdueTasks, getTasksForDay } from "@/server/queries/tasks";
 
@@ -21,7 +21,9 @@ export const metadata: Metadata = {
  */
 export default async function DnesPage() {
   const user = await requireUser();
-  const date = today();
+  // Dnešok berieme z pásma používateľa, nie z pásma procesu — na Verceli (UTC)
+  // by inak medzi polnocou a druhou v noci svietili včerajšie úlohy.
+  const date = todayIn(user.settings.timezone);
 
   const [planned, overdue] = await Promise.all([
     getTasksForDay(user.id, date),
@@ -61,14 +63,30 @@ export default async function DnesPage() {
         }
       />
 
-      {showFrogCard ? <FrogCard frog={frog} candidates={openTasks} /> : null}
+      {showFrogCard ? (
+        <FrogCard
+          frog={frog}
+          candidates={openTasks}
+          todayIso={date}
+          postponeWarnAt={user.settings.postponeWarnAt}
+          postponeBlockAt={user.settings.postponeBlockAt}
+        />
+      ) : null}
 
-      <OverdueSection tasks={overdue} />
+      <OverdueSection
+        tasks={overdue}
+        todayIso={date}
+        postponeWarnAt={user.settings.postponeWarnAt}
+        postponeBlockAt={user.settings.postponeBlockAt}
+      />
 
       <DayList
         tasks={dayTasks}
         openCount={openTasks.length}
         wipLimit={user.settings.wipLimit}
+        todayIso={date}
+        postponeWarnAt={user.settings.postponeWarnAt}
+        postponeBlockAt={user.settings.postponeBlockAt}
       />
     </div>
   );

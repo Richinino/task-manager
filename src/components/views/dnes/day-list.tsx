@@ -12,13 +12,25 @@ export interface DayListProps {
   /** Počet nedokončených. WIP limit sa porovnáva s ním, nie s celkovým počtom. */
   openCount: number;
   wipLimit: number;
+  /** Dnešok zo servera pre riadky úloh. */
+  todayIso: string;
+  /** Prahy odkladov z nastavení používateľa. */
+  postponeWarnAt: number;
+  postponeBlockAt: number;
 }
 
 /**
  * Dnešné úlohy. Nad zoznamom môže sedieť upozornenie na prekročený WIP limit —
  * pokojné a bez moralizovania. Nič neblokuje; blokovanie prichádza až v M5.
  */
-export function DayList({ tasks, openCount, wipLimit }: DayListProps) {
+export function DayList({
+  tasks,
+  openCount,
+  wipLimit,
+  todayIso,
+  postponeWarnAt,
+  postponeBlockAt,
+}: DayListProps) {
   if (tasks.length === 0) {
     return (
       <TaskEmpty
@@ -49,7 +61,14 @@ export function DayList({ tasks, openCount, wipLimit }: DayListProps) {
       <ul className="flex flex-col gap-0.5">
         {tasks.map((task) => (
           <li key={task.id}>
-            <TaskItem task={task} density="full" showFrog />
+            <TaskItem
+              task={task}
+              todayIso={todayIso}
+              density="full"
+              showFrog
+              postponeWarnAt={postponeWarnAt}
+              postponeBlockAt={postponeBlockAt}
+            />
           </li>
         ))}
       </ul>

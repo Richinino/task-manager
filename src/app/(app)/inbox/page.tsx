@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 
 import { InboxList } from "@/components/views/inbox/inbox-list";
+import { todayIn } from "@/lib/dates";
 import { requireUser } from "@/server/auth-guard";
 import { getAreas, getInboxTasks, getProjects } from "@/server/queries/tasks";
 
@@ -27,7 +28,12 @@ export default async function InboxPage() {
 
   return (
     <div className="mx-auto w-full max-w-3xl px-4 py-5 md:px-6 md:py-7">
-      <InboxList tasks={tasks} areas={areas} projects={projects} />
+      <InboxList
+        tasks={tasks}
+        areas={areas}
+        projects={projects}
+        todayIso={todayIn(user.settings.timezone)}
+      />
     </div>
   );
 }

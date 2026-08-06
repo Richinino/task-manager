@@ -9,6 +9,11 @@ import type { TaskWithRelations } from "@/server/queries/tasks";
 
 export interface OverdueSectionProps {
   tasks: TaskWithRelations[];
+  /** Dnešok zo servera — podľa neho sa počíta, ako veľmi je úloha po termíne. */
+  todayIso: string;
+  /** Prahy odkladov z nastavení používateľa. */
+  postponeWarnAt: number;
+  postponeBlockAt: number;
 }
 
 /**
@@ -19,7 +24,12 @@ export interface OverdueSectionProps {
  * vedomé rozhodnutie, nie východzí stav. Zoznam ostáva v DOM aj po zbalení,
  * aby `aria-controls` ukazovalo na existujúci prvok.
  */
-export function OverdueSection({ tasks }: OverdueSectionProps) {
+export function OverdueSection({
+  tasks,
+  todayIso,
+  postponeWarnAt,
+  postponeBlockAt,
+}: OverdueSectionProps) {
   const listId = useId();
   const [open, setOpen] = useState(true);
 
@@ -69,7 +79,15 @@ export function OverdueSection({ tasks }: OverdueSectionProps) {
           <li key={task.id}>
             {/* showDate ukáže, ako veľmi je úloha po termíne.
                 Žaba patrí výhradne dnešku, preto tu jej zvýraznenie vypíname. */}
-            <TaskItem task={task} density="full" showDate showFrog={false} />
+            <TaskItem
+              task={task}
+              todayIso={todayIso}
+              density="full"
+              showDate
+              showFrog={false}
+              postponeWarnAt={postponeWarnAt}
+              postponeBlockAt={postponeBlockAt}
+            />
           </li>
         ))}
       </ul>

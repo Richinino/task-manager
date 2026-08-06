@@ -15,7 +15,7 @@ import {
   type TaskEvent,
   type TaskStatus,
 } from "@/db/schema";
-import { addDays, today } from "@/lib/dates";
+import { addDays, todayIn } from "@/lib/dates";
 import { uuidv7 } from "@/lib/id";
 import { parseCapture } from "@/lib/parse";
 import { requireUser } from "@/server/auth-guard";
@@ -238,7 +238,7 @@ export async function createTask(
     const isPlaced = plannedDate !== null || (data.projectId ?? null) !== null;
     const status: TaskStatus = data.status ?? (isPlaced ? "todo" : "inbox");
     const horizon: Horizon =
-      data.horizon ?? (plannedDate ? horizonForDate(plannedDate, today()) : "week");
+      data.horizon ?? (plannedDate ? horizonForDate(plannedDate, todayIn(user.settings.timezone)) : "week");
 
     const id = uuidv7();
     await db.insert(tasks).values({
@@ -297,7 +297,21 @@ export async function quickCapture(
       .safeParse(raw);
     if (!rawParsed.success) return invalid(rawParsed.error, "Neplatný text.");
 
+    /*
+      Parser číta z `now` lokálne zložky dátumu. Keby sme mu podstrčili obyčajné
+      `new Date()`, na Verceli (UTC) by „zajtra" počítal z iného dňa, než na akom
+      používateľ reálne stojí. Postavíme mu preto poludnie JEHO dnešného dňa —
+      poludnie preto, aby posun pásma nikdy nepreklopil dátum cez polnoc.
+    */
+    const todayIso = todayIn(user.settings.timezone);
+    const [y, m, d] = todayIso.split("-").map(Number);
+    const now =
+      y !== undefined && m !== undefined && d !== undefined
+        ? new Date(y, m - 1, d, 12, 0, 0, 0)
+        : new Date();
+
     const parsed = parseCapture(rawParsed.data, {
+      now,
       weekStartsOn: user.settings.weekStartsOn,
     });
 
@@ -335,7 +349,7 @@ export async function quickCapture(
 
     const status: TaskStatus = plannedDate ? "todo" : "inbox";
     const horizon: Horizon = plannedDate
-      ? horizonForDate(plannedDate, today())
+      ? horizonForDate(plannedDate, todayIn(user.settings.timezone))
       : "week";
 
     const id = uuidv7();
@@ -475,7 +489,7 @@ export async function updateTask(
         rescheduledTo = nextDate;
         didReschedule = true;
         if (data.horizon === undefined && nextDate) {
-          values.horizon = horizonForDate(nextDate, today());
+          values.horizon = horizonForDate(nextDate, todayIn(user.settings.timezone));
         }
       }
     }
@@ -705,7 +719,7 @@ export async function rescheduleTask(
       postponeCount,
       updatedAt: new Date(),
     };
-    if (nextDate) values.horizon = horizonForDate(nextDate, today());
+    if (nextDate) values.horizon = horizonForDate(nextDate, todayIn(user.settings.timezone));
     // Žaba je záväzok konkrétneho dňa. Presunom na iný deň prestáva platiť —
     // žabu nového dňa si treba vybrať vedome.
     if (task.isFrog) values.isFrog = false;

@@ -156,6 +156,8 @@ export interface TriageRowProps {
   onTriage: (action: TriageAction) => void;
   /** Nenápadné nahlásenie chyby do zoznamu. */
   onError: (message: string) => void;
+  /** Dnešok z pásma používateľa — aby sa server a klient nerozišli pri hydratácii. */
+  todayIso: string;
 }
 
 /**
@@ -173,6 +175,7 @@ export function TriageRow({
   onActivate,
   onTriage,
   onError,
+  todayIso,
 }: TriageRowProps) {
   const [isPending, startTransition] = useTransition();
   const [projectValue, setProjectValue] = useState(task.projectId ?? NONE);
@@ -237,6 +240,7 @@ export function TriageRow({
           showFrog={false}
           selected={active}
           onSelect={onActivate}
+          todayIso={todayIso}
         />
       </div>
 
