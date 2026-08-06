@@ -10,10 +10,25 @@ import { DEFAULT_SETTINGS } from "@/lib/settings";
 
 const isProd = process.env.NODE_ENV === "production";
 
-/** Vývojové prihlásenie bez Googlu — v produkcii je tvrdo vypnuté. */
-const devBypassEnabled = !isProd && process.env.AUTH_DEV_BYPASS === "1";
+/**
+ * Premenná prostredia, ktorá je prázdna alebo len z medzier, je NENASTAVENÁ.
+ *
+ * `.env` súbory bežne obsahujú `AUTH_SECRET=` ako miesto na doplnenie hodnoty.
+ * To do `process.env` uloží prázdny reťazec, nie `undefined`, takže `??` sa
+ * neuplatní a ďalej putuje `""` — Auth.js na ňom padne s `MissingSecret`.
+ */
+function env(name: string): string | undefined {
+  const raw = process.env[name]?.trim();
+  return raw === undefined || raw === "" ? undefined : raw;
+}
 
-const allowedEmail = process.env.ALLOWED_EMAIL?.trim().toLowerCase();
+/** Vývojové prihlásenie bez Googlu — v produkcii je tvrdo vypnuté. */
+const devBypassEnabled = !isProd && env("AUTH_DEV_BYPASS") === "1";
+
+const allowedEmail = env("ALLOWED_EMAIL")?.toLowerCase();
+
+/** Google sa zaregistruje len s reálnym client id — prázdna hodnota je nenastavená. */
+const googleClientId = env("AUTH_GOOGLE_ID");
 
 /** Zaručí, že pre daný e-mail existuje riadok v `users`, a vráti jeho id. */
 async function ensureUser(email: string, name?: string | null, image?: string | null) {
@@ -35,16 +50,16 @@ async function ensureUser(email: string, name?: string | null, image?: string | 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   // Bez adaptéra: session je JWT, vlastnú tabuľku `users` si spravujeme sami.
   session: { strategy: "jwt", maxAge: 60 * 60 * 24 * 90 },
-  secret: process.env.AUTH_SECRET ?? (isProd ? undefined : "dev-only-insecure-secret"),
+  secret: env("AUTH_SECRET") ?? (isProd ? undefined : "dev-only-insecure-secret"),
   trustHost: true,
   pages: { signIn: "/prihlasenie" },
 
   providers: [
-    ...(process.env.AUTH_GOOGLE_ID
+    ...(googleClientId !== undefined
       ? [
           Google({
-            clientId: process.env.AUTH_GOOGLE_ID,
-            clientSecret: process.env.AUTH_GOOGLE_SECRET,
+            clientId: googleClientId,
+            clientSecret: env("AUTH_GOOGLE_SECRET"),
             authorization: {
               params: {
                 // Kalendár len na čítanie (M8). Offline access kvôli refresh tokenu.

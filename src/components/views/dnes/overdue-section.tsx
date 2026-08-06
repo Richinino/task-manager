@@ -1,0 +1,78 @@
+"use client";
+
+import { useId, useState } from "react";
+import { ChevronRight, TriangleAlert } from "lucide-react";
+
+import { TaskItem } from "@/components/task/task-item";
+import { cn } from "@/lib/utils";
+import type { TaskWithRelations } from "@/server/queries/tasks";
+
+export interface OverdueSectionProps {
+  tasks: TaskWithRelations[];
+}
+
+/**
+ * Úlohy po termíne. Sedia navrchu, lebo sa nesmú stratiť medzi dnešnými —
+ * to sú veci, ktoré horia.
+ *
+ * Sekcia sa dá zbaliť, ale otvára sa otvorená: schovať prepadnuté úlohy má byť
+ * vedomé rozhodnutie, nie východzí stav. Zoznam ostáva v DOM aj po zbalení,
+ * aby `aria-controls` ukazovalo na existujúci prvok.
+ */
+export function OverdueSection({ tasks }: OverdueSectionProps) {
+  const listId = useId();
+  const [open, setOpen] = useState(true);
+
+  if (tasks.length === 0) return null;
+
+  return (
+    <section className="rounded border border-danger/40 bg-surface">
+      <h2>
+        <button
+          type="button"
+          aria-expanded={open}
+          aria-controls={listId}
+          onClick={() => setOpen((value) => !value)}
+          className={cn(
+            "flex w-full cursor-pointer items-center gap-2 rounded px-3 py-2 text-left",
+            "transition-colors duration-100 ease-out hover:bg-surface-2",
+          )}
+        >
+          <ChevronRight
+            aria-hidden="true"
+            size={16}
+            className={cn(
+              "shrink-0 text-danger transition-transform duration-100 ease-out",
+              open && "rotate-90",
+            )}
+          />
+          <TriangleAlert aria-hidden="true" size={16} className="shrink-0 text-danger" />
+          <span className="text-sm font-semibold text-danger">Po termíne</span>
+          <span
+            aria-hidden="true"
+            className={cn(
+              "inline-flex h-4 min-w-4 items-center justify-center rounded-full px-1",
+              "bg-danger/10 text-[10px] font-semibold tabular-nums text-danger",
+            )}
+          >
+            {tasks.length}
+          </span>
+          <span className="sr-only">, {tasks.length}</span>
+        </button>
+      </h2>
+
+      <ul
+        id={listId}
+        className={cn("flex-col gap-0.5 px-1.5 pb-1.5", open ? "flex" : "hidden")}
+      >
+        {tasks.map((task) => (
+          <li key={task.id}>
+            {/* showDate ukáže, ako veľmi je úloha po termíne.
+                Žaba patrí výhradne dnešku, preto tu jej zvýraznenie vypíname. */}
+            <TaskItem task={task} density="full" showDate showFrog={false} />
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+}

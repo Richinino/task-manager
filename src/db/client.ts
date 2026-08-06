@@ -36,11 +36,24 @@ async function createDb() {
   const { drizzle } = await import("drizzle-orm/pglite");
   const { migrate } = await import("drizzle-orm/pglite/migrator");
 
+  const { dirname } = await import("node:path");
+
+  /**
+   * Kam si PGlite ukladá dáta. Predvolene `.data/db` v projekte.
+   *
+   * Prepínač `PGLITE_DATA_DIR` existuje kvôli priečinkom, ktoré na pozadí
+   * synchronizuje cloud (OneDrive, Dropbox, iCloud). Taký priečinok mení súbory
+   * pod rukami bežiacej databáze — zápis prejde, ale pri ďalšom otvorení PGlite
+   * spadne na „failed to initialize properly". Riešenie je mať dáta mimo
+   * synchronizovaného stromu, napr. `PGLITE_DATA_DIR=C:/pgdata/task-manazer`.
+   */
+  const dataDir = process.env.PGLITE_DATA_DIR?.trim() || "./.data/db";
+
   // PGlite vytvára dátový priečinok nerekurzívne — rodiča musíme založiť sami.
   const { mkdirSync } = await import("node:fs");
-  mkdirSync("./.data", { recursive: true });
+  mkdirSync(dirname(dataDir), { recursive: true });
 
-  const client = new PGlite("./.data/db");
+  const client = new PGlite(dataDir);
   const db = drizzle(client, { schema, casing: "snake_case" });
 
   // Lokálne migrujeme automaticky — žiadny manuálny krok pri štarte.
