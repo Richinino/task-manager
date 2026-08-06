@@ -74,9 +74,11 @@ export interface InboxListProps {
   tasks: TaskWithRelations[];
   areas: Area[];
   projects: Project[];
+  /** Dnešok z pásma používateľa — aby sa server a klient nerozišli pri hydratácii. */
+  todayIso: string;
 }
 
-export function InboxList({ tasks, areas, projects }: InboxListProps) {
+export function InboxList({ tasks, areas, projects, todayIso }: InboxListProps) {
   // Zatriedená vec zmizne hneď; keď akcia dobehne, React sa vráti k dátam
   // zo servera — pri úspechu tam už nie je, pri chybe sa vráti aj s hláškou.
   const [triaged, markTriaged] = useOptimistic<readonly string[], string>(
@@ -205,6 +207,7 @@ export function InboxList({ tasks, areas, projects }: InboxListProps) {
                 onActivate={() => setActiveIndex(index)}
                 onTriage={(action) => triage(action, task.id)}
                 onError={setError}
+                todayIso={todayIso}
               />
             ))}
           </ul>

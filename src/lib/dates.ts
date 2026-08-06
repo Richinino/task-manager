@@ -84,6 +84,53 @@ export function today(now: Date = new Date()): string {
   return toIsoDate(now);
 }
 
+/**
+ * Formátovače pre pásma sa vyrábajú draho, preto si ich držíme.
+ * `null` znamená „také pásmo `Intl` nepozná" — netreba to skúšať znova.
+ */
+const zonedFormatters = new Map<string, Intl.DateTimeFormat | null>();
+
+function zonedFormatter(timeZone: string): Intl.DateTimeFormat | null {
+  const cached = zonedFormatters.get(timeZone);
+  if (cached !== undefined) return cached;
+
+  let formatter: Intl.DateTimeFormat | null = null;
+  try {
+    // en-CA skladá dátum rovno ako RRRR-MM-DD, takže netreba nič zlepovať.
+    formatter = new Intl.DateTimeFormat("en-CA", {
+      timeZone,
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    });
+  } catch {
+    formatter = null;
+  }
+
+  zonedFormatters.set(timeZone, formatter);
+  return formatter;
+}
+
+/**
+ * Dnešný dátum ako YYYY-MM-DD v zadanom časovom pásme.
+ *
+ * Na serveri je toto jediný správny zdroj „dneška": proces beží v UTC
+ * (Vercel), takže `today()` by používateľovi v Bratislave medzi polnocou
+ * a druhou hodinou rannou ukázalo ešte včerajšok — /dnes by bola prázdna
+ * a všetko by spadlo do „Po termíne".
+ *
+ * Neznáme alebo pokazené pásmo funkciu nezhodí — padne späť na `today()`.
+ */
+export function todayIn(timeZone: string, now: Date = new Date()): string {
+  if (!isValidDate(now)) return "";
+
+  const formatter = zonedFormatter(timeZone);
+  if (formatter === null) return today(now);
+
+  const formatted = formatter.format(now);
+  return ISO_RE.test(formatted) ? formatted : today(now);
+}
+
 /** YYYY-MM-DD ± n dní. */
 export function addDays(iso: string, n: number): string {
   const d = parseIsoDate(iso);

@@ -15,6 +15,11 @@ export interface FrogCardProps {
   frog: TaskWithRelations | null;
   /** Dnešné nedokončené úlohy — z nich sa žaba vyberá. */
   candidates: TaskWithRelations[];
+  /** Dnešok zo servera pre riadok žaby. */
+  todayIso: string;
+  /** Prahy odkladov z nastavení používateľa. */
+  postponeWarnAt: number;
+  postponeBlockAt: number;
 }
 
 /**
@@ -26,7 +31,13 @@ export interface FrogCardProps {
  * Klientský komponent je to kvôli `setFrog` — výber aj zrušenie sa dejú
  * priamo z karty, bez medzikroku.
  */
-export function FrogCard({ frog, candidates }: FrogCardProps) {
+export function FrogCard({
+  frog,
+  candidates,
+  todayIso,
+  postponeWarnAt,
+  postponeBlockAt,
+}: FrogCardProps) {
   const headingId = useId();
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
@@ -74,7 +85,14 @@ export function FrogCard({ frog, candidates }: FrogCardProps) {
           </Button>
         </div>
 
-        <TaskItem task={frog} density="full" showFrog />
+        <TaskItem
+          task={frog}
+          todayIso={todayIso}
+          density="full"
+          showFrog
+          postponeWarnAt={postponeWarnAt}
+          postponeBlockAt={postponeBlockAt}
+        />
 
         <p className="mt-1.5 px-2 text-xs leading-relaxed text-fg-muted">
           Toto je tá jedna vec, ktorú máš dnes spraviť ako prvú.

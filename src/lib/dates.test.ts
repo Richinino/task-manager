@@ -15,6 +15,7 @@ import {
   startOfWeek,
   toIsoDate,
   today,
+  todayIn,
   weekDays,
 } from "@/lib/dates";
 
@@ -44,6 +45,50 @@ describe("toIsoDate / parseIsoDate", () => {
 
   it("today() vracia dnešok podľa zadaného času", () => {
     expect(today(NOW)).toBe("2026-08-05");
+  });
+});
+
+describe("todayIn", () => {
+  /** 7. 8. 00:30 v Bratislave, ale v UTC je stále ešte 6. 8. */
+  const LETNY_VECER = new Date("2026-08-06T22:30:00Z");
+  /** 16. 1. 00:30 v Bratislave — zimný čas, posun je len +1 h. */
+  const ZIMNY_VECER = new Date("2027-01-15T23:30:00Z");
+
+  it("berie dátum z daného pásma, nie z pásma procesu (leto)", () => {
+    expect(todayIn("UTC", LETNY_VECER)).toBe("2026-08-06");
+    expect(todayIn("Europe/Bratislava", LETNY_VECER)).toBe("2026-08-07");
+  });
+
+  it("berie dátum z daného pásma aj v zime", () => {
+    expect(todayIn("UTC", ZIMNY_VECER)).toBe("2027-01-15");
+    expect(todayIn("Europe/Bratislava", ZIMNY_VECER)).toBe("2027-01-16");
+  });
+
+  it("zvláda pásma na oboch stranách UTC", () => {
+    expect(todayIn("Pacific/Auckland", LETNY_VECER)).toBe("2026-08-07");
+    expect(todayIn("America/Los_Angeles", LETNY_VECER)).toBe("2026-08-06");
+  });
+
+  it("cez deň sa od today() nelíši", () => {
+    // 5. 8. 12:00 UTC je 5. 8. aj v Bratislave aj v UTC.
+    const poludnie = new Date("2026-08-05T12:00:00Z");
+    expect(todayIn("Europe/Bratislava", poludnie)).toBe("2026-08-05");
+    expect(todayIn("UTC", poludnie)).toBe("2026-08-05");
+  });
+
+  it("neplatné pásmo nespadne, padá späť na lokálny čas", () => {
+    expect(todayIn("Nezmysel/Pasmo", NOW)).toBe(today(NOW));
+    expect(todayIn("", NOW)).toBe(today(NOW));
+  });
+
+  it("prežije nezmyselný okamih", () => {
+    expect(todayIn("Europe/Bratislava", new Date(Number.NaN))).toBe("");
+  });
+
+  it("výsledok sa dá vrátiť späť do lokálneho Date bez posunu dňa", () => {
+    // Toto je presne cesta, ktorou serverový dnešok putuje do parsera a do UI.
+    const iso = todayIn("Europe/Bratislava", LETNY_VECER);
+    expect(today(parseIsoDate(iso))).toBe(iso);
   });
 });
 

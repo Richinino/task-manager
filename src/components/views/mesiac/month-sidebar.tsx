@@ -13,6 +13,8 @@ export interface MonthSidebarProps {
   monthHorizonCount: number;
   /** „august 2026" — do popisu, aby panel dával zmysel aj sám o sebe. */
   monthTitle: string;
+  /** Dnešok z pásma používateľa — aby sa server a klient nerozišli pri hydratácii. */
+  todayIso: string;
 }
 
 /** Slovenské skloňovanie: 1 → „nevybavená úloha", 2–4 → „…é úlohy", inak „…ých úloh". */
@@ -60,6 +62,7 @@ export function MonthSidebar({
   dueTasks,
   monthHorizonCount,
   monthTitle,
+  todayIso,
 }: MonthSidebarProps) {
   const groups = groupByDueDate(dueTasks);
 
@@ -108,7 +111,12 @@ export function MonthSidebar({
                   <ul className="flex flex-col gap-1">
                     {group.tasks.map((task) => (
                       <li key={task.id}>
-                        <TaskItem task={task} density="compact" showFrog={false} />
+                        <TaskItem
+                          task={task}
+                          density="compact"
+                          showFrog={false}
+                          todayIso={todayIso}
+                        />
                       </li>
                     ))}
                   </ul>

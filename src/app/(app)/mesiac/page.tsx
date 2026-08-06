@@ -19,7 +19,7 @@ import {
   parseIsoDate,
   startOfWeek,
   toIsoDate,
-  today,
+  todayIn,
 } from "@/lib/dates";
 import { requireUser } from "@/server/auth-guard";
 import { getTasksForRange, type TaskWithRelations } from "@/server/queries/tasks";
@@ -70,7 +70,7 @@ export default async function MesiacPage({ searchParams }: MesiacPageProps) {
   const user = await requireUser();
   const params = await searchParams;
 
-  const todayIso = today();
+  const todayIso = todayIn(user.settings.timezone);
   const todayDate = parseIsoDate(todayIso);
   const currentYear = todayDate.getFullYear();
   const currentMonth = todayDate.getMonth() + 1;
@@ -185,6 +185,7 @@ export default async function MesiacPage({ searchParams }: MesiacPageProps) {
           dueTasks={dueTasks}
           monthHorizonCount={monthHorizonCount}
           monthTitle={formatMonthTitleSk(year, month)}
+          todayIso={todayIso}
         />
       </div>
     </div>

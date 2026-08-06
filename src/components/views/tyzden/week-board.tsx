@@ -42,6 +42,8 @@ export interface WeekBoardProps {
   capacityMin: number;
   /** Od koľkých odkladov po presune upozorniť. */
   postponeWarnAt: number;
+  /** Od koľkých odkladov je to už naliehavé. */
+  postponeBlockAt: number;
 }
 
 /** Optimistická zmena: úloha dostane iný deň. */
@@ -67,6 +69,7 @@ export function WeekBoard({
   todayIso,
   capacityMin,
   postponeWarnAt,
+  postponeBlockAt,
 }: WeekBoardProps) {
   const [optimisticTasks, applyMove] = useOptimistic(
     tasks,
@@ -201,6 +204,9 @@ export function WeekBoard({
               isToday={day === todayIso}
               isPastDay={day < todayIso}
               capacityMin={capacityMin}
+              todayIso={todayIso}
+              postponeWarnAt={postponeWarnAt}
+              postponeBlockAt={postponeBlockAt}
             />
           ))}
         </div>
@@ -208,7 +214,14 @@ export function WeekBoard({
 
       {/* Bez doskakovacej animácie — úloha je v novom stĺpci už v momente pustenia. */}
       <DragOverlay dropAnimation={null}>
-        {activeTask ? <WeekTaskOverlay task={activeTask} /> : null}
+        {activeTask ? (
+          <WeekTaskOverlay
+            task={activeTask}
+            todayIso={todayIso}
+            postponeWarnAt={postponeWarnAt}
+            postponeBlockAt={postponeBlockAt}
+          />
+        ) : null}
       </DragOverlay>
 
       {notice ? (

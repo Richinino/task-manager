@@ -36,6 +36,18 @@ export interface DayColumnProps {
   isPastDay: boolean;
   /** Koľko minút je v dni k dispozícii; 0 = bez stropu. */
   capacityMin: number;
+  /** Dnešok zo servera pre riadky úloh. */
+  todayIso: string;
+  /** Prahy odkladov z nastavení používateľa. */
+  postponeWarnAt: number;
+  postponeBlockAt: number;
+}
+
+/** Čo riadok úlohy potrebuje zo servera — cestuje aj do ťahaného náhľadu. */
+interface RowContext {
+  todayIso: string;
+  postponeWarnAt: number;
+  postponeBlockAt: number;
 }
 
 /** Stĺpec musí mať vlastné id droppable plochy, aby sa nepomiešalo s id úloh. */
@@ -63,7 +75,13 @@ const handleClass = cn(
   "text-fg-subtle transition-colors hover:bg-surface-2 hover:text-fg-muted",
 );
 
-function SortableTaskRow({ task }: { task: TaskWithRelations }) {
+function SortableTaskRow({
+  task,
+  row,
+}: {
+  task: TaskWithRelations;
+  row: RowContext;
+}) {
   const {
     attributes,
     listeners,
@@ -94,21 +112,38 @@ function SortableTaskRow({ task }: { task: TaskWithRelations }) {
       </button>
 
       <div className="min-w-0 flex-1">
-        <TaskItem task={task} density="compact" />
+        <TaskItem
+          task={task}
+          todayIso={row.todayIso}
+          density="compact"
+          postponeWarnAt={row.postponeWarnAt}
+          postponeBlockAt={row.postponeBlockAt}
+        />
       </div>
     </li>
   );
 }
 
 /** Náhľad, ktorý sa vezie s kurzorom. Vizuálne to isté ako riadok v stĺpci. */
-export function WeekTaskOverlay({ task }: { task: TaskWithRelations }) {
+export function WeekTaskOverlay({
+  task,
+  todayIso,
+  postponeWarnAt,
+  postponeBlockAt,
+}: { task: TaskWithRelations } & RowContext) {
   return (
     <div className={cn(rowClass, "rounded border border-accent bg-surface shadow-lg")}>
       <span aria-hidden="true" className={handleClass}>
         <GripVertical size={14} />
       </span>
       <div className="min-w-0 flex-1">
-        <TaskItem task={task} density="compact" />
+        <TaskItem
+          task={task}
+          todayIso={todayIso}
+          density="compact"
+          postponeWarnAt={postponeWarnAt}
+          postponeBlockAt={postponeBlockAt}
+        />
       </div>
     </div>
   );
@@ -120,7 +155,11 @@ export function DayColumn({
   isToday,
   isPastDay,
   capacityMin,
+  todayIso,
+  postponeWarnAt,
+  postponeBlockAt,
 }: DayColumnProps) {
+  const row: RowContext = { todayIso, postponeWarnAt, postponeBlockAt };
   const { setNodeRef, isOver } = useDroppable({ id: dayDroppableId(date) });
 
   const day = parseIsoDate(date);
@@ -184,7 +223,7 @@ export function DayColumn({
         >
           <ul className="flex flex-col gap-1">
             {tasks.map((task) => (
-              <SortableTaskRow key={task.id} task={task} />
+              <SortableTaskRow key={task.id} task={task} row={row} />
             ))}
           </ul>
         </SortableContext>

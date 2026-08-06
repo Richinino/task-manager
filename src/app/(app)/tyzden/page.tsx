@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 
 import { WeekBoard } from "@/components/views/tyzden/week-board";
 import { WeekHeader } from "@/components/views/tyzden/week-header";
-import { parseIsoDate, startOfWeek, today, toIsoDate, weekDays } from "@/lib/dates";
+import { parseIsoDate, startOfWeek, todayIn, toIsoDate, weekDays } from "@/lib/dates";
 import { requireUser } from "@/server/auth-guard";
 import { getTasksForRange } from "@/server/queries/tasks";
 
@@ -33,7 +33,7 @@ export default async function TyzdenPage({ searchParams }: TyzdenPageProps) {
   const params = await searchParams;
 
   const weekStartsOn = user.settings.weekStartsOn;
-  const todayIso = today();
+  const todayIso = todayIn(user.settings.timezone);
   const anchor = readAnchor(params.od) ?? todayIso;
 
   const days = weekDays(anchor, weekStartsOn);
@@ -68,6 +68,7 @@ export default async function TyzdenPage({ searchParams }: TyzdenPageProps) {
         todayIso={todayIso}
         capacityMin={capacityMin}
         postponeWarnAt={user.settings.postponeWarnAt}
+        postponeBlockAt={user.settings.postponeBlockAt}
       />
     </div>
   );
