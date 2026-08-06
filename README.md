@@ -87,13 +87,12 @@ Next.js 16 (App Router) · React 19 · TypeScript 6 · Tailwind CSS 4 · Drizzle
 | M0 — kostra, schéma, auth, seed | hotové |
 | M1 — vrstvy: parser, dátumy, dotazy, akcie, UI primitívy, shell | hotové |
 | M1 — obrazovky: Dnes, Týždeň, Mesiac, Inbox, zachytenie, klávesnica | hotové |
-| M1 — adversariálna revízia | **nedokončená** |
+| M1 — adversariálna revízia a opravy | hotové |
 | M2 — offline + PWA | ďalšie na rade |
 | M3–M9 | viď [PLAN.md](PLAN.md) |
 
-> Appka sa dá spustiť a všetky obrazovky existujú. Build, testy aj typecheck prechádzajú.
-> Neprebehla ale ešte revízia (časové pásma, parser na hraničných vstupoch, prístupnosť)
-> ani manuálne preklikanie v prehliadači — počítaj s tým, že drobné chyby tam byť môžu.
+**M1 je uzavreté.** Traja nezávislí recenzenti našli 25 chýb, opravené sú všetky vážne.
+Overené strojovo (0 typových chýb, 83 testov, build) aj ručne v prehliadači.
 
 ---
 
