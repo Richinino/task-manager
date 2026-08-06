@@ -1,5 +1,6 @@
 "use client";
 
+import type { Route } from "next";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
@@ -25,7 +26,7 @@ export interface NavCounts {
 }
 
 export interface NavItem {
-  href: string;
+  href: Route;
   label: string;
   /** Tichý náznak klávesovej skratky. */
   shortcut: string;
