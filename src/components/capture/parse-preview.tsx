@@ -12,7 +12,7 @@ import {
 
 import { EnergyBadge, energyLabel } from "@/components/task/energy-badge";
 import { EstimateChip, estimateLabel } from "@/components/task/estimate-chip";
-import { formatLongSk, formatRelativeSk } from "@/lib/dates";
+import { formatDuration, formatLongSk, formatRelativeSk } from "@/lib/dates";
 import type { ParsedCapture } from "@/lib/parse";
 import { cn } from "@/lib/utils";
 
@@ -33,11 +33,27 @@ export interface ParsePreviewProps {
   className?: string;
 }
 
+/* ── hranice úložiska ──────────────────────────────────────────────────── */
+
+/**
+ * Čo unesie databáza. Parser sám hranice nepozná („30h" vráti ako 1800 minút),
+ * serverová akcia hodnotu oreže na maximum — a náhľad na to musí upozorniť
+ * ešte pred uložením, inak by sľuboval niečo iné, než sa naozaj uloží.
+ *
+ * Čísla musia sedieť s `estimateSchema` a `contextSchema`
+ * v `src/server/actions/tasks.ts`. Zdieľať sa nedajú importom — zo súboru
+ * s `"use server"` smú viesť von len asynchrónne funkcie.
+ */
+const MAX_ESTIMATE_MIN = 1440;
+const MAX_CONTEXT_LENGTH = 64;
+
 /* ── tóny ──────────────────────────────────────────────────────────────── */
 
 const TONE_NEUTRAL = "border-border bg-surface-2 text-fg-muted";
 const TONE_PLANNED = "border-accent/40 bg-accent-soft text-accent";
 const TONE_DUE = "border-danger/40 bg-danger/10 text-danger";
+/** Hodnota sa uloží, ale inak, než ju používateľ napísal. */
+const TONE_CLAMPED = "border-warn/40 bg-warn/10 text-warn";
 
 const PRIORITY_TONE: Record<1 | 2 | 3, string> = {
   1: "border-p1/40 bg-p1/10 text-p1",
@@ -87,6 +103,45 @@ function longWhen(date: string | undefined, time: string | undefined): string {
   return time === undefined ? formatLongSk(date) : `${formatLongSk(date)} o ${time}`;
 }
 
+/* ── orezanie na hranice úložiska ──────────────────────────────────────── */
+
+/** Odhad tak, ako sa naozaj uloží. */
+function storedEstimate(minutes: number): number {
+  return Math.min(minutes, MAX_ESTIMATE_MIN);
+}
+
+/** Kontext tak, ako sa naozaj uloží (aj so znakom `@`). */
+function storedContext(context: string): string {
+  return context.trim().slice(0, MAX_CONTEXT_LENGTH);
+}
+
+/**
+ * Vety o tom, čo sa uloží inak, než je napísané. Prázdne pole znamená,
+ * že náhľad a uložený stav sedia znak po znaku.
+ */
+function buildClampNotes(parsed: ParsedCapture): string[] {
+  const notes: string[] = [];
+
+  if (parsed.estimateMin !== undefined && parsed.estimateMin > MAX_ESTIMATE_MIN) {
+    notes.push(
+      `Odhad ${formatDuration(parsed.estimateMin)} presahuje maximum — uloží sa ${formatDuration(
+        MAX_ESTIMATE_MIN,
+      )}.`,
+    );
+  }
+
+  if (
+    parsed.context !== undefined &&
+    storedContext(parsed.context) !== parsed.context.trim()
+  ) {
+    notes.push(
+      `Kontext je dlhší než ${MAX_CONTEXT_LENGTH} znakov — uloží sa skrátený.`,
+    );
+  }
+
+  return notes;
+}
+
 /**
  * Zhrnutie pre čítačky obrazovky. Čipy samotné sú pre ne skryté — inak by
  * pri každom stlačenom znaku predčítavali celý zoznam po kúskoch.
@@ -101,13 +156,20 @@ function buildSummary(parsed: ParsedCapture): string {
     parts.push(`termín do ${longWhen(parsed.dueDate, parsed.dueTime)}`);
   }
   if (parsed.priority !== undefined) parts.push(`priorita ${parsed.priority}`);
-  if (parsed.estimateMin !== undefined) parts.push(estimateLabel(parsed.estimateMin));
+  // Čítačka počuje hodnotu, ktorá sa uloží — nie tú, ktorú server oreže.
+  if (parsed.estimateMin !== undefined) {
+    parts.push(estimateLabel(storedEstimate(parsed.estimateMin)));
+  }
   if (parsed.energy !== undefined) parts.push(energyLabel(parsed.energy));
   if (parsed.projectName !== undefined) parts.push(`projekt ${parsed.projectName}`);
-  if (parsed.context !== undefined) parts.push(`kontext ${parsed.context}`);
+  if (parsed.context !== undefined) {
+    parts.push(`kontext ${storedContext(parsed.context)}`);
+  }
   for (const tag of parsed.tags) parts.push(`štítok ${tag}`);
 
-  return parts.length === 0 ? "" : `Rozpoznané: ${parts.join(", ")}.`;
+  const summary = parts.length === 0 ? "" : `Rozpoznané: ${parts.join(", ")}.`;
+  const notes = buildClampNotes(parsed);
+  return notes.length === 0 ? summary : `${summary} ${notes.join(" ")}`.trim();
 }
 
 /* ── komponent ─────────────────────────────────────────────────────────── */
@@ -182,9 +244,27 @@ export function ParsePreview({ parsed, className }: ParsePreviewProps) {
 
   // Odhad aj energiu vykresľujú zdieľané komponenty — v čipe je len ich obal.
   if (parsed.estimateMin !== undefined) {
+    // Ukazujeme hodnotu po orezaní, aby čip nesľuboval viac, než sa uloží.
+    const estimate = storedEstimate(parsed.estimateMin);
+    const clamped = estimate !== parsed.estimateMin;
     chips.push(
-      <Chip key="estimate" title={estimateLabel(parsed.estimateMin)}>
-        <EstimateChip minutes={parsed.estimateMin} size="sm" />
+      <Chip
+        key="estimate"
+        tone={clamped ? TONE_CLAMPED : TONE_NEUTRAL}
+        title={
+          clamped
+            ? `${estimateLabel(parsed.estimateMin)} presahuje maximum — uloží sa ${formatDuration(
+                estimate,
+              )}`
+            : estimateLabel(parsed.estimateMin)
+        }
+      >
+        <EstimateChip
+          minutes={estimate}
+          size="sm"
+          className={clamped ? "text-warn" : undefined}
+        />
+        {clamped ? <span className="ml-0.5">(max)</span> : null}
       </Chip>,
     );
   }
@@ -206,9 +286,20 @@ export function ParsePreview({ parsed, className }: ParsePreviewProps) {
   }
 
   if (parsed.context !== undefined) {
+    const context = storedContext(parsed.context);
+    const clamped = context !== parsed.context.trim();
     chips.push(
-      <Chip key="context" Icon={AtSign} title={`kontext ${parsed.context}`}>
-        {parsed.context.replace(/^@/, "")}
+      <Chip
+        key="context"
+        Icon={AtSign}
+        tone={clamped ? TONE_CLAMPED : TONE_NEUTRAL}
+        title={
+          clamped
+            ? `kontext sa skráti na ${MAX_CONTEXT_LENGTH} znakov: ${context}`
+            : `kontext ${context}`
+        }
+      >
+        {context.replace(/^@/, "")}
       </Chip>,
     );
   }
@@ -224,12 +315,21 @@ export function ParsePreview({ parsed, className }: ParsePreviewProps) {
   // Nič rozpoznané → nič nevykreslíme. Input nesmie poskakovať pri každom znaku.
   if (chips.length === 0) return null;
 
+  const notes = buildClampNotes(parsed);
+
   return (
     <div role="status" aria-live="polite" className={className}>
       <span className="sr-only">{buildSummary(parsed)}</span>
       <ul aria-hidden="true" className="flex flex-wrap items-center gap-1">
         {chips}
       </ul>
+      {/* Ticho orezanú hodnotu by používateľ nikdy neodhalil — povieme mu to
+          skôr, než stlačí Enter. */}
+      {notes.length > 0 ? (
+        <p aria-hidden="true" className="mt-1 text-[11px] leading-4 text-warn">
+          {notes.join(" ")}
+        </p>
+      ) : null}
     </div>
   );
 }

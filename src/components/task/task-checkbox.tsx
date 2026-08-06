@@ -95,11 +95,17 @@ export function TaskCheckbox({
         title={failed ? "Nepodarilo sa uložiť. Skús to znova." : checkboxLabel}
         onClick={handleToggle}
         className={cn(
-          "flex shrink-0 items-center justify-center rounded-full border transition-colors",
+          "relative flex shrink-0 items-center justify-center rounded-full border transition-colors",
           "cursor-pointer border-border-strong text-transparent hover:border-accent",
           optimisticDone && "border-accent bg-accent text-accent-fg hover:border-accent",
           failed && "border-danger",
           size === "sm" ? "mt-px size-4" : "size-[18px]",
+          // Vizuálne koliesko ostáva 16, resp. 18 px — hustota riadku sa nemení.
+          // Klikaciu plochu ale rozšíri neviditeľný pseudoprvok na 24×24,
+          // resp. 26×26 px, aby sa palcom dala trafiť (WCAG 2.2 SC 2.5.8).
+          // Presah ide do vlastného paddingu riadku, takže rúčku na ťahanie
+          // vedľa neprekryje.
+          "before:absolute before:-inset-1 before:content-['']",
         )}
       >
         <Check aria-hidden="true" size={size === "sm" ? 10 : 12} strokeWidth={3} />

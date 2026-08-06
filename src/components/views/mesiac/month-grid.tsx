@@ -78,6 +78,13 @@ export function MonthGrid({ days }: MonthGridProps) {
         })}
       </div>
 
+      {/*
+        Sedem stĺpcov ostáva na každej šírke: mesačný prehľad stojí na tom, že
+        je celý naraz vidieť a že týždne sedia pod sebou. Vodorovné posúvanie
+        (ako v týždennom pohľade) by práve toto rozbilo. Úzku bunku rieši
+        `DayCell` tak, že pod `sm` kreslí len značky bez názvov — vysvetlivka
+        pod mriežkou hovorí, čo ktorá značka znamená.
+      */}
       <div className="grid grid-cols-7 gap-1">
         {days.map((day) => (
           <DayCell

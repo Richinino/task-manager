@@ -12,7 +12,7 @@ import {
 } from "lucide-react";
 
 import type { Area, Project } from "@/db/schema";
-import { addDays, today } from "@/lib/dates";
+import { addDays, startOfWeek } from "@/lib/dates";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import {
@@ -50,6 +50,15 @@ export interface TriageActionMeta {
   /** Celá veta do tooltipu a pre čítačky. */
   hint: string;
   Icon: LucideIcon;
+  /**
+   * Či rozhodnutie úlohu z inboxu naozaj odstráni.
+   *
+   * Inbox sa filtruje podľa `status = 'inbox'`, všetky ostatné obrazovky
+   * podľa `plannedDate`/`dueDate`. Úloha, ktorá by z inboxu vypadla bez
+   * dátumu, by nebola nikde — preto „niekedy" v inboxe zámerne ostáva
+   * a zoznam ju nesmie optimisticky skryť.
+   */
+  leavesInbox: boolean;
 }
 
 export const TRIAGE_ACTIONS: Record<TriageAction, TriageActionMeta> = {
@@ -58,36 +67,42 @@ export const TRIAGE_ACTIONS: Record<TriageAction, TriageActionMeta> = {
     shortcut: "1",
     hint: "Naplánovať na dnes",
     Icon: Sun,
+    leavesInbox: true,
   },
   tomorrow: {
     label: "Zajtra",
     shortcut: "2",
     hint: "Naplánovať na zajtra",
     Icon: Sunrise,
+    leavesInbox: true,
   },
   week: {
     label: "Tento týždeň",
     shortcut: "3",
-    hint: "Odložiť na tento týždeň",
+    hint: "Naplánovať na najbližší deň v tomto týždni",
     Icon: CalendarRange,
+    leavesInbox: true,
   },
   someday: {
     label: "Niekedy",
     shortcut: "4",
-    hint: "Presunúť medzi veci na niekedy",
+    hint: "Odložiť na niekedy — ostane v inboxe, kým nedostane deň",
     Icon: Archive,
+    leavesInbox: false,
   },
   done: {
     label: "Hotovo",
     shortcut: "x",
     hint: "Označiť ako hotovú",
     Icon: Check,
+    leavesInbox: true,
   },
   drop: {
     label: "Zahodiť",
     shortcut: "Backspace",
     hint: "Zahodiť úlohu",
     Icon: Trash2,
+    leavesInbox: true,
   },
 };
 
@@ -105,34 +120,72 @@ export const TRIAGE_ORDER: readonly TriageAction[] = [
 export type TriageResult = { ok: true } | { ok: false; error: string };
 
 /**
+ * Deň, na ktorý padne rozhodnutie „tento týždeň".
+ *
+ * Musí to byť konkrétny dátum. Úloha bez `plannedDate` a zároveň mimo stavu
+ * `inbox` totiž nie je na žiadnej obrazovke: inbox filtruje `status`, Dnes,
+ * Týždeň aj Mesiac filtrujú `plannedDate`/`dueDate` a paleta príkazov dostáva
+ * len tieto dva zoznamy. Bez dátumu by sa úloha stratila nadobro.
+ *
+ * Berieme prvý deň po zajtrajšku — „dnes" a „zajtra" majú vlastné tlačidlá —
+ * orezaný koncom týždňa. Ak už z týždňa nič nezostáva (nedeľa), padáme na
+ * zajtrajšok, aby dátum nikdy nebol dnešok ani minulosť.
+ *
+ * Prvý deň týždňa berieme z predvolby `startOfWeek` (pondelok), rovnakej ako
+ * `settings.weekStartsOn`. Iné nastavenie by dátum posunulo nanajvýš o pár dní
+ * — úloha ostáva viditeľná tak či tak, lebo konkrétny deň má.
+ */
+function thisWeekDate(todayIso: string): string {
+  const weekEnd = addDays(startOfWeek(todayIso), 6);
+  const preferred = addDays(todayIso, 2);
+  const withinWeek = preferred <= weekEnd ? preferred : weekEnd;
+  return withinWeek > todayIso ? withinWeek : addDays(todayIso, 1);
+}
+
+/**
+ * Naplánovanie na konkrétny deň sú dva kroky: `rescheduleTask` nastaví deň
+ * (a horizont), ale stav úlohy nechá tak. Bez dorovnania stavu na `todo` by
+ * úloha po obnove dát spadla späť do inboxu, lebo ten sa filtruje podľa
+ * `status`.
+ */
+async function planOnDay(taskId: string, date: string): Promise<TriageResult> {
+  const moved = await rescheduleTask(taskId, date);
+  if (!moved.ok) return moved;
+  return updateTask(taskId, { status: "todo" });
+}
+
+/**
  * Vykoná rozhodnutie a vráti výsledok. Volá to tlačidlo v riadku aj
  * klávesová skratka zo zoznamu — logika je zámerne na jednom mieste.
  *
- * Pozor na dva kroky pri „dnes" a „zajtra": `rescheduleTask` nastaví deň,
- * ale stav úlohy nechá tak. Bez dorovnania stavu na `todo` by úloha po
- * obnove dát spadla späť do inboxu, lebo ten sa filtruje podľa `status`.
+ * `todayIso` prichádza propom zo servera (pásmo používateľa). Klient si
+ * dnešok nesmie počítať sám, inak sa rozíde so serverom.
  */
 export async function runTriage(
   action: TriageAction,
   taskId: string,
+  todayIso: string,
 ): Promise<TriageResult> {
   switch (action) {
     case "today":
-    case "tomorrow": {
-      const date = action === "today" ? today() : addDays(today(), 1);
-      const moved = await rescheduleTask(taskId, date);
-      if (!moved.ok) return moved;
-      return updateTask(taskId, { status: "todo" });
-    }
+      return planOnDay(taskId, todayIso);
+    case "tomorrow":
+      return planOnDay(taskId, addDays(todayIso, 1));
     case "week":
-      return updateTask(taskId, { horizon: "week", status: "todo" });
+      return planOnDay(taskId, thisWeekDate(todayIso));
     case "someday":
-      return updateTask(taskId, { horizon: "someday", status: "todo" });
+      // Zámerne sa NEmení `status`. Zoznam úloh s horizontom „niekedy" zatiaľ
+      // žiadna obrazovka nemá (`getSomedayTasks` nikto nevolá), takže úloha
+      // musí ostať v inboxe — je to jediné miesto, kde ju používateľ nájde.
+      // Až keď pribudne obrazovka „Niekedy", môže sa stav posunúť ďalej.
+      return updateTask(taskId, { horizon: "someday" });
     case "done": {
       const result = await toggleTaskDone(taskId);
       return result.ok ? { ok: true } : result;
     }
     case "drop":
+      // Mäkké zmazanie. Zoznam za to ponúkne „Vrátiť späť" cez `restoreTask` —
+      // bez neho by sa úloha dala získať naspäť len priamym SQL.
       return deleteTask(taskId);
   }
 }
@@ -152,18 +205,24 @@ export interface TriageRowProps {
   active: boolean;
   /** Presunie klávesovú pozíciu na tento riadok. */
   onActivate: () => void;
-  /** Rozhodnutie, po ktorom riadok zo zoznamu zmizne. */
+  /** Rozhodnutie o úlohe; podľa `leavesInbox` po ňom riadok zmizne alebo ostane. */
   onTriage: (action: TriageAction) => void;
   /** Nenápadné nahlásenie chyby do zoznamu. */
   onError: (message: string) => void;
   /** Dnešok z pásma používateľa — aby sa server a klient nerozišli pri hydratácii. */
   todayIso: string;
+  /** Od koľkých odkladov sa odznak zobrazí — `settings.postponeWarnAt`. */
+  postponeWarnAt: number;
+  /** Od koľkých odkladov je odznak červený — `settings.postponeBlockAt`. */
+  postponeBlockAt: number;
 }
 
 /**
  * Jedna položka inboxu aj so všetkým, čo s ňou vieš spraviť na jedno kliknutie.
  *
- * Tlačidlá riadok zo zoznamu odstránia — sú to rozhodnutia „kedy to spravím".
+ * Tlačidlá sú rozhodnutia „kedy to spravím" a riadok zo zoznamu odstránia —
+ * okrem „Niekedy", ktoré úlohu vedome nechá v inboxe, lebo obrazovka pre
+ * horizont „niekedy" zatiaľ neexistuje.
  * Výbery projektu a oblasti sú naopak doplnenie údaja: riadok ostáva, aby sa
  * dala doplniť aj druhá vec a až potom padlo rozhodnutie o dni.
  */
@@ -176,6 +235,8 @@ export function TriageRow({
   onTriage,
   onError,
   todayIso,
+  postponeWarnAt,
+  postponeBlockAt,
 }: TriageRowProps) {
   const [isPending, startTransition] = useTransition();
   const [projectValue, setProjectValue] = useState(task.projectId ?? NONE);
@@ -241,6 +302,8 @@ export function TriageRow({
           selected={active}
           onSelect={onActivate}
           todayIso={todayIso}
+          postponeWarnAt={postponeWarnAt}
+          postponeBlockAt={postponeBlockAt}
         />
       </div>
 

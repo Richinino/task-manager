@@ -1,4 +1,4 @@
-import { CalendarPlus, TriangleAlert } from "lucide-react";
+import { CalendarPlus, CircleCheck, TriangleAlert } from "lucide-react";
 
 import { TaskEmpty } from "@/components/task/task-empty";
 import { TaskItem } from "@/components/task/task-item";
@@ -7,9 +7,20 @@ import type { TaskWithRelations } from "@/server/queries/tasks";
 import { taskCountSk } from "./time-budget";
 
 export interface DayListProps {
-  /** Všetko, čo je na dnes naplánované — vrátane hotových, tie padnú na koniec. */
+  /**
+   * Všetko, čo je na dnes naplánované — vrátane hotových, tie padnú na koniec.
+   * Bez žaby, ak je zobrazená v karte nad zoznamom (`frogInCard`).
+   */
   tasks: TaskWithRelations[];
-  /** Počet nedokončených. WIP limit sa porovnáva s ním, nie s celkovým počtom. */
+  /**
+   * Žaba dňa je vykreslená v karte nad zoznamom, takže tu chýba zámerne.
+   * Mení znenie prázdneho stavu — „nič naplánované" by bola lož.
+   */
+  frogInCard?: boolean;
+  /**
+   * Počet nedokončených vrátane žaby. WIP limit sa porovnáva s ním, nie
+   * s dĺžkou zoznamu — žaba je súčasť dnešného záväzku, aj keď je nad ním.
+   */
   openCount: number;
   wipLimit: number;
   /** Dnešok zo servera pre riadky úloh. */
@@ -25,6 +36,7 @@ export interface DayListProps {
  */
 export function DayList({
   tasks,
+  frogInCard = false,
   openCount,
   wipLimit,
   todayIso,
@@ -32,7 +44,15 @@ export function DayList({
   postponeBlockAt,
 }: DayListProps) {
   if (tasks.length === 0) {
-    return (
+    // Keď je jedinou dnešnou úlohou žaba, zoznam nie je prázdny omylom —
+    // povedzme to rovno, nech pod kartou nezostane nezrozumiteľná diera.
+    return frogInCard ? (
+      <TaskEmpty
+        icon={<CircleCheck size={26} strokeWidth={1.75} />}
+        title="Okrem žaby dňa dnes nič ďalšie nečaká."
+        description="Jedna vec je dosť. Ak ju máš za sebou a chceš pokračovať, vytiahni ďalšiu z inboxu."
+      />
+    ) : (
       <TaskEmpty
         icon={<CalendarPlus size={26} strokeWidth={1.75} />}
         title="Na dnes nemáš nič naplánované."
@@ -65,6 +85,11 @@ export function DayList({
               task={task}
               todayIso={todayIso}
               density="full"
+              // Termín ukazujeme len tam, kde existuje: prešvihnutý deadline
+              // úlohy naplánovanej na dnes sa do sekcie „Po termíne" nedostane,
+              // takže toto je jediné miesto, kde ho vidieť. Pri úlohách bez
+              // termínu by chip zbytočne opakoval „dnes".
+              showDate={task.dueDate !== null}
               showFrog
               postponeWarnAt={postponeWarnAt}
               postponeBlockAt={postponeBlockAt}

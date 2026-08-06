@@ -432,6 +432,111 @@ describe("poradie a umiestnenie tokenov", () => {
   });
 });
 
+describe("regresie z recenzie", () => {
+  it("R1 — štvorciferné číslo za dátumom nie je rok", () => {
+    const input = "Zaplatiť faktúru do 15.8. 2000 eur";
+    const r = p(input);
+    expectAligned(input, r);
+    expect(r.dueDate).toBe("2026-08-15");
+    expect(r.title).toBe("Zaplatiť faktúru 2000 eur");
+
+    const r2 = p("prevod 5.8. 1500 eur na ucet");
+    expect(r2.plannedDate).toBe("2026-08-05");
+    expect(r2.title).toBe("prevod 1500 eur na ucet");
+  });
+
+  it("R1 — hodnoverný rok oddelený medzerou ostáva rokom", () => {
+    expect(p("porada 12. 8. 2026").plannedDate).toBe("2026-08-12");
+    expect(p("porada 12. 8. 2030").plannedDate).toBe("2030-08-12");
+    // bez medzery je rok vždy rok, aj keď je v minulosti
+    expect(p("archív 12.8.1999").plannedDate).toBe("1999-08-12");
+  });
+
+  it("R2 — desatinné číslo s bodkou nie je dátum", () => {
+    const input = "kúpiť 1.5 litra mlieka";
+    const r = p(input);
+    expect(r.plannedDate).toBeUndefined();
+    expect(r.title).toBe(input);
+
+    expect(p("verzia 2.5 nasadiť").plannedDate).toBeUndefined();
+    expect(p("verzia 2.5 nasadiť").title).toBe("verzia 2.5 nasadiť");
+    expect(p("strana 12.4 precitat").plannedDate).toBeUndefined();
+    expect(p("meranie 12.5 stupnov").plannedDate).toBeUndefined();
+    expect(p("meranie 12.5 stupnov").title).toBe("meranie 12.5 stupnov");
+    // čiarkový variant sa správa rovnako
+    expect(p("kúpiť 1,5 litra mlieka").plannedDate).toBeUndefined();
+  });
+
+  it("R2 — dátum s koncovou bodkou (a na konci vstupu aj bez nej) ostáva dátumom", () => {
+    expect(p("porada 12.8. o 15:00").plannedDate).toBe("2026-08-12");
+    expect(p("porada 12. 8. o 15:00").plannedDate).toBe("2026-08-12");
+    expect(p("porada 12.8").plannedDate).toBe("2026-08-12");
+    expect(p("daňové priznanie do 31.3.").dueDate).toBe("2027-03-31");
+  });
+
+  it("R3 — token nikdy neobsahuje okrajové medzery", () => {
+    const inputs = [
+      "porada 12.8. o 15:00",
+      "porada 12. 8.   !1",
+      "odovzdať do   piatku   !1",
+      "zavolať mame v piatok o 15:00 !1 @telefon #rodina +osobne 30m",
+      "porada o 10 minút",
+    ];
+    for (const input of inputs) {
+      const r = p(input);
+      expectAligned(input, r);
+      for (const token of r.tokens) {
+        expect(token.raw).toBe(token.raw.trim());
+      }
+    }
+    expect(p("porada 12.8. o 15:00").tokens.find((t) => t.kind === "planned")!.raw).toBe(
+      "12.8.",
+    );
+    expect(p("porada 12. 8.   !1").tokens.find((t) => t.kind === "planned")!.raw).toBe(
+      "12. 8.",
+    );
+  });
+
+  it("R6 — predložka odhadu sa vystrihne spolu s ním", () => {
+    const r = p("porada o 10 minút");
+    expect(r.estimateMin).toBe(10);
+    expect(r.title).toBe("porada");
+    expect(r.tokens.find((t) => t.kind === "estimate")!.raw).toBe("o 10 minút");
+
+    expect(p("dorobit za 2 hodiny").title).toBe("dorobit");
+    expect(p("dorobit za 2 hodiny").estimateMin).toBe(120);
+    expect(p("Stretnutie so šéfom o 5 minút").title).toBe("Stretnutie so šéfom");
+    expect(p("napísať mail cca 15 min").title).toBe("napísať mail");
+    // predložka „cez“ pred dňom v týždni
+    expect(p("upratať cez víkend").title).toBe("upratať");
+    expect(p("upratať cez víkend").plannedDate).toBe("2026-08-08");
+  });
+
+  it("R6 — koncové „o“ v slove sa za predložku nepovažuje", () => {
+    expect(p("kúpiť kilo 30 min").title).toBe("kúpiť kilo");
+    expect(p("umyť auto 30 min").title).toBe("umyť auto");
+    // hodina s predložkou je naďalej čas, nie odhad
+    expect(p("porada o 9h").plannedTime).toBe("09:00");
+    expect(p("porada o 9 hod").plannedTime).toBe("09:00");
+    expect(p("porada o 9h").estimateMin).toBeUndefined();
+  });
+
+  it("R7 — interpunkcia napísaná používateľom sa neposúva", () => {
+    expect(p("poslať report !4").title).toBe("poslať report !4");
+    expect(p("zavolat ( Petrovi ) zajtra").title).toBe("zavolat ( Petrovi )");
+    expect(p("napisat mail ! zajtra").title).toBe("napisat mail !");
+    expect(p("úloha !2 !1").title).toBe("úloha !1");
+    expect(p("úloha !2 !1").priority).toBe(2);
+  });
+
+  it("R7 — medzera po vystrihnutom tokene sa naďalej zlepí", () => {
+    expect(p("zavolať @telefon mame v piatok, je to #dolezite").title).toBe(
+      "zavolať mame, je to",
+    );
+    expect(p("porada v piatok.").title).toBe("porada.");
+  });
+});
+
 describe("náhodné vstupy (invarianty)", () => {
   const PIECES = [
     "kúpiť",

@@ -2,7 +2,7 @@ import { CalendarClock, CalendarRange } from "lucide-react";
 
 import { TaskEmpty } from "@/components/task/task-empty";
 import { TaskItem } from "@/components/task/task-item";
-import { formatLongSk, isPast, isToday } from "@/lib/dates";
+import { formatLongSk } from "@/lib/dates";
 import { cn } from "@/lib/utils";
 import type { TaskWithRelations } from "@/server/queries/tasks";
 
@@ -15,6 +15,10 @@ export interface MonthSidebarProps {
   monthTitle: string;
   /** Dnešok z pásma používateľa — aby sa server a klient nerozišli pri hydratácii. */
   todayIso: string;
+  /** Od koľkých odkladov sa odznak zobrazí — `settings.postponeWarnAt`. */
+  postponeWarnAt: number;
+  /** Od koľkých odkladov je odznak červený — `settings.postponeBlockAt`. */
+  postponeBlockAt: number;
 }
 
 /** Slovenské skloňovanie: 1 → „nevybavená úloha", 2–4 → „…é úlohy", inak „…ých úloh". */
@@ -48,9 +52,12 @@ function groupByDueDate(tasks: TaskWithRelations[]): DueGroup[] {
   return groups;
 }
 
-/** Deň, ktorý už ubehol a stále v ňom niečo nevybavené visí. */
-function isGroupOverdue(group: DueGroup): boolean {
-  if (!isPast(group.date)) return false;
+/**
+ * Deň, ktorý už ubehol a stále v ňom niečo nevybavené visí.
+ * „Ubehol" sa meria oproti dnešku z pásma používateľa, nie z pásma procesu.
+ */
+function isGroupOverdue(group: DueGroup, todayIso: string): boolean {
+  if (group.date >= todayIso) return false;
   return group.tasks.some((task) => task.status !== "done" && task.status !== "dropped");
 }
 
@@ -63,6 +70,8 @@ export function MonthSidebar({
   monthHorizonCount,
   monthTitle,
   todayIso,
+  postponeWarnAt,
+  postponeBlockAt,
 }: MonthSidebarProps) {
   const groups = groupByDueDate(dueTasks);
 
@@ -89,8 +98,8 @@ export function MonthSidebar({
         ) : (
           <ol className="flex flex-col gap-3">
             {groups.map((group) => {
-              const overdue = isGroupOverdue(group);
-              const todayGroup = isToday(group.date);
+              const overdue = isGroupOverdue(group, todayIso);
+              const todayGroup = group.date === todayIso;
 
               return (
                 <li key={group.date} className="flex flex-col gap-1">
@@ -116,6 +125,8 @@ export function MonthSidebar({
                           density="compact"
                           showFrog={false}
                           todayIso={todayIso}
+                          postponeWarnAt={postponeWarnAt}
+                          postponeBlockAt={postponeBlockAt}
                         />
                       </li>
                     ))}
