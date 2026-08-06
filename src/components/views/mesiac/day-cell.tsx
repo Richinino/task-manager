@@ -57,6 +57,10 @@ function moreLabel(count: number): string {
  * Riadok úlohy v bunke. Termín má výraznejšiu kresbu (ľavý pruh, plné pozadie,
  * polotučné písmo, ikona hodín), plán je tichý (jemné pozadie, bodka priority).
  * Rozdiel nesie tvar aj text, nielen farba — kvôli čítačkám aj farbosleposti.
+ *
+ * Pod `sm` má bunka ~44 px, takže názov by sa orezal na jeden znak s výpustkou.
+ * Tam sa preto kreslí len značka (ikona hodín / bodka priority) a názov ostáva
+ * ako `sr-only` — čítačka prečíta na telefóne presne to isté čo na počítači.
  */
 function DayEntryChip({ entry }: { entry: DayEntry }) {
   const isDue = entry.kind === "due";
@@ -66,7 +70,8 @@ function DayEntryChip({ entry }: { entry: DayEntry }) {
     <span
       title={`${kindLabel}: ${entry.title}`}
       className={cn(
-        "flex min-w-0 items-center gap-1 rounded px-1 py-px text-[11px] leading-tight",
+        "flex min-w-0 items-center rounded py-px text-[11px] leading-tight",
+        "gap-0.5 px-0.5 sm:gap-1 sm:px-1",
         isDue
           ? "border-l-2 border-danger bg-danger/10 font-semibold text-fg"
           : "bg-surface-2 font-normal text-fg-muted",
@@ -74,7 +79,9 @@ function DayEntryChip({ entry }: { entry: DayEntry }) {
         entry.done && "font-normal text-fg-subtle line-through",
       )}
     >
-      <span className="sr-only">{kindLabel}: </span>
+      <span className="sr-only">
+        {kindLabel}: {entry.title}.
+      </span>
 
       {isDue ? (
         <CalendarClock aria-hidden="true" size={11} className="shrink-0 text-danger" />
@@ -84,7 +91,9 @@ function DayEntryChip({ entry }: { entry: DayEntry }) {
         </span>
       )}
 
-      <span className="truncate">{entry.title}</span>
+      <span aria-hidden="true" className="hidden truncate sm:inline">
+        {entry.title}
+      </span>
     </span>
   );
 }
@@ -145,13 +154,21 @@ export function DayCell({
       </span>
 
       {entries.length > 0 ? (
-        <span className="flex min-w-0 flex-col gap-0.5">
+        // Pod `sm` sa značky ukladajú vedľa seba (na výšku by z bunky spravili
+        // stĺpec troch prázdnych obdĺžnikov), od `sm` sú to plnohodnotné riadky.
+        <span className="flex min-w-0 flex-row flex-wrap items-center gap-0.5 sm:flex-col sm:items-stretch">
           {entries.map((entry) => (
             <DayEntryChip key={entry.key} entry={entry} />
           ))}
           {hiddenCount > 0 ? (
-            <span className="px-1 text-[10px] font-medium text-fg-subtle">
-              {moreLabel(hiddenCount)}
+            <span className="text-[10px] font-medium leading-tight text-fg-subtle sm:px-1">
+              <span className="sr-only">{moreLabel(hiddenCount)}</span>
+              <span aria-hidden="true" className="sm:hidden">
+                +{hiddenCount}
+              </span>
+              <span aria-hidden="true" className="hidden sm:inline">
+                {moreLabel(hiddenCount)}
+              </span>
             </span>
           ) : null}
         </span>

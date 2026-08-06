@@ -9,12 +9,14 @@ import {
   useState,
   useTransition,
 } from "react";
-import { PartyPopper } from "lucide-react";
+import { PartyPopper, Undo2 } from "lucide-react";
 
 import type { Area, Project } from "@/db/schema";
 import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
 import { Kbd } from "@/components/ui/kbd";
 import { TaskEmpty } from "@/components/task/task-empty";
+import { restoreTask } from "@/server/actions/tasks";
 import type { TaskWithRelations } from "@/server/queries/tasks";
 
 import { InboxHeader } from "./inbox-header";
@@ -69,6 +71,24 @@ function normalizeKey(key: string): string {
 /** Stabilná referencia, aby sa optimistický stav po dobehnutí akcie vrátil na prázdno. */
 const NOTHING_TRIAGED: readonly string[] = [];
 
+/**
+ * Tiché potvrdenie posledného rozhodnutia.
+ *
+ * Pri zmazaní nesie aj `undoTaskId` — zahodenie je jediná akcia, ktorú sa
+ * inak nedá vrátiť, a Backspace je príliš blízko bežnej svalovej pamäti,
+ * než aby stačilo „zmizlo a hotovo". Potvrdzovací dialóg by triedenie brzdil,
+ * preto sa maže hneď a späť sa dá vrátiť z tejto hlášky.
+ */
+interface Flash {
+  message: string;
+  undoTaskId?: string;
+  /** Názov úlohy do menovky tlačidla — čítačke pri tabovaní nestačí okolitý text. */
+  undoTitle?: string;
+}
+
+/** Ako dlho hláška visí — pri ponuke vrátenia musí byť čas si to rozmyslieť. */
+const FLASH_MS = { plain: 5000, undo: 10_000 } as const;
+
 export interface InboxListProps {
   /** Úlohy so stavom „inbox", najstaršie hore. */
   tasks: TaskWithRelations[];
@@ -76,9 +96,20 @@ export interface InboxListProps {
   projects: Project[];
   /** Dnešok z pásma používateľa — aby sa server a klient nerozišli pri hydratácii. */
   todayIso: string;
+  /** Od koľkých odkladov sa odznak zobrazí — `settings.postponeWarnAt`. */
+  postponeWarnAt: number;
+  /** Od koľkých odkladov je odznak červený — `settings.postponeBlockAt`. */
+  postponeBlockAt: number;
 }
 
-export function InboxList({ tasks, areas, projects, todayIso }: InboxListProps) {
+export function InboxList({
+  tasks,
+  areas,
+  projects,
+  todayIso,
+  postponeWarnAt,
+  postponeBlockAt,
+}: InboxListProps) {
   // Zatriedená vec zmizne hneď; keď akcia dobehne, React sa vráti k dátam
   // zo servera — pri úspechu tam už nie je, pri chybe sa vráti aj s hláškou.
   const [triaged, markTriaged] = useOptimistic<readonly string[], string>(
@@ -88,7 +119,11 @@ export function InboxList({ tasks, areas, projects, todayIso }: InboxListProps) 
   const [, startTransition] = useTransition();
   const [activeIndex, setActiveIndex] = useState(0);
   const [error, setError] = useState<string | null>(null);
+  const [flash, setFlash] = useState<Flash | null>(null);
   const listRef = useRef<HTMLUListElement>(null);
+
+  /** Úloha, ktorú sa práve dá vrátiť späť — null, keď niet čo vracať. */
+  const undoTaskId = flash?.undoTaskId;
 
   const visible = tasks.filter((task) => !triaged.includes(task.id));
   const lastIndex = visible.length - 1;
@@ -97,29 +132,82 @@ export function InboxList({ tasks, areas, projects, todayIso }: InboxListProps) 
 
   const triage = useCallback(
     (action: TriageAction, taskId: string) => {
+      const meta = TRIAGE_ACTIONS[action];
+      const found = tasks.find((task) => task.id === taskId)?.title;
+      const named = found ? `Úloha „${found}"` : "Úloha";
+
       startTransition(async () => {
-        markTriaged(taskId);
+        // „Niekedy" úlohu v inboxe vedome necháva — skryť ju optimisticky by
+        // znamenalo, že po revalidácii zase preblikne späť.
+        if (meta.leavesInbox) markTriaged(taskId);
         setError(null);
+        setFlash(null);
         try {
-          const result = await runTriage(action, taskId);
-          if (!result.ok) setError(result.error);
+          const result = await runTriage(action, taskId, todayIso);
+          if (!result.ok) {
+            setError(result.error);
+            return;
+          }
+          if (action === "drop") {
+            setFlash({
+              message: `${named} je zahodená.`,
+              undoTaskId: taskId,
+              undoTitle: found,
+            });
+          } else if (action === "someday") {
+            setFlash({
+              message: `${named} je odložená na niekedy. Ostáva v inboxe, kým jej nedáš konkrétny deň.`,
+            });
+          }
         } catch {
           setError("Zmenu sa nepodarilo uložiť. Skús to znova.");
         }
       });
     },
-    [markTriaged, startTransition],
+    [markTriaged, startTransition, tasks, todayIso],
+  );
+
+  /** Vráti späť posledné zahodenie. Volá to tlačidlo v hláške aj Ctrl+Z. */
+  const undoDrop = useCallback(
+    (taskId: string) => {
+      setFlash(null);
+      startTransition(async () => {
+        setError(null);
+        try {
+          const result = await restoreTask(taskId);
+          if (!result.ok) setError(result.error);
+        } catch {
+          setError("Úlohu sa nepodarilo vrátiť. Skús to znova.");
+        }
+      });
+    },
+    [startTransition],
   );
 
   /* Globálne skratky. */
   useEffect(() => {
     function handleKeyDown(event: KeyboardEvent) {
-      // Ctrl+K a spol. patria palete príkazov, nie triedeniu.
-      if (event.ctrlKey || event.metaKey || event.altKey) return;
       if (isTypingTarget(event.target)) return;
-      if (visible.length === 0) return;
 
       const key = normalizeKey(event.key);
+
+      // Ctrl+Z vráti posledné zahodenie. Mimo textového poľa prehliadač
+      // aj tak nemá čo vracať, takže si klávesu môžeme vziať.
+      if (
+        key === "z" &&
+        (event.ctrlKey || event.metaKey) &&
+        !event.altKey &&
+        !event.shiftKey
+      ) {
+        if (!undoTaskId) return;
+        event.preventDefault();
+        undoDrop(undoTaskId);
+        return;
+      }
+
+      // Ctrl+K a spol. patria palete príkazov, nie triedeniu.
+      if (event.ctrlKey || event.metaKey || event.altKey) return;
+      if (visible.length === 0) return;
 
       if (key === "j" || key === "ArrowDown" || key === "k" || key === "ArrowUp") {
         const delta = key === "j" || key === "ArrowDown" ? 1 : -1;
@@ -145,7 +233,7 @@ export function InboxList({ tasks, areas, projects, todayIso }: InboxListProps) 
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [visible, cursor, lastIndex, triage]);
+  }, [visible, cursor, lastIndex, triage, undoTaskId, undoDrop]);
 
   /* Aktívny riadok musí byť vidieť aj pri dlhom zozname. */
   useEffect(() => {
@@ -159,6 +247,14 @@ export function InboxList({ tasks, areas, projects, todayIso }: InboxListProps) 
     const timer = window.setTimeout(() => setError(null), 4000);
     return () => window.clearTimeout(timer);
   }, [error]);
+
+  /* To isté pre potvrdenie; s ponukou vrátenia visí dlhšie. */
+  useEffect(() => {
+    if (!flash) return;
+    const ms = flash.undoTaskId ? FLASH_MS.undo : FLASH_MS.plain;
+    const timer = window.setTimeout(() => setFlash(null), ms);
+    return () => window.clearTimeout(timer);
+  }, [flash]);
 
   return (
     <div>
@@ -175,6 +271,44 @@ export function InboxList({ tasks, areas, projects, todayIso }: InboxListProps) 
           {error}
         </p>
       ) : null}
+
+      {/* Oblasť je pripojená stále — čítačka ohlási len tú, ktorá už v DOM bola,
+          keď sa jej obsah zmení. */}
+      <div role="status" aria-live="polite">
+        {flash ? (
+          <div
+            className={cn(
+              "mb-3 flex flex-wrap items-center gap-x-3 gap-y-1.5 rounded border border-border",
+              "bg-surface-2 px-3 py-2 text-[13px] text-fg-muted",
+            )}
+          >
+            <span>{flash.message}</span>
+            {undoTaskId ? (
+              <>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="secondary"
+                  onClick={() => undoDrop(undoTaskId)}
+                  aria-label={
+                    flash.undoTitle
+                      ? `Vrátiť späť zahodenú úlohu ${flash.undoTitle}`
+                      : "Vrátiť späť zahodenú úlohu"
+                  }
+                >
+                  <Undo2 size={14} aria-hidden="true" />
+                  Vrátiť späť
+                </Button>
+                <span className="inline-flex items-center gap-1 text-fg-subtle">
+                  alebo
+                  <Kbd>Ctrl</Kbd>
+                  <Kbd>Z</Kbd>
+                </span>
+              </>
+            ) : null}
+          </div>
+        ) : null}
+      </div>
 
       {visible.length === 0 ? (
         <TaskEmpty
@@ -208,6 +342,8 @@ export function InboxList({ tasks, areas, projects, todayIso }: InboxListProps) 
                 onTriage={(action) => triage(action, task.id)}
                 onError={setError}
                 todayIso={todayIso}
+                postponeWarnAt={postponeWarnAt}
+                postponeBlockAt={postponeBlockAt}
               />
             ))}
           </ul>
@@ -244,6 +380,11 @@ function ShortcutLegend() {
           {TRIAGE_ACTIONS[action].label.toLowerCase()}
         </span>
       ))}
+      <span className="inline-flex items-center gap-1">
+        <Kbd>Ctrl</Kbd>
+        <Kbd>Z</Kbd>
+        vrátiť zahodenie
+      </span>
     </p>
   );
 }

@@ -133,16 +133,33 @@ export function getTasksForDay(
   return selectTasks(userId, eq(tasks.plannedDate, date));
 }
 
-/** Naplánované v intervale vrátane oboch krajných dní. */
+export interface TasksForRangeOptions {
+  /**
+   * Pribrať aj úlohy, ktoré do rozsahu spadajú iba termínom (`dueDate`),
+   * hoci naplánované nie sú vôbec.
+   *
+   * Štandardne vypnuté: týždenný pohľad radí úlohy do stĺpcov podľa
+   * `plannedDate`, takže úloha bez plánu by v ňom nemala kam patriť.
+   * Zapína to mesačný pohľad, kde je termín samostatný záznam v bunke dňa.
+   */
+  includeDue?: boolean;
+}
+
+/**
+ * Naplánované v intervale vrátane oboch krajných dní.
+ * S `includeDue` aj to, čo v intervale končí termínom.
+ */
 export function getTasksForRange(
   userId: string,
   from: string,
   to: string,
+  options: TasksForRangeOptions = {},
 ): Promise<TaskWithRelations[]> {
-  return selectTasks(
-    userId,
-    and(gte(tasks.plannedDate, from), lte(tasks.plannedDate, to)),
-  );
+  const planned = and(gte(tasks.plannedDate, from), lte(tasks.plannedDate, to));
+  if (options.includeDue !== true) return selectTasks(userId, planned);
+
+  const due = and(gte(tasks.dueDate, from), lte(tasks.dueDate, to));
+  return selectTasks(userId, or(planned, due));
 }
 
 /** Nespracované zachytenia. */

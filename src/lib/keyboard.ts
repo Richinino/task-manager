@@ -3,9 +3,11 @@
  *
  * Tri veci, ktoré tu žijú:
  *
- * 1. **Rozpoznanie textového poľa.** Appka je keyboard-first, ale kým
- *    používateľ píše, klávesy patria jemu. Skratka bez modifikátora preto
- *    v inpute, textarey ani v contenteditable NIKDY nezaberie.
+ * 1. **Rozpoznanie prvku, ktorému klávesy patria.** Appka je keyboard-first,
+ *    ale kým používateľ píše, klávesy patria jemu. Skratka bez modifikátora
+ *    preto v inpute, textarey ani v contenteditable NIKDY nezaberie — a rovnako
+ *    mlčí vnútri otvoreného prekrytia (Radix Select, dialóg, menu), kde si
+ *    jednoznakové klávesy berie typeahead daného widgetu.
  * 2. **Normalizácia udalosti na reťazec** typu `"ctrl+k"`. Modifikátory idú
  *    vždy v pevnom poradí, takže porovnanie je obyčajná rovnosť reťazcov.
  * 3. **Register skratiek s odhlásením.** `registerShortcuts` vracia funkciu,
@@ -80,8 +82,31 @@ const NON_TEXT_INPUT_TYPES = new Set([
 /** ARIA roly, ktoré sa správajú ako textové pole, aj keď to nie je `<input>`. */
 const TEXT_ROLES = new Set(["textbox", "searchbox", "combobox", "spinbutton"]);
 
+/**
+ * Otvorené prekrytia, ktoré si jednoznakové klávesy riešia samy.
+ *
+ * Radix Select po otvorení presunie fokus na `<div role="option">` vnútri
+ * `<div role="listbox">` a jeho typeahead pri jednoznakovom klávese NEVOLÁ
+ * `preventDefault`. Bez tejto kontroly by globálne „n" alebo „t" odnavigovalo
+ * preč práve vo chvíli, keď používateľ píše názov položky. To isté platí pre
+ * dialógy a menu — kým je nad stránkou prekrytie, globálne skratky mlčia.
+ *
+ * `aria-expanded="true"` v zozname zámerne NIE JE: nesie ho aj obyčajný
+ * rozbaľovací spínač (napr. „Po termíne" v `overdue-section.tsx`) a skratky
+ * by prestali fungovať len preto, že je na ňom fokus.
+ */
+const OVERLAY_SELECTOR = [
+  '[role="listbox"]',
+  '[role="option"]',
+  '[role="dialog"]',
+  '[role="alertdialog"]',
+  '[role="menu"]',
+  '[role="menubar"]',
+  '[role="menuitem"]',
+].join(", ");
+
 /* ═══════════════════════════════════════════════════════════════════════════
-   TEXTOVÉ POLE
+   KOMU PATRIA KLÁVESY
    ═══════════════════════════════════════════════════════════════════════════ */
 
 function isElement(value: unknown): value is Element {
@@ -112,15 +137,34 @@ export function isTextInputElement(element: Element | null): boolean {
   return false;
 }
 
-/** To isté, ale rovno pre `event.target`. */
-export function isTypingTarget(target: EventTarget | null): boolean {
-  return isElement(target) && isTextInputElement(target);
+/**
+ * Je prvok vnútri otvoreného prekrytia (select, dialóg, menu)?
+ * `closest` hľadá aj cez portál, lebo Radix si obsah vykresľuje do `<body>`,
+ * ale fokusovaná položka je vždy potomkom toho portálového koreňa.
+ */
+export function isInsideOverlay(element: Element | null): boolean {
+  if (element === null) return false;
+  return element.closest(OVERLAY_SELECTOR) !== null;
 }
 
-/** Píše sa práve teraz niekde v dokumente? (Podľa aktívneho prvku.) */
+/**
+ * Patria jednoznakové klávesy tomuto prvku, a nie globálnym skratkám?
+ * Jediná odpoveď pre celú appku — kto si robí vlastnú kópiu tejto úvahy,
+ * skôr či neskôr sa s ňou rozíde.
+ */
+export function ownsTypedKeys(element: Element | null): boolean {
+  return isTextInputElement(element) || isInsideOverlay(element);
+}
+
+/** To isté, ale rovno pre `event.target`. */
+export function isTypingTarget(target: EventTarget | null): boolean {
+  return isElement(target) && ownsTypedKeys(target);
+}
+
+/** Berie si klávesy práve teraz niekto v dokumente? (Podľa aktívneho prvku.) */
 export function isTypingInDocument(doc?: Document): boolean {
   const target = doc ?? (typeof document === "undefined" ? null : document);
-  return target !== null && isTextInputElement(target.activeElement);
+  return target !== null && ownsTypedKeys(target.activeElement);
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
@@ -251,8 +295,9 @@ function toKeyList(keys: string | readonly string[]): readonly string[] {
  * useEffect(() => registerShortcuts([{ keys: "mod+k", run: open }]), [open]);
  * ```
  *
- * Pravidlo, ktoré sa nedá obísť: kým je fokus v textovom poli, zaberú **iba**
- * skratky s modifikátorom. Holé `n` alebo `t` patria písaniu.
+ * Pravidlo, ktoré sa nedá obísť: kým je fokus v textovom poli alebo vnútri
+ * otvoreného prekrytia, zaberú **iba** skratky s modifikátorom. Holé `n`
+ * alebo `t` patria písaniu, respektíve typeaheadu daného widgetu.
  */
 export function registerShortcuts(
   shortcuts: readonly Shortcut[],

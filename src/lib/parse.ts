@@ -272,9 +272,19 @@ const RE_REL_WORD = /\b(predvcerom|pozajtra|zajtra|dnes|vcera)\b/gu;
 
 const RE_WEEKDAY = new RegExp(`\\b(${DAY_FORMS})\\b`, "gu");
 
-const RE_DATE_FULL = /\b(\d{1,2})\s*\.\s*(\d{1,2})\s*\.\s*(\d{4})\b/gu;
+/**
+ * „12.8.2026", „12. 8. 2026". Medzera pred rokom je povolená, ale skupina 3
+ * si ju pamätá — rok oddelený medzerou uznáme len vtedy, keď je to naozaj rok
+ * a nie suma („do 15.8. 2000 eur").
+ */
+const RE_DATE_FULL = /\b(\d{1,2})\s*\.\s*(\d{1,2})\s*\.(\s*)(\d{4})\b/gu;
 
-const RE_DATE_SHORT = /\b(\d{1,2})\s*\.\s*(\d{1,2})\s*\.?(?!\d)/gu;
+/**
+ * „12.8.", „12. 8." — koncová bodka je povinná. Tvar bez nej („12.8") uznáme
+ * len na konci vstupu, inak by sa každé desatinné číslo („kúpiť 1.5 litra")
+ * zmenilo na dátum a z názvu úlohy by zmizlo.
+ */
+const RE_DATE_SHORT = /\b(\d{1,2})\s*\.\s*(\d{1,2})(?:\.(?!\d)|(?=\s*$))/gu;
 
 const RE_DATE_MONTH = new RegExp(
   `\\b(\\d{1,2})\\s*\\.?\\s*(${MONTH_FORMS})\\b\\.?(?:\\s*(\\d{4})\\b)?`,
@@ -297,6 +307,12 @@ const RE_ENERGY =
 const RE_ESTIMATE =
   /(?<![\p{L}\p{N}])(\d+(?:[.,]\d+)?)\s*(minuty|minut|mins|min|m|hodiny|hodinu|hodina|hodin|hod|h)(?![\p{L}\p{N}])/gu;
 
+/**
+ * Predložka, ktorá k odhadu neodmysliteľne patrí („za 2 hodiny", „o 10 minút",
+ * „cca 15 min"). Bez nej by v názve úlohy ostalo visieť osamotené „o" / „za".
+ */
+const RE_ESTIMATE_PREP = /(?<![\p{L}\p{N}])(za|o|cca|asi|priblizne)([\s:]*)$/u;
+
 const RE_CONTEXT = /(?<![\p{L}\p{N}])@([\p{L}\p{N}_-]+)/gu;
 
 const RE_TAG = /(?<![\p{L}\p{N}])#([\p{L}\p{N}_-]+)/gu;
@@ -308,7 +324,7 @@ const RE_PROJECT = /(?<![\p{L}\p{N}])\+([\p{L}\p{N}_]+(?:-[\p{L}\p{N}_]+)*)/gu;
  * takže sa vždy chytí len to, čo bezprostredne predchádza.
  */
 const RE_PREP =
-  /(?<![\p{L}\p{N}])((?:terminom|termin|deadline|najneskorsie|najneskor)(?:\s+do)?|dokedy|okolo|dna|vo|od|do|na|v|o)([\s:]*)$/u;
+  /(?<![\p{L}\p{N}])((?:terminom|termin|deadline|najneskorsie|najneskor)(?:\s+do)?|dokedy|okolo|cez|dna|vo|od|do|na|v|o)([\s:]*)$/u;
 
 const DUE_PREPS = new Set([
   "do",
@@ -341,6 +357,9 @@ interface Candidate {
   energy?: "low" | "mid" | "high";
   text?: string;
 }
+
+/** Interpunkcia, pred ktorou sa po vystrihnutí tokenu zruší medzera. */
+const GLUE_PUNCT = ",.;:!?)]";
 
 const W_TIME_PLAIN = 2;
 const W_DATE = 3;
@@ -378,6 +397,16 @@ function findPrep(folded: string, start: number): { target: DateTarget; start: n
   const word = m[1]!;
   const gap = m[2]!;
   return { target: classifyPrep(word), start: prefix.length - word.length - gap.length };
+}
+
+/**
+ * Je štvorciferné číslo za dátumom naozaj rok? Používa sa len tam, kde je od
+ * dátumu oddelené medzerou — „do 15.8. 2000 eur" je suma, nie rok 2000.
+ */
+function isPlausibleYear(year: number, baseIso: string): boolean {
+  const baseYear = Number.parseInt(baseIso.slice(0, 4), 10);
+  if (!Number.isFinite(baseYear)) return true;
+  return year >= baseYear - 1 && year <= baseYear + 50;
 }
 
 function isValidYmd(year: number, month: number, day: number): boolean {
@@ -561,14 +590,19 @@ function parseInner(
   const isBlocked = (index: number): boolean =>
     blocked.some(([s, e]) => index >= s && index < e);
 
-  // „12.8.2026"
+  // „12.8.2026", „12. 8. 2026"
   eachMatch(RE_DATE_FULL, folded, (m) => {
     const start = m.index;
     const end = m.index + m[0].length;
+    const year = Number.parseInt(m[4]!, 10);
+    // Rok oddelený medzerou berieme len ak je to hodnoverný rok. Inak ide
+    // o číslo, ktoré s dátumom nesúvisí („do 15.8. 2000 eur") — vtedy sa
+    // úsek NEblokuje a krátky tvar „15.8." si ho spracuje sám.
+    if (m[3]!.length > 0 && !isPlausibleYear(year, base)) return;
     const iso = resolveDayMonth(
       Number.parseInt(m[1]!, 10),
       Number.parseInt(m[2]!, 10),
-      Number.parseInt(m[3]!, 10),
+      year,
       base,
     );
     if (iso === null) blocked.push([start, end]);
@@ -664,9 +698,13 @@ function parseInner(
     const unit = m[2]!;
     const minutes = Math.round(unit.startsWith("h") ? value * 60 : value);
     if (minutes <= 0) return;
+    // „porada o 10 minút" — predložka patrí k odhadu, nie do názvu úlohy.
+    const prep = RE_ESTIMATE_PREP.exec(folded.slice(0, m.index));
+    const start =
+      prep === null ? m.index : m.index - prep[1]!.length - prep[2]!.length;
     candidates.push({
       kind: "estimate",
-      start: m.index,
+      start,
       end: m.index + m[0].length,
       weight: W_MARKER,
       label: formatDuration(minutes),
@@ -709,6 +747,19 @@ function parseInner(
       text: input.slice(m.index + 1, end),
     });
   });
+
+  /* ── hranice tokenov ────────────────────────────────────────────────── */
+
+  // Token sa zvýrazňuje priamo v inpute, takže jeho rozsah nesmie obsahovať
+  // okrajové medzery — obdĺžnik zvýraznenia by siahal až k susednému slovu.
+  const isSpaceAt = (i: number): boolean => {
+    const ch = input[i];
+    return ch !== undefined && /\s/u.test(ch);
+  };
+  for (const c of candidates) {
+    while (c.end > c.start && isSpaceAt(c.end - 1)) c.end -= 1;
+    while (c.start < c.end && isSpaceAt(c.start)) c.start += 1;
+  }
 
   /* ── riešenie prekryvov ─────────────────────────────────────────────── */
 
@@ -807,20 +858,32 @@ function parseInner(
 
   /* ── titulok a tokeny ───────────────────────────────────────────────── */
 
-  let rest = "";
+  const segments: string[] = [];
   let cursor = 0;
   for (const c of contributing) {
-    rest += input.slice(cursor, c.start);
+    segments.push(input.slice(cursor, c.start));
     cursor = c.end;
   }
-  rest += input.slice(cursor);
+  segments.push(input.slice(cursor));
+
+  // Zlepenie robíme IBA na reze po vystrihnutom tokene („mame , je to" →
+  // „mame, je to"). Interpunkciu, ktorú tam napísal používateľ sám, parser
+  // nesmie posúvať — nerozpoznaný text ostáva v titulku presne tak, ako je.
+  let rest = segments[0] ?? "";
+  for (let i = 1; i < segments.length; i += 1) {
+    const next = segments[i]!;
+    const first = next[0];
+    if (first !== undefined && GLUE_PUNCT.includes(first) && /\s$/u.test(rest)) {
+      rest = rest.replace(/\s+$/u, "") + next;
+    } else {
+      rest += next;
+    }
+  }
 
   out.title = rest
-    .replace(/\s+/g, " ")
-    // po vybratí tokenu ostáva medzera pred interpunkciou — „mame , je to"
-    .replace(/\s+([,.;:!?)\]])/g, "$1")
+    .replace(/\s+/gu, " ")
     .trim()
-    .replace(/^[\s,;:·—–-]+|[\s,;:·—–-]+$/g, "")
+    .replace(/^[\s,;:·—–-]+|[\s,;:·—–-]+$/gu, "")
     .trim();
 
   out.tokens = contributing.map((c) => ({

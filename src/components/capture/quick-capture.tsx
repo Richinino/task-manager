@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { LoaderCircle, Sparkles } from "lucide-react";
 
 import { ParsePreview } from "@/components/capture/parse-preview";
+import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
@@ -23,6 +24,11 @@ import { quickCapture } from "@/server/actions/tasks";
  * - `Enter` uloží a zavrie,
  * - `Ctrl+Enter` uloží a nechá okno otvorené (dávkové zachytávanie),
  * - `Escape` zruší.
+ *
+ * Enter spracúva priamo `onKeyDown` na inpute — na implicitné odoslanie
+ * formulára sa v dialógu spoľahnúť nedá (prehliadač ho nespustí). Tlačidlo
+ * „Uložiť" je druhá, rovnocenná cesta: bez neho by sa na dotykovom zariadení
+ * nedalo uložiť vôbec nič.
  *
  * Pod inputom beží živý náhľad z `parseCapture`. Ten istý text potom rozoberie
  * aj serverová akcia `quickCapture` — náhľad je len okno do toho, čo sa uloží,
@@ -104,7 +110,7 @@ export function QuickCapture({
         <DialogDescription className="sr-only">
           Napíš úlohu jednou vetou. Deň, termín, prioritu, odhad, projekt aj štítky
           rozpozná systém sám. Enter uloží, Ctrl a Enter uloží a nechá okno otvorené,
-          Escape zruší.
+          Escape zruší. Uložiť sa dá aj tlačidlom Uložiť pod poľom.
         </DialogDescription>
 
         <form
@@ -125,11 +131,21 @@ export function QuickCapture({
                 if (error !== null) setError(null);
               }}
               onKeyDown={(event) => {
-                // Ctrl+Enter neposiela formulár sám — dávkové ukladanie riešime tu.
-                if (event.key === "Enter" && (event.ctrlKey || event.metaKey)) {
-                  event.preventDefault();
-                  save(true);
-                }
+                if (event.key !== "Enter") return;
+                /*
+                  Enter obsluhujeme sami, oba varianty.
+
+                  Na implicitné odoslanie formulára sa tu spoľahnúť NEDÁ:
+                  formulár žije v portáli dialógu a prehliadač ho pri Enteri
+                  neodošle — overené na bežiacej aplikácii, `submit` sa vôbec
+                  nespustí, hoci nikto nevolá preventDefault. Bez tejto vetvy
+                  by rýchle zachytenie neuložilo nič.
+                */
+                // Enter, ktorým sa potvrdzuje kandidát z IME, nie je uloženie.
+                if (event.nativeEvent.isComposing) return;
+                event.preventDefault();
+                // Ctrl/Cmd+Enter = ulož a nechaj okno otvorené (dávkové písanie).
+                save(event.ctrlKey || event.metaKey);
               }}
               placeholder="Čo treba spraviť?"
               aria-label="Text úlohy"
@@ -154,21 +170,40 @@ export function QuickCapture({
               <p className="min-w-0 font-mono text-[11px] text-fg-subtle">
                 {SYNTAX_HINT}
               </p>
-              <p
-                aria-hidden="true"
-                className="flex shrink-0 flex-wrap items-center gap-x-2 gap-y-1 text-[11px] text-fg-subtle"
-              >
-                <span className="inline-flex items-center gap-1">
-                  <Kbd>↵</Kbd> uložiť
-                </span>
-                <span className="inline-flex items-center gap-1">
-                  <Kbd>Ctrl</Kbd>
-                  <Kbd>↵</Kbd> uložiť a písať ďalej
-                </span>
-                <span className="inline-flex items-center gap-1">
-                  <Kbd>Esc</Kbd> zrušiť
-                </span>
-              </p>
+
+              <div className="flex shrink-0 items-center gap-2">
+                {/* Klávesová nápoveda dáva zmysel len tam, kde je klávesnica. */}
+                <p
+                  aria-hidden="true"
+                  className="hidden flex-wrap items-center gap-x-2 gap-y-1 text-[11px] text-fg-subtle sm:flex"
+                >
+                  <span className="inline-flex items-center gap-1">
+                    <Kbd>↵</Kbd> uložiť
+                  </span>
+                  <span className="inline-flex items-center gap-1">
+                    <Kbd>Ctrl</Kbd>
+                    <Kbd>↵</Kbd> uložiť a písať ďalej
+                  </span>
+                  <span className="inline-flex items-center gap-1">
+                    <Kbd>Esc</Kbd> zrušiť
+                  </span>
+                </p>
+
+                {/*
+                  Skutočné tlačidlo, nie ozdoba: na dotykovom zariadení je to
+                  jediná cesta, ako úlohu uložiť. Preto má na mobile plnú
+                  dotykovú plochu (44 × 44 px) a na väčších obrazovkách sa
+                  stiahne, aby neprekrikovalo klávesovú skratku.
+                */}
+                <Button
+                  type="submit"
+                  variant="primary"
+                  disabled={trimmed === "" || isPending}
+                  className="h-11 min-w-[5.5rem] px-4 sm:h-8 sm:min-w-0 sm:px-3 sm:text-[13px]"
+                >
+                  Uložiť
+                </Button>
+              </div>
             </div>
 
             {error !== null ? (

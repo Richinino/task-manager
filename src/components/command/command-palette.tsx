@@ -13,6 +13,7 @@ import {
 import { Circle, CircleCheck, Plus, Search, SunMoon } from "lucide-react";
 
 import { NAV_ITEMS } from "@/components/shell/sidebar";
+import { toggleTheme } from "@/components/shell/theme-toggle";
 import {
   Dialog,
   DialogContent,
@@ -128,21 +129,6 @@ function taskHint(task: CommandTask): string {
   if (task.projectName !== null) return task.projectName;
   if (task.plannedDate !== null) return formatRelativeSk(task.plannedDate);
   return task.inbox ? "inbox" : "niekedy";
-}
-
-/**
- * Prepnutie témy. Trvalý stav drží `localStorage` pod kľúčom „theme" —
- * rovnako ako prepínač v bočnom paneli, aby sa obe miesta zhodli.
- */
-function toggleTheme(): void {
-  const root = document.documentElement;
-  const next = root.classList.contains("dark") ? "light" : "dark";
-  root.classList.toggle("dark", next === "dark");
-  try {
-    localStorage.setItem("theme", next);
-  } catch {
-    // Súkromný režim — téma vydrží aspoň do konca relácie.
-  }
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════

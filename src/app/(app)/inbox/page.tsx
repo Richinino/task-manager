@@ -33,6 +33,8 @@ export default async function InboxPage() {
         areas={areas}
         projects={projects}
         todayIso={todayIn(user.settings.timezone)}
+        postponeWarnAt={user.settings.postponeWarnAt}
+        postponeBlockAt={user.settings.postponeBlockAt}
       />
     </div>
   );

@@ -8,6 +8,8 @@ import { getDb, type Database } from "@/db";
 import {
   areas,
   projects,
+  taggables,
+  tags,
   taskEvents,
   tasks,
   type Horizon,
@@ -43,13 +45,28 @@ const isoTimeSchema = z
   .string()
   .regex(/^\d{2}:\d{2}(:\d{2})?$/, "Čas musí byť v tvare HH:MM.");
 
+/**
+ * Hranice, ktoré unesie databáza. Sú tu ako pomenované konštanty preto, že
+ * na ne musí siahať aj orezávanie výstupu parsera — inak by sa hodnota, ktorú
+ * náhľad sľúbil, ticho stratila. Klientský náhľad `ParsePreview` pozná tie
+ * isté čísla a upozorní na ne ešte pred uložením. (Zdieľať ich importom sa
+ * nedá — zo súboru s `"use server"` smú viesť von len asynchrónne funkcie.)
+ */
+const MAX_ESTIMATE_MIN = 1440;
+const MAX_CONTEXT_LENGTH = 64;
+/** Dlhší štítok než toto je preklep, nie štítok. */
+const MAX_TAG_LENGTH = 64;
+
 const titleSchema = z
   .string()
   .trim()
   .min(1, "Úloha musí mať názov.")
   .max(500, "Názov úlohy je príliš dlhý.");
 const noteSchema = z.string().max(10_000, "Poznámka je príliš dlhá.");
-const contextSchema = z.string().trim().max(64, "Kontext je príliš dlhý.");
+const contextSchema = z
+  .string()
+  .trim()
+  .max(MAX_CONTEXT_LENGTH, "Kontext je príliš dlhý.");
 const statusSchema = z.enum([
   "inbox",
   "todo",
@@ -69,7 +86,7 @@ const estimateSchema = z
   .number()
   .int("Odhad musí byť celé číslo minút.")
   .min(1, "Odhad musí byť aspoň 1 minúta.")
-  .max(1440, "Odhad je najviac 24 hodín.");
+  .max(MAX_ESTIMATE_MIN, "Odhad je najviac 24 hodín.");
 
 /** Spoločné polia pre vytvorenie aj úpravu. */
 const taskFieldsSchema = z.object({
@@ -210,6 +227,98 @@ function sanitize<T>(schema: z.ZodType<T>, value: unknown): T | null {
   if (value === undefined || value === null) return null;
   const result = schema.safeParse(value);
   return result.success ? result.data : null;
+}
+
+/*
+  Parser vie vrátiť hodnotu, ktorú databáza neunesie: „30h" je 1800 minút,
+  ale stĺpec pripúšťa najviac 1440. Prejsť takú hodnotu cez `sanitize` znamená
+  uložiť NULL — teda ticho zahodiť údaj, ktorý náhľad používateľovi ukázal ako
+  rozpoznaný. Namiesto toho ju orežeme na povolené maximum: hodnota sa síce
+  zmení, ale nezmizne. Náhľad `ParsePreview` na orezanie upozorní ešte pred
+  uložením, takže sa to nedeje potichu.
+*/
+
+/** Odhad orezaný na `MAX_ESTIMATE_MIN`; nezmyselný vstup → `null`. */
+function clampEstimate(value: number | undefined): number | null {
+  if (value === undefined || !Number.isFinite(value)) return null;
+  const minutes = Math.round(value);
+  if (minutes < 1) return null;
+  return Math.min(minutes, MAX_ESTIMATE_MIN);
+}
+
+/** Kontext orezaný na `MAX_CONTEXT_LENGTH` znakov; prázdny → `null`. */
+function clampContext(value: string | undefined): string | null {
+  if (value === undefined) return null;
+  const trimmed = value.trim();
+  if (trimmed === "") return null;
+  return trimmed.slice(0, MAX_CONTEXT_LENGTH);
+}
+
+/**
+ * Zapíše štítky rozpoznané parserom a naviaže ich na úlohu.
+ *
+ * Existujúci štítok sa hľadá bez ohľadu na veľkosť písmen — rovnako ako
+ * projekt v `quickCapture` — aby „#Rodina" a „#rodina" neboli dva rôzne.
+ * Nový sa založí; na `tags_user_name_idx` sa spoliehame pri súbežnom zápise,
+ * preto po `onConflictDoNothing` štítok ešte raz dohľadáme.
+ */
+async function attachTags(
+  db: Database,
+  userId: string,
+  taskId: string,
+  names: string[],
+): Promise<void> {
+  const wanted: string[] = [];
+  const seen = new Set<string>();
+  for (const raw of names) {
+    const name = raw.trim().slice(0, MAX_TAG_LENGTH);
+    if (name === "") continue;
+    const key = name.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    wanted.push(name);
+  }
+  if (wanted.length === 0) return;
+
+  const tagIds: string[] = [];
+  for (const name of wanted) {
+    const existing = await db
+      .select({ id: tags.id })
+      .from(tags)
+      .where(
+        and(eq(tags.userId, userId), sql`lower(${tags.name}) = lower(${name})`),
+      )
+      .limit(1);
+
+    let tagId = existing[0]?.id;
+    if (tagId === undefined) {
+      await db
+        .insert(tags)
+        .values({ id: uuidv7(), userId, name })
+        .onConflictDoNothing();
+
+      const created = await db
+        .select({ id: tags.id })
+        .from(tags)
+        .where(and(eq(tags.userId, userId), eq(tags.name, name)))
+        .limit(1);
+      tagId = created[0]?.id;
+    }
+
+    if (tagId !== undefined) tagIds.push(tagId);
+  }
+  if (tagIds.length === 0) return;
+
+  await db
+    .insert(taggables)
+    .values(
+      tagIds.map((tagId) => ({
+        tagId,
+        entityType: "task" as const,
+        entityId: taskId,
+      })),
+    )
+    .onConflictDoNothing();
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
@@ -364,11 +473,15 @@ export async function quickCapture(
       plannedDate,
       plannedTime,
       horizon,
-      estimateMin: sanitize(estimateSchema, parsed.estimateMin),
+      estimateMin: sanitize(estimateSchema, clampEstimate(parsed.estimateMin)),
       energy: sanitize(energySchema, parsed.energy),
-      context: sanitize(contextSchema, parsed.context),
+      context: sanitize(contextSchema, clampContext(parsed.context)),
       projectId,
     });
+
+    // Štítky sú samostatné riadky — bez tohto kroku by `#tag` z náhľadu
+    // aj z titulku zmizol a nikde by sa neuložil.
+    await attachTags(db, user.id, id, parsed.tags);
 
     await db.insert(taskEvents).values({
       id: uuidv7(),

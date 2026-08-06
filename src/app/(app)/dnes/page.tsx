@@ -48,6 +48,17 @@ export default async function DnesPage() {
 
   const showFrogCard = frog !== null || openTasks.length > 0;
 
+  // Žaba má na obrazovke jedno miesto — kartu nad zoznamom. V zozname sa už
+  // neopakuje: dva riadky tej istej úlohy majú každý vlastný optimistický stav,
+  // takže po odškrtnutí chvíľu svietia s opačným stavom. Do počtov v hlavičke
+  // ani do rozpočtu času to nesiaha — tie stoja na `dayTasks`/`openTasks`.
+  // Zo zoznamu ju vyberáme len vtedy, keď je karta naozaj vykreslená, aby
+  // nemohla vypadnúť z oboch miest naraz.
+  const frogInCard = showFrogCard && frog !== null;
+  const listTasks = frogInCard
+    ? dayTasks.filter((task) => task.id !== frog.id)
+    : dayTasks;
+
   return (
     <div className="mx-auto flex w-full max-w-3xl flex-col gap-5 px-4 py-5 md:px-6 md:py-7">
       <DayHeader
@@ -81,7 +92,8 @@ export default async function DnesPage() {
       />
 
       <DayList
-        tasks={dayTasks}
+        tasks={listTasks}
+        frogInCard={frogInCard}
         openCount={openTasks.length}
         wipLimit={user.settings.wipLimit}
         todayIso={date}

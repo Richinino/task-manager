@@ -70,8 +70,13 @@ function openEstimateMin(tasks: TaskWithRelations[]): number {
 
 /** Spoločný layout riadku — používa ho stĺpec aj ťahaný náhľad. */
 const rowClass = "flex items-start gap-1";
+/**
+ * Rúčka je 24×24 px — minimum podľa WCAG 2.2 SC 2.5.8. Ikona ostáva 14 px,
+ * takže riadok vyzerá rovnako ako predtým, len sa dá trafiť palcom.
+ * `mt-0.5` drží ikonu na tej istej výške ako koliesko vedľa nej.
+ */
 const handleClass = cn(
-  "mt-1 flex size-5 shrink-0 items-center justify-center rounded",
+  "mt-0.5 flex size-6 shrink-0 items-center justify-center rounded",
   "text-fg-subtle transition-colors hover:bg-surface-2 hover:text-fg-muted",
 );
 
@@ -103,8 +108,8 @@ function SortableTaskRow({
         ref={setActivatorNodeRef}
         {...attributes}
         {...listeners}
-        aria-label={`Presunúť úlohu „${task.title}" na iný deň`}
-        title="Presunúť na iný deň"
+        aria-label={`Presunúť úlohu „${task.title}" na iný deň alebo na iné miesto v dni`}
+        title="Presunúť na iný deň alebo preusporiadať"
         // touch-none je nutné, inak si prehliadač na dotyk vezme gesto ako posun stránky.
         className={cn(handleClass, "cursor-grab touch-none active:cursor-grabbing")}
       >

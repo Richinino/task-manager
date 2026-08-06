@@ -1,12 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useSyncExternalStore } from "react";
 import { Monitor, Moon, Sun, type LucideIcon } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 
 /** Formát musí sedieť s inicializačným skriptom v src/app/layout.tsx. */
-type Theme = "light" | "dark" | "system";
+export type Theme = "light" | "dark" | "system";
 
 const STORAGE_KEY = "theme";
 
@@ -20,19 +20,101 @@ function prefersDark(): boolean {
   return window.matchMedia("(prefers-color-scheme: dark)").matches;
 }
 
+/** Záloha pre súkromný režim, kde sa do localStorage zapísať nedá. */
+let memoryTheme: Theme | null = null;
+
 function readStoredTheme(): Theme {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (raw === "light" || raw === "dark" || raw === "system") return raw;
   } catch {
-    // Súkromný režim alebo zakázané úložisko — spadneme na systém.
+    // Súkromný režim alebo zakázané úložisko — voľba vydrží do konca relácie.
   }
-  return "system";
+  return memoryTheme ?? "system";
 }
 
 function applyTheme(theme: Theme): void {
   const dark = theme === "dark" || (theme === "system" && prefersDark());
   document.documentElement.classList.toggle("dark", dark);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   ZDROJ PRAVDY
+
+   Tému mení prepínač v paneli aj Ctrl+K paleta. Kým mal každý vlastnú kópiu
+   logiky, prepínač po zmene z palety ukazoval starú voľbu — vrátane
+   `aria-checked`, takže čítačka ohlásila nepravdu. Preto jeden modulový
+   sklad nad localStorage a `useSyncExternalStore` nad ním: kto tému zmení,
+   ohlási to všetkým, ktorí ju zobrazujú.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+let cachedTheme: Theme | null = null;
+const themeListeners = new Set<() => void>();
+
+function notifyThemeChanged(): void {
+  cachedTheme = null;
+  for (const listener of themeListeners) listener();
+}
+
+/** Zmena témy v inej karte toho istého pôvodu platí aj tu. */
+function handleStorage(event: StorageEvent): void {
+  // `key === null` znamená `localStorage.clear()`.
+  if (event.key !== null && event.key !== STORAGE_KEY) return;
+  applyTheme(readStoredTheme());
+  notifyThemeChanged();
+}
+
+function subscribeTheme(onStoreChange: () => void): () => void {
+  if (themeListeners.size === 0) window.addEventListener("storage", handleStorage);
+  themeListeners.add(onStoreChange);
+  return () => {
+    themeListeners.delete(onStoreChange);
+    if (themeListeners.size === 0) {
+      window.removeEventListener("storage", handleStorage);
+    }
+  };
+}
+
+function getThemeSnapshot(): Theme {
+  // Snapshot musí byť medzi zmenami referenčne stabilný, preto medzipamäť.
+  if (cachedTheme === null) cachedTheme = readStoredTheme();
+  return cachedTheme;
+}
+
+/**
+ * Na serveri (a počas hydratácie) nevieme, čo je v localStorage. `null`
+ * znamená „zatiaľ nič nezvýrazňuj" — React po hydratácii sám prekreslí
+ * na skutočnú hodnotu, takže sa značky nerozídu.
+ */
+function getThemeServerSnapshot(): Theme | null {
+  return null;
+}
+
+/** Aktuálna voľba témy; `null`, kým sa komponent nepripojí v prehliadači. */
+export function useTheme(): Theme | null {
+  return useSyncExternalStore(subscribeTheme, getThemeSnapshot, getThemeServerSnapshot);
+}
+
+/** Nastaví tému a ohlási to všetkým, ktorí ju zobrazujú. */
+export function setTheme(next: Theme): void {
+  memoryTheme = next;
+  try {
+    localStorage.setItem(STORAGE_KEY, next);
+  } catch {
+    // Nevadí — téma bude platiť aspoň do konca relácie.
+  }
+  applyTheme(next);
+  notifyThemeChanged();
+}
+
+/**
+ * Prepne svetlú ↔ tmavú podľa toho, čo je práve vidieť. Používa ju paleta
+ * príkazov — nie vlastnou implementáciou, aby prepínač v paneli ostal presný.
+ */
+export function toggleTheme(): void {
+  const current = getThemeSnapshot();
+  const dark = current === "dark" || (current === "system" && prefersDark());
+  setTheme(dark ? "light" : "dark");
 }
 
 /**
@@ -43,11 +125,7 @@ function applyTheme(theme: Theme): void {
 export function ThemeToggle({ className }: { className?: string }) {
   // Pred pripojením nevieme, čo je v localStorage — nič nezvýrazňujeme,
   // aby sa server a klient nerozišli pri hydratácii.
-  const [theme, setTheme] = useState<Theme | null>(null);
-
-  useEffect(() => {
-    setTheme(readStoredTheme());
-  }, []);
+  const theme = useTheme();
 
   // Pri voľbe „podľa systému" musíme reagovať na zmenu systémového nastavenia.
   useEffect(() => {
@@ -57,16 +135,6 @@ export function ThemeToggle({ className }: { className?: string }) {
     query.addEventListener("change", onChange);
     return () => query.removeEventListener("change", onChange);
   }, [theme]);
-
-  function choose(next: Theme): void {
-    setTheme(next);
-    try {
-      localStorage.setItem(STORAGE_KEY, next);
-    } catch {
-      // Nevadí — téma bude platiť aspoň do konca relácie.
-    }
-    applyTheme(next);
-  }
 
   return (
     <div
@@ -87,7 +155,7 @@ export function ThemeToggle({ className }: { className?: string }) {
             aria-checked={active}
             aria-label={label}
             title={label}
-            onClick={() => choose(value)}
+            onClick={() => setTheme(value)}
             className={cn(
               "inline-flex size-6 items-center justify-center rounded transition-colors duration-100",
               active

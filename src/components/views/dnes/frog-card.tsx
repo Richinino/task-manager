@@ -89,6 +89,9 @@ export function FrogCard({
           task={frog}
           todayIso={todayIso}
           density="full"
+          // Žaba je v zozname dnešných úloh vynechaná, takže jej termín má
+          // poslednú šancu byť vidieť práve tu — vrátane červeného „po termíne".
+          showDate={frog.dueDate !== null}
           showFrog
           postponeWarnAt={postponeWarnAt}
           postponeBlockAt={postponeBlockAt}

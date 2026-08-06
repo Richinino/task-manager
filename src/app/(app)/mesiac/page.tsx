@@ -13,8 +13,6 @@ import { MonthSidebar } from "@/components/views/mesiac/month-sidebar";
 import {
   addDays,
   addMonths,
-  isPast,
-  isToday,
   monthGrid,
   parseIsoDate,
   startOfWeek,
@@ -92,12 +90,13 @@ export default async function MesiacPage({ searchParams }: MesiacPageProps) {
   /**
    * JEDEN dotaz pre celú obrazovku — mriežku aj bočný panel.
    *
-   * Pozor na hranicu kontraktu: `getTasksForRange` filtruje podľa
-   * `plannedDate`, takže úloha, ktorá má iba termín a nie je naplánovaná,
-   * sem nedorazí. Kým dotazová vrstva nedostane variant nad `dueDate`,
-   * mesačný pohľad ukazuje termíny len pri naplánovaných úlohách.
+   * `includeDue` je tu zapnuté zámerne: mesiac je jediná obrazovka, kde má
+   * termín vlastný záznam v bunke dňa, takže musí vidieť aj úlohy, ktoré
+   * termín majú a naplánované nie sú (typicky „do 31. 3." z rýchleho
+   * zachytenia). Týždenný pohľad si ten istý dotaz pýta bez tohto prepínača,
+   * lebo úlohu bez `plannedDate` nemá kam zaradiť.
    */
-  const tasks = await getTasksForRange(user.id, from, to);
+  const tasks = await getTasksForRange(user.id, from, to, { includeDue: true });
 
   /* ── Rozsev úloh do dní ──────────────────────────────────────────────────
      Úloha sa v bunke objaví, ak sa na daný deň zhoduje `plannedDate` ALEBO
@@ -124,7 +123,7 @@ export default async function MesiacPage({ searchParams }: MesiacPageProps) {
         kind: "due",
         priority: task.priority,
         done,
-        overdue: !done && isPast(dueDate),
+        overdue: !done && dueDate < todayIso,
       });
     }
 
@@ -149,7 +148,7 @@ export default async function MesiacPage({ searchParams }: MesiacPageProps) {
     return {
       iso,
       inMonth: iso >= firstOfMonth && iso <= lastOfMonth,
-      isToday: isToday(iso),
+      isToday: iso === todayIso,
       entries: bucket.slice(0, MAX_ENTRIES_PER_DAY),
       hiddenCount: Math.max(0, bucket.length - MAX_ENTRIES_PER_DAY),
       href: { pathname: "/tyzden", query: { od: startOfWeek(iso, weekStartsOn) } },
@@ -186,6 +185,8 @@ export default async function MesiacPage({ searchParams }: MesiacPageProps) {
           monthHorizonCount={monthHorizonCount}
           monthTitle={formatMonthTitleSk(year, month)}
           todayIso={todayIso}
+          postponeWarnAt={user.settings.postponeWarnAt}
+          postponeBlockAt={user.settings.postponeBlockAt}
         />
       </div>
     </div>
