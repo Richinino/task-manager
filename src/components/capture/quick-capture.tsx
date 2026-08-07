@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { LoaderCircle, Sparkles } from "lucide-react";
 
 import { ParsePreview } from "@/components/capture/parse-preview";
+import { useOutbox } from "@/components/pwa/outbox-provider";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -34,6 +35,12 @@ import { quickCapture } from "@/server/actions/tasks";
  * Pod inputom beží živý náhľad z `parseCapture`. Ten istý text potom rozoberie
  * aj serverová akcia `quickCapture` — náhľad je len okno do toho, čo sa uloží,
  * nič sa naň neposiela.
+ *
+ * Bez signálu sa server nevolá vôbec: text ide do fronty (`useOutbox`) a odošle
+ * sa, keď je opäť pripojenie. To isté sa stane, keď volanie spadne na sieti —
+ * signál mohol vypadnúť práve v tej sekunde. Chybu validácie zo servera
+ * (`{ ok: false }`) do fronty nikdy neschovávame: tá sa opakovaním nespraví,
+ * a používateľ ju musí vidieť.
  */
 export interface QuickCaptureProps {
   open: boolean;
@@ -65,9 +72,13 @@ export function QuickCapture({
 }: QuickCaptureProps) {
   const [value, setValue] = useState("");
   const [error, setError] = useState<string | null>(null);
-  const [savedTitle, setSavedTitle] = useState<string | null>(null);
+  /** `queued` = odložené do fronty, ešte to nevidel server. */
+  const [saved, setSaved] = useState<{ title: string; queued: boolean } | null>(null);
   const [isPending, startTransition] = useTransition();
   const inputRef = useRef<HTMLInputElement>(null);
+
+  // Mimo `OutboxProvider` je `null` — vtedy sa ukladá po starom, priamo na server.
+  const outbox = useOutbox();
 
   const trimmed = value.trim();
 
@@ -87,31 +98,67 @@ export function QuickCapture({
     if (!open) return;
     setValue(defaultText ?? "");
     setError(null);
-    setSavedTitle(null);
+    setSaved(null);
   }, [open, defaultText]);
 
   function save(keepOpen: boolean): void {
     const raw = value.trim();
     if (raw === "" || isPending) return;
 
+    /** Spoločný koniec pre uložené aj odložené — jedno miesto, jedno správanie. */
+    function finish(title: string, queued: boolean): void {
+      setValue("");
+      if (keepOpen) {
+        setSaved({ title, queued });
+        inputRef.current?.focus();
+      } else {
+        onOpenChange(false);
+      }
+    }
+
+    /**
+     * Odloží text do fronty. Vráti `true`, ak sa to podarilo; inak nastaví
+     * chybu — text musí ostať na obrazovke, nesmie sa stratiť.
+     */
+    async function queue(): Promise<boolean> {
+      if (outbox === null) return false;
+      try {
+        await outbox.enqueueCapture(raw, defaultDate);
+        // Server ešte nič nevrátil, tak si názov odvodíme sami — je to ten
+        // istý parser, ktorý beží aj v náhľade pod poľom.
+        const title = parseCapture(raw, { weekStartsOn }).title.trim();
+        finish(title === "" ? raw : title, true);
+        return true;
+      } catch {
+        return false;
+      }
+    }
+
     startTransition(async () => {
       setError(null);
+
+      // Bez signálu server nevoláme vôbec — čakanie na vypršanie spojenia by
+      // len držalo dialóg otvorený a nič by nezískalo.
+      if (outbox !== null && !outbox.online) {
+        if (await queue()) return;
+        setError("Úlohu sa nepodarilo odložiť na neskôr. Skús to znova.");
+        return;
+      }
+
       try {
         const result = await quickCapture(raw, {
           defaultPlannedDate: defaultDate,
         });
         if (!result.ok) {
+          // Chyba validácie — do fronty nepatrí, opakovanie by nepomohlo.
           setError(result.error);
           return;
         }
-        setValue("");
-        if (keepOpen) {
-          setSavedTitle(result.data.title);
-          inputRef.current?.focus();
-        } else {
-          onOpenChange(false);
-        }
+        finish(result.data.title, false);
       } catch {
+        // Výnimka je sieťová chyba. Signál mohol vypadnúť práve teraz, tak
+        // úlohu zachránime do fronty namiesto hlásenia neúspechu.
+        if (await queue()) return;
         setError("Úlohu sa nepodarilo uložiť. Skús to znova.");
       }
     });
@@ -145,7 +192,7 @@ export function QuickCapture({
               value={value}
               onChange={(event) => {
                 setValue(event.target.value);
-                if (savedTitle !== null) setSavedTitle(null);
+                if (saved !== null) setSaved(null);
                 if (error !== null) setError(null);
               }}
               onKeyDown={(event) => {
@@ -240,9 +287,16 @@ export function QuickCapture({
               <p role="alert" className="mt-1.5 text-[12px] font-medium text-danger">
                 {error}
               </p>
-            ) : savedTitle !== null ? (
-              <p role="status" className="mt-1.5 truncate text-[12px] text-success">
-                Uložené: {savedTitle}
+            ) : saved !== null ? (
+              <p
+                role="status"
+                className={cn(
+                  "mt-1.5 truncate text-[12px]",
+                  saved.queued ? "text-warn" : "text-success",
+                )}
+              >
+                {saved.queued ? "Odošle sa po pripojení: " : "Uložené: "}
+                {saved.title}
               </p>
             ) : null}
           </div>

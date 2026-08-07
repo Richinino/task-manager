@@ -4,6 +4,7 @@ import { useRef, useState, useTransition, type ComponentProps } from "react";
 import { Check, LoaderCircle, Plus } from "lucide-react";
 
 import { useCaptureOptional } from "@/components/capture/capture-provider";
+import { useOutbox } from "@/components/pwa/outbox-provider";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -143,12 +144,16 @@ export function AddTaskInline({
   const [value, setValue] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [savedTitle, setSavedTitle] = useState<string | null>(null);
+  /** Uložené na serveri, alebo len odložené do fronty? Mení text potvrdenia. */
+  const [savedQueued, setSavedQueued] = useState(false);
   const [isPending, startTransition] = useTransition();
   const inputRef = useRef<HTMLInputElement>(null);
 
   // Mimo `CaptureProvider` sa proste „viac" nezobrazí — komponent má fungovať
   // aj tam, kde rýchle zachytenie nie je namontované.
   const capture = useCaptureOptional();
+  // Mimo `OutboxProvider` je `null` — vtedy sa ukladá po starom, priamo na server.
+  const outbox = useOutbox();
 
   const trimmed = value.trim();
   /** Nominatív do nadpisu („piatok 7. augusta"), akuzatív za predložku „na". */
@@ -164,28 +169,61 @@ export function AddTaskInline({
     setValue("");
     setError(null);
     setSavedTitle(title);
+    setSavedQueued(false);
     // Po uložení tlačidlom by fokus ostal na tlačidle — vrátime ho do poľa,
     // aby sa dalo písať ďalej bez siahnutia myšou.
     inputRef.current?.focus();
 
+    /** Neúspech, ktorý sa nedá zachrániť: vrátime text aj chybu. */
+    function giveUp(message: string): void {
+      setSavedTitle(null);
+      setError(message);
+      // Text sa nesmie stratiť — vrátime ho, ak medzitým nezačal písať nový.
+      setValue((current) => (current === "" ? title : current));
+    }
+
+    /**
+     * Odloží úlohu do fronty. Vráti `true`, ak sa to podarilo.
+     *
+     * Pozor na jeden rozdiel oproti online ceste: fronta vie odovzdať iba
+     * surový text a deň, takže sa na serveri prežene parserom — na rozdiel
+     * od `createTask`, ktorý berie názov doslova. Napísané „kúpiť mlieko
+     * v piatok" tak offline skončí ako „kúpiť mlieko" v piatok. Je to daň za
+     * to, že fronta má jediný, zámerne úzky tvar; strata nápadu by bola horšia.
+     */
+    async function queue(): Promise<boolean> {
+      if (outbox === null) return false;
+      try {
+        await outbox.enqueueCapture(title, date);
+        setSavedQueued(true);
+        return true;
+      } catch {
+        return false;
+      }
+    }
+
     startTransition(async () => {
       onOptimisticAdd?.(title);
+
+      // Bez signálu server nevoláme vôbec.
+      if (outbox !== null && !outbox.online) {
+        if (await queue()) return;
+        giveUp("Úlohu sa nepodarilo odložiť na neskôr. Skús to znova.");
+        return;
+      }
+
       try {
         const result = await createTask({
           title,
           plannedDate: date,
           status: "todo",
         });
-        if (!result.ok) {
-          setSavedTitle(null);
-          setError(result.error);
-          // Text sa nesmie stratiť — vrátime ho, ak medzitým nezačal písať nový.
-          setValue((current) => (current === "" ? title : current));
-        }
+        // `{ ok: false }` je chyba validácie — do fronty nepatrí.
+        if (!result.ok) giveUp(result.error);
       } catch {
-        setSavedTitle(null);
-        setError("Úlohu sa nepodarilo uložiť. Skús to znova.");
-        setValue((current) => (current === "" ? title : current));
+        // Výnimka je sieťová chyba — skúsime úlohu zachrániť do fronty.
+        if (await queue()) return;
+        giveUp("Úlohu sa nepodarilo uložiť. Skús to znova.");
       }
     });
   }
@@ -289,8 +327,15 @@ export function AddTaskInline({
           {error}
         </p>
       ) : savedTitle !== null ? (
-        <p role="status" className="truncate text-[11px] text-success">
-          Pridané: {savedTitle}
+        <p
+          role="status"
+          className={cn(
+            "truncate text-[11px]",
+            savedQueued ? "text-warn" : "text-success",
+          )}
+        >
+          {savedQueued ? "Odošle sa po pripojení: " : "Pridané: "}
+          {savedTitle}
         </p>
       ) : (
         <p aria-hidden="true" className="truncate text-[10px] text-fg-subtle">

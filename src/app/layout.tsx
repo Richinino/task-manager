@@ -1,10 +1,20 @@
 import type { Metadata, Viewport } from "next";
+
+import { ServiceWorkerRegister } from "@/components/pwa/sw-register";
+
 import "./globals.css";
 
 export const metadata: Metadata = {
   title: { default: "Task manažér", template: "%s · Task manažér" },
   description: "Osobný systém na riadenie úloh a nápadov.",
   applicationName: "Task manažér",
+  // Po pridaní na plochu iOS beží appka na celej ploche bez panela prehliadača.
+  // Krátky názov „Úlohy" sa pod ikonou zmestí bez orezania.
+  appleWebApp: {
+    capable: true,
+    title: "Úlohy",
+    statusBarStyle: "default",
+  },
 };
 
 export const viewport: Viewport = {
@@ -38,7 +48,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <head>
         <script dangerouslySetInnerHTML={{ __html: themeScript }} />
       </head>
-      <body className="min-h-dvh bg-bg text-fg antialiased">{children}</body>
+      <body className="min-h-dvh bg-bg text-fg antialiased">
+        {children}
+        <ServiceWorkerRegister />
+      </body>
     </html>
   );
 }
