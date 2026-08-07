@@ -2,6 +2,8 @@ import type { ReactNode } from "react";
 
 import { signOut } from "@/auth";
 import { CaptureProvider } from "@/components/capture/capture-provider";
+import { OfflineIndicator } from "@/components/pwa/offline-indicator";
+import { OutboxProvider } from "@/components/pwa/outbox-provider";
 import { AppShell } from "@/components/shell/app-shell";
 import { TaskDetailProvider } from "@/components/task/task-detail-provider";
 import { addDays, todayIn } from "@/lib/dates";
@@ -42,17 +44,25 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
       counts={counts}
       signOutAction={signOutAction}
     >
-      <CaptureProvider tasks={searchTasks} weekStartsOn={user.settings.weekStartsOn}>
-        <TaskDetailProvider
-          areas={areas}
-          projects={projects}
-          todayIso={todayIso}
-          postponeWarnAt={user.settings.postponeWarnAt}
-          postponeBlockAt={user.settings.postponeBlockAt}
-        >
-          {children}
-        </TaskDetailProvider>
-      </CaptureProvider>
+      {/*
+        Fronta musí obaliť zachytávanie — rýchle zachytenie aj pole v dni si
+        z nej berú stav pripojenia. Preto je nad `CaptureProvider`.
+      */}
+      <OutboxProvider>
+        <CaptureProvider tasks={searchTasks} weekStartsOn={user.settings.weekStartsOn}>
+          <TaskDetailProvider
+            areas={areas}
+            projects={projects}
+            todayIso={todayIso}
+            postponeWarnAt={user.settings.postponeWarnAt}
+            postponeBlockAt={user.settings.postponeBlockAt}
+          >
+            {children}
+          </TaskDetailProvider>
+        </CaptureProvider>
+
+        <OfflineIndicator />
+      </OutboxProvider>
     </AppShell>
   );
 }
