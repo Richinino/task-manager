@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 
 import { DayHeader } from "@/components/views/dnes/day-header";
 import { DayList } from "@/components/views/dnes/day-list";
-import { FrogCard } from "@/components/views/dnes/frog-card";
+import { DayPriorityCard } from "@/components/views/dnes/day-priority-card";
 import { OverdueSection } from "@/components/views/dnes/overdue-section";
 import { TimeBudget } from "@/components/views/dnes/time-budget";
 import { todayIn } from "@/lib/dates";
@@ -16,7 +16,7 @@ export const metadata: Metadata = {
 /**
  * Obrazovka „Dnes" — prvá vec, ktorú človek ráno vidí.
  *
- * Zhora nadol: dátum a rozpočet času → žaba dňa → čo horí (po termíne) →
+ * Zhora nadol: dátum a rozpočet času → priorita dňa → čo horí (po termíne) →
  * dnešné úlohy. Poradie je zámerné: najprv záväzok, potom dlh, až potom zoznam.
  */
 export default async function DnesPage() {
@@ -48,12 +48,12 @@ export default async function DnesPage() {
 
   const showFrogCard = frog !== null || openTasks.length > 0;
 
-  // Žaba má na obrazovke jedno miesto — kartu nad zoznamom. V zozname sa už
-  // neopakuje: dva riadky tej istej úlohy majú každý vlastný optimistický stav,
-  // takže po odškrtnutí chvíľu svietia s opačným stavom. Do počtov v hlavičke
-  // ani do rozpočtu času to nesiaha — tie stoja na `dayTasks`/`openTasks`.
-  // Zo zoznamu ju vyberáme len vtedy, keď je karta naozaj vykreslená, aby
-  // nemohla vypadnúť z oboch miest naraz.
+  // Priorita dňa má na obrazovke jedno miesto — kartu nad zoznamom. V zozname
+  // sa už neopakuje: dva riadky tej istej úlohy majú každý vlastný optimistický
+  // stav, takže po odškrtnutí chvíľu svietia s opačným stavom. Do počtov
+  // v hlavičke ani do rozpočtu času to nesiaha — tie stoja na
+  // `dayTasks`/`openTasks`. Zo zoznamu ju vyberáme len vtedy, keď je karta
+  // naozaj vykreslená, aby nemohla vypadnúť z oboch miest naraz.
   const frogInCard = showFrogCard && frog !== null;
   const listTasks = frogInCard
     ? dayTasks.filter((task) => task.id !== frog.id)
@@ -75,7 +75,7 @@ export default async function DnesPage() {
       />
 
       {showFrogCard ? (
-        <FrogCard
+        <DayPriorityCard
           frog={frog}
           candidates={openTasks}
           todayIso={date}

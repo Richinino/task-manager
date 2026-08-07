@@ -3,14 +3,27 @@ import type { ReactNode } from "react";
 import { signOut } from "@/auth";
 import { CaptureProvider } from "@/components/capture/capture-provider";
 import { AppShell } from "@/components/shell/app-shell";
+import { TaskDetailProvider } from "@/components/task/task-detail-provider";
 import { addDays, todayIn } from "@/lib/dates";
 import { requireUser } from "@/server/auth-guard";
-import { getCounts, getInboxTasks, getTasksForRange } from "@/server/queries/tasks";
+import {
+  getAreas,
+  getCounts,
+  getInboxTasks,
+  getProjects,
+  getTasksForRange,
+} from "@/server/queries/tasks";
 
 export default async function AppLayout({ children }: { children: ReactNode }) {
   const user = await requireUser();
   const todayIso = todayIn(user.settings.timezone);
   const counts = await getCounts(user.id, todayIso);
+
+  // Zoznamy pre výbery v paneli s detailom úlohy.
+  const [areas, projects] = await Promise.all([
+    getAreas(user.id),
+    getProjects(user.id),
+  ]);
 
   // Zásoba pre vyhľadávanie v Ctrl+K palete: naplánované okolo dneška + inbox.
   const searchTasks = [
@@ -30,7 +43,15 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
       signOutAction={signOutAction}
     >
       <CaptureProvider tasks={searchTasks} weekStartsOn={user.settings.weekStartsOn}>
-        {children}
+        <TaskDetailProvider
+          areas={areas}
+          projects={projects}
+          todayIso={todayIso}
+          postponeWarnAt={user.settings.postponeWarnAt}
+          postponeBlockAt={user.settings.postponeBlockAt}
+        >
+          {children}
+        </TaskDetailProvider>
       </CaptureProvider>
     </AppShell>
   );

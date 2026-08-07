@@ -3,9 +3,19 @@ import type { UrlObject } from "url";
 import Link from "next/link";
 import { CalendarClock } from "lucide-react";
 
+import { AddTaskPopover } from "@/components/task/add-task-inline";
 import { PriorityDot } from "@/components/task/priority-dot";
 import { MONTHS_SHORT_SK, formatLongSk, parseIsoDate } from "@/lib/dates";
 import { cn } from "@/lib/utils";
+
+/*
+  Tento modul musí ostať bez hookov a bez direktívy "use client": serverová
+  stránka `mesiac/page.tsx` si odtiaľto berie `MAX_ENTRIES_PER_DAY` a typ
+  `DayEntry`, takže sa dostane aj do serverového grafu. Keby tu bol `useState`,
+  build spadne; keby tu bolo "use client", stránka by namiesto čísla dostala
+  klientskú referenciu. Interaktívnu časť preto bunka len vkladá — celý stav
+  pridávania si nesie `AddTaskPopover`.
+*/
 
 /** Koľko úloh sa do bunky zmestí, kým sa zvyšok schová za „+ ďalšie N". */
 export const MAX_ENTRIES_PER_DAY = 3;
@@ -99,9 +109,17 @@ function DayEntryChip({ entry }: { entry: DayEntry }) {
 }
 
 /**
- * Jeden deň mriežky. Celá bunka je jeden odkaz — na mesačnom prehľade sa
- * neupravuje, len rozhoduje, kam sa ide ďalej. Je to zároveň jediný tab-stop
- * na deň, takže prechod klávesnicou ostáva rýchly.
+ * Jeden deň mriežky. Bunka je stále jeden odkaz na týždeň — a nad ním jedno
+ * malé „+", ktorým sa dá úloha pridať rovno do tohto dňa.
+ *
+ * Tlačidlo je ZÁMERNE súrodenec odkazu, nie jeho potomok: tlačidlo vnútri
+ * odkazu je neplatné HTML a čítačky aj prehliadače sa v ňom správajú rôzne.
+ * Preto obal `relative` + odkaz cez celú plochu + tlačidlo v rohu nad ním.
+ * Odkaz tak ostáva jediným tab-stopom na obsah bunky a pribúda k nemu jediné
+ * ďalšie ovládanie.
+ *
+ * Pole na písanie sa otvára v popovere, nie v bunke — bunka má pod `sm` okolo
+ * 44 px na šírku a textové pole by sa do nej nezmestilo.
  */
 export function DayCell({
   iso,
@@ -117,64 +135,73 @@ export function DayCell({
   const monthHint = !inMonth && dayNumber === 1 ? MONTHS_SHORT_SK[date.getMonth()] : undefined;
 
   return (
-    <Link
-      href={href}
-      className={cn(
-        // `min-w-0` + `overflow-hidden`: dlhý názov úlohy nesmie roztiahnuť stĺpec mriežky.
-        "flex min-h-20 min-w-0 flex-col gap-1 overflow-hidden rounded border bg-surface",
-        "p-1 sm:min-h-24 sm:p-1.5",
-        "transition-colors duration-100 ease-out",
-        inMonth
-          ? "border-border hover:border-border-strong hover:bg-surface-2"
-          : "border-border/60 opacity-50 hover:opacity-90",
-        isToday && "border-accent bg-accent-soft/40 hover:border-accent",
-      )}
-    >
-      <span className="flex items-baseline justify-between gap-1">
-        <span className="sr-only">{formatLongSk(iso)}.</span>
-        <span
-          aria-hidden="true"
-          className={cn(
-            "tabular-nums",
-            isToday
-              ? "inline-flex size-5 items-center justify-center rounded-full bg-accent text-[11px] font-semibold text-accent-fg"
-              : cn(
-                  "text-[12px] font-semibold",
-                  inMonth ? "text-fg" : "text-fg-subtle",
-                ),
-          )}
-        >
-          {dayNumber}
-        </span>
-        {monthHint ? (
-          <span aria-hidden="true" className="truncate text-[10px] text-fg-subtle">
-            {monthHint}
+    <div className="relative min-w-0">
+      <Link
+        href={href}
+        className={cn(
+          // `min-w-0` + `overflow-hidden`: dlhý názov úlohy nesmie roztiahnuť stĺpec mriežky.
+          "flex h-full min-h-20 min-w-0 flex-col gap-1 overflow-hidden rounded border bg-surface",
+          "p-1 sm:min-h-24 sm:p-1.5",
+          "transition-colors duration-100 ease-out",
+          inMonth
+            ? "border-border hover:border-border-strong hover:bg-surface-2"
+            : "border-border/60 opacity-50 hover:opacity-90",
+          isToday && "border-accent bg-accent-soft/40 hover:border-accent",
+        )}
+      >
+        {/* `pr-5` drží číslo aj menovku mesiaca mimo rohu, kde sedí „+". */}
+        <span className="flex items-baseline justify-between gap-1 pr-5">
+          <span className="sr-only">{formatLongSk(iso)}.</span>
+          <span
+            aria-hidden="true"
+            className={cn(
+              "tabular-nums",
+              isToday
+                ? "inline-flex size-5 items-center justify-center rounded-full bg-accent text-[11px] font-semibold text-accent-fg"
+                : cn(
+                    "text-[12px] font-semibold",
+                    inMonth ? "text-fg" : "text-fg-subtle",
+                  ),
+            )}
+          >
+            {dayNumber}
           </span>
-        ) : null}
-      </span>
-
-      {entries.length > 0 ? (
-        // Pod `sm` sa značky ukladajú vedľa seba (na výšku by z bunky spravili
-        // stĺpec troch prázdnych obdĺžnikov), od `sm` sú to plnohodnotné riadky.
-        <span className="flex min-w-0 flex-row flex-wrap items-center gap-0.5 sm:flex-col sm:items-stretch">
-          {entries.map((entry) => (
-            <DayEntryChip key={entry.key} entry={entry} />
-          ))}
-          {hiddenCount > 0 ? (
-            <span className="text-[10px] font-medium leading-tight text-fg-subtle sm:px-1">
-              <span className="sr-only">{moreLabel(hiddenCount)}</span>
-              <span aria-hidden="true" className="sm:hidden">
-                +{hiddenCount}
-              </span>
-              <span aria-hidden="true" className="hidden sm:inline">
-                {moreLabel(hiddenCount)}
-              </span>
+          {monthHint ? (
+            <span aria-hidden="true" className="truncate text-[10px] text-fg-subtle">
+              {monthHint}
             </span>
           ) : null}
         </span>
-      ) : null}
 
-      <span className="sr-only">Otvoriť týždeň.</span>
-    </Link>
+        {entries.length > 0 ? (
+          // Pod `sm` sa značky ukladajú vedľa seba (na výšku by z bunky spravili
+          // stĺpec troch prázdnych obdĺžnikov), od `sm` sú to plnohodnotné riadky.
+          <span className="flex min-w-0 flex-row flex-wrap items-center gap-0.5 sm:flex-col sm:items-stretch">
+            {entries.map((entry) => (
+              <DayEntryChip key={entry.key} entry={entry} />
+            ))}
+            {hiddenCount > 0 ? (
+              <span className="text-[10px] font-medium leading-tight text-fg-subtle sm:px-1">
+                <span className="sr-only">{moreLabel(hiddenCount)}</span>
+                <span aria-hidden="true" className="sm:hidden">
+                  +{hiddenCount}
+                </span>
+                <span aria-hidden="true" className="hidden sm:inline">
+                  {moreLabel(hiddenCount)}
+                </span>
+              </span>
+            ) : null}
+          </span>
+        ) : null}
+
+        <span className="sr-only">Otvoriť týždeň.</span>
+      </Link>
+
+      {/*
+        Celý stav pridávania (bublina, pole, ukladanie) si nesie tento
+        komponent sám — bunka o ňom nevie nič a ostáva bez hookov.
+      */}
+      <AddTaskPopover date={iso} size="sm" className="absolute right-0.5 top-0.5 z-10" />
+    </div>
   );
 }

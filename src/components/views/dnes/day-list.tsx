@@ -9,17 +9,18 @@ import { taskCountSk } from "./time-budget";
 export interface DayListProps {
   /**
    * Všetko, čo je na dnes naplánované — vrátane hotových, tie padnú na koniec.
-   * Bez žaby, ak je zobrazená v karte nad zoznamom (`frogInCard`).
+   * Bez priority dňa, ak je zobrazená v karte nad zoznamom (`frogInCard`).
    */
   tasks: TaskWithRelations[];
   /**
-   * Žaba dňa je vykreslená v karte nad zoznamom, takže tu chýba zámerne.
+   * Priorita dňa je vykreslená v karte nad zoznamom, takže tu chýba zámerne.
    * Mení znenie prázdneho stavu — „nič naplánované" by bola lož.
    */
   frogInCard?: boolean;
   /**
-   * Počet nedokončených vrátane žaby. WIP limit sa porovnáva s ním, nie
-   * s dĺžkou zoznamu — žaba je súčasť dnešného záväzku, aj keď je nad ním.
+   * Počet nedokončených vrátane priority dňa. WIP limit sa porovnáva s ním,
+   * nie s dĺžkou zoznamu — priorita dňa je súčasť dnešného záväzku, aj keď je
+   * nad ním.
    */
   openCount: number;
   wipLimit: number;
@@ -44,12 +45,13 @@ export function DayList({
   postponeBlockAt,
 }: DayListProps) {
   if (tasks.length === 0) {
-    // Keď je jedinou dnešnou úlohou žaba, zoznam nie je prázdny omylom —
-    // povedzme to rovno, nech pod kartou nezostane nezrozumiteľná diera.
+    // Keď je jedinou dnešnou úlohou priorita dňa, zoznam nie je prázdny
+    // omylom — povedzme to rovno, nech pod kartou nezostane nezrozumiteľná
+    // diera.
     return frogInCard ? (
       <TaskEmpty
         icon={<CircleCheck size={26} strokeWidth={1.75} />}
-        title="Okrem žaby dňa dnes nič ďalšie nečaká."
+        title="Okrem priority dňa dnes nič ďalšie nečaká."
         description="Jedna vec je dosť. Ak ju máš za sebou a chceš pokračovať, vytiahni ďalšiu z inboxu."
       />
     ) : (

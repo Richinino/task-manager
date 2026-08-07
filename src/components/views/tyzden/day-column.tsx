@@ -1,5 +1,6 @@
 "use client";
 
+import { useOptimistic, useRef, useState } from "react";
 import { useDroppable } from "@dnd-kit/core";
 import {
   SortableContext,
@@ -9,6 +10,7 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 import { GripVertical } from "lucide-react";
 
+import { AddTaskButton, AddTaskInline } from "@/components/task/add-task-inline";
 import { TaskItem } from "@/components/task/task-item";
 import {
   WEEKDAYS_SK,
@@ -26,6 +28,11 @@ import type { TaskWithRelations } from "@/server/queries/tasks";
  * Úlohy sú `useSortable`, nie `useDraggable` — sortable registruje položku
  * zároveň ako droppable a bez toho by `sortableKeyboardCoordinates` nemal
  * z čoho počítať, teda by presun šípkami vôbec nefungoval.
+ *
+ * V hlavičke je „+", ktoré otvorí pole na pridanie úlohy priamo do tohto dňa.
+ * Optimistické riadky si drží stĺpec sám (`useOptimistic` nižšie) — doska
+ * hore o nich nevie a vedieť nemusí: zmiznú v tej istej chvíli, v ktorej
+ * príde prekreslený zoznam zo servera.
  */
 export interface DayColumnProps {
   /** Deň stĺpca ako RRRR-MM-DD. */
@@ -167,6 +174,26 @@ export function DayColumn({
   const row: RowContext = { todayIso, postponeWarnAt, postponeBlockAt };
   const { setNodeRef, isOver } = useDroppable({ id: dayDroppableId(date) });
 
+  const [adding, setAdding] = useState(false);
+  const addButtonRef = useRef<HTMLButtonElement>(null);
+  /*
+    Optimistické riadky pridané poľom v tomto stĺpci. Držia sa len počas
+    tranzície ukladania — len čo sa vráti prekreslený strom zo servera,
+    `useOptimistic` sa vráti na prázdny zoznam a na ich mieste už je skutočná
+    úloha. Preto sa nikdy nezobrazia dvakrát.
+  */
+  const [pending, addPending] = useOptimistic<string[], string>(
+    [],
+    (state, title) => [...state, title],
+  );
+
+  function closeAdding(): void {
+    setAdding(false);
+    // Fokus sa musí vrátiť na tlačidlo, inak po Escape spadne na `<body>`
+    // a tabovanie začína odznova od začiatku stránky.
+    addButtonRef.current?.focus();
+  }
+
   const day = parseIsoDate(date);
   const weekdayName = WEEKDAYS_SK[day.getDay()] ?? "";
   const totalMin = openEstimateMin(tasks);
@@ -188,7 +215,7 @@ export function DayColumn({
         isOver && "border-accent bg-accent-soft",
       )}
     >
-      <header className="flex items-baseline justify-between gap-1 px-2 pt-1.5">
+      <header className="flex items-center justify-between gap-1 px-2 pt-1.5">
         <span
           className={cn(
             "min-w-0 truncate text-[11px] font-medium uppercase tracking-wide",
@@ -197,13 +224,31 @@ export function DayColumn({
         >
           {weekdayName}
         </span>
-        <span
-          className={cn(
-            "shrink-0 text-sm font-semibold tabular-nums",
-            isToday ? "text-accent" : "text-fg",
-          )}
-        >
-          {day.getDate()}
+
+        <span className="flex shrink-0 items-center gap-0.5">
+          <span
+            className={cn(
+              "text-sm font-semibold tabular-nums",
+              isToday ? "text-accent" : "text-fg",
+            )}
+          >
+            {day.getDate()}
+          </span>
+
+          {/*
+            Viditeľné vždy, nie až pri prejdení myšou: na dotyku hover
+            neexistuje a skryté tlačidlo by tam znamenalo žiadne tlačidlo.
+          */}
+          <AddTaskButton
+            ref={addButtonRef}
+            date={date}
+            aria-expanded={adding}
+            onClick={() => {
+              if (adding) closeAdding();
+              else setAdding(true);
+            }}
+            className={cn("-mr-1", adding && "bg-surface-2 text-fg")}
+          />
         </span>
       </header>
 
@@ -233,7 +278,37 @@ export function DayColumn({
           </ul>
         </SortableContext>
 
-        {tasks.length === 0 ? (
+        {/*
+          Práve ukladané úlohy. Kreslia sa ako riadok bez ovládania — kým sa
+          nevrátia zo servera, nemajú id, takže by sa nedali ani odškrtnúť,
+          ani ťahať. Pre čítačku sú skryté; o výsledku hovorí `role="status"`
+          priamo v poli.
+        */}
+        {pending.length > 0 ? (
+          <ul aria-hidden="true" className="flex flex-col gap-1">
+            {pending.map((title, index) => (
+              <li key={`${index}-${title}`} className={cn(rowClass, "opacity-60")}>
+                <span className={handleClass}>
+                  <GripVertical size={14} />
+                </span>
+                <span className="min-w-0 flex-1 truncate py-1 text-[13px] text-fg-muted">
+                  {title}
+                </span>
+              </li>
+            ))}
+          </ul>
+        ) : null}
+
+        {adding ? (
+          <AddTaskInline
+            date={date}
+            onClose={closeAdding}
+            onOptimisticAdd={addPending}
+            className="pt-0.5"
+          />
+        ) : null}
+
+        {tasks.length === 0 && pending.length === 0 && !adding ? (
           <p className="rounded border border-dashed border-border px-2 py-3 text-center text-[11px] text-fg-subtle">
             Voľno
           </p>

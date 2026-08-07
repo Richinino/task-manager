@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Kbd } from "@/components/ui/kbd";
+import { formatLongSk } from "@/lib/dates";
 import { parseCapture, type ParsedCapture } from "@/lib/parse";
 import { cn } from "@/lib/utils";
 import { quickCapture } from "@/server/actions/tasks";
@@ -42,6 +43,14 @@ export interface QuickCaptureProps {
    * hodnotu z nastavení používateľa — tu ide len o zobrazenie.
    */
   weekStartsOn?: number;
+  /**
+   * Deň, na ktorý sa má úloha naplánovať, keď si ho človek nenapíše do textu
+   * (RRRR-MM-DD). Prichádza z tlačidla „+" na konkrétnom dni. Deň v texte
+   * vyhráva — rozhoduje o tom serverová akcia, nie tento komponent.
+   */
+  defaultDate?: string;
+  /** Text rozpísaný inde (pole v dni), aby sa pri prechode sem nestratil. */
+  defaultText?: string;
 }
 
 /** Presne to, čo parser vie. Krátka pripomienka, nie dokumentácia. */
@@ -51,6 +60,8 @@ export function QuickCapture({
   open,
   onOpenChange,
   weekStartsOn = 1,
+  defaultDate,
+  defaultText,
 }: QuickCaptureProps) {
   const [value, setValue] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -66,13 +77,18 @@ export function QuickCapture({
     [value, trimmed, weekStartsOn],
   );
 
-  // Zatvorením sa okno vyprázdni — pri ďalšom otvorení má byť čisté.
+  /*
+    Stav sa nastavuje pri OTVORENÍ, nie pri zatvorení: okno sa má zakaždým
+    otvoriť buď prázdne, alebo s tým, čo doň poslal volajúci (`defaultText`
+    z poľa v dni). Obsah dialógu Radix pri zatvorení odmontuje, takže sa
+    dovnútra medzitým aj tak nikto nepozerá.
+  */
   useEffect(() => {
-    if (open) return;
-    setValue("");
+    if (!open) return;
+    setValue(defaultText ?? "");
     setError(null);
     setSavedTitle(null);
-  }, [open]);
+  }, [open, defaultText]);
 
   function save(keepOpen: boolean): void {
     const raw = value.trim();
@@ -81,7 +97,9 @@ export function QuickCapture({
     startTransition(async () => {
       setError(null);
       try {
-        const result = await quickCapture(raw);
+        const result = await quickCapture(raw, {
+          defaultPlannedDate: defaultDate,
+        });
         if (!result.ok) {
           setError(result.error);
           return;
@@ -161,6 +179,18 @@ export function QuickCapture({
               />
             ) : null}
           </div>
+
+          {/*
+            Keď okno otvorilo tlačidlo „+" na konkrétnom dni, musí byť vidieť,
+            kam sa úloha chystá — inak by sa deň priradil ticho a človek by
+            netušil, prečo mu úloha pribudla práve tam.
+          */}
+          {defaultDate !== undefined ? (
+            <p className="pb-1 pl-9 pr-3 text-[12px] text-fg-muted">
+              Predvyplnený deň: {formatLongSk(defaultDate)} — deň napísaný
+              v texte má prednosť.
+            </p>
+          ) : null}
 
           {/* Náhľad sa objaví, až keď parser naozaj niečo našiel. */}
           <ParsePreview parsed={parsed} className="pb-2 pl-9 pr-3" />

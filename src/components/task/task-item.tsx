@@ -1,7 +1,9 @@
 "use client";
 
+import { useOptimistic } from "react";
 import { CalendarClock, CalendarDays, Folder, ListChecks, Star } from "lucide-react";
 
+import type { TaskStatus } from "@/db/schema";
 import type { TaskWithRelations } from "@/server/queries/tasks";
 import { formatRelativeSk, isPast, parseIsoDate } from "@/lib/dates";
 import { cn } from "@/lib/utils";
@@ -15,7 +17,15 @@ import {
   postponeLabel,
 } from "@/components/task/postpone-badge";
 import { PriorityDot, priorityLabel } from "@/components/task/priority-dot";
+import {
+  DiscardedRow,
+  RowError,
+  TaskActions,
+  useTaskDiscard,
+  type TaskRowPatch,
+} from "@/components/task/task-actions";
 import { TaskCheckbox } from "@/components/task/task-checkbox";
+import { useTaskDetail } from "@/components/task/task-detail-provider";
 
 /**
  * Zdieľané zobrazenie úlohy. Používajú ho Dnes, Inbox aj Týždeň —
@@ -38,6 +48,10 @@ export interface TaskItemProps {
   /** compact = riadok v týždennom stĺpci, full = obrazovka Dnes/Inbox */
   density?: "compact" | "full";
   showDate?: boolean;
+  /**
+   * Zvýrazniť prioritu dňa (v rozhraní „priorita dňa", v dátach `isFrog`).
+   * Názov ostáva `showFrog` kvôli volajúcim komponentom.
+   */
   showFrog?: boolean;
   selected?: boolean;
   onSelect?: (id: string) => void;
@@ -99,7 +113,7 @@ function buildSummary(
 ): string {
   const parts: string[] = [];
 
-  if (opts.isFrog) parts.push("žaba dňa");
+  if (opts.isFrog) parts.push("priorita dňa");
   parts.push(priorityLabel(task.priority));
 
   if (task.estimateMin !== null) parts.push(estimateLabel(task.estimateMin));
@@ -127,6 +141,9 @@ function buildSummary(
   return `Úloha: ${task.title}. ${parts.join(", ")}.`;
 }
 
+/** Prázdna zmena — stabilná referencia pre `useOptimistic`. */
+const NO_PATCH: TaskRowPatch = {};
+
 export function TaskItem({
   task,
   todayIso,
@@ -139,18 +156,61 @@ export function TaskItem({
   postponeBlockAt = POSTPONE_DANGER_AT_DEFAULT,
 }: TaskItemProps) {
   const compact = density === "compact";
-  const isDone = task.status === "done";
-  const isFrog = task.isFrog && showFrog;
+
+  /*
+    Zmeny z menu akcií sa prekresľujú okamžite a po dobehnutí akcie sa hodnota
+    ticho vráti k údajom zo servera. Držíme ich ako jednu záplatu nad úlohou,
+    aby sa dalo naraz zmeniť napríklad deň aj prioritu dňa.
+  */
+  const [patch, applyPatch] = useOptimistic<TaskRowPatch, TaskRowPatch>(
+    NO_PATCH,
+    (previous, next) => ({ ...previous, ...next }),
+  );
+
+  const isDone = patch.done ?? task.status === "done";
+  const status: TaskStatus = isDone
+    ? "done"
+    : task.status === "done"
+      ? "todo"
+      : task.status;
+
+  // Úloha tak, ako ju riadok práve kreslí — vrátane ešte neuložených zmien.
+  const shown: TaskWithRelations = {
+    ...task,
+    status,
+    priority: patch.priority ?? task.priority,
+    isFrog: patch.isFrog ?? task.isFrog,
+    plannedDate:
+      patch.plannedDate !== undefined ? patch.plannedDate : task.plannedDate,
+  };
+
+  const discard = useTaskDiscard(task.id);
+
+  // Panel s detailom nemusí byť nad riadkom nasadený — bez neho ostáva názov
+  // tým, čím bol doteraz, a nič nespadne.
+  const detail = useTaskDetail();
+
+  const isFrog = shown.isFrog && showFrog;
 
   // Lokálna polnoc dneška zo servera. `today(now)` z nej vráti späť presne
   // `todayIso`, takže všetky relatívne výpočty stoja na jednom dni.
   const now = parseIsoDate(todayIso);
 
-  const dueDate = task.dueDate;
-  const plannedDate = task.plannedDate;
+  const dueDate = shown.dueDate;
+  const plannedDate = shown.plannedDate;
   const overdue = dueDate !== null && !isDone && isPast(dueDate, now);
 
-  const summary = buildSummary(task, { isFrog, overdue, now, postponeWarnAt });
+  const summary = buildSummary(shown, { isFrog, overdue, now, postponeWarnAt });
+
+  /*
+    Zahodenie sa nezapisuje hneď — riadok sa najprv premení na pásik s ponukou
+    vrátenia. Podrobnosti sú pri `useTaskDiscard`.
+  */
+  if (discard.discarded) {
+    return (
+      <DiscardedRow title={task.title} compact={compact} onUndo={discard.undo} />
+    );
+  }
 
   // Vlastná konštanta, aby sa zúženie typu udržalo aj vnútri callbacku.
   const select = onSelect;
@@ -161,16 +221,43 @@ export function TaskItem({
     DONE_TEXT,
   );
 
-  const titleNode = select ? (
+  /**
+   * Názov otvára detail úlohy — to je jediné miesto, kde sa dá prepísať text
+   * či poznámka. Bez providera padáme späť na pôvodné správanie (výber riadku)
+   * a keď nie je ani to, ostáva z názvu obyčajný text.
+   *
+   * Kliknutie sa zámerne nešíri ďalej: riadok nad nami si mousedown berie ako
+   * výber a otvorenie detailu by ho zbytočne ťahalo so sebou.
+   */
+  const openDetail = detail ? () => detail.open(shown) : null;
+  const titleAction = openDetail ?? (select ? () => select(task.id) : null);
+
+  const titleNode = titleAction ? (
     <button
       type="button"
-      onClick={() => select(task.id)}
+      onClick={(event) => {
+        event.stopPropagation();
+        titleAction();
+      }}
+      onPointerDown={(event) => event.stopPropagation()}
+      onMouseDown={(event) => event.stopPropagation()}
+      title={openDetail ? `Otvoriť detail úlohy „${task.title}"` : undefined}
       className={cn(titleClass, "cursor-pointer rounded hover:text-accent")}
     >
       {task.title}
     </button>
   ) : (
     <span className={titleClass}>{task.title}</span>
+  );
+
+  const actions = (
+    <TaskActions
+      task={shown}
+      todayIso={todayIso}
+      density={density}
+      onOptimistic={applyPatch}
+      onDiscard={discard.discard}
+    />
   );
 
   const frogMark = isFrog ? (
@@ -202,7 +289,7 @@ export function TaskItem({
           <div className="flex min-w-0 items-start gap-1">
             <span aria-hidden="true" className="flex h-4 shrink-0 items-center gap-1">
               {frogMark}
-              <PriorityDot priority={task.priority} size="sm" />
+              <PriorityDot priority={shown.priority} size="sm" />
             </span>
             {titleNode}
           </div>
@@ -212,6 +299,12 @@ export function TaskItem({
             </span>
           ) : null}
         </div>
+
+        {/* Aj v úzkom stĺpci týždňa musí byť menu po ruke — práve tam sa
+            úloha inak nedá ani zmazať. */}
+        {actions}
+
+        {discard.error ? <RowError message={discard.error} /> : null}
       </TaskCheckbox>
     );
   }
@@ -228,7 +321,8 @@ export function TaskItem({
       className={cn(
         "flex w-full items-center gap-2 rounded border border-transparent px-2 py-1.5 text-sm",
         "transition-colors",
-        // Žabí a vybraný riadok si držia svoje pozadie, spätnú väzbu dá okraj.
+        // Riadok priority dňa a vybraný riadok si držia svoje pozadie,
+        // spätnú väzbu dá okraj.
         !isFrog && !selected && "hover:bg-surface-2",
         isFrog && "bg-frog-soft hover:border-frog",
         selected && "border-accent bg-accent-soft",
@@ -236,7 +330,7 @@ export function TaskItem({
     >
       <span aria-hidden="true" className="flex shrink-0 items-center gap-1.5">
         {frogMark}
-        <PriorityDot priority={task.priority} />
+        <PriorityDot priority={shown.priority} />
       </span>
 
       {titleNode}
@@ -295,6 +389,10 @@ export function TaskItem({
           dangerAt={postponeBlockAt}
         />
       </span>
+
+      {actions}
+
+      {discard.error ? <RowError message={discard.error} /> : null}
     </TaskCheckbox>
   );
 }

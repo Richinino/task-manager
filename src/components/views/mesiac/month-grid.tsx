@@ -57,6 +57,15 @@ function GridLegend() {
 /**
  * Kalendárna mriežka mesiaca. Hlavička dní sa odvodzuje z prvého týždňa,
  * takže sedí aj pri inom prvom dni týždňa než pondelok.
+ *
+ * Mriežka aj bunky ostávajú serverové, hoci v každej bunke pribudlo „+" na
+ * pridanie úlohy. Klientská je len samotná bublina s poľom (`AddTaskPopover`),
+ * ktorú si bunka vkladá. Dôvod je vecný: `mesiac/page.tsx` si zo `day-cell.tsx`
+ * berie `MAX_ENTRIES_PER_DAY`, takže ten modul musí ostať serverovo
+ * importovateľný — a mriežku netreba posielať do prehliadača kvôli tlačidlu.
+ *
+ * `days` prichádzajú zo servera a musia ostať serializovateľné: `href` je
+ * preto obyčajný objekt `{ pathname, query }`, nie hotový `<Link>`.
  */
 export function MonthGrid({ days }: MonthGridProps) {
   const firstWeek = days.slice(0, 7);
