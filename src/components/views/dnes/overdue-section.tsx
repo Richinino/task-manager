@@ -78,7 +78,8 @@ export function OverdueSection({
         {tasks.map((task) => (
           <li key={task.id}>
             {/* showDate ukáže, ako veľmi je úloha po termíne.
-                Žaba patrí výhradne dnešku, preto tu jej zvýraznenie vypíname. */}
+                Priorita dňa patrí výhradne dnešku, preto tu jej zvýraznenie
+                vypíname. */}
             <TaskItem
               task={task}
               todayIso={todayIso}

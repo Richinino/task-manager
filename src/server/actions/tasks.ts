@@ -116,7 +116,7 @@ const updateTaskSchema = taskFieldsSchema.extend({
 /**
  * Vstup pre `createTask`. Chýbajúce polia sa doplnia rozumnými defaultmi:
  * priorita 3, stav podľa toho, či je úloha naplánovaná, horizont podľa dátumu.
- * Žaba sa nedá nastaviť pri vytvorení — je na to `setFrog`.
+ * Priorita dňa sa nedá nastaviť pri vytvorení — je na to `setFrog`.
  */
 export type CreateTaskInput = z.infer<typeof createTaskSchema>;
 
@@ -395,7 +395,7 @@ export async function createTask(
  */
 export async function quickCapture(
   raw: string,
-  opts?: { forceInbox?: boolean },
+  opts?: { forceInbox?: boolean; defaultPlannedDate?: string },
 ): Promise<ActionResult<{ id: string; title: string }>> {
   const user = await requireUser();
   try {
@@ -449,9 +449,15 @@ export async function quickCapture(
       projectId = rows[0]?.id ?? null;
     }
 
+    /*
+      `defaultPlannedDate` prichádza z tlačidla „+" na konkrétnom dni. Je to
+      len východisko — keď si používateľ v texte napíše vlastný deň („v piatok"),
+      vyhráva ten. Inak by tlačidlo v stĺpci ticho prepisovalo, čo človek napísal.
+    */
     const plannedDate = forceInbox
       ? null
-      : sanitize(isoDateSchema, parsed.plannedDate);
+      : (sanitize(isoDateSchema, parsed.plannedDate) ??
+        sanitize(isoDateSchema, opts?.defaultPlannedDate));
     const plannedTime = forceInbox
       ? null
       : sanitize(isoTimeSchema, parsed.plannedTime);
@@ -833,8 +839,8 @@ export async function rescheduleTask(
       updatedAt: new Date(),
     };
     if (nextDate) values.horizon = horizonForDate(nextDate, todayIn(user.settings.timezone));
-    // Žaba je záväzok konkrétneho dňa. Presunom na iný deň prestáva platiť —
-    // žabu nového dňa si treba vybrať vedome.
+    // Priorita dňa je záväzok konkrétneho dňa. Presunom na iný deň prestáva
+    // platiť — prioritu nového dňa si treba vybrať vedome.
     if (task.isFrog) values.isFrog = false;
 
     await db
@@ -859,8 +865,11 @@ export async function rescheduleTask(
 }
 
 /**
- * Žaba dňa. Na jeden `plannedDate` smie byť žabou najviac jedna úloha —
- * zapnutie preto v tej istej transakcii zhasne všetky ostatné v ten deň.
+ * Priorita dňa. Na jeden `plannedDate` smie byť prioritou dňa najviac jedna
+ * úloha — zapnutie preto v tej istej transakcii zhasne všetky ostatné v ten deň.
+ *
+ * Názov `setFrog` (a stĺpec `is_frog`) ostáva z pôvodného „eat the frog";
+ * v rozhraní sa tomu hovorí výhradne „priorita dňa".
  */
 export async function setFrog(id: string, on: boolean): Promise<ActionResult> {
   const user = await requireUser();
@@ -869,7 +878,9 @@ export async function setFrog(id: string, on: boolean): Promise<ActionResult> {
     if (!idParsed.success) return invalid(idParsed.error, "Chýba identifikátor úlohy.");
 
     const onParsed = z.boolean().safeParse(on);
-    if (!onParsed.success) return invalid(onParsed.error, "Neplatná hodnota žaby.");
+    if (!onParsed.success) {
+      return invalid(onParsed.error, "Neplatná hodnota priority dňa.");
+    }
     const enable = onParsed.data;
 
     const db = await getDb();
@@ -899,7 +910,10 @@ export async function setFrog(id: string, on: boolean): Promise<ActionResult> {
 
     const day = task.plannedDate;
     if (!day) {
-      return { ok: false, error: "Žabou môže byť len úloha s naplánovaným dňom." };
+      return {
+        ok: false,
+        error: "Prioritou dňa môže byť len úloha s naplánovaným dňom.",
+      };
     }
 
     await db.transaction(async (tx) => {
@@ -935,7 +949,7 @@ export async function setFrog(id: string, on: boolean): Promise<ActionResult> {
     revalidateViews();
     return { ok: true };
   } catch (error) {
-    return fail(error, "Žabu sa nepodarilo nastaviť.");
+    return fail(error, "Prioritu dňa sa nepodarilo nastaviť.");
   }
 }
 

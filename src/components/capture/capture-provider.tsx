@@ -26,7 +26,10 @@ import type { TaskWithRelations } from "@/server/queries/tasks";
  * - globálne skratky (`n` / `Ctrl+N` zachytenie, `Ctrl+K` paleta, `t w m i` navigácia),
  * - stav oboch okien — otvorené je vždy najviac jedno,
  * - zoznam úloh pre vyhľadávanie v palete (prichádza propom z layoutu,
- *   provider si nič nedotahuje sám).
+ *   provider si nič nedotahuje sám),
+ * - predvyplnenia jedného otvorenia: `openCapture({ defaultDate, defaultText })`
+ *   otvorí to isté okno, len už s dňom (a prípadne s rozpísaným textom).
+ *   Volanie bez argumentu je pôvodné správanie — `n` aj Ctrl+K ostávajú, aké boli.
  */
 
 /**
@@ -36,13 +39,26 @@ import type { TaskWithRelations } from "@/server/queries/tasks";
  */
 type RouterHref = Parameters<ReturnType<typeof useRouter>["push"]>[0];
 
+/** Čím sa dá rýchle zachytenie predvyplniť pri otvorení. */
+export interface OpenCaptureOptions {
+  /**
+   * Deň, na ktorý sa úloha predvolene naplánuje — RRRR-MM-DD.
+   * Deň napísaný v texte má prednosť; rieši to serverová akcia.
+   */
+  defaultDate?: string;
+  /** Text, ktorý už používateľ napísal inde (napríklad do poľa v dni). */
+  defaultText?: string;
+}
+
 export interface CaptureContextValue {
-  openCapture: () => void;
+  openCapture: (options?: OpenCaptureOptions) => void;
   closeCapture: () => void;
   openPalette: () => void;
 }
 
 const CaptureContext = createContext<CaptureContextValue | null>(null);
+
+const ISO_DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 
 /** Rýchle zachytenie a paleta z ktoréhokoľvek klientského komponentu pod providerom. */
 export function useCapture(): CaptureContextValue {
@@ -51,6 +67,16 @@ export function useCapture(): CaptureContextValue {
     throw new Error("useCapture sa dá volať iba vnútri <CaptureProvider>.");
   }
   return value;
+}
+
+/**
+ * To isté, ale bez výbuchu mimo providera — vráti `null`.
+ *
+ * Pre komponenty, ktoré rýchle zachytenie iba ponúkajú ako doplnok
+ * (tlačidlo „viac" pri poli v dni) a bez neho majú ostať funkčné.
+ */
+export function useCaptureOptional(): CaptureContextValue | null {
+  return useContext(CaptureContext);
 }
 
 export interface CaptureProviderProps {
@@ -69,9 +95,23 @@ export function CaptureProvider({
   const router = useRouter();
   const [captureOpen, setCaptureOpen] = useState(false);
   const [paletteOpen, setPaletteOpen] = useState(false);
+  /** Predvyplnenia platia vždy len pre jedno otvorenie — pri zatvorení sa mažú. */
+  const [captureDate, setCaptureDate] = useState<string | null>(null);
+  const [captureText, setCaptureText] = useState<string | null>(null);
 
   // Dve okná naraz by si kradli fokus — otvorenie jedného zatvorí druhé.
-  const openCapture = useCallback(() => {
+  const openCapture = useCallback((options?: OpenCaptureOptions) => {
+    /*
+      `openCapture` sa vo viacerých miestach vešia priamo na obsluhu udalosti,
+      takže sem môže omylom priletieť aj `MouseEvent`. Preto sa hodnoty
+      neberú tak, ako prišli, ale až po overení tvaru — z pokazeného vstupu
+      vznikne „bez predvyplnenia", nie rozbitý dialóg.
+    */
+    const date = options?.defaultDate;
+    const text = options?.defaultText;
+    setCaptureDate(typeof date === "string" && ISO_DATE_RE.test(date) ? date : null);
+    setCaptureText(typeof text === "string" && text.trim() !== "" ? text : null);
+
     setPaletteOpen(false);
     setCaptureOpen(true);
   }, []);
@@ -79,6 +119,15 @@ export function CaptureProvider({
   const openPalette = useCallback(() => {
     setCaptureOpen(false);
     setPaletteOpen(true);
+  }, []);
+
+  /** Zatvorenie okna zároveň zahodí predvyplnenia — ďalšie `n` má byť čisté. */
+  const handleCaptureOpenChange = useCallback((next: boolean) => {
+    setCaptureOpen(next);
+    if (!next) {
+      setCaptureDate(null);
+      setCaptureText(null);
+    }
   }, []);
 
   const contextValue = useMemo<CaptureContextValue>(
@@ -92,7 +141,9 @@ export function CaptureProvider({
 
   useEffect(() => {
     const shortcuts: Shortcut[] = [
-      { keys: ["n", "mod+n"], run: openCapture },
+      // Zabalené zámerne: `run` dostáva `KeyboardEvent` a ten by sa inak
+      // odovzdal ako voľby otvorenia.
+      { keys: ["n", "mod+n"], run: () => openCapture() },
       { keys: "mod+k", run: openPalette },
     ];
 
@@ -140,7 +191,7 @@ export function CaptureProvider({
           dosiahnuteľné palcom. Nad spodnou lištou, mimo jej dosahu. */}
       <button
         type="button"
-        onClick={openCapture}
+        onClick={() => openCapture()}
         aria-label="Rýchle zachytenie úlohy"
         style={{ bottom: "calc(3.5rem + env(safe-area-inset-bottom) + 0.75rem)" }}
         className={cn(
@@ -154,15 +205,17 @@ export function CaptureProvider({
 
       <QuickCapture
         open={captureOpen}
-        onOpenChange={setCaptureOpen}
+        onOpenChange={handleCaptureOpenChange}
         weekStartsOn={weekStartsOn}
+        defaultDate={captureDate ?? undefined}
+        defaultText={captureText ?? undefined}
       />
 
       <CommandPalette
         open={paletteOpen}
         onOpenChange={setPaletteOpen}
         tasks={commandTasks}
-        onCreateTask={openCapture}
+        onCreateTask={() => openCapture()}
         weekStartsOn={weekStartsOn}
       />
     </CaptureContext.Provider>

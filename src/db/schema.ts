@@ -205,7 +205,13 @@ export const tasks = pgTable(
     /** Podúlohy — self reference. */
     parentTaskId: text("parent_task_id"),
 
-    /** „Žaba" — jedna najdôležitejšia vec dňa. Max jedna na deň. */
+    /**
+     * Jedna najdôležitejšia vec dňa. Max jedna na deň.
+     *
+     * V rozhraní sa tomu hovorí „priorita dňa"; názvy `is_frog`/`isFrog`
+     * ostávajú z pôvodného „eat the frog", aby sa kvôli popisku nerobila
+     * migrácia.
+     */
     isFrog: boolean("is_frog").notNull().default(false),
 
     /** RRULE pre opakovanie (M7). */

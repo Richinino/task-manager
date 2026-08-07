@@ -42,8 +42,8 @@ async function main() {
   /**
    * Dnešok berieme z pásma používateľa, nie z pásma procesu ani z UTC.
    * Cez `toISOString()` by sa po polnoci lokálneho času všetky ukážkové
-   * úlohy posunuli o deň dozadu — /dnes by bola prázdna a žaba by sedela
-   * na inom dni, než pre ktorý ju `setFrog` stráži.
+   * úlohy posunuli o deň dozadu — /dnes by bola prázdna a priorita dňa by
+   * sedela na inom dni, než pre ktorý ju `setFrog` stráži.
    */
   const settings = parseSettings(user.settings);
   const todayIso = todayIn(settings.timezone);
