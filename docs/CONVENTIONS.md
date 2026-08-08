@@ -261,3 +261,61 @@ Klientské komponenty volajú server actions priamo a stav prekresľujú optimis
 ## Testy
 
 Vitest, súbory `*.test.ts` vedľa zdroja. Testuje sa `src/lib/**` (čisté funkcie) — hlavne parser a dátumy. UI a DB sa v M1 netestujú.
+
+---
+
+# Kontrakty M3 — štruktúra
+
+## `src/server/queries/structure.ts`
+
+```ts
+export interface ProjectWithCounts extends Project {
+  area: { id: string; name: string; color: string } | null;
+  openTaskCount: number;
+  doneTaskCount: number;
+  /** Najbližší termín spomedzi nevybavených úloh projektu. */
+  nextDueDate: string | null;
+}
+export interface AreaWithCounts extends Area {
+  openTaskCount: number;
+  projectCount: number;
+}
+
+export function listProjects(userId: string, options?: { includeArchived?: boolean }): Promise<ProjectWithCounts[]>;
+export function getProject(userId: string, id: string): Promise<ProjectWithCounts | null>;
+export function listAreas(userId: string, options?: { includeArchived?: boolean }): Promise<AreaWithCounts[]>;
+export function getArea(userId: string, id: string): Promise<AreaWithCounts | null>;
+export function getSubtasks(userId: string, parentTaskId: string): Promise<Task[]>;
+export function getTaskTags(userId: string, taskId: string): Promise<Tag[]>;
+export function listTags(userId: string): Promise<(Tag & { taskCount: number })[]>;
+```
+
+**Pozor na kolíziu mien:** `getAreas` a `getProjects` v `queries/tasks.ts` ostávajú, kde sú — volá ich layout aj inbox. Nové funkcie majú zámerne predponu `list`.
+
+## `src/server/actions/structure.ts`
+
+```ts
+createProject(input)   updateProject(id, patch)   archiveProject(id, archived)   deleteProject(id)
+createArea(input)      updateArea(id, patch)      archiveArea(id, archived)      deleteArea(id)
+attachTag(taskId, name)                           detachTag(taskId, tagId)
+```
+
+Všetky vracajú `ActionResult`, rovnako ako akcie úloh.
+
+**Archivácia ≠ mazanie.** Archivovaný projekt sa neponúka vo výberoch, ale jeho úlohy a história ostávajú (`archivedAt`). Mäkké zmazanie (`deletedAt`) úlohy **odpojí** — nastaví im `projectId`/`areaId` na `null`. Databázové `onDelete: set null` sa pri mäkkom mazaní neuplatní, lebo riadok fyzicky ostáva; bez ručného odpojenia by úlohy visel na projekte, ktorý používateľ už nevidí.
+
+## Rozšírenia v úlohách
+
+```ts
+// queries/tasks.ts
+getSomedayTasks(userId)   // horizont „someday", vrátane tých, čo ešte visia v inboxe
+getWaitingTasks(userId)   // stav `waiting`
+getCounts(userId, today)  // { inbox, today, overdue, someday, waiting }
+
+// actions/tasks.ts
+addSubtask(parentTaskId, title)      reorderSubtasks(parentTaskId, ids)      setWaiting(id, waiting)
+```
+
+**Podúloha** dedí `projectId` a `areaId`, nededí dátumy ani prioritu — je to krok, nie samostatný záväzok. Stav dostane `todo`, nie `inbox`. Povolená je **len jedna úroveň** zanorenia.
+
+**`setWaiting(id, false)`** vráti úlohu do stavu, v ktorom je viditeľná: s naplánovaným dňom `todo`, bez neho `inbox`. Bez toho by zmizla zo všetkých obrazoviek — inbox filtruje podľa stavu, ostatné podľa dátumu.

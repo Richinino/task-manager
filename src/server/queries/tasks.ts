@@ -9,6 +9,7 @@ import {
   isNull,
   lt,
   lte,
+  ne,
   notInArray,
   or,
   sql,
@@ -190,8 +191,25 @@ export function getOverdueTasks(
 }
 
 /** Odložené „niekedy" — zásobáreň, z ktorej sa ťahá pri plánovaní. */
+/**
+ * Úlohy odložené na „niekedy".
+ *
+ * Zámerne sem patria aj tie, ktoré ešte visia v stave `inbox` — triedenie
+ * v inboxe pri voľbe „Niekedy" stav nemení práve preto, že úloha bez dátumu
+ * a mimo inboxu by nebola na žiadnej obrazovke. Odkedy má „Niekedy" vlastný
+ * zoznam, sú viditeľné na oboch miestach, čo je správne: v inboxe ako
+ * nedotriedené, tu ako odložené.
+ */
 export function getSomedayTasks(userId: string): Promise<TaskWithRelations[]> {
   return selectTasks(userId, and(eq(tasks.horizon, "someday"), isOpen()));
+}
+
+/**
+ * Úlohy, ktoré blokuje niekto iný. Stav `waiting` doteraz v aplikácii
+ * nemal žiadne miesto, hoci v schéme je od začiatku.
+ */
+export function getWaitingTasks(userId: string): Promise<TaskWithRelations[]> {
+  return selectTasks(userId, eq(tasks.status, "waiting"));
 }
 
 export async function getTask(
@@ -209,12 +227,23 @@ export async function getTask(
 export async function getCounts(
   userId: string,
   today: string,
-): Promise<{ inbox: number; today: number; overdue: number }> {
+): Promise<{
+  inbox: number;
+  today: number;
+  overdue: number;
+  someday: number;
+  waiting: number;
+}> {
   const db = await getDb();
 
   const rows = await db
     .select({
       inbox: sql<number>`cast(count(*) filter (where ${tasks.status} = 'inbox') as int)`,
+      someday: sql<number>`cast(count(*) filter (
+        where ${tasks.horizon} = 'someday'
+          and ${tasks.status} not in ('done', 'dropped')
+      ) as int)`,
+      waiting: sql<number>`cast(count(*) filter (where ${tasks.status} = 'waiting') as int)`,
       today: sql<number>`cast(count(*) filter (
         where ${tasks.plannedDate} = ${today}
           and ${tasks.status} not in ('done', 'dropped')
@@ -235,6 +264,8 @@ export async function getCounts(
     inbox: Number(row?.inbox ?? 0),
     today: Number(row?.today ?? 0),
     overdue: Number(row?.overdue ?? 0),
+    someday: Number(row?.someday ?? 0),
+    waiting: Number(row?.waiting ?? 0),
   };
 }
 

@@ -1021,3 +1021,195 @@ export async function reorderTasks(ids: string[]): Promise<ActionResult> {
     return fail(error, "Poradie úloh sa nepodarilo uložiť.");
   }
 }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   PODÚLOHY A „ČAKÁ SA NA"
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/**
+ * Vytvorí podúlohu pod danou úlohou.
+ *
+ * Podúloha dedí `projectId` a `areaId` — patrí tam, kam patrí rodič. NEDEDÍ
+ * dátumy ani prioritu: je to krok, nie samostatný záväzok, a vlastný termín
+ * by z nej spravil druhú úlohu. Stav je `todo`, nie `inbox` — svoje miesto
+ * už má, tak nemá čo robiť v nezatriedených veciach.
+ *
+ * Povolená je len jedna úroveň zanorenia. Strom podúloh sa v rozhraní stáva
+ * neprehľadným a v M3 ho nepotrebujeme.
+ */
+export async function addSubtask(
+  parentTaskId: string,
+  title: string,
+): Promise<ActionResult<{ id: string }>> {
+  const user = await requireUser();
+  try {
+    const parentParsed = idSchema.safeParse(parentTaskId);
+    if (!parentParsed.success) {
+      return invalid(parentParsed.error, "Chýba identifikátor nadradenej úlohy.");
+    }
+
+    const titleParsed = titleSchema.safeParse(title);
+    if (!titleParsed.success) return invalid(titleParsed.error, "Neplatný názov.");
+
+    const db = await getDb();
+    const parent = await loadTask(db, user.id, parentTaskId);
+    if (!parent) return { ok: false, error: "Nadradená úloha sa nenašla." };
+
+    // Druhá úroveň zanorenia sa odmieta nahlas, nie tichým ignorovaním.
+    if (parent.parentTaskId !== null) {
+      return {
+        ok: false,
+        error: "Podúloha už nemôže mať vlastné podúlohy.",
+      };
+    }
+
+    const id = uuidv7();
+    const sortRows = await db
+      .select({
+        nextSort: sql<number>`cast(coalesce(max(${tasks.sort}), -1) + 1 as int)`,
+      })
+      .from(tasks)
+      .where(
+        and(
+          eq(tasks.userId, user.id),
+          eq(tasks.parentTaskId, parentTaskId),
+          isNull(tasks.deletedAt),
+        ),
+      );
+    const nextSort = Number(sortRows[0]?.nextSort ?? 0);
+
+    await db.insert(tasks).values({
+      id,
+      userId: user.id,
+      title: titleParsed.data,
+      status: "todo",
+      parentTaskId,
+      projectId: parent.projectId,
+      areaId: parent.areaId,
+      sort: nextSort,
+    });
+
+    await db.insert(taskEvents).values({
+      id: uuidv7(),
+      userId: user.id,
+      taskId: id,
+      type: "created",
+      toValue: titleParsed.data,
+    });
+
+    revalidateViews();
+    return { ok: true, data: { id } };
+  } catch (error) {
+    return fail(error, "Podúlohu sa nepodarilo pridať.");
+  }
+}
+
+/** Zmení poradie podúloh v rámci jedného rodiča. */
+export async function reorderSubtasks(
+  parentTaskId: string,
+  ids: string[],
+): Promise<ActionResult> {
+  const user = await requireUser();
+  try {
+    const parentParsed = idSchema.safeParse(parentTaskId);
+    if (!parentParsed.success) {
+      return invalid(parentParsed.error, "Chýba identifikátor nadradenej úlohy.");
+    }
+
+    const idsParsed = z.array(idSchema).safeParse(ids);
+    if (!idsParsed.success) return invalid(idsParsed.error, "Neplatný zoznam úloh.");
+    if (idsParsed.data.length === 0) return { ok: true };
+
+    const db = await getDb();
+
+    /*
+      Prepisujeme poradie len tým riadkom, ktoré danému rodičovi naozaj patria.
+      Bez tejto podmienky by cudzie id v zozname prepísalo `sort` inej úlohy.
+    */
+    const owned = await db
+      .select({ id: tasks.id })
+      .from(tasks)
+      .where(
+        and(
+          eq(tasks.userId, user.id),
+          eq(tasks.parentTaskId, parentTaskId),
+          isNull(tasks.deletedAt),
+          inArray(tasks.id, idsParsed.data),
+        ),
+      );
+
+    const allowed = new Set(owned.map((row) => row.id));
+    const updates = idsParsed.data
+      .map((id, index) => ({ id, index }))
+      .filter((update) => allowed.has(update.id));
+
+    if (updates.length === 0) return { ok: true };
+
+    await db.transaction(async (tx) => {
+      for (const update of updates) {
+        await tx
+          .update(tasks)
+          .set({ sort: update.index, updatedAt: new Date() })
+          .where(and(eq(tasks.id, update.id), eq(tasks.userId, user.id)));
+      }
+    });
+
+    revalidateViews();
+    return { ok: true };
+  } catch (error) {
+    return fail(error, "Poradie podúloh sa nepodarilo uložiť.");
+  }
+}
+
+/**
+ * Presunie úlohu do stavu „čaká sa na" a späť.
+ *
+ * Návrat späť MUSÍ úlohu vrátiť tam, kde je viditeľná: s naplánovaným dňom
+ * do `todo`, bez neho do `inbox`. Inak by úloha zmizla zo všetkých obrazoviek
+ * — inbox filtruje podľa stavu, ostatné podľa dátumu. Je to tá istá pasca,
+ * na ktorej sa už raz stratili úlohy pri triedení v inboxe.
+ */
+export async function setWaiting(
+  id: string,
+  waiting: boolean,
+): Promise<ActionResult> {
+  const user = await requireUser();
+  try {
+    const idParsed = idSchema.safeParse(id);
+    if (!idParsed.success) return invalid(idParsed.error, "Chýba identifikátor úlohy.");
+
+    const flagParsed = z.boolean().safeParse(waiting);
+    if (!flagParsed.success) return invalid(flagParsed.error, "Neplatná hodnota.");
+
+    const db = await getDb();
+    const task = await loadTask(db, user.id, id);
+    if (!task) return { ok: false, error: "Úloha sa nenašla." };
+
+    const next: TaskStatus = flagParsed.data
+      ? "waiting"
+      : task.plannedDate
+        ? "todo"
+        : "inbox";
+
+    if (task.status === next) return { ok: true };
+
+    await db
+      .update(tasks)
+      .set({ status: next, updatedAt: new Date() })
+      .where(and(eq(tasks.id, id), eq(tasks.userId, user.id), isNull(tasks.deletedAt)));
+
+    await db.insert(taskEvents).values({
+      id: uuidv7(),
+      userId: user.id,
+      taskId: id,
+      type: "status_changed",
+      fromValue: task.status,
+      toValue: next,
+    });
+
+    revalidateViews();
+    return { ok: true };
+  } catch (error) {
+    return fail(error, "Stav úlohy sa nepodarilo zmeniť.");
+  }
+}
