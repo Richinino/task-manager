@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { LoaderCircle, Sparkles } from "lucide-react";
 
+import { CaptureChips } from "@/components/capture/capture-chips";
 import { ParsePreview } from "@/components/capture/parse-preview";
 import { useOutbox } from "@/components/pwa/outbox-provider";
 import { Button } from "@/components/ui/button";
@@ -14,6 +15,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Kbd } from "@/components/ui/kbd";
+import type { SyntaxEdit } from "@/lib/capture-syntax";
 import { formatLongSk } from "@/lib/dates";
 import { parseCapture, type ParsedCapture } from "@/lib/parse";
 import { cn } from "@/lib/utils";
@@ -60,14 +62,22 @@ export interface QuickCaptureProps {
   defaultText?: string;
 }
 
-/** Presne to, čo parser vie. Krátka pripomienka, nie dokumentácia. */
-const SYNTAX_HINT = "v piatok · do 31.3. · !1 · @pocitac · #tag · +projekt · 30m";
+/**
+ * Presne to, čo parser vie. Krátka pripomienka, nie dokumentácia.
+ *
+ * Prvé dva tvary majú dopísané, čo znamenajú: „do 31.3." si nikto sám od seba
+ * neprečíta ako termín a rozdiel medzi plánom a termínom je jadro celej appky.
+ * Energia tu chýbala úplne — parser ju vedel, ale nikde to nebolo napísané.
+ */
+const SYNTAX_HINT =
+  "v piatok → plán · do 31.3. → termín · !1 · !!vysoka · 30m · @pocitac · #tag · +projekt";
 /**
  * To isté pre úzku obrazovku. Celá pripomienka sa na 375 px zalomí do dvoch
  * riadkov a odtlačí tlačidlo „Uložiť" nižšie — práve tam, kam si na telefóne
- * sadne klávesnica. Zostávajú štyri najčastejšie tvary.
+ * sadne klávesnica. Prioritu, energiu, termín aj odhad tam už ponúkajú čipy,
+ * takže ostáva to jediné, čo sa inak než napísaním nastaviť nedá.
  */
-const SYNTAX_HINT_SHORT = "v piatok · do 31.3. · !1 · 30m";
+const SYNTAX_HINT_SHORT = "v piatok → plán · do 31.3. → termín";
 
 export function QuickCapture({
   open,
@@ -82,6 +92,14 @@ export function QuickCapture({
   const [saved, setSaved] = useState<{ title: string; queued: boolean } | null>(null);
   const [isPending, startTransition] = useTransition();
   const inputRef = useRef<HTMLInputElement>(null);
+
+  /**
+   * Kam patrí kurzor po ťuknutí na čip. Počítadlo sa zvyšuje pri každom
+   * ťuknutí — aj vtedy, keď text ostal rovnaký (napr. ťuknutie na hodnotu,
+   * ktorá už v texte je) sa musí fokus vrátiť do poľa.
+   */
+  const caretRef = useRef<number | null>(null);
+  const [caretNonce, setCaretNonce] = useState(0);
 
   // Mimo `OutboxProvider` je `null` — vtedy sa ukladá po starom, priamo na server.
   const outbox = useOutbox();
@@ -107,9 +125,59 @@ export function QuickCapture({
     setSaved(null);
   }, [open, defaultText]);
 
+  /*
+    Po ťuknutí na čip sa fokus vracia do poľa a kurzor za vložený token — bez
+    toho by človek po každom čipe klikal späť do textu. Robí sa to až v efekte:
+    v obsluhe udalosti má input v DOM-e ešte starý text a kurzor by sadol vedľa.
+  */
+  useEffect(() => {
+    if (caretNonce === 0) return;
+    const el = inputRef.current;
+    const caret = caretRef.current;
+    if (el === null || caret === null) return;
+    el.focus();
+    const pos = Math.max(0, Math.min(caret, el.value.length));
+    el.setSelectionRange(pos, pos);
+  }, [caretNonce]);
+
+  /**
+   * Text z čipu ide do toho istého stavu ako písanie — živý náhľad parsera sa
+   * preto prekreslí sám a čipy nedržia žiadny súbežný stav navyše.
+   */
+  function applyEdit(edit: SyntaxEdit): void {
+    /*
+      `applyToken` vracia text zámerne bez medzery na konci — je to čistý
+      reťazec, nie rozpísané pole. Lenže tu ide rovno do inputu a človek po
+      ťuknutí na čip väčšinou píše ďalej. Bez medzery by sa písmeno nalepilo
+      na token a `!1x` už parser ako prioritu neprečíta — celý token by ticho
+      spadol do názvu úlohy. Preto ju doplníme, ak token skončil na konci.
+      Pri ukladaní sa text aj tak oreže, takže vo výsledku po nej niet stopy.
+    */
+    const atEnd = edit.cursor === edit.text.length;
+    const text = atEnd ? edit.text + " " : edit.text;
+
+    setValue(text);
+    if (saved !== null) setSaved(null);
+    if (error !== null) setError(null);
+    caretRef.current = atEnd ? text.length : edit.cursor;
+    setCaretNonce((n) => n + 1);
+  }
+
   function save(keepOpen: boolean): void {
     const raw = value.trim();
     if (raw === "" || isPending) return;
+
+    /*
+      Samotné tokeny nie sú úloha. Po ťuknutí na čipy do prázdneho poľa je text
+      napríklad „!1 !!vysoka" — neprázdny, ale po vybratí tokenov z neho neostane
+      názov. Bez tejto kontroly by sa odoslal a server by ho odmietol až potom;
+      offline by dokonca ticho spadol do fronty a zahodil sa až pri odosielaní.
+    */
+    if (parsed !== null && parsed.title.trim() === "") {
+      setError("Napíš aj názov úlohy — samotný termín ani priorita nestačia.");
+      inputRef.current?.focus();
+      return;
+    }
 
     /** Spoločný koniec pre uložené aj odložené — jedno miesto, jedno správanie. */
     function finish(title: string, queued: boolean): void {
@@ -253,7 +321,18 @@ export function QuickCapture({
           ) : null}
 
           {/* Náhľad sa objaví, až keď parser naozaj niečo našiel. */}
-          <ParsePreview parsed={parsed} className="pb-2 pl-9 pr-3" />
+          <ParsePreview parsed={parsed} className="pb-1 pl-9 pr-3" />
+
+          {/*
+            Čipy sú medzi náhľadom a nápovedou zámerne: nad nimi je vidieť, čo
+            už parser rozpoznal, pod nimi to, čo sa dá dopísať ručne.
+          */}
+          <CaptureChips
+            text={value}
+            onEdit={applyEdit}
+            weekStartsOn={weekStartsOn}
+            className="pb-1 pl-9 pr-3"
+          />
 
           <div className="border-t border-border bg-surface-2 px-3 py-2">
             <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1.5">
@@ -289,7 +368,9 @@ export function QuickCapture({
                 <Button
                   type="submit"
                   variant="primary"
-                  disabled={trimmed === "" || isPending}
+                  // Prázdny názov po vybratí tokenov znamená, že uložiť sa nedá —
+                  // tlačidlo to má povedať vopred, nie až server po odoslaní.
+                  disabled={trimmed === "" || parsed?.title.trim() === "" || isPending}
                   className="h-11 min-w-[5.5rem] px-4 sm:h-8 sm:min-w-0 sm:px-3 sm:text-[13px]"
                 >
                   Uložiť

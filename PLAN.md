@@ -214,7 +214,7 @@ Každá z týchto vecí pridá réžiu a po troch týždňoch systém opustíš.
 | **M0** | Kostra | repo, Next.js, Drizzle schéma, Google login, deploy na Vercel | 1 večer |
 | **M1** | **Denný driver** | úlohy CRUD, Inbox, Dnes, Týždeň, Mesiac, rýchle zachytenie s parsovaním, klávesové skratky | 3–4 večery |
 | **M2** | Offline + mobil | Dexie mirror, outbox sync, service worker, manifest, inštalácia na telefón | 2–3 večery |
-| **M3** | Štruktúra | projekty, oblasti, podúlohy, tagy, „Niekedy" a „Čaká sa na" | 2 večery |
+| **M3** | Štruktúra | projekty, oblasti, podúlohy, tagy, „Niekedy" a „Čaká sa na" — rozpis nižšie | 3–4 večery |
 | **M4** | Nápady | entita nápadov, kanban zrenia, povýšenie na projekt, inkubátor, zhnitie | 2 večery |
 | **M5** | Anti-prokrastinácia | počítadlo odkladov, WIP limit, rozpočet dňa, „Čo teraz?" | 2 večery |
 | **M6** | Rituály | 4 sprievodcovia (ráno, večer, týždeň, mesiac) + denník | 3 večery |
@@ -223,6 +223,54 @@ Každá z týchto vecí pridá réžiu a po troch týždňoch systém opustíš.
 | **M9** | Dolaďovanie | šablóny, `[[odkazy]]`, archív, export, fulltext | 2–3 večery |
 
 **Po M1 systém reálne používaš.** Všetko ďalšie pribúda okolo živých dát, nie okolo prázdnej appky — to je zámer, lebo priority sa po týždni používania vždy zmenia.
+
+---
+
+## 7a. M3 — rozpis
+
+Audit pred začiatkom (overené v kóde, nie odhad):
+
+| Časť | Schéma | Rozhranie |
+|---|---|---|
+| Projekty | ✅ tabuľka | ❌ **nedá sa založiť** — nikde `insert(projects)` |
+| Oblasti | ✅ tabuľka, 5 zo seedu | ❌ nedajú sa pridať ani premenovať |
+| „Niekedy" | ✅ `horizon` | ❌ `getSomedayTasks` má **nula volajúcich** |
+| „Čaká sa na" | ✅ stav `waiting` | ❌ žiadne |
+| Podúlohy | ✅ `parentTaskId` | ❌ žiadne |
+| Štítky | ✅ `tags`, `taggables`, zápis funguje | ⚠️ vidno len v náhľade pri písaní |
+
+Dôsledok, ktorý plán nepredpokladal: **výber projektu v detaile úlohy je prázdny**
+a `+projekt` v parseri nemá čo nájsť. Celá vetva projektov je mŕtva.
+
+A druhý: úloha odložená v inboxe na „niekedy" tam ostane navždy, lebo nemá kam
+odísť — inbox sa nikdy nedostane na nulu, čo je jeho jediný cieľ.
+
+### Poradie a prečo práve takto
+
+**1. Serverová vrstva ako prvá, celá naraz.**
+Akcie a dotazy pre projekty, oblasti, podúlohy, štítky aj oba zoznamy. Všetky
+obrazovky z nej potom čerpajú, takže keby vznikala po kúskoch, prepisovali by si
+navzájom rozhrania. Rovnaká chyba, akú sme spravili v M1.
+
+**2. Projekty a oblasti.**
+Prvé zo všetkých obrazoviek, lebo na ne odkazuje zvyšok. Kým sa projekt nedá
+založiť, je výber v detaile úlohy prázdny a používateľ nemá ako pochopiť, načo
+tam to pole je.
+
+**3. „Niekedy" a „Čaká sa na" spolu.**
+Sú to dva zoznamy nad existujúcim filtrom — rovnaký tvar práce, spoločné
+rozhodnutia o vzhľade. Robiť ich zvlášť by znamenalo dvakrát to isté.
+Ten istý agent doplní aj navigáciu pre všetky nové obrazovky naraz, aby si
+ju dvaja agenti neprepisovali.
+
+**4. Podúlohy a štítky spolu.**
+Oboje žije v detaile úlohy a v riadku úlohy — to sú tie isté dva súbory.
+Rozdeliť ich medzi dvoch agentov by znamenalo konflikt na každom uložení.
+
+### Odhad
+
+3–4 večery namiesto pôvodných 2. Pôvodný odhad počítal s tým, že projekty
+a oblasti len „napojíme" — nepočítal s tým, že ich celé rozhranie treba postaviť.
 
 ---
 
