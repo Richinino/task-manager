@@ -14,6 +14,12 @@ export interface AreaDotProps {
   /** Zobraziť aj názov oblasti vedľa bodky. */
   showName?: boolean;
   size?: "sm" | "md";
+  /**
+   * Triedy samotného názvu — aby ho volajúci vedel na úzkej obrazovke skryť
+   * (`hidden md:block`) a nechať len farebnú bodku. Bodka je 8 px a nesie
+   * príslušnosť aj sama; názov je to, čo v riadku zaberá miesto.
+   */
+  nameClassName?: string;
   className?: string;
 }
 
@@ -54,6 +60,7 @@ export function AreaDot({
   name,
   showName = true,
   size = "md",
+  nameClassName,
   className,
 }: AreaDotProps) {
   const label = name ? areaLabel(name) : "oblasť";
@@ -80,7 +87,7 @@ export function AreaDot({
       className={cn("inline-flex min-w-0 items-center gap-1 text-fg-muted", className)}
     >
       {dot}
-      <span className="truncate">
+      <span className={cn("truncate", nameClassName)}>
         <span className="sr-only">oblasť </span>
         {name}
       </span>

@@ -137,6 +137,8 @@ function taskHint(task: CommandTask): string {
 
 const ITEM_CLASS = cn(
   "flex cursor-pointer select-none items-center gap-2.5 rounded px-2 py-1.5",
+  // Pod `sm` je riadok plnohodnotný dotykový cieľ; od `sm` ostáva hustý zoznam.
+  "min-h-11 sm:min-h-0",
   "text-[13px] text-fg-muted outline-none",
   "data-[selected=true]:bg-accent-soft data-[selected=true]:text-accent",
   "data-[disabled=true]:pointer-events-none data-[disabled=true]:opacity-45",
@@ -187,9 +189,25 @@ export function CommandPalette({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
+      {/*
+        Paletu ZÁMERNE neskrývame pod `sm`.
+
+        Body zlomu merajú šírku okna, nie zariadenie — `sm:hidden` by ju
+        vypol aj v zúženom okne na počítači, kde je klávesnica po ruke a
+        Ctrl+K je najrýchlejšia cesta cez celú appku. To je presne tá chyba,
+        ktorej má rozhodovanie podľa šírky predchádzať.
+
+        Na telefóne paleta aj tak nikomu neprekáža: otvára ju iba Ctrl+K,
+        plávajúce tlačidlo otvára rýchle zachytenie, takže bez pripojenej
+        klávesnice sa na ňu nedá ani natrafiť. Skrytie by teda na telefóne
+        neodobralo nič a inde by odobralo veľa. Namiesto toho je paleta
+        použiteľná aj v úzkom okne: riadky majú 44 px, klávesová pätička
+        (šípky, Enter, Esc) je pod `sm` skrytá a okno sedí hore, aby ho
+        nezakryla vysunutá klávesnica.
+      */}
       <DialogContent
         showClose={false}
-        className="mt-[12vh] max-w-xl overflow-hidden p-0"
+        className="mt-3 max-w-xl overflow-hidden p-0 sm:mt-[12vh]"
       >
         <DialogTitle className="sr-only">Paleta príkazov</DialogTitle>
         <DialogDescription className="sr-only">
@@ -209,13 +227,16 @@ export function CommandPalette({
               onValueChange={setSearch}
               placeholder="Hľadaj úlohu alebo príkaz…"
               className={cn(
-                "h-11 w-full min-w-0 bg-transparent text-sm text-fg",
+                // 16 px písmo pod `sm` — menšie si mobilný prehliadač pri
+                // fokuse priblíži a stránka ostane zväčšená.
+                "h-11 w-full min-w-0 bg-transparent text-base text-fg sm:text-sm",
                 "placeholder:text-fg-subtle",
               )}
             />
           </div>
 
-          <CommandList className="max-h-[min(60vh,24rem)] overflow-y-auto overscroll-contain p-1.5">
+          {/* Pod `sm` nižší strop: nad zoznamom má ostať miesto na klávesnicu. */}
+          <CommandList className="max-h-[min(45vh,24rem)] overflow-y-auto overscroll-contain p-1.5 sm:max-h-[min(60vh,24rem)]">
             <CommandEmpty className="px-2 py-6 text-center text-[13px] text-fg-muted">
               Nič sa nenašlo.
             </CommandEmpty>
@@ -231,7 +252,10 @@ export function CommandPalette({
                 >
                   <Icon aria-hidden="true" className="size-4 shrink-0" />
                   <span className="min-w-0 flex-1 truncate">{label}</span>
-                  <Kbd>{shortcut}</Kbd>
+                  {/* Skratka bez klávesnice nič nehovorí — a zbytočne berie šírku. */}
+                  <span className="hidden shrink-0 sm:inline-flex">
+                    <Kbd>{shortcut}</Kbd>
+                  </span>
                 </CommandItem>
               ))}
             </CommandGroup>
@@ -245,7 +269,9 @@ export function CommandPalette({
               >
                 <Plus aria-hidden="true" className="size-4 shrink-0" />
                 <span className="min-w-0 flex-1 truncate">Nová úloha</span>
-                <Kbd>n</Kbd>
+                <span className="hidden shrink-0 sm:inline-flex">
+                  <Kbd>n</Kbd>
+                </span>
               </CommandItem>
 
               <CommandItem
@@ -296,10 +322,11 @@ export function CommandPalette({
             ) : null}
           </CommandList>
 
+          {/* Pätička hovorí len o klávesoch — bez klávesnice je to riadok navyše. */}
           <div
             aria-hidden="true"
             className={cn(
-              "flex flex-wrap items-center gap-x-3 gap-y-1 border-t border-border",
+              "hidden flex-wrap items-center gap-x-3 gap-y-1 border-t border-border sm:flex",
               "bg-surface-2 px-3 py-2 text-[11px] text-fg-subtle",
             )}
           >

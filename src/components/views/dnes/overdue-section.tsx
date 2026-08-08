@@ -44,7 +44,9 @@ export function OverdueSection({
           aria-controls={listId}
           onClick={() => setOpen((value) => !value)}
           className={cn(
-            "flex w-full cursor-pointer items-center gap-2 rounded px-3 py-2 text-left",
+            // Zbalenie sekcie je na telefóne jediná cesta, ako prepadnuté
+            // úlohy odložiť z očí — musí mať plný dotykový cieľ 44 px.
+            "flex min-h-11 w-full cursor-pointer items-center gap-2 rounded px-3 py-2 text-left sm:min-h-0",
             "transition-colors duration-100 ease-out hover:bg-surface-2",
           )}
         >
@@ -57,11 +59,13 @@ export function OverdueSection({
             )}
           />
           <TriangleAlert aria-hidden="true" size={16} className="shrink-0 text-danger" />
-          <span className="text-sm font-semibold text-danger">Po termíne</span>
+          <span className="min-w-0 truncate text-sm font-semibold text-danger">
+            Po termíne
+          </span>
           <span
             aria-hidden="true"
             className={cn(
-              "inline-flex h-4 min-w-4 items-center justify-center rounded-full px-1",
+              "inline-flex h-4 min-w-4 shrink-0 items-center justify-center rounded-full px-1",
               "bg-danger/10 text-[10px] font-semibold tabular-nums text-danger",
             )}
           >

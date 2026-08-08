@@ -56,7 +56,7 @@ export function DayPriorityCard({
   const heading = (
     <h2
       id={headingId}
-      className="flex items-center gap-1.5 text-sm font-semibold text-fg"
+      className="flex min-w-0 items-center gap-1.5 text-sm font-semibold text-fg"
     >
       <Star aria-hidden="true" size={16} className="shrink-0 fill-current text-frog" />
       Priorita dňa
@@ -78,13 +78,21 @@ export function DayPriorityCard({
       >
         <div className="mb-1.5 flex items-center justify-between gap-2">
           {heading}
+          {/*
+            Na telefóne sa celý popis „Zrušiť prioritu dňa" vedľa nadpisu
+            nezmestí — text sa skracuje, `aria-label` nesie plné znenie.
+            Výška 44 px je dotykový cieľ, od `sm:` sa vracia hustota nástroja.
+          */}
           <Button
             variant="ghost"
             size="sm"
             disabled={pending}
             onClick={() => choose(frog.id, false)}
+            aria-label="Zrušiť prioritu dňa"
+            className="h-11 shrink-0 px-3 sm:h-7 sm:px-2"
           >
-            Zrušiť prioritu dňa
+            <span className="sm:hidden">Zrušiť</span>
+            <span className="hidden sm:inline">Zrušiť prioritu dňa</span>
           </Button>
         </div>
 
@@ -101,7 +109,8 @@ export function DayPriorityCard({
           postponeBlockAt={postponeBlockAt}
         />
 
-        <p className="mt-1.5 px-2 text-xs leading-relaxed text-fg-muted">
+        {/* Na telefóne je 12 px na dve-tri vety primalo — od `sm:` sa vracia. */}
+        <p className="mt-1.5 px-2 text-[13px] leading-relaxed text-fg-muted sm:text-xs">
           Toto je tá jedna vec, ktorú máš dnes spraviť ako prvú — aj keby už nič
           iné z dnešného dňa nevyšlo.
         </p>
@@ -118,7 +127,7 @@ export function DayPriorityCard({
       className="rounded border border-dashed border-frog bg-surface p-3"
     >
       {heading}
-      <p className="mt-1 text-xs leading-relaxed text-fg-muted">
+      <p className="mt-1 text-[13px] leading-relaxed text-fg-muted sm:text-xs">
         Vyber jednu úlohu, ktorú dnes spravíš ako prvú — aj keby už nič iné
         nevyšlo, deň bude dobrý. Najlepšie tú, ktorú najviac odkladáš.
       </p>
@@ -137,7 +146,9 @@ export function DayPriorityCard({
                 onClick={() => choose(task.id, true)}
                 aria-label={`Vybrať úlohu „${task.title}" ako prioritu dňa`}
                 className={cn(
-                  "flex w-full cursor-pointer items-center gap-2 rounded px-2 py-1.5 text-left text-sm text-fg",
+                  // `min-h-11` = dotykový cieľ 44 px na telefóne; od `sm:`
+                  // rozhoduje pôvodné `py-1.5`, aby zoznam ostal hustý.
+                  "flex min-h-11 w-full cursor-pointer items-center gap-2 rounded px-2 py-1.5 text-left text-sm text-fg sm:min-h-0",
                   "transition-colors duration-100 ease-out hover:bg-frog-soft",
                   "disabled:pointer-events-none disabled:opacity-45",
                 )}

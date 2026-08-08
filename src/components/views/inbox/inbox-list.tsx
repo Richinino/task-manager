@@ -282,7 +282,7 @@ export function InboxList({
               "bg-surface-2 px-3 py-2 text-[13px] text-fg-muted",
             )}
           >
-            <span>{flash.message}</span>
+            <span className="min-w-0">{flash.message}</span>
             {undoTaskId ? (
               <>
                 <Button
@@ -295,11 +295,15 @@ export function InboxList({
                       ? `Vrátiť späť zahodenú úlohu ${flash.undoTitle}`
                       : "Vrátiť späť zahodenú úlohu"
                   }
+                  // Vrátenie zahodenia je na telefóne jediná záchrana —
+                  // Ctrl+Z tam nikto nestlačí. Preto plných 44 px.
+                  className="h-11 shrink-0 px-3 sm:h-7 sm:px-2"
                 >
                   <Undo2 size={14} aria-hidden="true" />
                   Vrátiť späť
                 </Button>
-                <span className="inline-flex items-center gap-1 text-fg-subtle">
+                {/* Klávesová alternatíva má zmysel len tam, kde je klávesnica. */}
+                <span className="hidden items-center gap-1 text-fg-subtle sm:inline-flex">
                   alebo
                   <Kbd>Ctrl</Kbd>
                   <Kbd>Z</Kbd>
@@ -319,7 +323,7 @@ export function InboxList({
             <Link
               href="/dnes"
               className={cn(
-                "inline-flex h-9 items-center justify-center rounded border border-border bg-surface px-3",
+                "inline-flex h-11 items-center justify-center rounded border border-border bg-surface px-4 sm:h-9 sm:px-3",
                 "text-sm font-medium text-fg transition-colors duration-100 ease-out",
                 "hover:border-border-strong hover:bg-surface-2",
               )}
@@ -362,10 +366,16 @@ export function InboxList({
   );
 }
 
-/** Tichá pripomienka skratiek — nemá kradnúť pozornosť zoznamu. */
+/**
+ * Tichá pripomienka skratiek — nemá kradnúť pozornosť zoznamu.
+ *
+ * Na telefóne klávesnica nie je, takže legenda je tam len šum pod zoznamom —
+ * pod `sm:` sa preto vôbec nezobrazuje. Skratky samotné ostávajú funkčné
+ * (napr. pripojená klávesnica na tablete), len sa nepripomínajú.
+ */
 function ShortcutLegend() {
   return (
-    <p className="flex flex-wrap items-center gap-x-3 gap-y-1.5 px-1 pt-3 text-[11px] text-fg-subtle">
+    <p className="hidden flex-wrap items-center gap-x-3 gap-y-1.5 px-1 pt-3 text-[11px] text-fg-subtle sm:flex">
       <span className="inline-flex items-center gap-1">
         <Kbd>j</Kbd>
         <Kbd>k</Kbd>

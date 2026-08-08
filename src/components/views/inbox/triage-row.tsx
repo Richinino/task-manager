@@ -45,6 +45,12 @@ export type TriageAction = "today" | "tomorrow" | "week" | "someday" | "done" | 
 export interface TriageActionMeta {
   /** Popis na tlačidle. */
   label: string;
+  /**
+   * Skrátený popis pre telefón. Šesť tlačidiel sa tam skladá do mriežky 3×2,
+   * kde je na stĺpec ~100 px — „Tento týždeň" by ju roztiahlo a riadok by
+   * pretiekol von z obrazovky. Plné znenie nesie `hint` v `aria-label`.
+   */
+  shortLabel: string;
   /** Klávesa presne tak, ako ju vracia `KeyboardEvent.key`. */
   shortcut: string;
   /** Celá veta do tooltipu a pre čítačky. */
@@ -64,6 +70,7 @@ export interface TriageActionMeta {
 export const TRIAGE_ACTIONS: Record<TriageAction, TriageActionMeta> = {
   today: {
     label: "Dnes",
+    shortLabel: "Dnes",
     shortcut: "1",
     hint: "Naplánovať na dnes",
     Icon: Sun,
@@ -71,6 +78,7 @@ export const TRIAGE_ACTIONS: Record<TriageAction, TriageActionMeta> = {
   },
   tomorrow: {
     label: "Zajtra",
+    shortLabel: "Zajtra",
     shortcut: "2",
     hint: "Naplánovať na zajtra",
     Icon: Sunrise,
@@ -78,6 +86,7 @@ export const TRIAGE_ACTIONS: Record<TriageAction, TriageActionMeta> = {
   },
   week: {
     label: "Tento týždeň",
+    shortLabel: "Týždeň",
     shortcut: "3",
     hint: "Naplánovať na najbližší deň v tomto týždni",
     Icon: CalendarRange,
@@ -85,6 +94,7 @@ export const TRIAGE_ACTIONS: Record<TriageAction, TriageActionMeta> = {
   },
   someday: {
     label: "Niekedy",
+    shortLabel: "Niekedy",
     shortcut: "4",
     hint: "Odložiť na niekedy — ostane v inboxe, kým nedostane deň",
     Icon: Archive,
@@ -92,6 +102,7 @@ export const TRIAGE_ACTIONS: Record<TriageAction, TriageActionMeta> = {
   },
   done: {
     label: "Hotovo",
+    shortLabel: "Hotovo",
     shortcut: "x",
     hint: "Označiť ako hotovú",
     Icon: Check,
@@ -99,6 +110,7 @@ export const TRIAGE_ACTIONS: Record<TriageAction, TriageActionMeta> = {
   },
   drop: {
     label: "Zahodiť",
+    shortLabel: "Zahodiť",
     shortcut: "Backspace",
     hint: "Zahodiť úlohu",
     Icon: Trash2,
@@ -307,70 +319,92 @@ export function TriageRow({
         />
       </div>
 
-      <div className="flex flex-wrap items-center gap-1.5 border-t border-border px-2 py-1.5">
-        {TRIAGE_ORDER.map((action) => {
-          const meta = TRIAGE_ACTIONS[action];
-          const Icon = meta.Icon;
-          const destructive = action === "drop";
+      {/*
+        Šesť rozhodnutí + dva výbery sa na 375 px do jedného riadku nezmestia.
+        Pod `sm:` sa preto rozhodnutia skladajú do mriežky 3×2 a výbery do
+        dvojice pod nimi — každé tlačidlo má plnú šírku stĺpca a 44 px výšky,
+        takže sú všetky dosiahnuteľné palcom. Poradie v DOM sa nemení, takže
+        tabulátor aj klávesové skratky fungujú rovnako ako na počítači.
 
-          return (
-            <Button
-              key={action}
-              type="button"
-              size="sm"
-              variant="ghost"
-              onClick={() => onTriage(action)}
-              aria-label={`${meta.hint}: ${task.title}`}
-              aria-keyshortcuts={meta.shortcut}
-              title={`${meta.hint} (${meta.shortcut})`}
-              className={cn(
-                destructive && "text-danger hover:bg-danger/10 hover:text-danger",
-                action === "done" && "text-success hover:bg-success/10 hover:text-success",
-              )}
+        Od `sm:` majú obe mriežky `display: contents` — zmiznú z rozloženia
+        a tlačidlá aj výbery sa stanú priamymi položkami vonkajšieho riadku.
+        Zalamovanie na tablete a počítači je tak presne také, aké bolo pred
+        touto úpravou.
+      */}
+      <div className="flex flex-col gap-1.5 border-t border-border px-2 py-2 sm:flex-row sm:flex-wrap sm:items-center sm:py-1.5">
+        <div className="grid grid-cols-3 gap-1.5 sm:contents">
+          {TRIAGE_ORDER.map((action) => {
+            const meta = TRIAGE_ACTIONS[action];
+            const Icon = meta.Icon;
+            const destructive = action === "drop";
+
+            return (
+              <Button
+                key={action}
+                type="button"
+                size="sm"
+                variant="ghost"
+                onClick={() => onTriage(action)}
+                aria-label={`${meta.hint}: ${task.title}`}
+                aria-keyshortcuts={meta.shortcut}
+                title={`${meta.hint} (${meta.shortcut})`}
+                className={cn(
+                  "h-11 w-full min-w-0 px-1 sm:h-7 sm:w-auto sm:px-2",
+                  destructive && "text-danger hover:bg-danger/10 hover:text-danger",
+                  action === "done" &&
+                    "text-success hover:bg-success/10 hover:text-success",
+                )}
+              >
+                <Icon size={14} aria-hidden="true" />
+                <span className="truncate sm:hidden">{meta.shortLabel}</span>
+                <span className="hidden sm:inline">{meta.label}</span>
+              </Button>
+            );
+          })}
+        </div>
+
+        <span
+          aria-hidden="true"
+          className="mx-0.5 hidden h-4 w-px shrink-0 bg-border sm:block"
+        />
+
+        <div className="grid grid-cols-2 gap-1.5 sm:contents">
+          <Select value={projectValue} onValueChange={assignProject}>
+            <SelectTrigger
+              aria-label={`Projekt úlohy ${task.title}`}
+              className="h-11 w-full min-w-0 px-2 text-[13px] sm:h-7 sm:w-auto sm:min-w-32 sm:max-w-44"
             >
-              <Icon size={14} aria-hidden="true" />
-              {meta.label}
-            </Button>
-          );
-        })}
+              <SelectValue placeholder="Projekt" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value={NONE}>Bez projektu</SelectItem>
+              {projects.length > 0 ? <SelectSeparator /> : null}
+              {projects.map((project) => (
+                <SelectItem key={project.id} value={project.id}>
+                  {project.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
 
-        <span aria-hidden="true" className="mx-0.5 hidden h-4 w-px bg-border sm:block" />
-
-        <Select value={projectValue} onValueChange={assignProject}>
-          <SelectTrigger
-            aria-label={`Projekt úlohy ${task.title}`}
-            className="h-7 w-auto min-w-32 max-w-44 px-2 text-[13px]"
-          >
-            <SelectValue placeholder="Projekt" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value={NONE}>Bez projektu</SelectItem>
-            {projects.length > 0 ? <SelectSeparator /> : null}
-            {projects.map((project) => (
-              <SelectItem key={project.id} value={project.id}>
-                {project.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-
-        <Select value={areaValue} onValueChange={assignArea}>
-          <SelectTrigger
-            aria-label={`Oblasť úlohy ${task.title}`}
-            className="h-7 w-auto min-w-32 max-w-44 px-2 text-[13px]"
-          >
-            <SelectValue placeholder="Oblasť" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value={NONE}>Bez oblasti</SelectItem>
-            {areas.length > 0 ? <SelectSeparator /> : null}
-            {areas.map((area) => (
-              <SelectItem key={area.id} value={area.id}>
-                {area.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+          <Select value={areaValue} onValueChange={assignArea}>
+            <SelectTrigger
+              aria-label={`Oblasť úlohy ${task.title}`}
+              className="h-11 w-full min-w-0 px-2 text-[13px] sm:h-7 sm:w-auto sm:min-w-32 sm:max-w-44"
+            >
+              <SelectValue placeholder="Oblasť" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value={NONE}>Bez oblasti</SelectItem>
+              {areas.length > 0 ? <SelectSeparator /> : null}
+              {areas.map((area) => (
+                <SelectItem key={area.id} value={area.id}>
+                  {area.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
       </div>
     </li>
   );

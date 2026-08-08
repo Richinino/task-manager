@@ -62,6 +62,12 @@ export interface QuickCaptureProps {
 
 /** Presne to, čo parser vie. Krátka pripomienka, nie dokumentácia. */
 const SYNTAX_HINT = "v piatok · do 31.3. · !1 · @pocitac · #tag · +projekt · 30m";
+/**
+ * To isté pre úzku obrazovku. Celá pripomienka sa na 375 px zalomí do dvoch
+ * riadkov a odtlačí tlačidlo „Uložiť" nižšie — práve tam, kam si na telefóne
+ * sadne klávesnica. Zostávajú štyri najčastejšie tvary.
+ */
+const SYNTAX_HINT_SHORT = "v piatok · do 31.3. · !1 · 30m";
 
 export function QuickCapture({
   open,
@@ -169,7 +175,14 @@ export function QuickCapture({
       <DialogContent
         showClose={false}
         aria-label="Rýchle zachytenie"
-        className="mt-[12vh] max-w-2xl overflow-hidden p-0"
+        /*
+          Pod `sm` sedí okno tesne pri hornom okraji, nie v strede obrazovky.
+          Vysunutá klávesnica na Androide neposunie rozloženie stránky, len
+          prekryje jej spodok — a 12 vh navrchu je presne toľko, koľko chýba
+          na to, aby tlačidlo „Uložiť" ostalo nad ňou. Od `sm` je okno tam,
+          kde bolo.
+        */
+        className="mt-3 max-w-2xl overflow-hidden p-0 sm:mt-[12vh]"
       >
         <DialogTitle className="sr-only">Rýchle zachytenie úlohy</DialogTitle>
         <DialogDescription className="sr-only">
@@ -245,7 +258,8 @@ export function QuickCapture({
           <div className="border-t border-border bg-surface-2 px-3 py-2">
             <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1.5">
               <p className="min-w-0 font-mono text-[11px] text-fg-subtle">
-                {SYNTAX_HINT}
+                <span className="sm:hidden">{SYNTAX_HINT_SHORT}</span>
+                <span className="hidden sm:inline">{SYNTAX_HINT}</span>
               </p>
 
               <div className="flex shrink-0 items-center gap-2">
