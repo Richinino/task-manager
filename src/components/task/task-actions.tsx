@@ -228,6 +228,10 @@ export function RowError({ message }: { message: string }) {
       className={cn(
         "pointer-events-none absolute right-0 top-full z-20 mt-1 rounded border border-danger",
         "bg-surface px-1.5 py-0.5 text-[11px] font-medium text-danger shadow-sm",
+        // Bez `w-max` by sa hláška zmestila len do šírky svojho obalu — a tým
+        // je pri menu 28 px široké tlačidlo, takže by spadla na jedno písmeno
+        // v riadku. `max-w` ju zároveň udrží v okne telefónu.
+        "w-max max-w-[calc(100vw-2rem)]",
       )}
     >
       {message}
@@ -490,7 +494,7 @@ export function TaskActions({
             onMouseDown={(event) => event.stopPropagation()}
             onClick={(event) => event.stopPropagation()}
             className={cn(
-              "flex shrink-0 items-center justify-center rounded border border-transparent",
+              "relative flex shrink-0 items-center justify-center rounded border border-transparent",
               "transition-colors duration-100 ease-out",
               "hover:bg-surface-2 hover:text-fg",
               // V týždennom stĺpci má menu ostať v pozadí, ale nie zmiznúť —
@@ -498,6 +502,14 @@ export function TaskActions({
               compact
                 ? "size-6 text-fg-subtle"
                 : "size-7 text-fg-muted",
+              // Na telefóne rozšíri dotykovú plochu plného riadku na 44×44 px
+              // (28 + 2×8) neviditeľný pseudoprvok — vizuálne tlačidlo ostáva
+              // rovnako malé a riadok sa nerozšíri ani o pixel. Presah sa
+              // presne zmestí do medzery `gap-2`, takže susedný odznak ani
+              // názov úlohy neprekryje. Od `sm:` sa ruší: myš mieri presne
+              // a hover na prázdnom mieste by mýlil.
+              !compact &&
+                "before:absolute before:-inset-2 before:content-[''] sm:before:hidden",
               open && "border-border bg-surface-2 text-fg",
             )}
           >

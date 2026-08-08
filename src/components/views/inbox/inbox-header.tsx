@@ -26,13 +26,15 @@ export function InboxHeader({ count }: InboxHeaderProps) {
 
   return (
     <header className="pb-4">
-      <div className="flex items-center gap-2">
+      <div className="flex min-w-0 items-center gap-2">
         <Inbox aria-hidden="true" className="size-[18px] shrink-0 text-fg-subtle" />
-        <h1 className="text-lg font-semibold tracking-tight text-fg">Inbox</h1>
+        <h1 className="min-w-0 truncate text-lg font-semibold tracking-tight text-fg">
+          Inbox
+        </h1>
         {empty ? null : (
           <span
             aria-hidden="true"
-            className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-surface-2 px-1.5 text-[11px] font-semibold tabular-nums text-fg-muted"
+            className="inline-flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full bg-surface-2 px-1.5 text-[11px] font-semibold tabular-nums text-fg-muted"
           >
             {count}
           </span>

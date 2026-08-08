@@ -215,9 +215,22 @@ export function TaskItem({
   // Vlastná konštanta, aby sa zúženie typu udržalo aj vnútri callbacku.
   const select = onSelect;
 
+  /*
+    `min-w-0` je tu to podstatné: pružná položka má predvolene
+    `min-width: auto`, takže by sa odmietla zmenšiť pod šírku svojho textu
+    a vytlačila by menu akcií mimo obrazovku. S ním sa názov zmršťuje ako
+    prvý a skracuje sa — plný text ostáva v detaile úlohy.
+
+    `break-words` v kompaktnej verzii rieši dlhý reťazec bez medzier: bez neho
+    nemá kde zalomiť, `line-clamp-2` ho síce oreže, ale až v druhom riadku
+    uprostred znaku.
+  */
   const titleClass = cn(
-    "min-w-0 flex-1 text-left",
-    compact ? "line-clamp-2 text-xs leading-snug" : "truncate",
+    // `basis-24` nie je kozmetika: s `flex-1` (základ 0) by pri nedostatku
+    // miesta zmizol názov úplne a odznaky by si šírku udržali. So základom
+    // 96 px sa o tesno delia obaja a názov ostáva čitateľný.
+    "min-w-0 shrink grow basis-24 text-left",
+    compact ? "line-clamp-2 break-words text-xs leading-snug" : "truncate",
     DONE_TEXT,
   );
 
@@ -320,6 +333,10 @@ export function TaskItem({
       rowLabel={summary}
       className={cn(
         "flex w-full items-center gap-2 rounded border border-transparent px-2 py-1.5 text-sm",
+        // Na telefóne má riadok 44 px na výšku, aby sa doň zmestili dotykové
+        // plochy políčka a menu bez toho, aby zasahovali do susedných riadkov.
+        // Od `sm:` sa hustota vracia na pôvodnú.
+        "min-h-11 sm:min-h-0",
         "transition-colors",
         // Riadok priority dňa a vybraný riadok si držia svoje pozadie,
         // spätnú väzbu dá okraj.
@@ -335,42 +352,72 @@ export function TaskItem({
 
       {titleNode}
 
-      {/* Odznaky sú už v zhrnutí riadku — pre čítačky ich neopakujeme. */}
+      {/*
+        Odznaky sú už v zhrnutí riadku — pre čítačky ich neopakujeme.
+
+        Na telefóne sa ich do riadku zmestí len hŕstka, tak sa časť skrýva.
+        Čo ostáva na každej šírke: termín (najmä zmeškaný — je červený a je to
+        jediná informácia, kvôli ktorej treba konať dnes) a počítadlo odkladov.
+        Priorita dňa a priorita samotná sú v ľavej skupine, tie sa neskrývajú
+        nikdy. Farebná bodka oblasti ostáva tiež — stojí 8 px.
+
+        Čo mizne do `sm:` (640 px): podúlohy, odhad a energia — to sú čísla
+        na plánovanie, nie na rozhodnutie „čo teraz".
+        Čo mizne do `md:` (768 px): kontext, názov oblasti a projekt — texty
+        premenlivej dĺžky, ktoré berú najviac miesta názvu úlohy.
+        Všetko skryté je jedno ťuknutie ďaleko v detaile úlohy.
+
+        `min-w-0` na obale a `shrink` na textových odznakoch je poistka pre
+        tablet: keď by aj tam bolo tesno, odznaky sa skrátia tromi bodkami
+        namiesto toho, aby riadok pretiekol.
+      */}
       <span
         aria-hidden="true"
-        className="flex shrink-0 items-center gap-2 text-xs text-fg-muted"
+        className="flex min-w-0 items-center gap-2 text-xs text-fg-muted"
       >
         {task.subtaskCount > 0 ? (
           <span
             title={`podúlohy ${task.doneSubtaskCount} z ${task.subtaskCount}`}
-            className={cn("inline-flex shrink-0 items-center gap-1 whitespace-nowrap", DONE_CALM)}
+            className={cn(
+              "hidden shrink-0 items-center gap-1 whitespace-nowrap sm:inline-flex",
+              DONE_CALM,
+            )}
           >
             <ListChecks aria-hidden="true" size={13} className="shrink-0" />
             {task.doneSubtaskCount}/{task.subtaskCount}
           </span>
         ) : null}
 
-        {task.estimateMin !== null ? <EstimateChip minutes={task.estimateMin} /> : null}
+        {task.estimateMin !== null ? (
+          <EstimateChip minutes={task.estimateMin} className="hidden sm:inline-flex" />
+        ) : null}
 
-        {task.energy !== null ? <EnergyBadge energy={task.energy} /> : null}
+        {task.energy !== null ? (
+          <EnergyBadge energy={task.energy} className="hidden sm:inline-flex" />
+        ) : null}
 
         {task.context ? (
           <span
             title={`kontext ${normalizeContext(task.context)}`}
-            className="max-w-28 shrink-0 truncate"
+            className="hidden max-w-28 min-w-0 shrink truncate md:block"
           >
             {normalizeContext(task.context)}
           </span>
         ) : null}
 
         {task.area ? (
-          <AreaDot color={task.area.color} name={task.area.name} className="max-w-28 shrink-0" />
+          <AreaDot
+            color={task.area.color}
+            name={task.area.name}
+            className="max-w-28 min-w-0 shrink"
+            nameClassName="hidden md:block"
+          />
         ) : null}
 
         {task.project ? (
           <span
             title={`projekt ${task.project.name}`}
-            className="inline-flex max-w-32 shrink-0 items-center gap-1"
+            className="hidden max-w-32 min-w-0 shrink items-center gap-1 md:inline-flex"
           >
             <Folder aria-hidden="true" size={13} className="shrink-0" />
             <span className="truncate">{task.project.name}</span>
@@ -387,6 +434,7 @@ export function TaskItem({
           count={task.postponeCount}
           warnAt={postponeWarnAt}
           dangerAt={postponeBlockAt}
+          shortOnPhone
         />
       </span>
 

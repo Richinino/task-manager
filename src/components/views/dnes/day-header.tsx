@@ -29,13 +29,18 @@ export function DayHeader({ date, doneCount, totalCount, budget }: DayHeaderProp
 
   return (
     <header className="flex flex-col gap-3">
+      {/*
+        Najdlhší slovenský dátum („Štvrtok 30. septembra") sa na 375 px vedľa
+        počtov nezmestí — `flex-wrap` ho preto zalomí pod nadpis a `min-w-0`
+        dovolí nadpisu zmenšiť sa, aby nikoho nevytláčal von.
+      */}
       <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
-        <h1 className="text-xl font-semibold tracking-tight text-fg">
+        <h1 className="min-w-0 text-lg font-semibold tracking-tight text-fg sm:text-xl">
           {capitalize(formatLongSk(date))}
         </h1>
         <p
           className={cn(
-            "text-sm tabular-nums",
+            "shrink-0 text-[13px] tabular-nums sm:text-sm",
             allDone ? "font-medium text-success" : "text-fg-muted",
           )}
         >

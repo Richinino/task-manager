@@ -101,11 +101,17 @@ export function TaskCheckbox({
           failed && "border-danger",
           size === "sm" ? "mt-px size-4" : "size-[18px]",
           // Vizuálne koliesko ostáva 16, resp. 18 px — hustota riadku sa nemení.
-          // Klikaciu plochu ale rozšíri neviditeľný pseudoprvok na 24×24,
-          // resp. 26×26 px, aby sa palcom dala trafiť (WCAG 2.2 SC 2.5.8).
-          // Presah ide do vlastného paddingu riadku, takže rúčku na ťahanie
-          // vedľa neprekryje.
-          "before:absolute before:-inset-1 before:content-['']",
+          // Klikaciu plochu rozšíri neviditeľný pseudoprvok, ktorý nič nezaberá
+          // v rozložení, takže riadok sa od neho nerozšíri.
+          "before:absolute before:content-['']",
+          // md (Dnes, Inbox): na telefóne 18 + 2×13 = 44×44 px pre palec,
+          // od `sm:` späť na hustejších 26×26 px pre myš.
+          // sm (týždenný stĺpec, mesačný panel): ostáva 24×24 px — to je
+          // minimum podľa WCAG 2.2 SC 2.5.8 a širší presah by prekryl rúčku
+          // na ťahanie, ktorá je hneď naľavo od riadku.
+          size === "sm"
+            ? "before:-inset-1"
+            : "before:-inset-[13px] sm:before:-inset-1",
         )}
       >
         <Check aria-hidden="true" size={size === "sm" ? 10 : 12} strokeWidth={3} />

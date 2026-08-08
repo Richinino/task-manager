@@ -157,13 +157,16 @@ export function ThemeToggle({ className }: { className?: string }) {
             title={label}
             onClick={() => setTheme(value)}
             className={cn(
-              "inline-flex size-6 items-center justify-center rounded transition-colors duration-100",
+              // Na telefóne je prepínač v hornej lište jediné miesto, kde sa
+              // téma dá zmeniť — preto plný dotykový cieľ 44 px. Od `md:`
+              // (kde ho nesie bočný panel) sa vracia k pôvodnej hustote.
+              "inline-flex size-11 items-center justify-center rounded transition-colors duration-100 md:size-6",
               active
                 ? "bg-surface text-fg shadow-sm"
                 : "text-fg-subtle hover:text-fg",
             )}
           >
-            <Icon className="size-3.5" />
+            <Icon className="size-[18px] md:size-3.5" />
           </button>
         );
       })}

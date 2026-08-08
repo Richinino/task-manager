@@ -8,7 +8,7 @@ import {
   useTransition,
   type ReactNode,
 } from "react";
-import { Check, LoaderCircle, Star, Trash2, Undo2, X } from "lucide-react";
+import { ArrowLeft, Check, LoaderCircle, Star, Trash2, Undo2, X } from "lucide-react";
 
 import type { Area, Energy, Project, TaskStatus } from "@/db/schema";
 import { formatRelativeSk, parseIsoDate } from "@/lib/dates";
@@ -17,6 +17,7 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
   Dialog,
+  DialogClose,
   DialogContent,
   DialogDescription,
   DialogTitle,
@@ -123,6 +124,39 @@ function toDraft(task: TaskWithRelations): Draft {
     postponeCount: task.postponeCount,
   };
 }
+
+/* ── rozmery polí ──────────────────────────────────────────────────────────
+   Dátum, hodina a krížik sa vedľa seba do 375 px nezmestia: samotná trojica
+   potrebuje okolo 350 px a na obsah panela ostáva 343. Pod `md` sa preto
+   dátum roztiahne na celý riadok a hodina s krížikom padnú pod neho; od `md`
+   (bočný panel má 448 px) idú všetky tri vedľa seba ako doteraz.
+
+   Výška 44 px a písmo 16 px platia len pod `md`: menšie písmo v poli si
+   mobilné prehliadače vysvetľujú ako „toto sa nedá prečítať" a pri fokuse
+   stránku priblížia — a späť sa už samy nevrátia.
+   ──────────────────────────────────────────────────────────────────────── */
+
+const dateRowClass = "flex flex-wrap items-center gap-2";
+
+const dateInputClass = cn(
+  "h-11 w-full basis-full text-base dark:[color-scheme:dark]",
+  "md:h-9 md:w-auto md:min-w-0 md:flex-1 md:basis-auto md:text-sm",
+);
+
+const timeInputClass = cn(
+  "h-11 w-32 shrink-0 text-base dark:[color-scheme:dark]",
+  "md:h-9 md:w-28 md:text-sm",
+);
+
+/** Ovládacie prvky panela: palec pod `md`, hustota od `md`. */
+const controlClass = "h-11 md:h-9";
+
+/**
+ * Položky rozbaleného výberu. Radix ich kreslí v portáli, takže sa k nim
+ * inak než cez potomka obsahu dostať nedá — 32 px vysoká položka je pod
+ * dotykovou hranicou a v štvorici výberov by sa trafiť nedala.
+ */
+const selectContentClass = "[&_[role=option]]:h-11 md:[&_[role=option]]:h-8";
 
 /** Prázdne pole znamená „vymazať hodnotu", nie „ulož prázdny reťazec". */
 function orNull(value: string): string | null {
@@ -380,6 +414,14 @@ export function TaskDetail({
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent
+        /*
+          Spoločný krížik v rohu je 28 px a sedí v hornom rohu obrazovky —
+          na telefóne je to zároveň najmenší aj najhoršie dosiahnuteľný bod
+          celého panela. Zatváranie si preto kreslíme sami: vľavo hore veľké
+          tlačidlo so šípkou späť (tam ho na Androide ruka hľadá), od `md`
+          obvyklý krížik vpravo.
+        */
+        showClose={false}
         onOpenAutoFocus={(event) => {
           // Fokus patrí názvu — je to najčastejší dôvod, prečo sa panel otvára.
           event.preventDefault();
@@ -395,8 +437,19 @@ export function TaskDetail({
           "md:ml-auto md:mr-0 md:w-[28rem] md:border-l md:border-border",
         )}
       >
-        <div className="flex shrink-0 items-center gap-2 border-b border-border px-4 py-3 pr-12">
-          <DialogTitle>Detail úlohy</DialogTitle>
+        <div className="flex shrink-0 items-center gap-2 border-b border-border px-2 py-2 md:px-4 md:py-3">
+          <DialogClose
+            aria-label="Zavrieť detail úlohy"
+            className={cn(
+              "inline-flex size-11 shrink-0 items-center justify-center rounded",
+              "text-fg-muted transition-colors duration-100 hover:bg-surface-2 hover:text-fg",
+              "md:hidden",
+            )}
+          >
+            <ArrowLeft aria-hidden="true" className="size-5" />
+          </DialogClose>
+
+          <DialogTitle className="min-w-0 truncate">Detail úlohy</DialogTitle>
           {isPending ? (
             <LoaderCircle
               aria-hidden="true"
@@ -411,6 +464,17 @@ export function TaskDetail({
               size="sm"
             />
           </span>
+
+          <DialogClose
+            aria-label="Zavrieť"
+            className={cn(
+              "hidden size-8 shrink-0 items-center justify-center rounded",
+              "text-fg-subtle transition-colors duration-100 hover:bg-surface-2 hover:text-fg",
+              "md:inline-flex",
+            )}
+          >
+            <X aria-hidden="true" className="size-4" />
+          </DialogClose>
         </div>
 
         <DialogDescription className="sr-only">
@@ -484,7 +548,7 @@ export function TaskDetail({
               }}
               className={cn(
                 "w-full resize-y rounded border border-border bg-surface px-2.5 py-2",
-                "text-sm leading-relaxed text-fg placeholder:text-fg-subtle",
+                "text-base leading-relaxed text-fg placeholder:text-fg-subtle md:text-sm",
                 "transition-colors duration-100 ease-out hover:border-border-strong",
               )}
             />
@@ -507,7 +571,7 @@ export function TaskDetail({
                   : "Bez dňa ostáva úloha v inboxe."
               }
             >
-              <div className="flex items-center gap-2">
+              <div className={dateRowClass}>
                 <Input
                   id={fieldId("planned-date")}
                   type="date"
@@ -525,28 +589,30 @@ export function TaskDetail({
                     const value = event.target.value;
                     commitPlannedDate(isCompleteDate(value) ? value : null);
                   }}
-                  className="min-w-0 flex-1 dark:[color-scheme:dark]"
+                  className={dateInputClass}
                 />
-                <Input
-                  type="time"
-                  value={draft.plannedTime}
-                  aria-label="Čas, kedy to ideš robiť"
-                  onChange={(event) => {
-                    const value = event.target.value;
-                    setDraft((previous) => ({ ...previous, plannedTime: value }));
-                    commitPlannedTime(value);
-                  }}
-                  onBlur={(event) => commitPlannedTime(event.target.value)}
-                  className="w-28 shrink-0 dark:[color-scheme:dark]"
-                />
-                <ClearButton
-                  label="Zrušiť naplánovaný deň"
-                  disabled={draft.plannedDate === null && draft.plannedTime === ""}
-                  onClick={() => {
-                    commitPlannedTime("");
-                    commitPlannedDate(null);
-                  }}
-                />
+                <div className="flex shrink-0 items-center gap-2">
+                  <Input
+                    type="time"
+                    value={draft.plannedTime}
+                    aria-label="Čas, kedy to ideš robiť"
+                    onChange={(event) => {
+                      const value = event.target.value;
+                      setDraft((previous) => ({ ...previous, plannedTime: value }));
+                      commitPlannedTime(value);
+                    }}
+                    onBlur={(event) => commitPlannedTime(event.target.value)}
+                    className={timeInputClass}
+                  />
+                  <ClearButton
+                    label="Zrušiť naplánovaný deň"
+                    disabled={draft.plannedDate === null && draft.plannedTime === ""}
+                    onClick={() => {
+                      commitPlannedTime("");
+                      commitPlannedDate(null);
+                    }}
+                  />
+                </div>
               </div>
             </Field>
 
@@ -559,7 +625,7 @@ export function TaskDetail({
                   : "Bez termínu — nikto to odo mňa k dátumu nečaká."
               }
             >
-              <div className="flex items-center gap-2">
+              <div className={dateRowClass}>
                 <Input
                   id={fieldId("due-date")}
                   type="date"
@@ -577,28 +643,30 @@ export function TaskDetail({
                     const value = event.target.value;
                     commitDueDate(isCompleteDate(value) ? value : null);
                   }}
-                  className="min-w-0 flex-1 dark:[color-scheme:dark]"
+                  className={dateInputClass}
                 />
-                <Input
-                  type="time"
-                  value={draft.dueTime}
-                  aria-label="Hodina termínu"
-                  onChange={(event) => {
-                    const value = event.target.value;
-                    setDraft((previous) => ({ ...previous, dueTime: value }));
-                    commitDueTime(value);
-                  }}
-                  onBlur={(event) => commitDueTime(event.target.value)}
-                  className="w-28 shrink-0 dark:[color-scheme:dark]"
-                />
-                <ClearButton
-                  label="Zrušiť termín"
-                  disabled={draft.dueDate === null && draft.dueTime === ""}
-                  onClick={() => {
-                    commitDueTime("");
-                    commitDueDate(null);
-                  }}
-                />
+                <div className="flex shrink-0 items-center gap-2">
+                  <Input
+                    type="time"
+                    value={draft.dueTime}
+                    aria-label="Hodina termínu"
+                    onChange={(event) => {
+                      const value = event.target.value;
+                      setDraft((previous) => ({ ...previous, dueTime: value }));
+                      commitDueTime(value);
+                    }}
+                    onBlur={(event) => commitDueTime(event.target.value)}
+                    className={timeInputClass}
+                  />
+                  <ClearButton
+                    label="Zrušiť termín"
+                    disabled={draft.dueDate === null && draft.dueTime === ""}
+                    onClick={() => {
+                      commitDueTime("");
+                      commitDueDate(null);
+                    }}
+                  />
+                </div>
               </div>
             </Field>
 
@@ -657,7 +725,8 @@ export function TaskDetail({
                         )
                       }
                       className={cn(
-                        "inline-flex h-9 flex-1 items-center justify-center gap-1.5 rounded border",
+                        "inline-flex flex-1 items-center justify-center gap-1.5 rounded border",
+                        controlClass,
                         "text-[13px] font-medium transition-colors duration-100 ease-out",
                         active
                           ? "border-accent bg-accent-soft text-fg"
@@ -685,10 +754,10 @@ export function TaskDetail({
                     );
                   }}
                 >
-                  <SelectTrigger aria-label="Odhad trvania">
+                  <SelectTrigger aria-label="Odhad trvania" className={controlClass}>
                     <SelectValue placeholder="Bez odhadu" />
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent className={selectContentClass}>
                     <SelectItem value={NONE}>Bez odhadu</SelectItem>
                     <SelectSeparator />
                     {estimates.map((minutes) => (
@@ -714,10 +783,13 @@ export function TaskDetail({
                     );
                   }}
                 >
-                  <SelectTrigger aria-label="Energetická náročnosť">
+                  <SelectTrigger
+                    aria-label="Energetická náročnosť"
+                    className={controlClass}
+                  >
                     <SelectValue placeholder="Neurčená" />
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent className={selectContentClass}>
                     <SelectItem value={NONE}>Neurčená</SelectItem>
                     <SelectSeparator />
                     <SelectItem value="low">{ENERGY_LABELS.low}</SelectItem>
@@ -750,6 +822,7 @@ export function TaskDetail({
                   event.preventDefault();
                   commitContext();
                 }}
+                className="h-11 text-base md:h-9 md:text-sm"
               />
             </Field>
           </section>
@@ -770,10 +843,10 @@ export function TaskDetail({
                   );
                 }}
               >
-                <SelectTrigger aria-label="Projekt úlohy">
+                <SelectTrigger aria-label="Projekt úlohy" className={controlClass}>
                   <SelectValue placeholder="Bez projektu" />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className={selectContentClass}>
                   <SelectItem value={NONE}>Bez projektu</SelectItem>
                   {projects.length > 0 ? <SelectSeparator /> : null}
                   {projects.map((project) => (
@@ -797,10 +870,10 @@ export function TaskDetail({
                   );
                 }}
               >
-                <SelectTrigger aria-label="Oblasť úlohy">
+                <SelectTrigger aria-label="Oblasť úlohy" className={controlClass}>
                   <SelectValue placeholder="Bez oblasti" />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className={selectContentClass}>
                   <SelectItem value={NONE}>Bez oblasti</SelectItem>
                   {areas.length > 0 ? <SelectSeparator /> : null}
                   {areas.map((area) => (
@@ -813,7 +886,11 @@ export function TaskDetail({
             </Field>
           </section>
 
-          <p aria-hidden="true" className="flex flex-wrap items-center gap-x-3 gap-y-1.5 text-[11px] text-fg-subtle">
+          {/* Klávesová nápoveda dáva zmysel len tam, kde je klávesnica. */}
+          <p
+            aria-hidden="true"
+            className="hidden flex-wrap items-center gap-x-3 gap-y-1.5 text-[11px] text-fg-subtle sm:flex"
+          >
             <span className="inline-flex items-center gap-1">
               <Kbd>Ctrl</Kbd>
               <Kbd>↵</Kbd>
@@ -924,7 +1001,7 @@ function ClearButton({
       onClick={onClick}
       aria-label={label}
       title={label}
-      className="size-9 shrink-0"
+      className="size-11 shrink-0 md:size-9"
     >
       <X size={15} aria-hidden="true" />
     </Button>

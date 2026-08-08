@@ -281,7 +281,12 @@ export function AddTaskInline({
         aria-label={`Nová úloha na ${dayOnto}`}
         autoComplete="off"
         spellCheck={false}
-        className="h-9 text-[13px]"
+        /*
+          Pod `sm` je pole 44 px vysoké a písmo má 16 px: menšie písmo si
+          mobilné prehliadače vysvetľujú ako „toto sa nedá čítať" a pri fokuse
+          stránku priblížia — potom sa z nej už nedá dostať späť.
+        */
+        className="h-11 text-base sm:h-9 sm:text-[13px]"
       />
 
       <div className="flex items-center justify-between gap-1">
@@ -293,7 +298,7 @@ export function AddTaskInline({
             onClick={openFullCapture}
             aria-label={`Otvoriť rýchle zachytenie s dňom ${dayLabel}`}
             title="Priorita, odhad, kontext, projekt — celé rýchle zachytenie"
-            className="px-1.5"
+            className="h-11 px-3 sm:h-7 sm:px-1.5"
           >
             viac
           </Button>
@@ -313,6 +318,7 @@ export function AddTaskInline({
           disabled={trimmed === ""}
           aria-label={`Uložiť úlohu na ${dayOnto}`}
           title="Uložiť (Enter)"
+          className="size-11 sm:size-8"
         >
           {isPending ? (
             <LoaderCircle aria-hidden="true" className="size-4 animate-spin" />

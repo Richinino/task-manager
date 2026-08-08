@@ -1,10 +1,12 @@
 import type { Metadata } from "next";
 
+import type { DayEntry } from "@/components/views/mesiac/day-cell";
 import {
-  MAX_ENTRIES_PER_DAY,
-  type DayEntry,
-} from "@/components/views/mesiac/day-cell";
-import { MonthGrid, type MonthDay } from "@/components/views/mesiac/month-grid";
+  MONTH_DAY_PANEL_ID,
+  MonthDayPanel,
+  MonthGrid,
+  type MonthDay,
+} from "@/components/views/mesiac/month-grid";
 import {
   MonthHeader,
   formatMonthTitleSk,
@@ -55,6 +57,20 @@ function isSettled(task: TaskWithRelations): boolean {
 }
 
 /**
+ * Deň rozbalený pod mriežkou (`?den=`). Prijme sa len dátum, ktorý v zobrazenej
+ * mriežke naozaj je — nezmysel v adrese nesmie otvoriť prázdny panel ani zhodiť
+ * stránku. Kontrola cez `gridDays` je zároveň validáciou tvaru aj rozsahu.
+ */
+function parseSelectedDay(
+  value: SearchParamValue,
+  gridDays: readonly string[],
+): string | null {
+  const raw = firstValue(value)?.trim();
+  if (raw === undefined || !/^\d{4}-\d{2}-\d{2}$/.test(raw)) return null;
+  return gridDays.includes(raw) ? raw : null;
+}
+
+/**
  * Poradie v bunke: najprv termíny (tvrdý záväzok), potom plán, nakoniec
  * vybavené. V rámci skupiny sa drží poradie z dotazu (priorita, sort, vznik),
  * lebo `Array#sort` je stabilný.
@@ -62,6 +78,12 @@ function isSettled(task: TaskWithRelations): boolean {
 function entryRank(entry: DayEntry): number {
   if (entry.done) return 2;
   return entry.kind === "due" ? 0 : 1;
+}
+
+/** To isté poradie, ale pre celé úlohy v paneli rozbaleného dňa. */
+function dayTaskRank(task: TaskWithRelations, iso: string): number {
+  if (isSettled(task)) return 2;
+  return task.dueDate === iso ? 0 : 1;
 }
 
 export default async function MesiacPage({ searchParams }: MesiacPageProps) {
@@ -143,17 +165,46 @@ export default async function MesiacPage({ searchParams }: MesiacPageProps) {
     bucket.sort((a, b) => entryRank(a) - entryRank(b));
   }
 
+  /* ── Rozbalený deň ───────────────────────────────────────────────────────
+     Na telefóne sa do bunky nezmestí názov úlohy, takže ťuknutie na deň
+     vypíše jeho úlohy do panela POD mriežkou. Stav drží adresa, nie React:
+     `?rok=&mesiac=` ostáva, takže sa mesiac pod nohami nemení, deň sa dá
+     poslať odkazom a tlačidlo späť ho zavrie.                               */
+  const selectedIso = parseSelectedDay(params["den"], gridDays);
+  const monthQuery = { rok: year, mesiac: month };
+  const closedHref = { pathname: "/mesiac", query: monthQuery };
+
   const days: MonthDay[] = gridDays.map((iso) => {
     const bucket = entriesByDay.get(iso) ?? [];
+    const isSelected = iso === selectedIso;
+
     return {
       iso,
       inMonth: iso >= firstOfMonth && iso <= lastOfMonth,
       isToday: iso === todayIso,
-      entries: bucket.slice(0, MAX_ENTRIES_PER_DAY),
-      hiddenCount: Math.max(0, bucket.length - MAX_ENTRIES_PER_DAY),
-      href: { pathname: "/tyzden", query: { od: startOfWeek(iso, weekStartsOn) } },
+      isSelected,
+      // Bez orezania — `DayCell` potrebuje úplný počet pre signál na telefóne.
+      entries: bucket,
+      weekHref: { pathname: "/tyzden", query: { od: startOfWeek(iso, weekStartsOn) } },
+      // Ťuknutie na už rozbalený deň ho zavrie; kotva pošle stránku na panel.
+      dayHref: isSelected
+        ? closedHref
+        : {
+            pathname: "/mesiac",
+            query: { ...monthQuery, den: iso },
+            hash: MONTH_DAY_PANEL_ID,
+          },
     };
   });
+
+  const selectedTasks =
+    selectedIso === null
+      ? []
+      : tasks
+          .filter(
+            (task) => task.plannedDate === selectedIso || task.dueDate === selectedIso,
+          )
+          .sort((a, b) => dayTaskRank(a, selectedIso) - dayTaskRank(b, selectedIso));
 
   /* ── Bočný panel ─────────────────────────────────────────────────────────
      `flatMap` namiesto `filter` preto, aby sa `dueDate` zúžil na `string`
@@ -176,8 +227,23 @@ export default async function MesiacPage({ searchParams }: MesiacPageProps) {
       <MonthHeader year={year} month={month} isCurrent={isCurrent} />
 
       <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:gap-5">
-        <div className="min-w-0 flex-1">
+        <div className="flex min-w-0 flex-1 flex-col gap-3">
           <MonthGrid days={days} />
+
+          {selectedIso !== null ? (
+            <MonthDayPanel
+              iso={selectedIso}
+              tasks={selectedTasks}
+              todayIso={todayIso}
+              postponeWarnAt={user.settings.postponeWarnAt}
+              postponeBlockAt={user.settings.postponeBlockAt}
+              closeHref={closedHref}
+              weekHref={{
+                pathname: "/tyzden",
+                query: { od: startOfWeek(selectedIso, weekStartsOn) },
+              }}
+            />
+          ) : null}
         </div>
 
         <MonthSidebar

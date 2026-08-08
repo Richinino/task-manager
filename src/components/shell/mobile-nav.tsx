@@ -41,7 +41,9 @@ export function MobileNav({ counts }: { counts: NavCounts }) {
                 href={href}
                 aria-current={active ? "page" : undefined}
                 className={cn(
-                  "flex h-14 flex-col items-center justify-center gap-1 text-[11px]",
+                  // 3.5rem výšky = dotykový cieľ 56 px; šírka stĺpca je pri
+                  // štyroch položkách na 375 px ~94 px, takže aj tam sedí.
+                  "flex h-14 w-full flex-col items-center justify-center gap-1 px-1 text-[11px]",
                   "transition-colors duration-100 ease-out",
                   active ? "font-medium text-accent" : "text-fg-subtle active:text-fg",
                 )}
@@ -61,7 +63,7 @@ export function MobileNav({ counts }: { counts: NavCounts }) {
                     </span>
                   ) : null}
                 </span>
-                <span>{label}</span>
+                <span className="max-w-full truncate">{label}</span>
               </Link>
             </li>
           );

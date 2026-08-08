@@ -17,6 +17,12 @@ export interface PostponeBadgeProps {
   /** Od koľkých odkladov je odznak červený a tučný. */
   dangerAt?: number;
   size?: "sm" | "md";
+  /**
+   * Na telefóne (do 640 px) nechať z popisu len číslo — „3×" namiesto
+   * „3× odložené". V riadku úlohy je o miesto boj, v paneli s detailom nie,
+   * preto sa to zapína zvonku.
+   */
+  shortOnPhone?: boolean;
   className?: string;
 }
 
@@ -32,6 +38,7 @@ export function PostponeBadge({
   warnAt = POSTPONE_WARN_AT_DEFAULT,
   dangerAt = POSTPONE_DANGER_AT_DEFAULT,
   size = "md",
+  shortOnPhone = false,
   className,
 }: PostponeBadgeProps) {
   if (count < warnAt) return null;
@@ -50,7 +57,17 @@ export function PostponeBadge({
       )}
     >
       <RotateCcw aria-hidden="true" size={size === "sm" ? 11 : 13} className="shrink-0" />
-      {label}
+      {shortOnPhone ? (
+        <>
+          {/* Signál „už si to odkladal" musí ostať aj na najužšej obrazovke —
+              skracuje sa popis, nie samotná informácia. Celý text zostáva
+              v `title` aj v zhrnutí riadku pre čítačky. */}
+          <span className="sm:hidden">{count}×</span>
+          <span className="hidden sm:inline">{label}</span>
+        </>
+      ) : (
+        label
+      )}
     </span>
   );
 }

@@ -43,12 +43,14 @@ export function TimeBudget({
   if (availableMin <= 0) {
     return (
       <div className="flex flex-col gap-1">
-        <p className="text-xs text-fg-muted">
+        <p className="text-[13px] leading-relaxed text-fg-muted sm:text-xs">
           Naplánovaných{" "}
           <span className="tabular-nums">{formatDuration(plannedMin)}</span>. Rozpočet
           času sa nedá spočítať — hodiny dňa v nastaveniach nedávajú žiadny čas.
         </p>
-        {missing ? <p className="text-xs text-fg-subtle">{missing}.</p> : null}
+        {missing ? (
+          <p className="text-[13px] text-fg-subtle sm:text-xs">{missing}.</p>
+        ) : null}
       </div>
     );
   }
@@ -70,14 +72,36 @@ export function TimeBudget({
         />
       </div>
 
-      <p className={cn("text-xs leading-relaxed", over ? "text-danger" : "text-fg-muted")}>
-        <span className="tabular-nums">{formatDuration(plannedMin)}</span> naplánovaných
-        z <span className="tabular-nums">{formatDuration(availableMin)}</span>
-        {over ? ` — naplánoval si o ${formatDuration(overBy)} viac, než máš.` : "."}
+      {/*
+        Na 375 px je celá veta („4 h 30 min naplánovaných z 10 h — naplánoval
+        si o 1 h viac, než máš.") na tri riadky. Pod `sm:` preto vypadávajú
+        len výplňové slová: ostáva „4 h 30 min z 10 h — o 1 h viac, než máš."
+        Varovanie pri prekročení sa neskracuje nikdy — mení sa len jeho úvod,
+        nie údaj ani červená farba.
+      */}
+      <p
+        className={cn(
+          "text-[13px] leading-relaxed sm:text-xs",
+          over ? "text-danger" : "text-fg-muted",
+        )}
+      >
+        <span className="tabular-nums">{formatDuration(plannedMin)}</span>{" "}
+        <span className="hidden sm:inline">naplánovaných </span>z{" "}
+        <span className="tabular-nums">{formatDuration(availableMin)}</span>
+        {over ? (
+          <>
+            {" — "}
+            <span className="hidden sm:inline">naplánoval si </span>o{" "}
+            <span className="tabular-nums">{formatDuration(overBy)}</span> viac, než
+            máš.
+          </>
+        ) : (
+          "."
+        )}
       </p>
 
       {missing ? (
-        <p className="text-xs text-fg-subtle">
+        <p className="text-[13px] text-fg-subtle sm:text-xs">
           {missing} — skutočný čas bude vyšší.
         </p>
       ) : null}

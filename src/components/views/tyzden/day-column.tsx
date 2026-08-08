@@ -215,7 +215,7 @@ export function DayColumn({
         isOver && "border-accent bg-accent-soft",
       )}
     >
-      <header className="flex items-center justify-between gap-1 px-2 pt-1.5">
+      <header className="flex items-center gap-1.5 px-2 pt-1.5 md:gap-0.5">
         <span
           className={cn(
             "min-w-0 truncate text-[11px] font-medium uppercase tracking-wide",
@@ -225,19 +225,52 @@ export function DayColumn({
           {weekdayName}
         </span>
 
-        <span className="flex shrink-0 items-center gap-0.5">
+        <span
+          className={cn(
+            "shrink-0 text-sm font-semibold tabular-nums",
+            isToday ? "text-accent" : "text-fg",
+          )}
+        >
+          {day.getDate()}
+        </span>
+
+        {/*
+          Pod `md` sú dni pod sebou, nie sedem stĺpcov vedľa seba — rám okolo
+          jednej karty v dlhom zvislom zozname nemá s čím kontrastovať a dnešok
+          sa v ňom stratí. Preto to tam povie aj slovo. Od `md` je stĺpec
+          dnešného dňa medzi ostatnými zreteľný sám a odznak by len uberal
+          z úzkej hlavičky.
+        */}
+        {isToday ? (
+          <span className="shrink-0 rounded bg-accent-soft px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-accent md:hidden">
+            dnes
+          </span>
+        ) : null}
+
+        <span className="ml-auto flex shrink-0 items-center gap-1.5">
+          {/*
+            Pod `md` má odhad vlastný riadok zbytočne: v zvislom zozname je
+            v hlavičke miesta dosť a každý ušetrený riadok je o sedem riadkov
+            menej rolovania cez celý týždeň.
+          */}
           <span
+            title={
+              overloaded
+                ? `Odhad ${loadLabel} — viac, než je na deň k dispozícii`
+                : `Odhad ${loadLabel}`
+            }
             className={cn(
-              "text-sm font-semibold tabular-nums",
-              isToday ? "text-accent" : "text-fg",
+              "text-[11px] tabular-nums md:hidden",
+              overloaded ? "font-medium text-warn" : "text-fg-subtle",
             )}
           >
-            {day.getDate()}
+            {loadLabel}
           </span>
 
           {/*
             Viditeľné vždy, nie až pri prejdení myšou: na dotyku hover
             neexistuje a skryté tlačidlo by tam znamenalo žiadne tlačidlo.
+            Pod `md` má plný dotykový cieľ 44 px — ikona ostáva rovnaká.
           */}
           <AddTaskButton
             ref={addButtonRef}
@@ -247,7 +280,7 @@ export function DayColumn({
               if (adding) closeAdding();
               else setAdding(true);
             }}
-            className={cn("-mr-1", adding && "bg-surface-2 text-fg")}
+            className={cn("-mr-1 size-11 md:size-7", adding && "bg-surface-2 text-fg")}
           />
         </span>
       </header>
@@ -259,14 +292,19 @@ export function DayColumn({
             : `Odhad ${loadLabel}`
         }
         className={cn(
-          "px-2 pb-1 text-[11px] tabular-nums",
+          "hidden px-2 pb-1 text-[11px] tabular-nums md:block",
           overloaded ? "font-medium text-warn" : "text-fg-subtle",
         )}
       >
         {loadLabel}
       </p>
 
-      <div className="flex min-h-16 flex-1 flex-col gap-1 p-1.5 pt-0">
+      {/*
+        Prázdna plocha musí ostať dosť veľká na to, aby sa do nej dalo pustiť —
+        pod `md` však stačí menej: sedem prázdnych dní po 64 px je na telefóne
+        pol obrazovky ničoho.
+      */}
+      <div className="flex min-h-11 flex-1 flex-col gap-1 p-1.5 pt-0 md:min-h-16">
         <SortableContext
           items={tasks.map((task) => task.id)}
           strategy={verticalListSortingStrategy}

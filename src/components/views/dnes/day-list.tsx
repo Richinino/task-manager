@@ -70,9 +70,9 @@ export function DayList({
       </h2>
 
       {openCount > wipLimit ? (
-        <p className="flex items-start gap-2 rounded border border-border bg-surface-2 px-3 py-2 text-xs leading-relaxed text-fg-muted">
+        <p className="flex items-start gap-2 rounded border border-border bg-surface-2 px-3 py-2 text-[13px] leading-relaxed text-fg-muted sm:text-xs">
           <TriangleAlert aria-hidden="true" size={16} className="mt-px shrink-0 text-warn" />
-          <span>
+          <span className="min-w-0">
             Na dnes máš {taskCountSk(openCount)}, tvoj limit je{" "}
             <span className="tabular-nums">{wipLimit}</span>. Ak sa niečo nezmestí,
             presuň to na iný deň.

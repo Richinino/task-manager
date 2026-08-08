@@ -94,17 +94,25 @@ export function WeekHeader({
         </p>
       </div>
 
+      {/*
+        Tri odkazy majú pod `sm` plný dotykový cieľ 44 px — palcom sa do 32 px
+        širokej šípky netrafí. Aj v najužšom okne sa zmestia: 44 + 44 + text
+        je pod 220 px.
+      */}
       <nav aria-label="Navigácia týždňov" className="flex items-center gap-1">
         <Link
           href={`/tyzden?od=${previous}`}
           aria-label="Predchádzajúci týždeň"
           title="Predchádzajúci týždeň"
-          className={cn(navLink, "size-8")}
+          className={cn(navLink, "size-11 sm:size-8")}
         >
           <ChevronLeft aria-hidden="true" className="size-4" />
         </Link>
 
-        <Link href="/tyzden" className={cn(navLink, "h-8 px-2.5 text-[13px]")}>
+        <Link
+          href="/tyzden"
+          className={cn(navLink, "h-11 px-3 text-[13px] sm:h-8 sm:px-2.5")}
+        >
           Tento týždeň
         </Link>
 
@@ -112,7 +120,7 @@ export function WeekHeader({
           href={`/tyzden?od=${next}`}
           aria-label="Nasledujúci týždeň"
           title="Nasledujúci týždeň"
-          className={cn(navLink, "size-8")}
+          className={cn(navLink, "size-11 sm:size-8")}
         >
           <ChevronRight aria-hidden="true" className="size-4" />
         </Link>
