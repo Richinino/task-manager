@@ -24,7 +24,9 @@
  * pri najbližšej aktivácii sama zmaže.
  */
 
-const VERSION = "tm-v1";
+// Zvýšením verzie sa pri aktivácii zahodia všetky staršie cache.
+// v2: vypnutý navigation preload, ktorý zdvojoval prihlasovací callback.
+const VERSION = "tm-v2";
 const STATIC_CACHE = VERSION + "-static";
 const PAGES_CACHE = VERSION + "-pages";
 const OWN_CACHES = [STATIC_CACHE, PAGES_CACHE];
@@ -81,13 +83,30 @@ self.addEventListener("activate", (event) => {
     (async () => {
       await deleteForeignCaches();
 
-      // Navigáciu púšťame najprv na sieť — predbežné načítanie jej vráti čas,
-      // ktorý by inak stratila čakaním na štart service workera.
+      /*
+        NAVIGATION PRELOAD JE ZÁMERNE VYPNUTÝ — nezapínaj ho späť.
+
+        Keď je zapnutý, prehliadač odošle požiadavku hneď, ako sa service worker
+        prebúdza. Ak potom obsluha `fetch` na tú navigáciu NEODPOVIE cez
+        `respondWith` — a my na `/api/**` zámerne neodpovedáme — prehliadač
+        predbežnú odpoveď zahodí a pošle požiadavku ZNOVA. Server ju teda
+        dostane dvakrát.
+
+        Pri `/api/auth/callback/google` to appku rozbije: autorizačný kód od
+        Googla platí na jedno použitie, takže druhá požiadavka skončí na
+        `invalid_grant` a používateľ vidí chybovú stránku napriek tomu, že
+        prvé prihlásenie prešlo. Prejavovalo sa to len na telefóne, kde bol
+        service worker aktívny z predošlej návštevy.
+
+        Ušetrený čas pri štarte za to nestojí. Ak by sa preload niekedy vracal,
+        musela by obsluha `fetch` odpovedať na ÚPLNE KAŽDÚ navigáciu a preload
+        response vždy spotrebovať.
+      */
       if (self.registration.navigationPreload) {
         try {
-          await self.registration.navigationPreload.enable();
+          await self.registration.navigationPreload.disable();
         } catch (error) {
-          // Prehliadač to nepodporuje. Ideme ďalej bez toho.
+          // Prehliadač to nepodporuje — potom sa preload ani nezapol.
         }
       }
 
@@ -206,8 +225,9 @@ async function handleNavigation(event, url) {
   const key = pageKey(url);
 
   try {
-    let response = await event.preloadResponse;
-    if (!response) response = await fetch(request);
+    // Jediná požiadavka na sieť. Preload je vypnutý (viď `activate`) — druhá
+    // požiadavka na to isté by pri prihlasovacom callbacku spálila autorizačný kód.
+    const response = await fetch(request);
 
     if (url.pathname === LOGIN_PATH) {
       // Sme na prihlásení — relácia neplatí. Cudzie HTML v cache nemá čo robiť.
