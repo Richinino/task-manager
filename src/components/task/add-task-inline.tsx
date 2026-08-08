@@ -1,9 +1,17 @@
 "use client";
 
-import { useRef, useState, useTransition, type ComponentProps } from "react";
+import {
+  useId,
+  useMemo,
+  useRef,
+  useState,
+  useTransition,
+  type ComponentProps,
+} from "react";
 import { Check, LoaderCircle, Plus } from "lucide-react";
 
 import { useCaptureOptional } from "@/components/capture/capture-provider";
+import { ParsePreview } from "@/components/capture/parse-preview";
 import { useOutbox } from "@/components/pwa/outbox-provider";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,8 +21,9 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { formatLongSk } from "@/lib/dates";
+import { parseCapture, type ParsedCapture } from "@/lib/parse";
 import { cn } from "@/lib/utils";
-import { createTask } from "@/server/actions/tasks";
+import { quickCapture } from "@/server/actions/tasks";
 
 /**
  * Pridanie úlohy priamo na konkrétny deň.
@@ -26,10 +35,17 @@ import { createTask } from "@/server/actions/tasks";
  * Preto dve cesty, obe z toho istého miesta:
  *
  * 1. **Pole v dni** — Enter uloží a pole ostane otvorené pre ďalšiu úlohu,
- *    Escape zavrie. Ukladá cez `createTask`, teda bez parsera: čo napíšeš,
- *    to je názov. Deň dodá volajúci.
- * 2. **„viac"** — otvorí plné rýchle zachytenie s predvyplneným dňom, takže
- *    je k dispozícii celý parser (priorita, odhad, kontext, projekt, štítky).
+ *    Escape zavrie. Ukladá cez `quickCapture`, teda cez ten istý parser ako
+ *    rýchle zachytenie: „kúpiť darček do 20.8. !1 !!nizka 30m" sa uloží so
+ *    všetkým, čo v tom je. Deň stĺpca je pre server iba VÝCHODISKO — keď si
+ *    človek napíše vlastný deň, vyhráva jeho.
+ * 2. **„viac"** — otvorí plné rýchle zachytenie s predvyplneným dňom. Parser
+ *    je rovnaký; navyše je tam miesto na dlhší text a celý náhľad.
+ *
+ * Pole dlho ukladalo cez `createTask`, teda doslova: čo napíšeš, to je názov.
+ * Termín ani energiu sa v ňom nedalo nastaviť vôbec — a offline cesta pritom
+ * parser používala (fronta vie odovzdať iba surový text), takže tá istá veta
+ * skončila online a offline inak. Obe cesty teraz vedú cez `quickCapture`.
  *
  * Komponent nekreslí, čo pribudlo — optimistický riadok si vykreslí rodič
  * cez `onOptimisticAdd`. Stĺpec týždňa a bunka mesiaca ho totiž kreslia úplne
@@ -119,14 +135,33 @@ export function AddTaskButton({
    POLE
    ═══════════════════════════════════════════════════════════════════════════ */
 
+/**
+ * Nápoveda syntaxe. Zámerne bez „v piatok" — deň dodáva sám stĺpec, takže
+ * miesto patrí tomu, čo sa inak nedá nastaviť nijako: termínu, priorite,
+ * odhadu a energii. Energia v nápovede dlho chýbala úplne a nikto ju nenašiel.
+ */
+const SYNTAX_HINT = "do 20.8. · !1 · 30m · !!nizka";
+
+/**
+ * To isté vetou, natrvalo pripojené k poľu cez `aria-describedby`. Čipy
+ * náhľadu sú pre čítačku skryté a vizuálna nápoveda tiež — bez tohto by sa
+ * o syntaxi nedozvedela vôbec.
+ */
+const SYNTAX_DESCRIPTION =
+  "Termín, prioritu, odhad aj energiu napíš rovno do textu: do 20.8., !1, 30m, !!nizka. " +
+  "Deň stĺpca sa doplní sám; deň napísaný v texte má prednosť.";
+
 export interface AddTaskInlineProps {
-  /** Deň, na ktorý úloha pôjde — RRRR-MM-DD. */
+  /** Deň, na ktorý úloha pôjde — RRRR-MM-DD. Iba východisko, text ho prebije. */
   date: string;
   /** Escape alebo dokončenie — rodič pole zavrie a vráti fokus na „+". */
   onClose: () => void;
   /**
    * Beží v tej istej tranzícii ako ukladanie, takže rodič môže cez
    * `useOptimistic` vykresliť riadok skôr, než server odpovie.
+   *
+   * Dostáva **rozpoznaný názov**, nie napísaný text — inak by v riadku
+   * svietilo aj „do 20.8. !1" a človek by netušil, čo mu vlastne pribudlo.
    */
   onOptimisticAdd?: (title: string) => void;
   /** Vypísať názov dňa nad poľom — pre bunku mesiaca, ktorá ho v hlavičke nemá. */
@@ -148,6 +183,12 @@ export function AddTaskInline({
   const [savedQueued, setSavedQueued] = useState(false);
   const [isPending, startTransition] = useTransition();
   const inputRef = useRef<HTMLInputElement>(null);
+  const describedById = useId();
+  /**
+   * Poradie uložení. Pri dávkovom písaní môžu bežať dve naraz a odpoveď
+   * staršieho by inak prepísala potvrdenie novšieho.
+   */
+  const saveSeqRef = useRef(0);
 
   // Mimo `CaptureProvider` sa proste „viac" nezobrazí — komponent má fungovať
   // aj tam, kde rýchle zachytenie nie je namontované.
@@ -160,9 +201,42 @@ export function AddTaskInline({
   const dayLabel = formatLongSk(date);
   const dayOnto = formatDayAccusativeSk(date);
 
+  /*
+    Ten istý parser, ktorý text rozoberie aj na serveri — beží pri každom
+    znaku, lebo je to čistá a lacná funkcia.
+
+    `weekStartsOn` sem zámerne neputuje: náhľad ho potrebuje jedine na „budúci
+    týždeň" a tento komponent nemá odkiaľ vziať nastavenia používateľa. Rozhodne
+    o tom aj tak server, ktorý si ich načíta sám — náhľad je len okno dopredu.
+  */
+  const parsed = useMemo<ParsedCapture | null>(
+    () => (trimmed === "" ? null : parseCapture(value)),
+    [value, trimmed],
+  );
+  /** Parser niečo našiel — má zmysel ukázať náhľad namiesto nápovedy. */
+  const recognized = parsed !== null && parsed.tokens.length > 0;
+  /** Deň z textu prebíja deň stĺpca — to musí byť vidieť, nie sa stať ticho. */
+  const dayOverridden =
+    parsed?.plannedDate !== undefined && parsed.plannedDate !== date;
+
   function save(): void {
-    const title = value.trim();
-    if (title === "" || isPending) return;
+    const raw = value.trim();
+    if (raw === "" || isPending) return;
+
+    /*
+      Názov je to, čo z textu ostane po vybratí tokenov. Server ho odvodí
+      rovnako, ale my ho potrebujeme hneď: ide do optimistického riadka aj do
+      potvrdenia a „Pridané: kúpiť darček do 20.8. !1" by nedávalo zmysel.
+    */
+    const title = parseCapture(raw).title.trim();
+    if (title === "") {
+      // Samotné tokeny úlohu netvoria — server by to odmietol a text by sa
+      // medzitým stratil z poľa. Povieme to hneď a text necháme na mieste.
+      setError("Napíš aj názov úlohy — samotný termín ani priorita nestačia.");
+      return;
+    }
+
+    const seq = (saveSeqRef.current += 1);
 
     // Pole sa vyprázdni HNEĎ, nie až po odpovedi — celý zmysel dávkového
     // plánovania je písať ďalej, kým sa predchádzajúca úloha ukladá.
@@ -178,23 +252,22 @@ export function AddTaskInline({
     function giveUp(message: string): void {
       setSavedTitle(null);
       setError(message);
-      // Text sa nesmie stratiť — vrátime ho, ak medzitým nezačal písať nový.
-      setValue((current) => (current === "" ? title : current));
+      // Text sa nesmie stratiť — a vraciame ho aj s tokenmi, presne tak, ako
+      // ho človek napísal. Len ak medzitým nezačal písať nový.
+      setValue((current) => (current === "" ? raw : current));
     }
 
     /**
      * Odloží úlohu do fronty. Vráti `true`, ak sa to podarilo.
      *
-     * Pozor na jeden rozdiel oproti online ceste: fronta vie odovzdať iba
-     * surový text a deň, takže sa na serveri prežene parserom — na rozdiel
-     * od `createTask`, ktorý berie názov doslova. Napísané „kúpiť mlieko
-     * v piatok" tak offline skončí ako „kúpiť mlieko" v piatok. Je to daň za
-     * to, že fronta má jediný, zámerne úzky tvar; strata nápadu by bola horšia.
+     * Do fronty ide surový text aj s tokenmi — prežene sa parserom až pri
+     * odosielaní, na serveri. Výsledok je tak rovnaký ako online; potvrdenie
+     * pod poľom si názov odvodí sám tým istým parserom.
      */
     async function queue(): Promise<boolean> {
       if (outbox === null) return false;
       try {
-        await outbox.enqueueCapture(title, date);
+        await outbox.enqueueCapture(raw, date);
         setSavedQueued(true);
         return true;
       } catch {
@@ -213,13 +286,18 @@ export function AddTaskInline({
       }
 
       try {
-        const result = await createTask({
-          title,
-          plannedDate: date,
-          status: "todo",
-        });
-        // `{ ok: false }` je chyba validácie — do fronty nepatrí.
-        if (!result.ok) giveUp(result.error);
+        // Deň stĺpca je iba východisko — deň napísaný v texte vyhráva
+        // a rozhoduje o tom akcia, nie tento komponent.
+        const result = await quickCapture(raw, { defaultPlannedDate: date });
+        if (!result.ok) {
+          // `{ ok: false }` je chyba validácie — do fronty nepatrí.
+          giveUp(result.error);
+          return;
+        }
+        // Názov zo servera je ten pravý — okrem iného orezaný na dĺžku, ktorú
+        // unesie databáza. Prepíšeme ním potvrdenie, ale len ak medzitým
+        // nezačalo novšie uloženie; inak by staršia odpoveď prekričala novšiu.
+        if (saveSeqRef.current === seq) setSavedTitle(result.data.title);
       } catch {
         // Výnimka je sieťová chyba — skúsime úlohu zachrániť do fronty.
         if (await queue()) return;
@@ -228,7 +306,7 @@ export function AddTaskInline({
     });
   }
 
-  /** „viac" — ten istý deň, ale s celým parserom a už napísaným textom. */
+  /** „viac" — ten istý deň aj ten istý parser, len väčšie pole a celý náhľad. */
   function openFullCapture(): void {
     const text = value.trim();
     onClose();
@@ -256,6 +334,9 @@ export function AddTaskInline({
         onChange={(event) => {
           setValue(event.target.value);
           if (error !== null) setError(null);
+          // Potvrdenie predchádzajúcej úlohy ustupuje náhľadu tej rozpísanej —
+          // inak by sa pri druhej úlohe v rade nemal kde zobraziť.
+          if (savedTitle !== null) setSavedTitle(null);
         }}
         onKeyDown={(event) => {
           if (event.key === "Escape") {
@@ -279,6 +360,7 @@ export function AddTaskInline({
         }}
         placeholder="Nová úloha"
         aria-label={`Nová úloha na ${dayOnto}`}
+        aria-describedby={describedById}
         autoComplete="off"
         spellCheck={false}
         /*
@@ -297,7 +379,9 @@ export function AddTaskInline({
             size="sm"
             onClick={openFullCapture}
             aria-label={`Otvoriť rýchle zachytenie s dňom ${dayLabel}`}
-            title="Priorita, odhad, kontext, projekt — celé rýchle zachytenie"
+            // Syntax je odteraz rovnaká v oboch — „viac" už neponúka viac
+            // možností, ale viac miesta: široké pole a celý náhľad.
+            title="Väčšie pole a celý náhľad — text sa prenesie"
             className="h-11 px-3 sm:h-7 sm:px-1.5"
           >
             viac
@@ -328,6 +412,11 @@ export function AddTaskInline({
         </Button>
       </div>
 
+      {/*
+        Jedno miesto, jeden odkaz — chyba, potvrdenie, náhľad alebo nápoveda.
+        Je až pod tlačidlami zámerne: keby rástlo nad nimi, dotykový cieľ
+        „Uložiť" by sa pri každom rozpoznanom tokene posunul pod prstom.
+      */}
       {error !== null ? (
         <p role="alert" className="text-[11px] font-medium text-danger">
           {error}
@@ -343,11 +432,37 @@ export function AddTaskInline({
           {savedQueued ? "Odošle sa po pripojení: " : "Pridané: "}
           {savedTitle}
         </p>
+      ) : recognized ? (
+        <div className="min-w-0">
+          {/* Rovnaký náhľad ako v rýchlom zachytení — čipy sa v úzkom stĺpci
+              zalamujú a jednotlivo skracujú, takže nič nepretečie. */}
+          <ParsePreview parsed={parsed} />
+          {dayOverridden ? (
+            <p className="mt-1 text-[10px] leading-4 text-warn">
+              Deň z textu má prednosť pred stĺpcom.
+            </p>
+          ) : null}
+        </div>
       ) : (
-        <p aria-hidden="true" className="truncate text-[10px] text-fg-subtle">
-          Enter uloží, Esc zavrie
-        </p>
+        <div aria-hidden="true" className="min-w-0 text-[10px] text-fg-subtle">
+          <p className="truncate">Enter uloží, Esc zavrie</p>
+          {/*
+            Nezalamuje sa do `truncate`: v stĺpci týždňa má nápoveda okolo
+            100 px a orezaná na jeden riadok by z nej ostalo „do 20.8. · !…",
+            teda nič. Radšej dva riadky — sú tu len dovtedy, kým parser niečo
+            nechytí, a rastú smerom nadol, kde nič neodtláčajú.
+          */}
+          <p className="mt-0.5 font-mono leading-4" title={SYNTAX_DESCRIPTION}>
+            {SYNTAX_HINT}
+          </p>
+        </div>
       )}
+
+      {/* Natrvalo pripojené k poľu — čipy aj vizuálna nápoveda sú pre čítačku
+          skryté, takto sa o syntaxi dozvie hneď pri zaostrení. */}
+      <p id={describedById} className="sr-only">
+        {SYNTAX_DESCRIPTION}
+      </p>
     </div>
   );
 }
