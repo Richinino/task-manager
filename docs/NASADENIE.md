@@ -60,22 +60,39 @@ $env:DATABASE_URL="<connection-string>"; npm run db:seed
 1. **Najprv skontroluj, že je na GitHube všetko** — repozitár `https://github.com/Richinino/task-manager`, vetva `main`. Musí tam byť aj PWA (súbory `src/app/manifest.ts`, `public/sw.js`, `src/lib/outbox.ts`). Vercel nasadzuje presne to, čo vidí na GitHube — keby si nasadil skôr, dostal by si appku bez offline režimu a bez možnosti nainštalovať ju na telefón.
 2. Na [vercel.com](https://vercel.com) sa prihlás cez GitHub → **Add New → Project** → vyber `task-manager`.
 3. Framework sa rozpozná automaticky (Next.js). Build ani output nastavenia **nemeň**.
-4. **Environment Variables** — pridaj týchto päť:
+4. **Environment Variables** — pridaj týchto šesť, všetky pre **Production**:
 
 | Premenná | Hodnota |
 |---|---|
-| `DATABASE_URL` | nový connection string z Neonu (po resete hesla) |
+| `DATABASE_URL` | connection string z Neonu |
 | `AUTH_SECRET` | výstup príkazu `npx auth secret` |
 | `AUTH_GOOGLE_ID` | Client ID z Googlu |
 | `AUTH_GOOGLE_SECRET` | Client secret z Googlu |
 | `ALLOWED_EMAIL` | `richard.pastyr@gmail.com` |
+| `AUTH_URL` | `https://TVOJA-ADRESA.vercel.app` — bez lomítka na konci |
 
 > `AUTH_DEV_BYPASS` na Vercel **nepridávaj**. Aj keby si ho pridal, v produkcii je vypnutý natvrdo v kóde — ale nech tam nie je ani omylom.
 
+> **`AUTH_URL` nevynechaj.** Vercel dáva každému nasadeniu okrem stabilnej adresy aj vlastnú
+> jednorazovú (`task-manager-2zpl2dlx3-….vercel.app`), ktorá sa pri každom redeployi mení —
+> a práve na ňu ťa hodí tlačidlo **Visit** v paneli. Bez `AUTH_URL` si appka postaví
+> prihlasovaciu adresu z tej jednorazovej, Google ju nepozná a vráti
+> `Chyba 400: redirect_uri_mismatch`. S `AUTH_URL` sa callback stavia vždy zo stabilnej adresy,
+> nech prídeš odkiaľkoľvek.
+
 5. **Deploy**.
-6. Po nasadení skopíruj skutočnú adresu (napr. `task-manager-xyz.vercel.app`) a **vráť sa do Google Console** doplniť druhú redirect URI:
+6. Po nasadení skopíruj **stabilnú** adresu (v paneli projektu pod *Domains*, tvar
+   `task-manager-nieco-nieco-NN.vercel.app`) a **vráť sa do Google Console** doplniť redirect URI:
    `https://TVOJA-ADRESA.vercel.app/api/auth/callback/google`
-7. Otvor adresu v prehliadači a prihlás sa cez Google. Ak ťa to odmietne, skontroluj `ALLOWED_EMAIL`.
+   Rovnakú adresu daj aj do `AUTH_URL` (krok 4).
+7. Otvor **stabilnú adresu** v prehliadači a prihlás sa cez Google.
+
+### ⚠️ Premenné sa načítajú až pri novom nasadení
+
+Vercel vkladá premenné do nasadenia v momente jeho vzniku. Keď premennú pridáš alebo zmeníš,
+bežiace nasadenie o nej **nikdy nebude vedieť** — v nastaveniach ju vidíš, ale appka ju nemá.
+
+Po každej zmene premenných: **Deployments → posledné → ⋯ → Redeploy**.
 
 ---
 

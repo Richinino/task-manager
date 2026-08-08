@@ -21,7 +21,18 @@ async function createDb() {
     const pool = new Pool({
       connectionString: url,
       ssl: isLocal ? false : { rejectUnauthorized: true },
-      max: 5,
+      /*
+        V serverless prostredí obsluhuje jedna inštancia funkcie jednu
+        požiadavku, takže veľký pool nemá čo robiť — len by zbytočne držal
+        spojenia, ktorých má Neon v bezplatnom pláne obmedzený počet.
+      */
+      max: 3,
+      /*
+        Bez limitu by sa čakanie na spiaci Neon ťahalo, kým Vercel funkciu
+        nezabije — a používateľ by videl prázdnu chybu bez príčiny. Takto
+        dostane zrozumiteľnú hlášku o časovom limite spojenia.
+      */
+      connectionTimeoutMillis: 8000,
     });
     return drizzle(pool, { schema, casing: "snake_case" });
   }
@@ -69,8 +80,26 @@ async function createDb() {
 const globalForDb = globalThis as unknown as { __dbPromise?: Promise<Database> };
 
 export function getDb(): Promise<Database> {
-  globalForDb.__dbPromise ??= createDb();
-  return globalForDb.__dbPromise;
+  const cached = globalForDb.__dbPromise;
+  if (cached !== undefined) return cached;
+
+  /*
+    Neúspech sa NESMIE uložiť do cache.
+
+    Neon v bezplatnom pláne po nečinnosti uspí databázu a prvé spojenie po
+    prebudení môže trvať sekundy alebo vypršať. Keby tu ostal zamietnutý
+    prísľub, tá istá inštancia funkcie by ho vracala už navždy — jeden
+    nešťastný prvý pokus by appku zablokoval, kým Vercel funkciu neuspí.
+    Preto pri chybe cache vyprázdnime a ďalšia požiadavka to skúsi odznova.
+  */
+  const promise = createDb().catch((error: unknown) => {
+    if (globalForDb.__dbPromise === promise) globalForDb.__dbPromise = undefined;
+    console.error("[db] Spojenie s databázou zlyhalo:", error);
+    throw error;
+  });
+
+  globalForDb.__dbPromise = promise;
+  return promise;
 }
 
 export { schema };
