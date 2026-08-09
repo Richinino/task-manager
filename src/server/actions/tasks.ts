@@ -131,7 +131,19 @@ export type UpdateTaskPatch = z.infer<typeof updateTaskSchema>;
    ═══════════════════════════════════════════════════════════════════════════ */
 
 /** Obrazovky, ktoré ktorákoľvek zmena úlohy môže ovplyvniť. */
-const AFFECTED_PATHS = ["/dnes", "/tyzden", "/mesiac", "/inbox"] as const;
+const AFFECTED_PATHS = [
+  "/dnes",
+  "/tyzden",
+  "/mesiac",
+  "/inbox",
+  // Odkladiská z M3: bez nich by sa zoznam po akcii z menu riadku neobnovil,
+  // kým človek na obrazovku nepríde znova.
+  "/niekedy",
+  "/caka-sa-na",
+  // Zmena úlohy mení počty aj postup projektu, takže sa dotýka aj štruktúry.
+  "/projekty",
+  "/oblasti",
+] as const;
 
 function revalidateViews(): void {
   for (const path of AFFECTED_PATHS) revalidatePath(path);

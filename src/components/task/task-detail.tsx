@@ -26,6 +26,13 @@ import { Input } from "@/components/ui/input";
 import { Kbd } from "@/components/ui/kbd";
 import { PostponeBadge } from "@/components/task/postpone-badge";
 import { PriorityDot } from "@/components/task/priority-dot";
+import { SubtaskList } from "@/components/task/subtask-list";
+import { TagInput } from "@/components/task/tag-input";
+import {
+  loadTaskExtras,
+  type SubtaskView,
+  type TagView,
+} from "@/components/task/task-detail-data";
 import {
   Select,
   SelectContent,
@@ -208,6 +215,17 @@ export function TaskDetail({
   const [isPending, startTransition] = useTransition();
   const titleRef = useRef<HTMLTextAreaElement>(null);
 
+  /*
+    Podúlohy a štítky úloha so sebou nenesie — `TaskWithRelations` má len
+    ich počty. Dočítavajú sa jedným volaním pri otvorení panela; panel sa
+    pri každom otvorení montuje nanovo (`key` v provideri), takže sa načítanie
+    spustí vždy pre práve otvorenú úlohu a stav po zatvorení nepretrvá.
+  */
+  const [subtasks, setSubtasks] = useState<SubtaskView[]>([]);
+  const [tags, setTags] = useState<TagView[]>([]);
+  const [tagSuggestions, setTagSuggestions] = useState<TagView[]>([]);
+  const [extrasLoaded, setExtrasLoaded] = useState(false);
+
   /** Posledný stav potvrdený serverom — sem sa pole vracia, keď zápis zlyhá. */
   const savedRef = useRef<Draft>(toDraft(task));
 
@@ -217,6 +235,39 @@ export function TaskDetail({
   // Lokálna polnoc dneška zo servera; `formatRelativeSk` z nej odvodí „dnes".
   const now = parseIsoDate(todayIso);
   const isDone = draft.status === "done";
+
+  /*
+    Dočítanie podúloh a štítkov. Beží raz na otvorenie panela.
+
+    `cancelled` nie je opatrnosť navyše: panel sa dá zavrieť skôr, než odpoveď
+    dorazí, a zápis do stavu odmontovaného komponentu by sa stratil aj s ním.
+  */
+  useEffect(() => {
+    let cancelled = false;
+
+    void loadTaskExtras(task.id)
+      .then((result) => {
+        if (cancelled) return;
+        if (!result.ok) {
+          setError(result.error);
+          return;
+        }
+        setSubtasks(result.data.subtasks);
+        setTags(result.data.tags);
+        setTagSuggestions(result.data.suggestions);
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setError("Podúlohy a štítky sa nepodarilo načítať.");
+      })
+      .finally(() => {
+        if (!cancelled) setExtrasLoaded(true);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [task.id]);
 
   /* ── ukladanie ─────────────────────────────────────────────────────────── */
 
@@ -554,6 +605,20 @@ export function TaskDetail({
             />
           </Field>
 
+          {/* ── kroky ──────────────────────────────────────────────────── */}
+          <section className="flex flex-col gap-3">
+            <SectionTitle>Kroky</SectionTitle>
+            {extrasLoaded ? (
+              <SubtaskList
+                parentTaskId={task.id}
+                subtasks={subtasks}
+                setSubtasks={setSubtasks}
+              />
+            ) : (
+              <LoadingLine label="Načítavam podúlohy…" />
+            )}
+          </section>
+
           {/* ── kedy ───────────────────────────────────────────────────── */}
           <section className="flex flex-col gap-3">
             <SectionTitle>Kedy</SectionTitle>
@@ -884,6 +949,22 @@ export function TaskDetail({
                 </SelectContent>
               </Select>
             </Field>
+
+            <Field
+              label="Štítky"
+              hint="Priečne značky naprieč projektmi — pri zachytení stačí napísať #rodina."
+            >
+              {extrasLoaded ? (
+                <TagInput
+                  taskId={task.id}
+                  tags={tags}
+                  setTags={setTags}
+                  suggestions={tagSuggestions}
+                />
+              ) : (
+                <LoadingLine label="Načítavam štítky…" />
+              )}
+            </Field>
           </section>
 
           {/* Klávesová nápoveda dáva zmysel len tam, kde je klávesnica. */}
@@ -979,6 +1060,19 @@ function Field({ label, htmlFor, hint, children }: FieldProps) {
         <p className="text-[11px] leading-relaxed text-fg-subtle">{hint}</p>
       ) : null}
     </div>
+  );
+}
+
+/**
+ * Miesto, kde sa ešte len dočítava. Drží výšku, aby polia pod ním po načítaní
+ * nepodskočili pod prstom.
+ */
+function LoadingLine({ label }: { label: string }) {
+  return (
+    <p role="status" className="flex h-9 items-center gap-2 text-[12px] text-fg-subtle">
+      <LoaderCircle aria-hidden="true" className="size-3.5 animate-spin" />
+      {label}
+    </p>
   );
 }
 
