@@ -32,6 +32,7 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { PriorityDot } from "@/components/task/priority-dot";
+import { usePostponeGuard } from "@/components/task/postpone-guard";
 import { useTaskDetail } from "@/components/task/task-detail-provider";
 import {
   deleteTask,
@@ -366,6 +367,7 @@ export function TaskActions({
   // Panel s detailom nemusí byť nad riadkom nasadený — potom sa „Upraviť…"
   // jednoducho nezobrazí a zvyšok menu funguje ďalej.
   const detail = useTaskDetail();
+  const guard = usePostponeGuard();
 
   useEffect(() => {
     if (!error) return;
@@ -409,7 +411,19 @@ export function TaskActions({
    */
   const planOn = useCallback(
     async (date: string | null): Promise<Result> => {
-      const moved = await rescheduleTask(task.id, date);
+      /*
+        Cez strážcu, nie priamo: keď server odklad zastaví prahom, otvorí sa
+        dialóg a tento prísľub sa vyrieši až po rozhodnutí. Bez providera
+        (napr. v náhľade) sa volá priamo a blok sa prejaví len hláškou.
+      */
+      const moved = guard
+        ? await guard.postpone({
+            taskId: task.id,
+            title: task.title,
+            plannedDate: date,
+            task,
+          })
+        : await rescheduleTask(task.id, date);
       if (!moved.ok) return moved;
 
       if (date !== null) {
@@ -426,7 +440,7 @@ export function TaskActions({
         ? updateTask(task.id, { status: "inbox" })
         : { ok: true };
     },
-    [task.id, task.projectId, task.status],
+    [guard, task],
   );
 
   /* ── klávesnica ──────────────────────────────────────────────────────── */

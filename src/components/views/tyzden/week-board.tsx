@@ -20,6 +20,7 @@ import { CircleAlert, RotateCcw } from "lucide-react";
 import { formatLongSk } from "@/lib/dates";
 import { cn } from "@/lib/utils";
 import { reorderTasks, rescheduleTask } from "@/server/actions/tasks";
+import { usePostponeGuard } from "@/components/task/postpone-guard";
 import type { TaskWithRelations } from "@/server/queries/tasks";
 
 import { DayColumn, WeekTaskOverlay, dayFromDroppableId } from "./day-column";
@@ -113,6 +114,7 @@ export function WeekBoard({
     },
   );
   const [activeId, setActiveId] = useState<string | null>(null);
+  const guard = usePostponeGuard();
   const [notice, setNotice] = useState<Notice | null>(null);
   const [, startTransition] = useTransition();
 
@@ -211,9 +213,26 @@ export function WeekBoard({
       applyChange({ kind: "move", id: taskId, plannedDate: targetDay });
       setNotice(null);
 
-      const result = await rescheduleTask(taskId, targetDay);
+      /*
+        Cez strážcu: ťahanie na neskorší deň je najčastejší spôsob, ako sa
+        úloha odkladá, takže dialóg musí byť dosiahnuteľný aj odtiaľto.
+      */
+      const task = taskById.get(taskId);
+      const result = guard
+        ? await guard.postpone({
+            taskId,
+            title: task?.title ?? "Úloha",
+            plannedDate: targetDay,
+            ...(task ? { task } : {}),
+          })
+        : await rescheduleTask(taskId, targetDay);
       if (!result.ok) {
-        setNotice({ tone: "danger", text: result.error });
+        /*
+          Prázdna hláška znamená, že odklad zastavil strážca a človek si
+          v dialógu vybral niečo iné. Nie je to chyba — netreba nič hlásiť,
+          len vrátiť optimistický posun, o čo sa stará revalidácia.
+        */
+        if (result.error !== "") setNotice({ tone: "danger", text: result.error });
         return;
       }
       if (result.data.postponeCount >= postponeWarnAt) {
