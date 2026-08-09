@@ -33,6 +33,19 @@ V PowerShell tá bashová syntax nefunguje — tam to je:
 $env:DATABASE_URL="<connection-string>"; npm run db:migrate
 ```
 
+### Migrácie pri novom míľniku
+
+Neon sa **nemigruje sám**. Keď pribudne migrácia v `src/db/migrations/`, musí
+sa pustiť RUČNE a **skôr, než sa nová verzia nasadí** — inak Vercel nasadí kód,
+ktorý siaha na stĺpec, čo v produkcii ešte nie je.
+
+```powershell
+$env:DATABASE_URL="<connection-string>"; npm run db:migrate
+```
+
+Poradie je vždy: migrácia → `git push` → Vercel nasadí. Lokálne sa migrácie
+púšťajú samy pri štarte, takže rozdiel medzi vývojom a produkciou je práve tu.
+
 Naplnenie základnými oblasťami (voliteľné, idempotentné):
 
 ```powershell
