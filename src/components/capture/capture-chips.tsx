@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useRef, type ReactNode } from "react";
-import { CalendarClock, X } from "lucide-react";
+import { CalendarClock, Lightbulb, ListTodo, X, type LucideIcon } from "lucide-react";
 
 import {
   activeTokens,
@@ -33,12 +33,26 @@ import { cn } from "@/lib/utils";
  *   prepisuje existujúci token na jeho mieste.
  *
  * Fokus a kurzor vracia do poľa volajúci — dostane ich v `SyntaxEdit`.
+ *
+ * **Výnimka z pravidla „čipy iba vkladajú text":** prepínač Úloha/Nápad na
+ * začiatku radu. Ten do textu nevkladá nič — rozhoduje o tom, KAM sa text
+ * uloží. Preto ho drží volajúci v stave a sem chodí propom. Je to jediný
+ * ovládací prvok v rade, ktorý sa v texte neodzrkadlí, a preto je aj jediný,
+ * ktorý má farbu plnej akcie: zámena úlohy za nápad je omyl, ktorý sa musí
+ * dať odhaliť pohľadom, nie čítaním.
  */
+
+/** Kam smeruje rýchle zachytenie — do úloh, alebo do nápadov. */
+export type CaptureMode = "task" | "idea";
+
 export interface CaptureChipsProps {
   /** Aktuálny text poľa. Jediný zdroj pravdy pre aktívne čipy. */
   text: string;
   /** Nový text a pozícia kurzora. Volajúci ich zapíše do stavu a vráti fokus. */
   onEdit: (edit: SyntaxEdit) => void;
+  /** Úloha, alebo nápad. V režime nápadu sa ostatné čipy nevykreslia vôbec. */
+  mode: CaptureMode;
+  onModeChange: (mode: CaptureMode) => void;
   /** Prvý deň týždňa — kvôli zhode s parserom v náhľade. */
   weekStartsOn?: number;
   className?: string;
@@ -82,6 +96,14 @@ const ACTIVE_ENERGY: Record<"low" | "mid" | "high", string> = {
 
 /** Odhad a termín vlastnú farbu nemajú — dostanú akcent. */
 const ACTIVE_ACCENT = "border-accent/60 bg-accent-soft text-accent";
+
+/**
+ * Zapnutá strana prepínača Úloha/Nápad. Zámerne plná akcentová plocha, nie
+ * jemný `bg-accent-soft` ako pri ostatných čipoch: toto nie je značka v texte,
+ * ale rozhodnutie o tom, čo z napísaného vznikne. Musí byť vidieť z druhého
+ * konca miestnosti.
+ */
+const ACTIVE_MODE = "border-accent bg-accent text-accent-fg";
 
 function Chip({
   label,
@@ -152,6 +174,30 @@ const ESTIMATE_VALUES: ReadonlyArray<{ minutes: number; label: string }> = [
   { minutes: 60, label: "1h" },
 ];
 
+/**
+ * Dve strany prepínača. Popis pre čítačku hovorí celú vetu — samotné „Nápad"
+ * by z rady čipov znelo ako ďalšia značka, nie ako voľba cieľa.
+ */
+const MODE_OPTIONS: ReadonlyArray<{
+  value: CaptureMode;
+  label: string;
+  description: string;
+  Icon: LucideIcon;
+}> = [
+  {
+    value: "task",
+    label: "Úloha",
+    description: "Uložiť ako úlohu — záväzok s dátumom a prioritou",
+    Icon: ListTodo,
+  },
+  {
+    value: "idea",
+    label: "Nápad",
+    description: "Uložiť ako nápad — možnosť bez dátumu a priority",
+    Icon: Lightbulb,
+  },
+];
+
 /* ═══════════════════════════════════════════════════════════════════════════
    KOMPONENT
    ═══════════════════════════════════════════════════════════════════════════ */
@@ -159,6 +205,8 @@ const ESTIMATE_VALUES: ReadonlyArray<{ minutes: number; label: string }> = [
 export function CaptureChips({
   text,
   onEdit,
+  mode,
+  onModeChange,
   weekStartsOn = 1,
   className,
 }: CaptureChipsProps) {
@@ -223,118 +271,153 @@ export function CaptureChips({
         className,
       )}
     >
-      {/* Termín je prvý zámerne — práve ten sa v poli nedal nájsť. */}
-      <ChipGroup label="Termín">
-        <span className="relative inline-flex">
-          <Chip
-            label={
-              due === undefined
-                ? "Termín — otvorí výber dátumu"
-                : `Termín ${formatLongSk(due)} — otvorí výber dátumu`
-            }
-            pressed={due !== undefined}
-            activeClass={ACTIVE_ACCENT}
-            onClick={openDatePicker}
-          >
-            <CalendarClock aria-hidden="true" size={14} className="shrink-0" />
-            {due === undefined ? "vybrať" : formatDayMonthSk(due)}
-          </Chip>
+      {/*
+        Prepínač je prvý v rade a na telefóne teda vždy viditeľný bez rolovania.
+        Za ním nasledujú značky, ktoré platia len pre úlohu.
+      */}
+      <ChipGroup label="Ukladám">
+        {MODE_OPTIONS.map((option) => {
+          const on = mode === option.value;
+          const Icon = option.Icon;
+          return (
+            <button
+              key={option.value}
+              type="button"
+              aria-label={option.description}
+              aria-pressed={on}
+              title={option.description}
+              onClick={() => onModeChange(option.value)}
+              className={cn(CHIP_BASE, on ? cn(ACTIVE_MODE, "font-semibold") : CHIP_IDLE)}
+            >
+              <Icon aria-hidden="true" size={14} className="shrink-0" />
+              {option.label}
+            </button>
+          );
+        })}
+      </ChipGroup>
 
-          {/*
-            Pole leží presne na čipe, len je priehľadné: natívny výber sa
-            otvorí tam, kde človek ťukol, nie v rohu obrazovky. Klikať sa naň
-            nedá (`pointer-events-none`) — ovládacím prvkom je tlačidlo.
-          */}
-          <input
-            ref={dateRef}
-            type="date"
-            tabIndex={-1}
-            aria-label="Termín — výber dátumu"
-            value={due ?? ""}
-            onChange={(event) => {
-              const iso = event.target.value;
-              onEdit(
-                iso === ""
-                  ? removeToken(text, "due", options)
-                  : applyToken(text, "due", iso, options),
+      {/*
+        Nápad nemá termín, prioritu ani odhad — `createIdea` také polia vôbec
+        nepozná. Ponúkať čipy, ktorých hodnotu by server zahodil, by bola lož,
+        preto sa celý zvyšok radu v režime nápadu nevykreslí. Čo si človek
+        napíše ručne, uvidí preškrtnuté v náhľade nad čipmi.
+      */}
+      {mode === "idea" ? null : (
+        <>
+          {/* Termín je prvý zámerne — práve ten sa v poli nedal nájsť. */}
+          <ChipGroup label="Termín">
+            <span className="relative inline-flex">
+              <Chip
+                label={
+                  due === undefined
+                    ? "Termín — otvorí výber dátumu"
+                    : `Termín ${formatLongSk(due)} — otvorí výber dátumu`
+                }
+                pressed={due !== undefined}
+                activeClass={ACTIVE_ACCENT}
+                onClick={openDatePicker}
+              >
+                <CalendarClock aria-hidden="true" size={14} className="shrink-0" />
+                {due === undefined ? "vybrať" : formatDayMonthSk(due)}
+              </Chip>
+
+              {/*
+                Pole leží presne na čipe, len je priehľadné: natívny výber sa
+                otvorí tam, kde človek ťukol, nie v rohu obrazovky. Klikať sa naň
+                nedá (`pointer-events-none`) — ovládacím prvkom je tlačidlo.
+              */}
+              <input
+                ref={dateRef}
+                type="date"
+                tabIndex={-1}
+                aria-label="Termín — výber dátumu"
+                value={due ?? ""}
+                onChange={(event) => {
+                  const iso = event.target.value;
+                  onEdit(
+                    iso === ""
+                      ? removeToken(text, "due", options)
+                      : applyToken(text, "due", iso, options),
+                  );
+                }}
+                onKeyDown={(event) => {
+                  // Enter v poli dátumu nesmie odoslať formulár — úloha ešte nie je dopísaná.
+                  if (event.key === "Enter") event.preventDefault();
+                }}
+                className="pointer-events-none absolute inset-0 h-full w-full opacity-0"
+              />
+            </span>
+
+            {/* Vymazať termín sa musí dať aj bez toho, aby sa otváral výber. */}
+            {due !== undefined ? (
+              <button
+                type="button"
+                aria-label={`Zrušiť termín ${formatLongSk(due)}`}
+                title="Zrušiť termín"
+                onClick={() => onEdit(removeToken(text, "due", options))}
+                className={cn(
+                  CHIP_BASE,
+                  CHIP_IDLE,
+                  "px-0 hover:text-danger sm:min-w-7 sm:px-0",
+                )}
+              >
+                <X aria-hidden="true" size={14} className="shrink-0" />
+              </button>
+            ) : null}
+          </ChipGroup>
+
+          <ChipGroup label="Energia">
+            {ENERGY_VALUES.map((item) => {
+              const pressed = active.energy === item.value;
+              return (
+                <Chip
+                  key={item.value}
+                  label={`${item.label} energia`}
+                  pressed={pressed}
+                  activeClass={ACTIVE_ENERGY[item.value]}
+                  onClick={() => toggle("energy", item.value, pressed)}
+                >
+                  {item.label}
+                </Chip>
               );
-            }}
-            onKeyDown={(event) => {
-              // Enter v poli dátumu nesmie odoslať formulár — úloha ešte nie je dopísaná.
-              if (event.key === "Enter") event.preventDefault();
-            }}
-            className="pointer-events-none absolute inset-0 h-full w-full opacity-0"
-          />
-        </span>
+            })}
+          </ChipGroup>
 
-        {/* Vymazať termín sa musí dať aj bez toho, aby sa otváral výber. */}
-        {due !== undefined ? (
-          <button
-            type="button"
-            aria-label={`Zrušiť termín ${formatLongSk(due)}`}
-            title="Zrušiť termín"
-            onClick={() => onEdit(removeToken(text, "due", options))}
-            className={cn(
-              CHIP_BASE,
-              CHIP_IDLE,
-              "px-0 hover:text-danger sm:min-w-7 sm:px-0",
-            )}
-          >
-            <X aria-hidden="true" size={14} className="shrink-0" />
-          </button>
-        ) : null}
-      </ChipGroup>
+          <ChipGroup label="Priorita">
+            {PRIORITY_VALUES.map((value) => {
+              const pressed = active.priority === value;
+              return (
+                <Chip
+                  key={value}
+                  label={`Priorita ${value}`}
+                  pressed={pressed}
+                  activeClass={ACTIVE_PRIORITY[value]}
+                  onClick={() => toggle("priority", value, pressed)}
+                >
+                  <span className="font-mono">!{value}</span>
+                </Chip>
+              );
+            })}
+          </ChipGroup>
 
-      <ChipGroup label="Energia">
-        {ENERGY_VALUES.map((item) => {
-          const pressed = active.energy === item.value;
-          return (
-            <Chip
-              key={item.value}
-              label={`${item.label} energia`}
-              pressed={pressed}
-              activeClass={ACTIVE_ENERGY[item.value]}
-              onClick={() => toggle("energy", item.value, pressed)}
-            >
-              {item.label}
-            </Chip>
-          );
-        })}
-      </ChipGroup>
-
-      <ChipGroup label="Priorita">
-        {PRIORITY_VALUES.map((value) => {
-          const pressed = active.priority === value;
-          return (
-            <Chip
-              key={value}
-              label={`Priorita ${value}`}
-              pressed={pressed}
-              activeClass={ACTIVE_PRIORITY[value]}
-              onClick={() => toggle("priority", value, pressed)}
-            >
-              <span className="font-mono">!{value}</span>
-            </Chip>
-          );
-        })}
-      </ChipGroup>
-
-      <ChipGroup label="Odhad">
-        {ESTIMATE_VALUES.map((item) => {
-          const pressed = active.estimate === item.minutes;
-          return (
-            <Chip
-              key={item.minutes}
-              label={`Odhad ${formatDuration(item.minutes)}`}
-              pressed={pressed}
-              activeClass={ACTIVE_ACCENT}
-              onClick={() => toggle("estimate", item.minutes, pressed)}
-            >
-              <span className="font-mono">{item.label}</span>
-            </Chip>
-          );
-        })}
-      </ChipGroup>
+          <ChipGroup label="Odhad">
+            {ESTIMATE_VALUES.map((item) => {
+              const pressed = active.estimate === item.minutes;
+              return (
+                <Chip
+                  key={item.minutes}
+                  label={`Odhad ${formatDuration(item.minutes)}`}
+                  pressed={pressed}
+                  activeClass={ACTIVE_ACCENT}
+                  onClick={() => toggle("estimate", item.minutes, pressed)}
+                >
+                  <span className="font-mono">{item.label}</span>
+                </Chip>
+              );
+            })}
+          </ChipGroup>
+        </>
+      )}
     </div>
   );
 }

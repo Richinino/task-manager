@@ -10,6 +10,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 
+import type { CaptureMode } from "@/components/capture/capture-chips";
 import { EnergyBadge, energyLabel } from "@/components/task/energy-badge";
 import { EstimateChip, estimateLabel } from "@/components/task/estimate-chip";
 import { formatDuration, formatLongSk, formatRelativeSk } from "@/lib/dates";
@@ -26,10 +27,18 @@ import { cn } from "@/lib/utils";
  *
  * Ak parser nerozpoznal nič, komponent nevykreslí vôbec nič a nezaberie
  * ani pixel — input pri písaní nesmie poskakovať.
+ *
+ * **Režim nápadu** je ten istý náhľad, len s opačným významom: nápad nemá
+ * dátumy, prioritu ani odhad, takže všetko rozpoznané je vec, ktorá sa
+ * NEULOŽÍ. Čipy sú preto preškrtnuté, majú varovný tón a pod nimi je veta,
+ * čo z toho ostane. Ticho zahodená hodnota je presne tá chyba, ktorú sme už
+ * raz opravovali pri orezávaní odhadu — druhýkrát ju nezopakujeme.
  */
 export interface ParsePreviewProps {
   /** Výstup `parseCapture`, alebo `null`, keď je pole prázdne. */
   parsed: ParsedCapture | null;
+  /** Čo z textu vznikne. Predvolene úloha. */
+  mode?: CaptureMode;
   className?: string;
 }
 
@@ -54,6 +63,8 @@ const TONE_PLANNED = "border-accent/40 bg-accent-soft text-accent";
 const TONE_DUE = "border-danger/40 bg-danger/10 text-danger";
 /** Hodnota sa uloží, ale inak, než ju používateľ napísal. */
 const TONE_CLAMPED = "border-warn/40 bg-warn/10 text-warn";
+/** Hodnota sa neuloží vôbec — nápad na ňu nemá kam. */
+const TONE_DROPPED = "border-warn/40 bg-warn/10 text-warn opacity-80";
 
 const PRIORITY_TONE: Record<1 | 2 | 3, string> = {
   1: "border-p1/40 bg-p1/10 text-p1",
@@ -143,10 +154,25 @@ function buildClampNotes(parsed: ParsedCapture): string[] {
 }
 
 /**
+ * Veta o tom, čo z rozpoznaného nápad neunesie.
+ *
+ * `createIdea` berie iba názov, popis, oblasť, iskru a ďalší krok. Dátum,
+ * termín, priorita, odhad, energia, kontext, štítok ani projekt v ňom miesto
+ * nemajú — a človek to musí vedieť skôr, než stlačí Enter.
+ */
+function buildDroppedNote(parsed: ParsedCapture): string {
+  const title = parsed.title.trim();
+  const head = "Nápad nemá dátumy, prioritu ani odhad — rozpoznané značky sa neuložia.";
+  return title === ""
+    ? `${head} Ostal by prázdny názov.`
+    : `${head} Uloží sa len názov „${title}".`;
+}
+
+/**
  * Zhrnutie pre čítačky obrazovky. Čipy samotné sú pre ne skryté — inak by
  * pri každom stlačenom znaku predčítavali celý zoznam po kúskoch.
  */
-function buildSummary(parsed: ParsedCapture): string {
+function buildSummary(parsed: ParsedCapture, mode: CaptureMode): string {
   const parts: string[] = [];
 
   if (parsed.plannedDate !== undefined || parsed.plannedTime !== undefined) {
@@ -167,6 +193,12 @@ function buildSummary(parsed: ParsedCapture): string {
   }
   for (const tag of parsed.tags) parts.push(`štítok ${tag}`);
 
+  if (mode === "idea") {
+    const found =
+      parts.length === 0 ? "" : `Rozpoznané, ale do nápadu sa neuloží: ${parts.join(", ")}.`;
+    return `${found} ${buildDroppedNote(parsed)}`.trim();
+  }
+
   const summary = parts.length === 0 ? "" : `Rozpoznané: ${parts.join(", ")}.`;
   const notes = buildClampNotes(parsed);
   return notes.length === 0 ? summary : `${summary} ${notes.join(" ")}`.trim();
@@ -174,8 +206,12 @@ function buildSummary(parsed: ParsedCapture): string {
 
 /* ── komponent ─────────────────────────────────────────────────────────── */
 
-export function ParsePreview({ parsed, className }: ParsePreviewProps) {
+export function ParsePreview({ parsed, mode = "task", className }: ParsePreviewProps) {
   if (parsed === null) return null;
+
+  /** V režime nápadu sa nič z rozpoznaného neuloží — všetko dostane varovný tón. */
+  const dropped = mode === "idea";
+  const tone = (base: string): string => (dropped ? TONE_DROPPED : base);
 
   const chips: ReactNode[] = [];
 
@@ -185,7 +221,7 @@ export function ParsePreview({ parsed, className }: ParsePreviewProps) {
       <Chip
         key="planned"
         Icon={CalendarDays}
-        tone={TONE_PLANNED}
+        tone={tone(TONE_PLANNED)}
         title={`naplánované na ${longWhen(parsed.plannedDate, parsed.plannedTime)}`}
       >
         plán: {shortWhen(parsed.plannedDate, parsed.plannedTime)}
@@ -196,7 +232,7 @@ export function ParsePreview({ parsed, className }: ParsePreviewProps) {
       <Chip
         key="planned-time"
         Icon={Clock}
-        tone={TONE_PLANNED}
+        tone={tone(TONE_PLANNED)}
         title={`naplánované o ${parsed.plannedTime}`}
       >
         plán: {parsed.plannedTime}
@@ -210,7 +246,7 @@ export function ParsePreview({ parsed, className }: ParsePreviewProps) {
       <Chip
         key="due"
         Icon={CalendarClock}
-        tone={TONE_DUE}
+        tone={tone(TONE_DUE)}
         title={`termín do ${longWhen(parsed.dueDate, parsed.dueTime)}`}
       >
         termín: do {shortWhen(parsed.dueDate, parsed.dueTime)}
@@ -221,7 +257,7 @@ export function ParsePreview({ parsed, className }: ParsePreviewProps) {
       <Chip
         key="due-time"
         Icon={Clock}
-        tone={TONE_DUE}
+        tone={tone(TONE_DUE)}
         title={`termín do ${parsed.dueTime}`}
       >
         termín: do {parsed.dueTime}
@@ -234,7 +270,7 @@ export function ParsePreview({ parsed, className }: ParsePreviewProps) {
       <Chip
         key="priority"
         Icon={Flag}
-        tone={PRIORITY_TONE[parsed.priority]}
+        tone={tone(PRIORITY_TONE[parsed.priority])}
         title={`priorita ${parsed.priority}`}
       >
         priorita {parsed.priority}
@@ -244,13 +280,17 @@ export function ParsePreview({ parsed, className }: ParsePreviewProps) {
 
   // Odhad aj energiu vykresľujú zdieľané komponenty — v čipe je len ich obal.
   if (parsed.estimateMin !== undefined) {
-    // Ukazujeme hodnotu po orezaní, aby čip nesľuboval viac, než sa uloží.
-    const estimate = storedEstimate(parsed.estimateMin);
-    const clamped = estimate !== parsed.estimateMin;
+    /*
+      Ukazujeme hodnotu po orezaní, aby čip nesľuboval viac, než sa uloží.
+      V režime nápadu sa neuloží nič, takže orezanie nemá o čom hovoriť —
+      tam ukážeme hodnotu tak, ako ju človek napísal.
+    */
+    const estimate = dropped ? parsed.estimateMin : storedEstimate(parsed.estimateMin);
+    const clamped = !dropped && estimate !== parsed.estimateMin;
     chips.push(
       <Chip
         key="estimate"
-        tone={clamped ? TONE_CLAMPED : TONE_NEUTRAL}
+        tone={tone(clamped ? TONE_CLAMPED : TONE_NEUTRAL)}
         title={
           clamped
             ? `${estimateLabel(parsed.estimateMin)} presahuje maximum — uloží sa ${formatDuration(
@@ -271,7 +311,7 @@ export function ParsePreview({ parsed, className }: ParsePreviewProps) {
 
   if (parsed.energy !== undefined) {
     chips.push(
-      <Chip key="energy" title={energyLabel(parsed.energy)}>
+      <Chip key="energy" tone={tone(TONE_NEUTRAL)} title={energyLabel(parsed.energy)}>
         <EnergyBadge energy={parsed.energy} size="sm" />
       </Chip>,
     );
@@ -279,20 +319,25 @@ export function ParsePreview({ parsed, className }: ParsePreviewProps) {
 
   if (parsed.projectName !== undefined) {
     chips.push(
-      <Chip key="project" Icon={Folder} title={`projekt ${parsed.projectName}`}>
+      <Chip
+        key="project"
+        Icon={Folder}
+        tone={tone(TONE_NEUTRAL)}
+        title={`projekt ${parsed.projectName}`}
+      >
         {parsed.projectName}
       </Chip>,
     );
   }
 
   if (parsed.context !== undefined) {
-    const context = storedContext(parsed.context);
-    const clamped = context !== parsed.context.trim();
+    const context = dropped ? parsed.context.trim() : storedContext(parsed.context);
+    const clamped = !dropped && context !== parsed.context.trim();
     chips.push(
       <Chip
         key="context"
         Icon={AtSign}
-        tone={clamped ? TONE_CLAMPED : TONE_NEUTRAL}
+        tone={tone(clamped ? TONE_CLAMPED : TONE_NEUTRAL)}
         title={
           clamped
             ? `kontext sa skráti na ${MAX_CONTEXT_LENGTH} znakov: ${context}`
@@ -306,7 +351,7 @@ export function ParsePreview({ parsed, className }: ParsePreviewProps) {
 
   for (const tag of parsed.tags) {
     chips.push(
-      <Chip key={`tag-${tag}`} Icon={Hash} title={`štítok ${tag}`}>
+      <Chip key={`tag-${tag}`} Icon={Hash} tone={tone(TONE_NEUTRAL)} title={`štítok ${tag}`}>
         {tag}
       </Chip>,
     );
@@ -315,12 +360,17 @@ export function ParsePreview({ parsed, className }: ParsePreviewProps) {
   // Nič rozpoznané → nič nevykreslíme. Input nesmie poskakovať pri každom znaku.
   if (chips.length === 0) return null;
 
-  const notes = buildClampNotes(parsed);
+  const notes = dropped ? [buildDroppedNote(parsed)] : buildClampNotes(parsed);
 
   return (
     <div role="status" aria-live="polite" className={className}>
-      <span className="sr-only">{buildSummary(parsed)}</span>
-      <ul aria-hidden="true" className="flex flex-wrap items-center gap-1">
+      <span className="sr-only">{buildSummary(parsed, mode)}</span>
+      {/* Preškrtnutie dedia aj vnorené odznaky odhadu a energie — text-decoration
+          sa šíri do potomkov, takže stačí raz na zozname. */}
+      <ul
+        aria-hidden="true"
+        className={cn("flex flex-wrap items-center gap-1", dropped && "line-through")}
+      >
         {chips}
       </ul>
       {/* Ticho orezanú hodnotu by používateľ nikdy neodhalil — povieme mu to
