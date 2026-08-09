@@ -409,3 +409,139 @@ Nápad sa pri povýšení **nemaže** — chceme vidieť, z čoho projekt vzniko
 ## Doplnok k M3
 
 `deleteArea` odpája aj **nápady** (`ideas.areaId → null`), rovnako ako úlohy a projekty. Bez toho by nápad držal väzbu na mäkko zmazanú oblasť — `deletedAt` je len príznak, databázové `on delete set null` sa neuplatní. `lastTouchedAt` sa pritom nemení: zmazanie oblasti nie je dotyk nápadu.
+
+---
+
+# Kontrakty M5 — anti-prokrastinácia
+
+Väčšina M5 stojí už z M1: `postponeCount`, odznak odkladov, rozpočet času na „Dnes" aj „Týždeň". Dopĺňajú sa tri veci — nastavenia, blok pri odkladoch, „Čo teraz?".
+
+## Migrácia: `task_events.note`
+
+M5 potrebuje **jednu** migráciu — nový nullable stĺpec `note text` v `task_events`.
+
+Dôvod odkladu je voľný text a `fromValue`/`toValue` držia dátumy. Napchať doň vetu by znamenalo, že M6 (revízie) a M7 (štatistiky) musia hádať, čo v stĺpci je. Nullable stĺpec je najlacnejšia možná migrácia a je to presne to, na čo je.
+
+## `src/lib/settings.ts` — vstupná schéma zvlášť
+
+Do `settingsSchema` sa **nesmú** pridávať `.refine()`. Je to schéma *úložiska* a používa ju `parseSettings`, ktorá pri chybe padá na `DEFAULT_SETTINGS` — jedna porušená dvojica by tak používateľovi zhodila **všetky** ostatné nastavenia na predvolené. To je horšie než nekonzistentná hodnota.
+
+Krížové kontroly preto patria do samostatnej vstupnej schémy, ktorú používa iba akcia:
+
+```ts
+/** Iba pre `updateSettings`. Nikdy sa ňou nečíta uložený stav. */
+export const settingsInputSchema = settingsSchema
+  .refine((s) => s.dayEndHour > s.dayStartHour, {
+    message: "Koniec dňa musí byť neskôr než začiatok.",
+    path: ["dayEndHour"],
+  })
+  .refine((s) => s.postponeBlockAt > s.postponeWarnAt, {
+    message: "Prah blokovania musí byť vyšší než prah upozornenia.",
+    path: ["postponeBlockAt"],
+  })
+  .refine((s) => s.fadeAfterDays > s.incubatorAfterDays, {
+    message: "Nápad musí do inkubátora vyplávať skôr, než vybledne.",
+    path: ["fadeAfterDays"],
+  });
+
+/** Existuje toto pásmo? Neplatné by rozbilo `todayIn` na každej obrazovke. */
+export function isValidTimeZone(tz: string): boolean;
+```
+
+Že sa dnes `dayEndHour ≤ dayStartHour` nastaviť dá, nie je hypotéza — `TimeBudget` na to má vetvu. Tá tam ostáva ako poistka pre staré uložené hodnoty.
+
+## `src/server/actions/settings.ts`
+
+```ts
+updateSettings(patch: Partial<Settings>): Promise<ActionResult<Settings>>
+```
+
+Zlúči `patch` nad **aktuálne** nastavenia, overí `settingsInputSchema` a zapíše celý objekt. Nikdy nezapisuje samotný `patch` — chýbajúce kľúče by sa tichom prepísali na defaulty.
+
+Po zmene `timezone`, `weekStartsOn`, `wipLimit` ani prahov sa nič neprepočítava: všetky sa čítajú pri každom vykreslení. Stačí `revalidatePath` nad tými istými cestami ako pri úlohách.
+
+## Blok pri odkladoch — rozšírenie `rescheduleTask`
+
+```ts
+rescheduleTask(id, plannedDate, opts?: { reason?: string }): Promise<ActionResult<{ postponeCount: number }>>
+```
+
+Blok sa spustí na tom pokuse, ktorý by `postponeCount` **dovŕšil** na `postponeBlockAt` — pri predvolenej päťke je to piate odloženie. Počítadlo teda nikdy nepreskočí prah bez rozhodnutia.
+
+Bez dôvodu vráti akcia odmietnutie s vlastným kódom, aby ho klient vedel odlíšiť od bežnej chyby a otvoril dialóg:
+
+```ts
+{ ok: false, code: "postpone_blocked", error: "…", data: { postponeCount, postponeBlockAt } }
+```
+
+S neprázdnym dôvodom prejde a dôvod ide do `task_events.note` na tom istom riadku typu `postponed`.
+
+**Kontrola je na serveri, nie v dialógu.** Klient sa dá obísť — zastaraná záložka, outbox, druhé zariadenie. Dialóg je len pohodlie.
+
+Blok platí iba na skutočné odklady: posun dopredu, zrušenie dátumu ani prvé naplánovanie odkladom nie sú, tak ako doteraz.
+
+Dialóg ponúka štyri východiská. Tri z nich **nie sú nové akcie** — sú to už existujúce operácie, len ponúknuté v správnej chvíli:
+
+| Voľba | Čo zavolá |
+|---|---|
+| Rozdeľ na podúlohy | `addSubtask` (M3) |
+| Zmenši rozsah | `updateTask` — názov a odhad |
+| Zahoď | `deleteTask` |
+| Odlož s dôvodom | `rescheduleTask` s `reason` |
+
+Zavretie dialógu bez výberu znamená, že sa úloha **neodloží**. To je celý zmysel bloku.
+
+## `src/lib/next-task.ts` — „Čo teraz?"
+
+```ts
+export interface NextTaskCandidate {
+  id: string;
+  energy: Energy | null;
+  estimateMin: number | null;
+  priority: number;
+  isFrog: boolean;
+  dueDate: string | null;
+  postponeCount: number;
+  /** Na rozhodovanie o veku — nie `Date`, aby funkcia ostala čistá. */
+  createdAtIso: string;
+}
+
+export interface NextTaskQuery {
+  /** Koľko mám sily. Strop, nie presná zhoda. */
+  energy: Energy;
+  /** Koľko mám času, v minútach. */
+  availableMin: number;
+  todayIso: string;
+}
+
+export interface NextTaskPick {
+  taskId: string;
+  /** Jeden dôvod pre používateľa — prečo práve táto. */
+  reason: "frog" | "overdue" | "due" | "postponed" | "oldest";
+  /** Nezmestí sa do zadanej sily alebo času. Ponúka sa až keď nič lepšie nie je. */
+  stretch: boolean;
+}
+
+export function rankNextTasks(
+  candidates: NextTaskCandidate[],
+  query: NextTaskQuery,
+): NextTaskPick[];
+```
+
+Platí pravidlo pre celý `src/lib/**`: **žiadny import z `src/db` ani `src/server`**, žiadne `new Date()`. Testy v `src/lib/next-task.test.ts`.
+
+**Energia je strop, nie zhoda.** Pri `high` sile sadne aj `low` úloha — opačne nie. Úloha bez energie sadne vždy: nevyplnené pole nie je dôvod ju skryť.
+
+**Čas je strop rovnako.** `estimateMin ≤ availableMin`; bez odhadu sadne vždy.
+
+**Nesediace sa nevyhadzujú, len klesnú.** Vracia sa celé poradie s `stretch: true` na konci. Prázdna ponuka je horšia než úprimné „toto sa ti do 15 minút nezmestí, ale nič kratšie nemáš" — a tlačidlo „daj inú" potrebuje kam kráčať.
+
+Poradie sediacich: priorita dňa → po termíne → termín dnes → najviac odkladov → najstaršie. Pri zhode rozhoduje `id`, aby bolo poradie stabilné.
+
+Najviac odkladov ide **pred** vek zámerne: presne tá úloha, ktorej sa človek vyhýba, má vyplávať. To je celý zmysel míľnika.
+
+## Obrazovka nastavení
+
+Cesta `/nastavenia`. Odkaz patrí do **päty bočného panela** k prepínaču témy a odhláseniu — nie do `NAV_ITEMS`. Nastavenia nie sú miesto, kam sa chodí pracovať, a v mobilnom hárku „Viac" by tlačili von veci, ktoré sa používajú denne.
+
+Ukladá sa po poli, bez tlačidla „Uložiť" — rovnako ako detail projektu z M3.

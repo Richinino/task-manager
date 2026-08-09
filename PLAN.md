@@ -314,9 +314,74 @@ Rovnaký výsledok, nulová infraštruktúra.
 
 ---
 
+## 7c. M5 — rozpis
+
+Audit pred začiatkom dopadol inak než pri M3 a M4: **väčšina M5 už stojí.**
+Stavali sme ju cestou v M1, lebo bez rozpočtu času a bez počítadla odkladov by
+obrazovka „Dnes" nedávala zmysel.
+
+Hotové: `postponeCount` sa ráta pri každom odložení; odznak odkladov žltne od
+`postponeWarnAt` a červenie od `postponeBlockAt`; rozpočet času má pruh aj vetu
+na „Dnes" a súčet na „Týždeň", vrátane priznania úloh bez odhadu; WIP limit
+upozorňuje. Dáta pre výber úlohy — energia, odhad, kontext, priorita, termín —
+sú v schéme od M0.
+
+Chýbajú tri veci.
+
+### Rozhodnutia
+
+**Blokujú sa odklady, WIP ostáva radou.** `postponeBlockAt` dnes mení len farbu
+odznaku; komentáre v kóde to priznávajú. Nastavenie pritom sľubuje blokujúce
+rozhodnutie, takže tu je diera medzi zámerom a kódom — tú M5 zaceľuje.
+
+Prečo nie aj WIP: osem úloh na deň je občas legitímne, ale úloha odložená
+päťkrát je vždy signál, že je s ňou niečo zle. A tvrdý WIP blok sa obchádza
+tým, že si úlohu do appky nezapíšeš — appka, ktorej klameš, je horšia než
+prekročený limit.
+
+**Blok je rozhodnutie, nie hláška.** Pri odložení úlohy, ktorá je na prahu,
+vyskočí dialóg so štyrmi možnosťami: rozdeľ na podúlohy, zmenši rozsah, zahoď,
+alebo naozaj odlož — ale s dôvodom. Dôvod ide do `task_events` ako `toValue`,
+takže mesačná revízia v M6 dostane materiál zadarmo. Zavrieť dialóg bez výberu
+znamená, že sa úloha neodloží.
+
+**„Čo teraz?" sa pýta na energiu a čas.** Dve klepnutia — koľko mám sily, koľko
+mám času — a appka ponúkne jednu konkrétnu úlohu. Nie zoznam: pri prokrastinácii
+je práve rozhodovanie to, čo nejde, takže zoznam troch kandidátov by problém
+vrátil používateľovi. Keď sa ponuka nepozdáva, tlačidlo „daj inú" posunie na
+ďalšieho kandidáta.
+
+Poradie kandidátov je čisté a testovateľné: sedí energia → zmestí sa do času →
+priorita dňa → termín → najviac odkladov → najstaršie. Celé to je čistá funkcia
+v `src/lib`, žiadny dopyt do databázy, takže sa dá otestovať bez servera.
+
+**Nastavenia dostanú vlastnú obrazovku.** Deväť gombíkov v `settings.ts` je dnes
+zamknutých na predvolených hodnotách a M5 je celé o ich ladení. Bez tejto
+obrazovky sú prahy odkladov aj WIP limit len čísla v kóde.
+
+**Jedna migrácia: `task_events.note`.** Dôvod odkladu je voľný text a
+`fromValue`/`toValue` držia dátumy. Napchať doň vetu by znamenalo, že M6 aj M7
+musia hádať, čo v stĺpci je. Nullable stĺpec je najlacnejšia možná migrácia.
+
+### Poradie
+
+1. **Nastavenia** — idú prvé, hoci sú najmenej zaujímavé. Bez nich sa zvyšok M5
+   nedá vyskúšať: prah odkladov sa nedá znížiť na 2, aby sa blok dal otestovať
+   bez piatich odložení.
+2. **Blok pri odkladoch** — akcia, dialóg, zápis dôvodu do `task_events`.
+3. **„Čo teraz?"** — najprv čistá funkcia s testami, potom dialóg. Ide posledné,
+   lebo je z troch vecí najsamostatnejšie a nič naň nečaká.
+
+### Odhad
+
+2 večery. Rozpočet času aj počítadlo odkladov sú hotové, takže z pôvodného
+odhadu ubudlo — a pribudla obrazovka nastavení, ktorá v ňom nebola.
+
+---
+
 ## 8. Otvorené otázky na neskôr
 
 - Farebná schéma a vizuálny štýl (rozhodneme pri M1 na živých obrazovkách)
-- Presné hodnoty: WIP limit, dostupné hodiny dňa, prahy odkladov (3/5) — nastaviteľné
+- ~~Presné hodnoty: WIP limit, dostupné hodiny dňa, prahy odkladov (3/5) — nastaviteľné~~ → rieši obrazovka nastavení v M5
 - Či nápady chcú aj prílohy/obrázky
 - Či bude treba Tauri obal kvôli globálnej skratke (rozhodne sa po pár týždňoch používania)
