@@ -219,6 +219,35 @@ export function getOverdueTasks(
 }
 
 /**
+ * Kandidáti pre „Čo teraz?".
+ *
+ * Všetko otvorené, čo sa dá robiť dnes: naplánované na dnes alebo skôr, alebo
+ * bez plánu s termínom, ktorý už beží. Úlohy naplánované na neskôr sem
+ * NEPATRIA — človek si ich vedome odložil a „Čo teraz?" nie je nástroj na to,
+ * aby mu ich vrátilo pod ruku.
+ *
+ * `waiting` vypadáva tiež: čakanie na niekoho iného nie je práca, ktorú ide
+ * spraviť teraz. Podúlohy áno — často sú to práve tie najmenšie kroky.
+ */
+export function getActionableTasks(
+  userId: string,
+  todayIso: string,
+): Promise<TaskWithRelations[]> {
+  return selectTasks(
+    userId,
+    and(
+      isOpen(),
+      ne(tasks.status, "waiting"),
+      or(
+        lte(tasks.plannedDate, todayIso),
+        and(isNull(tasks.plannedDate), lte(tasks.dueDate, todayIso)),
+        and(isNull(tasks.plannedDate), isNull(tasks.dueDate)),
+      ),
+    ),
+  );
+}
+
+/**
  * Odložené „niekedy" — zásobáreň, z ktorej sa ťahá pri plánovaní.
  *
  * Zámerne sem patria aj tie, ktoré ešte visia v stave `inbox` — triedenie

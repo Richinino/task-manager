@@ -10,6 +10,8 @@ export interface DayHeaderProps {
   totalCount: number;
   /** Slot pre rozpočet času — hlavička nepotrebuje vedieť, ako sa počíta. */
   budget?: ReactNode;
+  /** Slot pre akciu vpravo od počtov — dnes „Čo teraz?". */
+  action?: ReactNode;
 }
 
 /** „štvrtok 6. augusta" → „Štvrtok 6. augusta" — nadpis stránky začína veľkým. */
@@ -17,7 +19,13 @@ function capitalize(text: string): string {
   return text.charAt(0).toUpperCase() + text.slice(1);
 }
 
-export function DayHeader({ date, doneCount, totalCount, budget }: DayHeaderProps) {
+export function DayHeader({
+  date,
+  doneCount,
+  totalCount,
+  budget,
+  action,
+}: DayHeaderProps) {
   const allDone = totalCount > 0 && doneCount === totalCount;
 
   const progress =
@@ -38,14 +46,17 @@ export function DayHeader({ date, doneCount, totalCount, budget }: DayHeaderProp
         <h1 className="min-w-0 text-lg font-semibold tracking-tight text-fg sm:text-xl">
           {capitalize(formatLongSk(date))}
         </h1>
-        <p
-          className={cn(
-            "shrink-0 text-[13px] tabular-nums sm:text-sm",
-            allDone ? "font-medium text-success" : "text-fg-muted",
-          )}
-        >
-          {progress}
-        </p>
+        <div className="flex shrink-0 items-center gap-3">
+          <p
+            className={cn(
+              "text-[13px] tabular-nums sm:text-sm",
+              allDone ? "font-medium text-success" : "text-fg-muted",
+            )}
+          >
+            {progress}
+          </p>
+          {action}
+        </div>
       </div>
 
       {budget}
