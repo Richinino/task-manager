@@ -21,10 +21,15 @@ import {
 /* ═══════════════════════════════════════════════════════════════════════════
    SPODNÁ LIŠTA
 
-   Osem obrazoviek sa do spodnej lišty nezmestí — rozumný strop je päť položiek
+   Deväť obrazoviek sa do spodnej lišty nezmestí — rozumný strop je päť položiek
    (na 375 px to je 75 px na stĺpec). V lište preto ostáva denná práca a piata
    položka „Viac" vysunie zvyšok v hárku tesne nad lištou. Každá obrazovka je
    tak najviac na dve ťuknutia a palec na ne dosiahne.
+
+   Hárok „Viac" rastie s druhou skupinou (dnes päť položiek po 44 px plus
+   nadpis, teda okolo 250 px). Preto má strop `60dvh` a vlastné rolovanie:
+   ani na nízkej obrazovke nemôže prerásť cez celú stránku a lišta pod ním
+   ostane vždy prístupná.
 
    Výška lišty musí ostať 3.5rem + výrez: presne s týmto číslom počíta odsadenie
    obsahu v `app-shell.tsx`, plávajúce tlačidlo zachytenia aj indikátor

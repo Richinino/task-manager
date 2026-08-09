@@ -12,6 +12,7 @@ import {
   Hourglass,
   Inbox,
   Layers,
+  Lightbulb,
   LogOut,
   type LucideIcon,
 } from "lucide-react";
@@ -40,7 +41,7 @@ export interface NavCounts {
  *
  * `day` je to, čo otvoríš každý deň bez rozmýšľania. `structure` sú miesta,
  * kam chodíš vedome — pri plánovaní a pri revízii. Rozdelenie nie je kozmetika:
- * osem rovnocenných položiek by z navigácie spravilo zoznam, v ktorom sa
+ * deväť rovnocenných položiek by z navigácie spravilo zoznam, v ktorom sa
  * denná práca stratí medzi archívmi.
  */
 export type NavGroup = "day" | "structure";
@@ -59,31 +60,20 @@ export interface NavItem {
 }
 
 /**
- * Cesta obrazovky, ktorá v M3 vzniká súbežne a jej `page.tsx` ešte nemusí byť
- * v strome.
- *
- * `typedRoutes` skladá typ `Route` z ciest, ktoré na disku naozaj sú — dovtedy
- * by doslovný zápis neprešiel prekladom. Pretypovanie je preto na jedinom
- * mieste a hneď ako obrazovka pribudne, dá sa bez náhrady zmazať: odkaz začne
- * byť typovaný sám od seba. Kto ho zmaže, zároveň overí, že cesta sedí.
- */
-function plannedRoute(path: "/oblasti"): Route {
-  return path as unknown as Route;
-}
-
-/**
  * Jediný zdroj pravdy pre navigáciu — používa ho bočný panel, spodná lišta
  * na telefóne, paleta príkazov aj globálne klávesové skratky.
  *
  * **Skratky:** musia byť voľné písmená bez modifikátora. `n` patrí zachyteniu,
  * `j`, `k`, `x` a číslice si berie triedenie v inboxe — preto `s` (someday)
- * pre „Niekedy" a `c` pre „Čaká sa na".
+ * pre „Niekedy" a `c` pre „Čaká sa na". „Nápady" dostali `a`: prvé písmeno `n`
+ * má rýchle zachytenie a `i` (idea) drží Inbox, takže ostáva druhé písmeno
+ * slova — voľné vo všetkých troch registroch (navigácia, zachytenie, triedenie).
  *
  * **Odznaky:** len tam, kde číslo znamená „konaj". Po termíne a nezatriedené
  * volajú po akcii dnes, „čaká sa na" pripomína, že niekomu treba pripomenúť.
- * „Niekedy" číslo zámerne nemá: zásobáreň je prirodzene veľká a trvalo
- * dvojciferný odznak naučí človeka prehliadať všetky odznaky vrátane tých,
- * na ktorých záleží. Z navigácie sa nesmie stať semafor.
+ * „Niekedy" ani „Nápady" číslo zámerne nemajú: zásobáreň je prirodzene veľká
+ * a trvalo dvojciferný odznak naučí človeka prehliadať všetky odznaky vrátane
+ * tých, na ktorých záleží. Z navigácie sa nesmie stať semafor.
  */
 export const NAV_ITEMS: readonly NavItem[] = [
   {
@@ -112,7 +102,7 @@ export const NAV_ITEMS: readonly NavItem[] = [
     group: "structure",
   },
   {
-    href: plannedRoute("/oblasti"),
+    href: "/oblasti",
     label: "Oblasti",
     shortcut: "o",
     Icon: Layers,
@@ -126,6 +116,13 @@ export const NAV_ITEMS: readonly NavItem[] = [
     Icon: Hourglass,
     group: "structure",
     badge: "waiting",
+  },
+  {
+    href: "/napady",
+    label: "Nápady",
+    shortcut: "a",
+    Icon: Lightbulb,
+    group: "structure",
   },
 ];
 
@@ -297,7 +294,7 @@ export interface SidebarProps {
  * Pripnutý bočný panel. Pod `md` sa skrýva — tam preberá úlohu
  * spodná lišta (`mobile-nav.tsx`).
  *
- * Osem položiek v jednom stĺpci by bola kaša, preto sú v dvoch skupinách
+ * Deväť položiek v jednom stĺpci by bola kaša, preto sú v dvoch skupinách
  * oddelených čiarou a nadpisom: hore to, čo otváraš denne, dole miesta,
  * kam chodíš vedome. Panel má na to miesto, ktoré telefón nemá — tam sa
  * druhá skupina schová za „Viac".

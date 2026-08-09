@@ -1,9 +1,9 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
-import { LoaderCircle, Sparkles } from "lucide-react";
+import { Lightbulb, LoaderCircle, Sparkles } from "lucide-react";
 
-import { CaptureChips } from "@/components/capture/capture-chips";
+import { CaptureChips, type CaptureMode } from "@/components/capture/capture-chips";
 import { ParsePreview } from "@/components/capture/parse-preview";
 import { useOutbox } from "@/components/pwa/outbox-provider";
 import { Button } from "@/components/ui/button";
@@ -19,6 +19,7 @@ import type { SyntaxEdit } from "@/lib/capture-syntax";
 import { formatLongSk } from "@/lib/dates";
 import { parseCapture, type ParsedCapture } from "@/lib/parse";
 import { cn } from "@/lib/utils";
+import { createIdea } from "@/server/actions/ideas";
 import { quickCapture } from "@/server/actions/tasks";
 
 /**
@@ -43,6 +44,17 @@ import { quickCapture } from "@/server/actions/tasks";
  * signál mohol vypadnúť práve v tej sekunde. Chybu validácie zo servera
  * (`{ ok: false }`) do fronty nikdy neschovávame: tá sa opakovaním nespraví,
  * a používateľ ju musí vidieť.
+ *
+ * **Dva ciele, jedno okno.** Prepínač v rade čipov rozhoduje, či z textu vznikne
+ * úloha (`quickCapture`), alebo nápad (`createIdea`). Úloha je záväzok, nápad je
+ * možnosť — a keďže sa zachytávajú tou istou klávesou `n` a tým istým poľom,
+ * musí byť rozdiel vidieť naraz na štyroch miestach: ikona pri poli, zapnutá
+ * strana prepínača, nápoveda pod poľom a text tlačidla.
+ *
+ * **Nápad offline nefunguje.** Fronta v `@/lib/outbox` vie odosielať iba
+ * `quickCapture`; nápad by v nej nemal kam ísť. Namiesto tichého zahodenia
+ * (alebo prehltnutia úlohou) sa zachytenie zrozumiteľne odmietne a text ostane
+ * v poli — známe obmedzenie, nie chyba.
  */
 export interface QuickCaptureProps {
   open: boolean;
@@ -79,6 +91,20 @@ const SYNTAX_HINT =
  */
 const SYNTAX_HINT_SHORT = "v piatok → plán · do 31.3. → termín";
 
+/**
+ * Nápoveda v režime nápadu. Namiesto syntaxe hovorí to jediné, čo je tu
+ * podstatné: nápad nie je záväzok a uloží sa z neho len názov. Značky parsera
+ * by tu boli návod na sklamanie — server ich zahodí.
+ */
+const IDEA_HINT = "nápad je možnosť, nie záväzok · uloží sa len názov, bez dátumov a priority";
+const IDEA_HINT_SHORT = "nápad = možnosť · uloží sa len názov";
+
+/**
+ * Nápad sa bez pripojenia odložiť nedá — fronta pozná iba `quickCapture`.
+ * Radšej to povedať rovno, než ho ticho stratiť alebo z neho spraviť úlohu.
+ */
+const IDEA_OFFLINE_ERROR = "Nápad sa bez pripojenia uložiť nedá, skús to znova online.";
+
 export function QuickCapture({
   open,
   onOpenChange,
@@ -88,8 +114,18 @@ export function QuickCapture({
 }: QuickCaptureProps) {
   const [value, setValue] = useState("");
   const [error, setError] = useState<string | null>(null);
-  /** `queued` = odložené do fronty, ešte to nevidel server. */
-  const [saved, setSaved] = useState<{ title: string; queued: boolean } | null>(null);
+  /** Úloha, alebo nápad. Predvolene úloha — to je to, čo sa zachytáva najčastejšie. */
+  const [mode, setMode] = useState<CaptureMode>("task");
+  /**
+   * `queued` = odložené do fronty, ešte to nevidel server. `mode` si hláška
+   * nesie so sebou: prepnutie prepínača nesmie prepísať, čo sa pred chvíľou
+   * naozaj uložilo.
+   */
+  const [saved, setSaved] = useState<{
+    title: string;
+    queued: boolean;
+    mode: CaptureMode;
+  } | null>(null);
   const [isPending, startTransition] = useTransition();
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -123,6 +159,9 @@ export function QuickCapture({
     setValue(defaultText ?? "");
     setError(null);
     setSaved(null);
+    // Aj režim je súčasťou čistého okna: `n` má vždy začať pri úlohe, inak by
+    // sa raz prepnutý nápad ticho niesol do ďalšieho zachytenia.
+    setMode("task");
   }, [open, defaultText]);
 
   /*
@@ -163,6 +202,16 @@ export function QuickCapture({
     setCaretNonce((n) => n + 1);
   }
 
+  /**
+   * Prepnutie cieľa. Text ostáva — práve preto, že sa človek často rozhodne
+   * až po napísaní, že to nie je záväzok, ale možnosť. Chyba z predchádzajúceho
+   * pokusu ide preč: platila pre iný cieľ.
+   */
+  function changeMode(next: CaptureMode): void {
+    setMode(next);
+    if (error !== null) setError(null);
+  }
+
   function save(keepOpen: boolean): void {
     const raw = value.trim();
     if (raw === "" || isPending) return;
@@ -174,7 +223,11 @@ export function QuickCapture({
       offline by dokonca ticho spadol do fronty a zahodil sa až pri odosielaní.
     */
     if (parsed !== null && parsed.title.trim() === "") {
-      setError("Napíš aj názov úlohy — samotný termín ani priorita nestačia.");
+      setError(
+        mode === "idea"
+          ? "Napíš aj názov nápadu — zo samotných značiek nápad nevznikne."
+          : "Napíš aj názov úlohy — samotný termín ani priorita nestačia.",
+      );
       inputRef.current?.focus();
       return;
     }
@@ -183,7 +236,7 @@ export function QuickCapture({
     function finish(title: string, queued: boolean): void {
       setValue("");
       if (keepOpen) {
-        setSaved({ title, queued });
+        setSaved({ title, queued, mode });
         inputRef.current?.focus();
       } else {
         onOpenChange(false);
@@ -210,6 +263,43 @@ export function QuickCapture({
 
     startTransition(async () => {
       setError(null);
+
+      if (mode === "idea") {
+        /*
+          Nápad nemá kam ísť bez pripojenia — fronta pozná iba `quickCapture`.
+          Odmietneme ho nahlas a text necháme v poli, nech sa nestratí.
+        */
+        if (outbox !== null && !outbox.online) {
+          setError(IDEA_OFFLINE_ERROR);
+          inputRef.current?.focus();
+          return;
+        }
+
+        /*
+          Názov berieme z parsera, nie z holého textu: `createIdea` žiadny
+          parser nemá, takže „!1" alebo „do 31.3." by ostali v názve nápadu
+          ako smeti. Že sa značky stratili, hovorí náhľad ešte pred uložením.
+        */
+        const title = parseCapture(raw, { weekStartsOn }).title.trim();
+        if (title === "") {
+          setError("Napíš aj názov nápadu — zo samotných značiek nápad nevznikne.");
+          inputRef.current?.focus();
+          return;
+        }
+
+        try {
+          const result = await createIdea({ title });
+          if (!result.ok) {
+            setError(result.error);
+            return;
+          }
+          finish(title, false);
+        } catch {
+          // Výnimka je sieťová chyba a fronta nápad neunesie — späť k človeku.
+          setError(IDEA_OFFLINE_ERROR);
+        }
+        return;
+      }
 
       // Bez signálu server nevoláme vôbec — čakanie na vypršanie spojenia by
       // len držalo dialóg otvorený a nič by nezískalo.
@@ -238,6 +328,10 @@ export function QuickCapture({
     });
   }
 
+  const idea = mode === "idea";
+  /** Ikona pri poli je prvá vec, ktorú oko chytí — musí hovoriť, čo sa ukladá. */
+  const LeadIcon = idea ? Lightbulb : Sparkles;
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
@@ -252,11 +346,18 @@ export function QuickCapture({
         */
         className="mt-3 max-w-2xl overflow-hidden p-0 sm:mt-[12vh]"
       >
-        <DialogTitle className="sr-only">Rýchle zachytenie úlohy</DialogTitle>
+        <DialogTitle className="sr-only">
+          {idea ? "Rýchle zachytenie nápadu" : "Rýchle zachytenie úlohy"}
+        </DialogTitle>
         <DialogDescription className="sr-only">
-          Napíš úlohu jednou vetou. Deň, termín, prioritu, odhad, projekt aj štítky
-          rozpozná systém sám. Enter uloží, Ctrl a Enter uloží a nechá okno otvorené,
-          Escape zruší. Uložiť sa dá aj tlačidlom Uložiť pod poľom.
+          {idea
+            ? `Napíš nápad jednou vetou. Uloží sa iba názov — nápad nemá dátum, prioritu
+               ani odhad. Prepínačom Úloha a Nápad sa dá cieľ kedykoľvek zmeniť. Enter
+               uloží, Ctrl a Enter uloží a nechá okno otvorené, Escape zruší.`
+            : `Napíš úlohu jednou vetou. Deň, termín, prioritu, odhad, projekt aj štítky
+               rozpozná systém sám. Prepínačom Úloha a Nápad sa dá namiesto úlohy uložiť
+               nápad. Enter uloží, Ctrl a Enter uloží a nechá okno otvorené, Escape zruší.
+               Uložiť sa dá aj tlačidlom Uložiť pod poľom.`}
         </DialogDescription>
 
         <form
@@ -266,7 +367,10 @@ export function QuickCapture({
           }}
         >
           <div className="flex items-center gap-2 px-3 pt-1">
-            <Sparkles aria-hidden="true" className="size-4 shrink-0 text-fg-subtle" />
+            <LeadIcon
+              aria-hidden="true"
+              className={cn("size-4 shrink-0", idea ? "text-accent" : "text-fg-subtle")}
+            />
             <Input
               ref={inputRef}
               autoFocus
@@ -293,8 +397,8 @@ export function QuickCapture({
                 // Ctrl/Cmd+Enter = ulož a nechaj okno otvorené (dávkové písanie).
                 save(event.ctrlKey || event.metaKey);
               }}
-              placeholder="Čo treba spraviť?"
-              aria-label="Text úlohy"
+              placeholder={idea ? "Čo ťa napadlo?" : "Čo treba spraviť?"}
+              aria-label={idea ? "Text nápadu" : "Text úlohy"}
               autoComplete="off"
               spellCheck={false}
               /* Fokusový krúžok necháme na globálne `:focus-visible`. */
@@ -314,14 +418,22 @@ export function QuickCapture({
             netušil, prečo mu úloha pribudla práve tam.
           */}
           {defaultDate !== undefined ? (
-            <p className="pb-1 pl-9 pr-3 text-[12px] text-fg-muted">
-              Predvyplnený deň: {formatLongSk(defaultDate)} — deň napísaný
-              v texte má prednosť.
-            </p>
+            idea ? (
+              /* Nápad deň neunesie. Predvyplnenie by sa ticho stratilo — povedzme to. */
+              <p className="pb-1 pl-9 pr-3 text-[12px] text-warn">
+                Predvyplnený deň ({formatLongSk(defaultDate)}) sa do nápadu neuloží —
+                nápad nemá dátum.
+              </p>
+            ) : (
+              <p className="pb-1 pl-9 pr-3 text-[12px] text-fg-muted">
+                Predvyplnený deň: {formatLongSk(defaultDate)} — deň napísaný
+                v texte má prednosť.
+              </p>
+            )
           ) : null}
 
           {/* Náhľad sa objaví, až keď parser naozaj niečo našiel. */}
-          <ParsePreview parsed={parsed} className="pb-1 pl-9 pr-3" />
+          <ParsePreview parsed={parsed} mode={mode} className="pb-1 pl-9 pr-3" />
 
           {/*
             Čipy sú medzi náhľadom a nápovedou zámerne: nad nimi je vidieť, čo
@@ -330,15 +442,24 @@ export function QuickCapture({
           <CaptureChips
             text={value}
             onEdit={applyEdit}
+            mode={mode}
+            onModeChange={changeMode}
             weekStartsOn={weekStartsOn}
             className="pb-1 pl-9 pr-3"
           />
 
           <div className="border-t border-border bg-surface-2 px-3 py-2">
             <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1.5">
-              <p className="min-w-0 font-mono text-[11px] text-fg-subtle">
-                <span className="sm:hidden">{SYNTAX_HINT_SHORT}</span>
-                <span className="hidden sm:inline">{SYNTAX_HINT}</span>
+              <p
+                className={cn(
+                  "min-w-0 font-mono text-[11px]",
+                  // Nápoveda nápadu nesie akcent — je to štvrtý signál o tom,
+                  // že sa neukladá úloha.
+                  idea ? "font-medium text-accent" : "text-fg-subtle",
+                )}
+              >
+                <span className="sm:hidden">{idea ? IDEA_HINT_SHORT : SYNTAX_HINT_SHORT}</span>
+                <span className="hidden sm:inline">{idea ? IDEA_HINT : SYNTAX_HINT}</span>
               </p>
 
               <div className="flex shrink-0 items-center gap-2">
@@ -373,7 +494,7 @@ export function QuickCapture({
                   disabled={trimmed === "" || parsed?.title.trim() === "" || isPending}
                   className="h-11 min-w-[5.5rem] px-4 sm:h-8 sm:min-w-0 sm:px-3 sm:text-[13px]"
                 >
-                  Uložiť
+                  {idea ? "Uložiť nápad" : "Uložiť"}
                 </Button>
               </div>
             </div>
@@ -390,7 +511,11 @@ export function QuickCapture({
                   saved.queued ? "text-warn" : "text-success",
                 )}
               >
-                {saved.queued ? "Odošle sa po pripojení: " : "Uložené: "}
+                {saved.queued
+                  ? "Odošle sa po pripojení: "
+                  : saved.mode === "idea"
+                    ? "Nápad uložený: "
+                    : "Uložené: "}
                 {saved.title}
               </p>
             ) : null}
