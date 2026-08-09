@@ -569,22 +569,33 @@ export interface RitualPeriod {
 export function ritualPeriod(
   type: RitualType,
   todayIso: string,
-  weekStartsOn: number,
+  weekStartsOn?: number,
 ): RitualPeriod;
 
-/** Má sa rituál práve teraz otvoriť sám? */
+/** Ktorá hodina rituál spúšťa. `null` = tento sa sám neotvára. */
+export function ritualTriggerHour(
+  type: RitualType,
+  settings: { dayStartHour: number; dayEndHour: number },
+): number | null;
+
+/** Má sa rituál práve teraz otvoriť sám? Podmienky platia VŠETKY naraz. */
 export function shouldAutoOpen(input: {
   type: RitualType;
   /** Hodina v pásme používateľa, 0–23. */
   hour: number;
-  /** `settings.dayStartHour` / `dayEndHour` podľa typu. */
-  triggerHour: number;
+  /** Z `ritualTriggerHour`. `null` zastaví otváranie. */
+  triggerHour: number | null;
   /** Je rituál za toto obdobie hotový? */
   completed: boolean;
-  /** Odložil ho človek dnes tlačidlom „Nechať tak"? */
+  /** Odložil ho človek tlačidlom „Nechať tak"? */
   snoozed: boolean;
   enabled: boolean;
+  /** Je otvorený iný dialóg alebo rozpísané zachytenie? */
+  busy: boolean;
 }): boolean;
+
+/** Kľúč odloženia v `sessionStorage`. Viaže sa na obdobie, nie na deň behu. */
+export function snoozeKey(type: RitualType, period: RitualPeriod): string;
 ```
 
 Platí pravidlo pre celý `src/lib/**`: **žiadny import z `src/db` ani `src/server`**, žiadne `new Date()`. Hodina prichádza zvonku, rovnako ako dnešok. Testy v `src/lib/rituals.test.ts`.
@@ -597,6 +608,7 @@ Otváranie bez vyžiadania je najrýchlejší spôsob, ako človeka odnaučiť a
 |---|---|
 | Iba na `/dnes` | inde rituál nedáva zmysel a prerušil by prácu |
 | Iba po `triggerHour` | ranný sa viaže na `dayStartHour`, večerný na `dayEndHour` |
+| **Týždenná a mesačná sa neotvárajú vôbec** | 15–30 minút práce nemá nikoho prepadnúť — na tie sa treba rozhodnúť vedome. `ritualTriggerHour` im vracia `null` |
 | Iba keď rituál za obdobie **nie je** hotový | riadok v `reviews` s `completedAt` |
 | Nikdy cez otvorený dialóg ani rozpísané zachytenie | rozrobený text sa nesmie stratiť |
 | Najviac raz za obdobie | „Nechať tak" odloží do zajtra, nie o päť minút |
