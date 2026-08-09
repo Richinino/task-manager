@@ -5,9 +5,14 @@ import { DayList } from "@/components/views/dnes/day-list";
 import { DayPriorityCard } from "@/components/views/dnes/day-priority-card";
 import { OverdueSection } from "@/components/views/dnes/overdue-section";
 import { TimeBudget } from "@/components/views/dnes/time-budget";
+import { WhatNow } from "@/components/views/dnes/what-now";
 import { todayIn } from "@/lib/dates";
 import { requireUser } from "@/server/auth-guard";
-import { getOverdueTasks, getTasksForDay } from "@/server/queries/tasks";
+import {
+  getActionableTasks,
+  getOverdueTasks,
+  getTasksForDay,
+} from "@/server/queries/tasks";
 
 export const metadata: Metadata = {
   title: "Dnes",
@@ -25,9 +30,12 @@ export default async function DnesPage() {
   // by inak medzi polnocou a druhou v noci svietili včerajšie úlohy.
   const date = todayIn(user.settings.timezone);
 
-  const [planned, overdue] = await Promise.all([
+  const [planned, overdue, actionable] = await Promise.all([
     getTasksForDay(user.id, date),
     getOverdueTasks(user.id, date),
+    // „Čo teraz?" siaha ďalej než dnešok — aj na prepadnuté a nenaplánované.
+    // Práve to je jeho zmysel: keď sa dnešok minie, stále je čo robiť.
+    getActionableTasks(user.id, date),
   ]);
 
   // Zahodené úlohy do dnešného záväzku nepatria — v zozname by sa tvárili
@@ -72,6 +80,7 @@ export default async function DnesPage() {
             withoutEstimate={withoutEstimate}
           />
         }
+        action={<WhatNow tasks={actionable} todayIso={date} />}
       />
 
       {showFrogCard ? (
