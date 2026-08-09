@@ -274,6 +274,46 @@ a oblasti len „napojíme" — nepočítal s tým, že ich celé rozhranie treb
 
 ---
 
+## 7b. M4 — rozpis
+
+Audit pred začiatkom: tabuľka `ideas` je z M0 kompletne navrhnutá (stage, iskra,
+`nextStep`, `lastTouchedAt`, väzba na projekt). **Kódu k nej je nula** — žiadna
+serverová vrstva, žiadne obrazovky. M4 je teda čistá stavba na hotovom modeli,
+bez migrácií.
+
+### Rozhodnutia
+
+**Zachytávanie: čip v rýchlom zachytení.** Tá istá klávesa `n` a ten istý dialóg,
+len pribudne čip „Nápad", ktorý prepne cieľ uloženia. Využije svalovú pamäť aj
+parser (oblasť, štítky). Nápad zapísaný v aute je celý zmysel — vlastná obrazovka
+by ten moment nepokryla.
+
+**Zobrazenie: kanban na počítači, zoznam na mobile.** Štyri stĺpce sa na 375 px
+nezmestia. Je to dvojnásobok práce oproti samotnému zoznamu, ale zrenie nápadu
+je vizuálna informácia a na šírke sa oplatí.
+
+**Inkubátor: sekcia na `/napady`.** Pás „Vráť sa k týmto" s tromi nápadmi, ktorých
+sa človek dlho nedotkol. Týždenná revízia v M6 potom siahne po tých istých dátach.
+
+**Zhnitie sa nepočíta úlohou na pozadí.** Appka nemá cron a zavádzať ho kvôli
+jednému príznaku je neúmerné — `faded` sa odvodí pri čítaní z `lastTouchedAt`.
+Rovnaký výsledok, nulová infraštruktúra.
+
+### Poradie
+
+1. **Serverová vrstva celá naraz** — rovnako ako v M3. Stavané po kúskoch si
+   agenti prepisujú rozhrania.
+2. **Obrazovka nápadov** vrátane inkubátora a povýšenia na projekt. Povýšenie
+   dáva zmysel až teraz, keď projekty od M3 existujú.
+3. **Čip v zachytení** — malý zásah do hotového dialógu, ide zvlášť, aby
+   nekolidoval s obrazovkou.
+
+### Odhad
+
+2–3 večery. Model je hotový, väčšina práce je rozhranie.
+
+---
+
 ## 8. Otvorené otázky na neskôr
 
 - Farebná schéma a vizuálny štýl (rozhodneme pri M1 na živých obrazovkách)

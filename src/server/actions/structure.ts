@@ -5,7 +5,7 @@ import { and, eq, isNull, sql } from "drizzle-orm";
 import { z } from "zod";
 
 import { getDb, type Database } from "@/db";
-import { areas, projects, taggables, tags, tasks } from "@/db/schema";
+import { areas, ideas, projects, taggables, tags, tasks } from "@/db/schema";
 import { uuidv7 } from "@/lib/id";
 import { requireUser } from "@/server/auth-guard";
 
@@ -489,6 +489,18 @@ export async function deleteArea(id: string): Promise<ActionResult> {
         .update(projects)
         .set({ areaId: null, updatedAt: new Date() })
         .where(and(eq(projects.userId, user.id), eq(projects.areaId, id)));
+
+      /*
+        Nápady sa odpájajú rovnako ako úlohy a projekty. Bez toho by
+        `ideas.area_id` ukazoval na mäkko zmazaný riadok — `deletedAt` je
+        len príznak, takže databázové `on delete set null` sa neuplatní.
+        `lastTouchedAt` sa NEMENÍ: zmazanie oblasti nie je dotyk nápadu
+        a nesmie mu resetovať hodiny zrenia.
+      */
+      await tx
+        .update(ideas)
+        .set({ areaId: null, updatedAt: new Date() })
+        .where(and(eq(ideas.userId, user.id), eq(ideas.areaId, id)));
 
       await tx
         .update(areas)

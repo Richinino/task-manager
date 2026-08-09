@@ -319,3 +319,93 @@ addSubtask(parentTaskId, title)      reorderSubtasks(parentTaskId, ids)      set
 **Podúloha** dedí `projectId` a `areaId`, nededí dátumy ani prioritu — je to krok, nie samostatný záväzok. Stav dostane `todo`, nie `inbox`. Povolená je **len jedna úroveň** zanorenia.
 
 **`setWaiting(id, false)`** vráti úlohu do stavu, v ktorom je viditeľná: s naplánovaným dňom `todo`, bez neho `inbox`. Bez toho by zmizla zo všetkých obrazoviek — inbox filtruje podľa stavu, ostatné podľa dátumu.
+
+---
+
+# Kontrakty M4 — nápady
+
+Nápad nie je úloha: úloha je záväzok, nápad je možnosť. Vlastná tabuľka, vlastný životný cyklus `raw → incubating → promoted | rejected` a k tomu odvodené `faded`.
+
+## `src/lib/ideas.ts` — čistá logika
+
+```ts
+export type IdeaStageValue = "raw" | "incubating" | "promoted" | "rejected" | "faded";
+
+/** Koľko CELÝCH dní ubehlo od dotyku. Nikdy záporné, neplatný dátum → 0. */
+export function daysSinceTouch(lastTouchedAt: Date, now?: Date): number;
+/** Okamih presne `days` dní pred `now` — hranica „nedotknuté aspoň `days` dní" pre SQL. */
+export function touchThreshold(days: number, now?: Date): Date;
+/** Uložená fáza + vek → fáza, ktorú vidí používateľ. */
+export function effectiveIdeaStage(stored: IdeaStageValue, staleDays: number, fadeAfterDays: number): IdeaStageValue;
+
+/** Koľko dní čakania vyváži jeden stupeň iskry. */
+export const SPARK_DAY_VALUE = 30;
+/** skóre = dni bez dotyku + (iskra − 1) × 30 */
+export function incubatorScore(staleDays: number, spark: number): number;
+/** Vyššie skóre dopredu; pri zhode dlhšie čakanie, potom `id` (stabilné poradie). */
+export function compareIncubatorCandidates(
+  a: { staleDays: number; spark: number; id: string },
+  b: { staleDays: number; spark: number; id: string },
+): number;
+```
+
+Platí tu rovnaké pravidlo ako pre celý `src/lib/**`: **žiadny import z `src/db` ani `src/server`**. Testy sú v `src/lib/ideas.test.ts`.
+
+**`faded` sa do databázy NIKDY nezapisuje.** Odvodzuje sa pri čítaní z `lastTouchedAt` a nastavenia `fadeAfterDays`. Appka nemá cron a zaviesť ho kvôli jednému príznaku je neúmerné — a hlavne: vyblednutý nápad tak **obživne v tej sekunde, ako sa ho niekto dotkne**, bez osobitnej akcie. Uzavreté fázy (`promoted`, `rejected`) vyblednúť nemôžu.
+
+**Prahy sa berú z nastavení používateľa** (`incubatorAfterDays`, predvolene 30; `fadeAfterDays`, predvolene 180), nie z konštánt v kóde. Čítajú sa pre `userId` z parametra, nie zo session — inak by sa cudzie nápady dopočítavali podľa vlastných prahov.
+
+## `src/server/queries/ideas.ts`
+
+```ts
+export interface IdeaWithRelations extends Idea {
+  area: { id: string; name: string; color: string } | null;
+  /** Projekt, na ktorý bol nápad povýšený. */
+  promotedProject: { id: string; name: string } | null;
+  /** Koľko dní sa nápadu nikto nedotkol. */
+  staleDays: number;
+  /** Odvodená fáza — vrátane `faded`, ktorá v databáze nie je. */
+  effectiveStage: IdeaStageValue;
+}
+
+export interface ListIdeasOptions {
+  /** Pribrať aj `promoted` a `rejected`. Predvolene nie. */
+  includeSettled?: boolean;
+}
+
+export function listIdeas(userId: string, options?: ListIdeasOptions): Promise<IdeaWithRelations[]>;
+export function getIdea(userId: string, id: string): Promise<IdeaWithRelations | null>;
+/** Najdlhšie nedotknuté vážené iskrou; predvolene 3. */
+export function getIncubatorIdeas(userId: string, limit?: number): Promise<IdeaWithRelations[]>;
+export function getIdeaCounts(userId: string): Promise<{ raw: number; incubating: number; faded: number }>;
+```
+
+Ako všade: každý dotaz filtruje `userId` **aj** `deletedAt IS NULL` — vrátane pripojených oblastí a projektov v JOIN-och.
+
+**Vyblednuté nápady v zozname ostávajú** (`faded` je odvodený stav nad uloženým `raw`/`incubating`, nápad je stále v hre). Do **inkubátora** sa ale nedostanú: ten má pripomínať to, čo ešte žije. Kandidát musí byť otvorený, nedotknutý aspoň `incubatorAfterDays` dní a zároveň ešte nevyblednutý.
+
+## `src/server/actions/ideas.ts`
+
+```ts
+createIdea(input)              // → { id }
+updateIdea(id, patch)          // text, oblasť, iskra, ďalší krok, fáza
+setIdeaStage(id, stage)        // "raw" | "incubating" | "rejected"
+touchIdea(id)                  // len osvieži lastTouchedAt
+promoteIdeaToProject(id)       // → { projectId }
+deleteIdea(id)                 // mäkké zmazanie
+restoreIdea(id)
+```
+
+Všetky vracajú `ActionResult`, rovnako ako akcie úloh a štruktúry.
+
+**Každý zásah je dotyk.** `createIdea`, `updateIdea` aj `setIdeaStage` obnovujú `lastTouchedAt` — práve preto vyblednutý nápad obživne bez osobitnej akcie. Výnimka je `restoreIdea`: obnovenie omylom zmazaného nápadu nie je rozhodnutie o jeho budúcnosti a nemá mu resetovať hodiny zrenia.
+
+**`promoted` sa nedá nastaviť ručne** — jedine cez `promoteIdeaToProject`, inak by nápad tvrdil, že z neho vznikol projekt, ktorý neexistuje. `faded` sa nedá nastaviť vôbec. Povýšenému nápadu sa fáza už meniť nedá (text áno).
+
+**Povýšenie je jedna transakcia.** V nej vznikne projekt (názov z `title`, cieľ z `body`, oblasť z nápadu — len ak ešte žije), z `nextStep` **prvá úloha** projektu so stavom `todo` a horizontom `week` plus riadok v `task_events`, a nakoniec sa nápad prepne na `promoted` s odkazom na projekt. Polovičné povýšenie je horšie než žiadne: projekt bez väzby na nápad je sirota a nápad s `promotedProjectId` do prázdna je klamstvo. Prvým krokom transakcie je `select … for update` nad riadkom nápadu — obyčajné čítanie by na READ COMMITTED dva súbežné pokusy nezastavilo a ostal by po nich sirotský projekt.
+
+Nápad sa pri povýšení **nemaže** — chceme vidieť, z čoho projekt vznikol. Druhé povýšenie sa odmieta. Ak sa názov projektu bije s existujúcim (M3 nedovolí dva rovnaké), povýšenie zlyhá zrozumiteľnou hláškou a nezaloží nič.
+
+## Doplnok k M3
+
+`deleteArea` odpája aj **nápady** (`ideas.areaId → null`), rovnako ako úlohy a projekty. Bez toho by nápad držal väzbu na mäkko zmazanú oblasť — `deletedAt` je len príznak, databázové `on delete set null` sa neuplatní. `lastTouchedAt` sa pritom nemení: zmazanie oblasti nie je dotyk nápadu.
