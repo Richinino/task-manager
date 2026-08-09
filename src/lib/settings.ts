@@ -39,3 +39,46 @@ export function parseSettings(raw: unknown): Settings {
   const result = settingsSchema.safeParse(raw ?? {});
   return result.success ? result.data : DEFAULT_SETTINGS;
 }
+
+/**
+ * Existuje také časové pásmo?
+ *
+ * Neplatné pásmo by zhodilo `todayIn` na každej obrazovke — `Intl` naň hodí
+ * `RangeError` a padla by celá stránka, nielen nastavenia. Preto sa overuje
+ * pri ukladaní, nie pri čítaní.
+ */
+export function isValidTimeZone(timeZone: string): boolean {
+  try {
+    new Intl.DateTimeFormat("en-CA", { timeZone });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Schéma pre **ukladanie** nastavení. Používa ju výhradne `updateSettings`.
+ *
+ * Krížové kontroly zámerne nie sú v `settingsSchema`. Tú číta `parseSettings`,
+ * ktorá pri chybe padá na `DEFAULT_SETTINGS` — jedna porušená dvojica by tak
+ * používateľovi zhodila **všetky** ostatné nastavenia na predvolené, vrátane
+ * časového pásma. Nekonzistentná hodnota v jednom poli je menšie zlo než tichý
+ * reset celku, takže čítanie ostáva zhovievavé a prísny je až zápis.
+ */
+export const settingsInputSchema = settingsSchema
+  .refine((s) => isValidTimeZone(s.timezone), {
+    message: "Také časové pásmo neexistuje.",
+    path: ["timezone"],
+  })
+  .refine((s) => s.dayEndHour > s.dayStartHour, {
+    message: "Koniec dňa musí byť neskôr než jeho začiatok.",
+    path: ["dayEndHour"],
+  })
+  .refine((s) => s.postponeBlockAt > s.postponeWarnAt, {
+    message: "Prah blokovania musí byť vyšší než prah upozornenia.",
+    path: ["postponeBlockAt"],
+  })
+  .refine((s) => s.fadeAfterDays > s.incubatorAfterDays, {
+    message: "Nápad musí do inkubátora vyplávať skôr, než vybledne.",
+    path: ["fadeAfterDays"],
+  });

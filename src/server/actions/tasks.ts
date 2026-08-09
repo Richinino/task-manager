@@ -27,11 +27,13 @@ import { requireUser } from "@/server/auth-guard";
 
    Akcia nikdy nevyhodí výnimku ku klientovi. Buď sa podarí, alebo vráti
    slovenskú hlášku, ktorú vie UI rovno zobraziť.
+
+   Spoločný tvar žije v `@/server/action-result`. Re-export tu ostáva, aby
+   existujúce importy z tohto modulu ďalej platili.
    ═══════════════════════════════════════════════════════════════════════════ */
 
-export type ActionResult<T = void> =
-  | ({ ok: true } & (T extends void ? {} : { data: T }))
-  | { ok: false; error: string };
+export type { ActionResult } from "@/server/action-result";
+import type { ActionResult } from "@/server/action-result";
 
 /* ═══════════════════════════════════════════════════════════════════════════
    VALIDÁCIA
@@ -805,16 +807,39 @@ export async function restoreTask(id: string): Promise<ActionResult> {
   }
 }
 
+const reasonSchema = z
+  .string()
+  .trim()
+  .min(1, "Napíš, prečo to odkladáš.")
+  .max(500, "Dôvod je príliš dlhý.");
+
+export interface RescheduleOptions {
+  /**
+   * Prečo sa úloha odkladá znova. Povinný až v momente, keď odklad dovŕši
+   * `settings.postponeBlockAt` — dovtedy sa neukladá.
+   */
+  reason?: string;
+}
+
 /**
  * Preplánovanie na iný deň (alebo zrušenie dátumu).
  *
  * Počítadlo odkladov stúpne **iba** ak úloha už deň mala, nový je neskorší
  * a úloha nie je uzavretá. Posun dopredu, zrušenie dátumu ani prvé
  * naplánovanie odklad nie sú.
+ *
+ * **Blok pri odkladoch.** Ten pokus, ktorý by počítadlo dovŕšil na
+ * `settings.postponeBlockAt`, prejde len s dôvodom. Bez neho sa vráti
+ * `code: "postpone_blocked"` a úloha ostane, kde bola — počítadlo teda nikdy
+ * neprekročí prah bez toho, aby sa človek zastavil.
+ *
+ * Kontrola je zámerne tu, nie v dialógu: klient sa dá obísť zastaranou
+ * záložkou aj druhým zariadením. Dialóg je len pohodlie.
  */
 export async function rescheduleTask(
   id: string,
   plannedDate: string | null,
+  options?: RescheduleOptions,
 ): Promise<ActionResult<{ postponeCount: number }>> {
   const user = await requireUser();
   try {
@@ -845,6 +870,32 @@ export async function rescheduleTask(
 
     const postponeCount = task.postponeCount + (isPostpone ? 1 : 0);
 
+    /*
+      Prah kontrolujeme až po `isPostpone`. Úlohu odloženú desaťkrát musí ísť
+      stále presunúť dopredu alebo jej dátum zrušiť — blokovať treba útek,
+      nie nápravu.
+    */
+    const blockAt = user.settings.postponeBlockAt;
+    const hitsThreshold = isPostpone && postponeCount >= blockAt;
+
+    let reason: string | null = null;
+    if (hitsThreshold) {
+      const raw = options?.reason;
+      if (raw === undefined || raw.trim() === "") {
+        return {
+          ok: false,
+          code: "postpone_blocked",
+          detail: { postponeCount: task.postponeCount, postponeBlockAt: blockAt },
+          error: `Túto úlohu si už odložil ${task.postponeCount}×. Rozhodni sa, čo s ňou.`,
+        };
+      }
+      const reasonParsed = reasonSchema.safeParse(raw);
+      if (!reasonParsed.success) {
+        return invalid(reasonParsed.error, "Napíš, prečo to odkladáš.");
+      }
+      reason = reasonParsed.data;
+    }
+
     const values: Partial<typeof tasks.$inferInsert> = {
       plannedDate: nextDate,
       postponeCount,
@@ -867,6 +918,7 @@ export async function rescheduleTask(
       type: isPostpone ? "postponed" : "rescheduled",
       fromValue: previousDate,
       toValue: nextDate,
+      note: reason,
     });
 
     revalidateViews();
