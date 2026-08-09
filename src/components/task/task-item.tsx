@@ -1,7 +1,7 @@
 "use client";
 
 import { useOptimistic } from "react";
-import { CalendarClock, CalendarDays, Folder, ListChecks, Star } from "lucide-react";
+import { CalendarClock, CalendarDays, Folder, Hash, ListChecks, Star } from "lucide-react";
 
 import type { TaskStatus } from "@/db/schema";
 import type { TaskWithRelations } from "@/server/queries/tasks";
@@ -59,7 +59,22 @@ export interface TaskItemProps {
   postponeWarnAt?: number;
   /** Od koľkých odkladov je odznak červený — `settings.postponeBlockAt`. */
   postponeBlockAt?: number;
+  /**
+   * Štítky úlohy. Predvolene sa berú z `task.tags`, ktoré nesie
+   * `TaskWithRelations` — prop je tu len na prípad, keď ich volajúci
+   * potrebuje podať inak. Bez štítkov riadok nezaberie ani pixel navyše.
+   */
+  tags?: TaskItemTag[];
 }
+
+/** Štítok tak, ako ho riadok kreslí — meno stačí, id je len kľúč. */
+export interface TaskItemTag {
+  id: string;
+  name: string;
+}
+
+/** Stabilná referencia pre predvolenú hodnotu — inak by sa memo prepočítalo. */
+const NO_TAGS: TaskItemTag[] = [];
 
 /** Odškrtnutá úloha má prečiarknutý a stlmený text. */
 const DONE_TEXT =
@@ -109,7 +124,13 @@ function DateChip({ iso, kind, now, overdue = false, size = "md" }: DateChipProp
 /** Zhrnutie úlohy pre čítačky — farba nikdy nie je jediný nosič informácie. */
 function buildSummary(
   task: TaskWithRelations,
-  opts: { isFrog: boolean; overdue: boolean; now: Date; postponeWarnAt: number },
+  opts: {
+    isFrog: boolean;
+    overdue: boolean;
+    now: Date;
+    postponeWarnAt: number;
+    tags: TaskItemTag[];
+  },
 ): string {
   const parts: string[] = [];
 
@@ -121,6 +142,11 @@ function buildSummary(
   if (task.context) parts.push(`kontext ${normalizeContext(task.context)}`);
   if (task.area) parts.push(areaLabel(task.area.name));
   if (task.project) parts.push(`projekt ${task.project.name}`);
+  // Vizuálne je vidieť len prvý štítok — čítačka ich dostane všetky, tá
+  // miestom obmedzená nie je.
+  if (opts.tags.length > 0) {
+    parts.push(`štítky ${opts.tags.map((tag) => tag.name).join(", ")}`);
+  }
 
   if (task.dueDate) {
     parts.push(
@@ -154,8 +180,16 @@ export function TaskItem({
   onSelect,
   postponeWarnAt = POSTPONE_WARN_AT_DEFAULT,
   postponeBlockAt = POSTPONE_DANGER_AT_DEFAULT,
+  tags,
 }: TaskItemProps) {
   const compact = density === "compact";
+
+  /*
+    Štítky prichádzajú priamo v úlohe. Prop ich vie prebiť, ale nikto to
+    zatiaľ nepotrebuje — `NO_TAGS` drží stabilnú referenciu, aby sa memo
+    neprepočítavalo pri každom prekreslení.
+  */
+  const shownTags: TaskItemTag[] = tags ?? task.tags ?? NO_TAGS;
 
   /*
     Zmeny z menu akcií sa prekresľujú okamžite a po dobehnutí akcie sa hodnota
@@ -200,7 +234,15 @@ export function TaskItem({
   const plannedDate = shown.plannedDate;
   const overdue = dueDate !== null && !isDone && isPast(dueDate, now);
 
-  const summary = buildSummary(shown, { isFrog, overdue, now, postponeWarnAt });
+  const summary = buildSummary(shown, {
+    isFrog,
+    overdue,
+    now,
+    postponeWarnAt,
+    tags: shownTags,
+  });
+
+  const firstTag = shownTags[0];
 
   /*
     Zahodenie sa nezapisuje hneď — riadok sa najprv premení na pásik s ponukou
@@ -306,9 +348,35 @@ export function TaskItem({
             </span>
             {titleNode}
           </div>
-          {task.estimateMin !== null ? (
-            <span aria-hidden="true" className="flex min-w-0 items-center pl-3">
-              <EstimateChip minutes={task.estimateMin} size="sm" />
+          {/*
+            Druhý riadok kartičky. Štítky sem nejdú vôbec — stĺpec týždňa má
+            okolo 150 px a text premenlivej dĺžky by z neho vytlačil odhad,
+            ktorý je pri plánovaní dňa dôležitejší.
+          */}
+          {task.estimateMin !== null || task.subtaskCount > 0 ? (
+            <span
+              aria-hidden="true"
+              /*
+                `overflow-hidden`, lebo oba odznaky sú `shrink-0`: v úzkom
+                stĺpci týždňa by sa dlhý odhad s dlhým počítadlom inak
+                vykreslili von z kartičky namiesto toho, aby sa orezali.
+              */
+              className="flex min-w-0 items-center gap-1.5 overflow-hidden pl-3 text-[11px] text-fg-muted"
+            >
+              {task.estimateMin !== null ? (
+                <EstimateChip minutes={task.estimateMin} size="sm" />
+              ) : null}
+              {task.subtaskCount > 0 ? (
+                <span
+                  className={cn(
+                    "inline-flex shrink-0 items-center gap-0.5 whitespace-nowrap",
+                    DONE_CALM,
+                  )}
+                >
+                  <ListChecks aria-hidden="true" size={11} className="shrink-0" />
+                  {task.doneSubtaskCount}/{task.subtaskCount}
+                </span>
+              ) : null}
             </span>
           ) : null}
         </div>
@@ -421,6 +489,29 @@ export function TaskItem({
           >
             <Folder aria-hidden="true" size={13} className="shrink-0" />
             <span className="truncate">{task.project.name}</span>
+          </span>
+        ) : null}
+
+        {/*
+          Štítky sú text premenlivej dĺžky — patria teda k tej istej trojici
+          ako kontext, oblasť a projekt a miznú spolu s ňou do `md:`. Na 375 px
+          by inak zjedli názov úlohy, a pritom je to značka na vyhľadávanie,
+          nie signál „toto rieš teraz".
+
+          Kreslí sa VÝHRADNE prvý štítok a za ním počet ostatných: šírka odznaku
+          tak ostáva rovnaká pri jednom aj pri desiatich štítkoch. Celý zoznam
+          je v `title`, v zhrnutí pre čítačky a na jedno ťuknutie v detaile.
+        */}
+        {firstTag !== undefined ? (
+          <span
+            title={`štítky ${shownTags.map((tag) => `#${tag.name}`).join(", ")}`}
+            className="hidden max-w-28 min-w-0 shrink items-center gap-0.5 md:inline-flex"
+          >
+            <Hash aria-hidden="true" size={12} className="shrink-0" />
+            <span className="min-w-0 truncate">{firstTag.name}</span>
+            {shownTags.length > 1 ? (
+              <span className="shrink-0 text-fg-subtle">+{shownTags.length - 1}</span>
+            ) : null}
           </span>
         ) : null}
 

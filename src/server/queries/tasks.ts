@@ -20,6 +20,8 @@ import { getDb } from "@/db";
 import {
   areas,
   projects,
+  taggables,
+  tags,
   tasks,
   type Area,
   type Project,
@@ -36,6 +38,8 @@ export interface TaskWithRelations extends Task {
   project: { id: string; name: string } | null;
   subtaskCount: number;
   doneSubtaskCount: number;
+  /** Štítky úlohy, zoradené podľa názvu. Prázdne pole, keď žiadne nemá. */
+  tags: { id: string; name: string; color: string }[];
 }
 
 /** Stavy, po ktorých už úloha nie je „živá". */
@@ -90,6 +94,25 @@ async function selectTasks(
     .groupBy(tasks.parentTaskId)
     .as("subtask_counts");
 
+  /*
+    Štítky zlepené do jedného poľa na úlohu. Rovnaký dôvod ako pri podúlohách:
+    jedna agregácia pre celý výsledok namiesto dotazu na každý riadok.
+  */
+  const taskTags = db
+    .select({
+      taskId: taggables.entityId,
+      list: sql<
+        { id: string; name: string; color: string }[]
+      >`json_agg(json_build_object('id', ${tags.id}, 'name', ${tags.name}, 'color', ${tags.color}) order by ${tags.name})`.as(
+        "tag_list",
+      ),
+    })
+    .from(taggables)
+    .innerJoin(tags, eq(taggables.tagId, tags.id))
+    .where(and(eq(tags.userId, userId), eq(taggables.entityType, "task")))
+    .groupBy(taggables.entityId)
+    .as("task_tags");
+
   const rows = await db
     .select({
       task: tasks,
@@ -97,11 +120,13 @@ async function selectTasks(
       project: projects,
       subtaskCount: subtaskCounts.total,
       doneSubtaskCount: subtaskCounts.done,
+      tags: taskTags.list,
     })
     .from(tasks)
     .leftJoin(areas, eq(tasks.areaId, areas.id))
     .leftJoin(projects, eq(tasks.projectId, projects.id))
     .leftJoin(subtaskCounts, eq(subtaskCounts.parentId, tasks.id))
+    .leftJoin(taskTags, eq(taskTags.taskId, tasks.id))
     .where(and(eq(tasks.userId, userId), isNull(tasks.deletedAt), extra))
     .orderBy(...taskOrder());
 
@@ -114,6 +139,7 @@ function toTaskWithRelations(row: {
   project: Project | null;
   subtaskCount: number | null;
   doneSubtaskCount: number | null;
+  tags?: { id: string; name: string; color: string }[] | null;
 }): TaskWithRelations {
   return {
     ...row.task,
@@ -123,6 +149,8 @@ function toTaskWithRelations(row: {
     project: row.project ? { id: row.project.id, name: row.project.name } : null,
     subtaskCount: Number(row.subtaskCount ?? 0),
     doneSubtaskCount: Number(row.doneSubtaskCount ?? 0),
+    // `json_agg` bez zhody nevráti prázdne pole, ale NULL — preto tá poistka.
+    tags: row.tags ?? [],
   };
 }
 
@@ -190,9 +218,8 @@ export function getOverdueTasks(
   );
 }
 
-/** Odložené „niekedy" — zásobáreň, z ktorej sa ťahá pri plánovaní. */
 /**
- * Úlohy odložené na „niekedy".
+ * Odložené „niekedy" — zásobáreň, z ktorej sa ťahá pri plánovaní.
  *
  * Zámerne sem patria aj tie, ktoré ešte visia v stave `inbox` — triedenie
  * v inboxe pri voľbe „Niekedy" stav nemení práve preto, že úloha bez dátumu
@@ -210,6 +237,23 @@ export function getSomedayTasks(userId: string): Promise<TaskWithRelations[]> {
  */
 export function getWaitingTasks(userId: string): Promise<TaskWithRelations[]> {
   return selectTasks(userId, eq(tasks.status, "waiting"));
+}
+
+/**
+ * Úlohy jedného projektu.
+ *
+ * Podúlohy sa zámerne vynechávajú: podúloha dedí projekt po rodičovi, takže
+ * bez tohto filtra by v zozname stála druhýkrát — raz ako samostatný riadok
+ * a raz v počítadle svojho rodiča.
+ */
+export function getProjectTasks(
+  userId: string,
+  projectId: string,
+): Promise<TaskWithRelations[]> {
+  return selectTasks(
+    userId,
+    and(eq(tasks.projectId, projectId), isNull(tasks.parentTaskId)),
+  );
 }
 
 export async function getTask(
