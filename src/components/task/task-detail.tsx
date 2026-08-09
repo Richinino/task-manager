@@ -48,6 +48,7 @@ import {
   toggleTaskDone,
   updateTask,
 } from "@/server/actions/tasks";
+import { usePostponeGuard } from "@/components/task/postpone-guard";
 import type { TaskWithRelations } from "@/server/queries/tasks";
 
 /* ═══════════════════════════════════════════════════════════════════════════
@@ -210,6 +211,7 @@ export function TaskDetail({
   postponeWarnAt,
   postponeBlockAt,
 }: TaskDetailProps) {
+  const guard = usePostponeGuard();
   const [draft, setDraft] = useState<Draft>(() => toDraft(task));
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
@@ -356,7 +358,18 @@ export function TaskDetail({
       // a server ju zhasne. Prepínač preto musí spadnúť spolu s dátumom.
       { plannedDate: value, isFrog: false },
       async () => {
-        const moved = await rescheduleTask(task.id, value);
+        /*
+          Cez strážcu — pri zastavení prahom otvorí dialóg. Úlohu mu zámerne
+          NEODOVZDÁVAME: ponuka „rozdeliť alebo zmenšiť" otvára detail, a ten
+          je práve otvorený. Zostanú teda zahodenie a odklad s dôvodom.
+        */
+        const moved = guard
+          ? await guard.postpone({
+              taskId: task.id,
+              title: task.title,
+              plannedDate: value,
+            })
+          : await rescheduleTask(task.id, value);
         if (!moved.ok) return moved;
         applyConfirmed({ postponeCount: moved.data.postponeCount });
 
@@ -534,7 +547,12 @@ export function TaskDetail({
           a rozpísaný text pritom uloží — nič sa nestratí.
         </DialogDescription>
 
-        {error !== null ? (
+        {/*
+          Truthiness, nie `!== null`: strážca odkladov vracia pri zrušení
+          prázdnu hlášku ako signál „vráť stav, ale nehlás nič". Prísne
+          porovnanie s `null` by nakreslilo prázdny červený pruh.
+        */}
+        {error ? (
           <p
             role="alert"
             className="shrink-0 border-b border-danger bg-surface px-4 py-2 text-[13px] font-medium text-danger"

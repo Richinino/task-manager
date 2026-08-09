@@ -5,6 +5,7 @@ import { CaptureProvider } from "@/components/capture/capture-provider";
 import { OfflineIndicator } from "@/components/pwa/offline-indicator";
 import { OutboxProvider } from "@/components/pwa/outbox-provider";
 import { AppShell } from "@/components/shell/app-shell";
+import { PostponeGuardProvider } from "@/components/task/postpone-guard";
 import { TaskDetailProvider } from "@/components/task/task-detail-provider";
 import { addDays, todayIn } from "@/lib/dates";
 import { requireUser } from "@/server/auth-guard";
@@ -57,7 +58,12 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
             postponeWarnAt={user.settings.postponeWarnAt}
             postponeBlockAt={user.settings.postponeBlockAt}
           >
-            {children}
+            {/*
+              Strážca odkladov je POD panelom detailu zámerne: jedno z jeho
+              rozhodnutí („rozdeliť alebo zmenšiť") panel otvára, takže musí
+              vidieť jeho kontext.
+            */}
+            <PostponeGuardProvider>{children}</PostponeGuardProvider>
           </TaskDetailProvider>
         </CaptureProvider>
 

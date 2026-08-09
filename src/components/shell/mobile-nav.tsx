@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
-import { Ellipsis } from "lucide-react";
+import { Ellipsis, Settings } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 
@@ -245,6 +245,35 @@ export function MobileNav({ counts }: { counts: NavCounts }) {
                   </li>
                 );
               })}
+
+              {/*
+                Nastavenia sú oddelené čiarou, lebo nie sú obrazovka na prácu.
+                V hárku ale byť MUSIA: na telefóne je bočný panel skrytý a bez
+                tohto by sa na Androide k nastaveniam nedalo dostať vôbec.
+              */}
+              <li className="mt-1 border-t border-border pt-1">
+                <Link
+                  href="/nastavenia"
+                  aria-current={pathname === "/nastavenia" ? "page" : undefined}
+                  onClick={() => setOpen(false)}
+                  className={cn(
+                    "flex min-h-11 items-center gap-3 rounded px-2 text-sm",
+                    "transition-colors duration-100 ease-out",
+                    pathname === "/nastavenia"
+                      ? "bg-accent-soft font-medium text-accent"
+                      : "text-fg active:bg-surface-2",
+                  )}
+                >
+                  <Settings
+                    aria-hidden="true"
+                    className={cn(
+                      "size-[18px] shrink-0",
+                      pathname === "/nastavenia" ? "text-accent" : "text-fg-subtle",
+                    )}
+                  />
+                  <span className="min-w-0 flex-1 truncate">Nastavenia</span>
+                </Link>
+              </li>
             </ul>
           </div>
         ) : null}

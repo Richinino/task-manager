@@ -14,6 +14,7 @@ import {
   Layers,
   Lightbulb,
   LogOut,
+  Settings,
   type LucideIcon,
 } from "lucide-react";
 
@@ -343,16 +344,42 @@ export function Sidebar({ user, counts, signOutAction }: SidebarProps) {
         </p>
         <div className="flex items-center justify-between gap-2">
           <ThemeToggle />
-          <form action={signOutAction}>
+          <div className="flex items-center gap-1">
+            {/*
+              Nastavenia patria sem, nie medzi `NAV_ITEMS`. Nie je to miesto,
+              kam sa chodí pracovať — v mobilnom hárku „Viac" by tlačili von
+              obrazovky, ktoré sa používajú denne.
+            */}
             <Tooltip>
               <TooltipTrigger asChild>
-                <Button type="submit" variant="ghost" size="icon" aria-label="Odhlásiť sa">
-                  <LogOut className="size-4" />
-                </Button>
+                <Link
+                  href="/nastavenia"
+                  aria-label="Nastavenia"
+                  aria-current={pathname === "/nastavenia" ? "page" : undefined}
+                  className={cn(
+                    "inline-flex size-8 items-center justify-center rounded",
+                    "text-fg-muted transition-colors duration-100 ease-out",
+                    "hover:bg-surface-2 hover:text-fg",
+                    pathname === "/nastavenia" && "bg-surface-2 text-fg",
+                  )}
+                >
+                  <Settings className="size-4" />
+                </Link>
               </TooltipTrigger>
-              <TooltipContent side="top">Odhlásiť sa</TooltipContent>
+              <TooltipContent side="top">Nastavenia</TooltipContent>
             </Tooltip>
-          </form>
+
+            <form action={signOutAction}>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button type="submit" variant="ghost" size="icon" aria-label="Odhlásiť sa">
+                    <LogOut className="size-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="top">Odhlásiť sa</TooltipContent>
+              </Tooltip>
+            </form>
+          </div>
         </div>
       </div>
     </aside>
