@@ -6,13 +6,16 @@ import { DayPriorityCard } from "@/components/views/dnes/day-priority-card";
 import { OverdueSection } from "@/components/views/dnes/overdue-section";
 import { TimeBudget } from "@/components/views/dnes/time-budget";
 import { WhatNow } from "@/components/views/dnes/what-now";
+import { RitualHost } from "@/components/rituals/ritual-host";
 import { todayIn } from "@/lib/dates";
+import { ritualPeriod } from "@/lib/rituals";
 import { requireUser } from "@/server/auth-guard";
 import {
   getActionableTasks,
   getOverdueTasks,
   getTasksForDay,
 } from "@/server/queries/tasks";
+import { getJournalEntry, getRitualState } from "@/server/queries/rituals";
 
 export const metadata: Metadata = {
   title: "Dnes",
@@ -30,12 +33,16 @@ export default async function DnesPage() {
   // by inak medzi polnocou a druhou v noci svietili včerajšie úlohy.
   const date = todayIn(user.settings.timezone);
 
-  const [planned, overdue, actionable] = await Promise.all([
+  const shutdownPeriod = ritualPeriod("daily_shutdown", date, user.settings.weekStartsOn);
+
+  const [planned, overdue, actionable, shutdown, journalToday] = await Promise.all([
     getTasksForDay(user.id, date),
     getOverdueTasks(user.id, date),
     // „Čo teraz?" siaha ďalej než dnešok — aj na prepadnuté a nenaplánované.
     // Práve to je jeho zmysel: keď sa dnešok minie, stále je čo robiť.
     getActionableTasks(user.id, date),
+    getRitualState(user.id, "daily_shutdown", shutdownPeriod),
+    getJournalEntry(user.id, date),
   ]);
 
   // Zahodené úlohy do dnešného záväzku nepatria — v zozname by sa tvárili
@@ -80,7 +87,26 @@ export default async function DnesPage() {
             withoutEstimate={withoutEstimate}
           />
         }
-        action={<WhatNow tasks={actionable} todayIso={date} />}
+        action={
+          <>
+            <WhatNow tasks={actionable} todayIso={date} />
+            <RitualHost
+              period={shutdownPeriod}
+              completed={shutdown.completed}
+              {...(shutdown.review
+                ? { initialPayload: shutdown.review.payload as Record<string, unknown> }
+                : {})}
+              {...(journalToday
+                ? { initialJournal: { body: journalToday.body, mood: journalToday.mood } }
+                : {})}
+              tasks={dayTasks}
+              todayIso={date}
+              timeZone={user.settings.timezone}
+              dayEndHour={user.settings.dayEndHour}
+              autoOpen={user.settings.ritualAutoOpen}
+            />
+          </>
+        }
       />
 
       {showFrogCard ? (
