@@ -517,7 +517,7 @@ export interface NextTaskQuery {
 export interface NextTaskPick {
   taskId: string;
   /** Jeden dôvod pre používateľa — prečo práve táto. */
-  reason: "frog" | "overdue" | "due" | "postponed" | "oldest";
+  reason: "frog" | "overdue" | "due" | "priority" | "postponed" | "oldest";
   /** Nezmestí sa do zadanej sily alebo času. Ponúka sa až keď nič lepšie nie je. */
   stretch: boolean;
 }
@@ -536,7 +536,9 @@ Platí pravidlo pre celý `src/lib/**`: **žiadny import z `src/db` ani `src/ser
 
 **Nesediace sa nevyhadzujú, len klesnú.** Vracia sa celé poradie s `stretch: true` na konci. Prázdna ponuka je horšia než úprimné „toto sa ti do 15 minút nezmestí, ale nič kratšie nemáš" — a tlačidlo „daj inú" potrebuje kam kráčať.
 
-Poradie sediacich: priorita dňa → po termíne → termín dnes → najviac odkladov → najstaršie. Pri zhode rozhoduje `id`, aby bolo poradie stabilné.
+Poradie sediacich: priorita dňa → po termíne → termín dnes → priorita 1 → najviac odkladov → najstaršie. Pri zhode rozhoduje `id`, aby bolo poradie stabilné.
+
+Budúci termín naliehavý **nie je** — radí sa medzi bežné úlohy. Termín, ktorý ešte nenastal, nie je dôvod robiť niečo práve teraz.
 
 Najviac odkladov ide **pred** vek zámerne: presne tá úloha, ktorej sa človek vyhýba, má vyplávať. To je celý zmysel míľnika.
 

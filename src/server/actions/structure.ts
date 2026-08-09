@@ -12,13 +12,12 @@ import { requireUser } from "@/server/auth-guard";
 /* ═══════════════════════════════════════════════════════════════════════════
    VÝSLEDOK AKCIE
 
-   Rovnaký tvar ako v `actions/tasks.ts`. Zdieľať ho importom sa nedá — zo
-   súboru s `"use server"` smú viesť von len asynchrónne funkcie.
+   Spoločný tvar žije v `@/server/action-result`. Re-export tu ostáva, aby
+   existujúce importy z tohto modulu ďalej platili.
    ═══════════════════════════════════════════════════════════════════════════ */
 
-export type ActionResult<T = void> =
-  | ({ ok: true } & (T extends void ? {} : { data: T }))
-  | { ok: false; error: string };
+export type { ActionResult } from "@/server/action-result";
+import type { ActionResult } from "@/server/action-result";
 
 /* ═══════════════════════════════════════════════════════════════════════════
    VALIDÁCIA

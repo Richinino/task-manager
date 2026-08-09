@@ -252,6 +252,15 @@ export const taskEvents = pgTable(
     type: taskEventType("type").notNull(),
     fromValue: text("from_value"),
     toValue: text("to_value"),
+    /**
+     * Voľný text od používateľa. Zatiaľ jediný pisateľ je blok pri odkladoch:
+     * dôvod, prečo sa úloha odkladá znova.
+     *
+     * Vlastný stĺpec preto, že `fromValue`/`toValue` držia hodnoty, ktoré sa
+     * menili (tu dátumy). Veta napchatá do `toValue` by znamenala, že revízie
+     * v M6 aj štatistiky v M7 musia hádať, čo v stĺpci vlastne je.
+     */
+    note: text("note"),
     at: timestamp("at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [
