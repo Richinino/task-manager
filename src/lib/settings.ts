@@ -27,6 +27,15 @@ export const settingsSchema = z.object({
   /** Po koľkých dňoch bez dotyku nápad „zhnije" (stage → faded). */
   fadeAfterDays: z.number().int().min(30).default(180),
 
+  /**
+   * Má sa denný rituál otvoriť sám, keď príde jeho čas?
+   *
+   * Časy sa neberú odtiaľto: ranné plánovanie sa viaže na `dayStartHour`,
+   * večerný shutdown na `dayEndHour`. Týždenná a mesačná revízia sa
+   * neotvárajú nikdy — na 15–30 minút práce sa treba rozhodnúť vedome.
+   */
+  ritualAutoOpen: z.boolean().default(true),
+
   theme: z.enum(["system", "light", "dark"]).default("system"),
 });
 
