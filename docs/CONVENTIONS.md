@@ -547,3 +547,102 @@ Najviac odkladov ide **pred** vek zámerne: presne tá úloha, ktorej sa človek
 Cesta `/nastavenia`. Odkaz patrí do **päty bočného panela** k prepínaču témy a odhláseniu — nie do `NAV_ITEMS`. Nastavenia nie sú miesto, kam sa chodí pracovať, a v mobilnom hárku „Viac" by tlačili von veci, ktoré sa používajú denne.
 
 Ukladá sa po poli, bez tlačidla „Uložiť" — rovnako ako detail projektu z M3.
+
+---
+
+# Kontrakty M6 — rituály
+
+Tabuľky `journal` aj `reviews` sú z M0 hotové vrátane `reviewType`. **Žiadna migrácia.**
+
+## `src/lib/rituals.ts` — čistá logika
+
+```ts
+export type RitualType = "daily_plan" | "daily_shutdown" | "weekly" | "monthly";
+
+/** Obdobie, ktoré rituál pokrýva. Pre denné je začiatok = koniec = dnešok. */
+export interface RitualPeriod {
+  start: string;  // YYYY-MM-DD
+  end: string;
+}
+
+/** Obdobie pre daný typ a deň. Týždeň rešpektuje `settings.weekStartsOn`. */
+export function ritualPeriod(
+  type: RitualType,
+  todayIso: string,
+  weekStartsOn: number,
+): RitualPeriod;
+
+/** Má sa rituál práve teraz otvoriť sám? */
+export function shouldAutoOpen(input: {
+  type: RitualType;
+  /** Hodina v pásme používateľa, 0–23. */
+  hour: number;
+  /** `settings.dayStartHour` / `dayEndHour` podľa typu. */
+  triggerHour: number;
+  /** Je rituál za toto obdobie hotový? */
+  completed: boolean;
+  /** Odložil ho človek dnes tlačidlom „Nechať tak"? */
+  snoozed: boolean;
+  enabled: boolean;
+}): boolean;
+```
+
+Platí pravidlo pre celý `src/lib/**`: **žiadny import z `src/db` ani `src/server`**, žiadne `new Date()`. Hodina prichádza zvonku, rovnako ako dnešok. Testy v `src/lib/rituals.test.ts`.
+
+## Automatické otváranie — poistky
+
+Otváranie bez vyžiadania je najrýchlejší spôsob, ako človeka odnaučiť appku otvárať. Preto platia **všetky** naraz:
+
+| Podmienka | Prečo |
+|---|---|
+| Iba na `/dnes` | inde rituál nedáva zmysel a prerušil by prácu |
+| Iba po `triggerHour` | ranný sa viaže na `dayStartHour`, večerný na `dayEndHour` |
+| Iba keď rituál za obdobie **nie je** hotový | riadok v `reviews` s `completedAt` |
+| Nikdy cez otvorený dialóg ani rozpísané zachytenie | rozrobený text sa nesmie stratiť |
+| Najviac raz za obdobie | „Nechať tak" odloží do zajtra, nie o päť minút |
+| Dá sa vypnúť | `settings.ritualAutoOpen`, predvolene zapnuté |
+
+Odloženie („Nechať tak") sa **neukladá do databázy** — stačí `sessionStorage`. Je to rozhodnutie o jednom dni, nie údaj, ktorý má prežiť. Ukladať ho do `reviews` by znamenalo riadok bez `completedAt`, ktorý sa nedá odlíšiť od rozrobeného rituálu.
+
+## `src/server/queries/rituals.ts`
+
+```ts
+export interface RitualState {
+  type: RitualType;
+  period: RitualPeriod;
+  /** Rozrobený alebo hotový záznam, ak existuje. */
+  review: Review | null;
+  completed: boolean;
+}
+
+export function getRitualState(userId: string, type: RitualType, period: RitualPeriod): Promise<RitualState>;
+export function getJournalEntry(userId: string, date: string): Promise<Journal | null>;
+export function getJournalRange(userId: string, from: string, to: string): Promise<Journal[]>;
+```
+
+Unikátny index `reviews_user_type_period_idx` robí z otázky „bol dnes večerný shutdown?" jeden lacný dopyt — a zároveň znemožňuje spraviť ten istý rituál dvakrát.
+
+## `src/server/actions/rituals.ts`
+
+```ts
+saveRitualStep(type, period, payload)   // priebežné ukladanie, upsert
+completeRitual(type, period, payload)   // nastaví completedAt
+saveJournalEntry(date, { body, mood })  // upsert cez (userId, date)
+```
+
+Všetky vracajú `ActionResult` zo `@/server/action-result`.
+
+**Rituál sa ukladá priebežne, nie až na konci.** Sprievodca má štyri až šesť krokov a zavrieť ho v polovici je bežné — Escape nesmie znamenať stratu. Preto `saveRitualStep` po každom kroku a `completeRitual` až na záver.
+
+**Denník je súčasť večerného rituálu, nie samostatná obrazovka.** `journal` má unikátny index na (používateľ, dátum), takže druhý zápis prepisuje ten istý riadok.
+
+## Rozšírenie nastavení
+
+Pribúda **jediné** pole. Časy sa neberú z nových nastavení: ranný sprievodca sa viaže na `dayStartHour`, večerný na `dayEndHour` — obe existujú a znamenajú presne to, čo treba.
+
+```ts
+/** Má sa rituál otvoriť sám, keď príde jeho čas? */
+ritualAutoOpen: z.boolean().default(true),
+```
+
+Do `settingsInputSchema` nepribúda žiadna krížová kontrola.

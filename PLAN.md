@@ -102,7 +102,7 @@ Dlhodobé okruhy bez konca: práca, zdravie, financie, domov, učenie.
 
 | Obrazovka | Obsah |
 |---|---|
-| **Dnes** | žaba dňa + max 5–7 úloh + časová os (meetingy z kalendára) + rozpočet času |
+| **Dnes** | priorita dňa + max 5–7 úloh + časová os (meetingy z kalendára) + rozpočet času |
 | **Týždeň** | 7 stĺpcov, drag & drop, záťaž na deň s varovaním pri preplnení |
 | **Mesiac** | kalendár + mesačné ciele + míľniky projektov |
 | **Inbox** | nezatriedené zachytenia, cieľ = nula |
@@ -135,7 +135,7 @@ Dlhodobé okruhy bez konca: práca, zdravie, financie, domov, učenie.
 **Počítadlo odkladov**
 Presun `planned_date` dopredu pri nedokončenej úlohe zvýši `postpone_count`.
 - 3 odklady → úloha sa vizuálne zvýrazní
-- 5 odkladov → blokujúce okno: *„Toto si odložil 5×."* s troma tlačidlami: **Sprav to teraz** / **Rozdeľ na menšie** / **Zruš to**. Bez výberu sa okno nedá zavrieť.
+- 5 odkladov → blokujúce rozhodnutie: *„Toto si odložil 5×."* s možnosťami **Rozdeliť alebo zmenšiť** / **Zahodiť** / **Odložiť, ale s dôvodom**. Zavretie bez výberu znamená, že sa úloha **neodloží** — to je účinnejšie než okno, ktoré sa nedá zavrieť, a nezamkne appku, keď treba len utiecť preč. Prah kontroluje server, nie dialóg. *(Postavené v M5.)*
 
 **WIP limit**
 V „Dnes" je strop N úloh (nastaviteľné, default 6). Pridanie ďalšej vyžaduje niečo odobrať.
@@ -173,7 +173,9 @@ odovzdať priznanie do 31.3. !1 2h
 
 ### 6.3 „Čo teraz?" navrhovač
 
-Zadáš **dostupný čas** a **energiu** (voliteľne kontext) → systém vráti 3 konkrétne úlohy.
+Zadáš **dostupný čas** a **energiu** → systém vráti **jednu** konkrétnu úlohu a tlačidlo „daj inú".
+
+Pôvodne tu boli tri. Zmenili sme to zámerne: prokrastinácia nie je nedostatok prehľadu — človek presne vie, čo má robiť, a práve preto sa tomu vyhýba. Ponuka troch kandidátov vracia rozhodovanie späť tomu, komu sa nedarí rozhodnúť. *(Postavené v M5.)*
 
 Filter: `estimate_min ≤ dostupný čas` ∧ `energy ≤ zadaná` ∧ `context ∈ dostupné` ∧ `planned_date ≤ dnes` alebo `horizon = day`
 Poradie: po termíne → priorita → počet odkladov → vek úlohy
@@ -376,6 +378,64 @@ musia hádať, čo v stĺpci je. Nullable stĺpec je najlacnejšia možná migr�
 
 2 večery. Rozpočet času aj počítadlo odkladov sú hotové, takže z pôvodného
 odhadu ubudlo — a pribudla obrazovka nastavení, ktorá v ňom nebola.
+
+---
+
+## 7d. M6 — rozpis
+
+Audit: tabuľky `journal` aj `reviews` sú z M0 hotové vrátane `reviewType`
+s presne štyrmi hodnotami (`daily_plan`, `daily_shutdown`, `weekly`,
+`monthly`). **Kódu k nim je nula, migrácia netreba** — rovnaká východisková
+poloha ako pri M4.
+
+Rituály si navyše nemusia nič dopočítavať, všetko potrebné už stojí:
+ranný siahne na prepadnuté úlohy a rozpočet času, večerný na nedokončené
+dnešné, týždenný na inbox, „Čaká sa na" a inkubátor nápadov, mesačný na
+**dôvody odkladov** — tie sa od M5 zbierajú do `task_events.note`. Mesačná
+revízia teda dostane materiál zadarmo.
+
+### Rozhodnutia
+
+**Sprievodca je dialóg, nie obrazovka.** Rovnaký vzor ako povýšenie nápadu
+a blok odkladov: krok za krokom, Escape zavrie a rozrobené uloží. Rituál trvá
+2–15 minút a vlastnú adresu nepotrebuje.
+
+**Otvára sa sám — ale s poistkami.** Bez nich by sa z toho stala otrava, ktorá
+človeka odnaučí appku otvárať. Preto:
+
+- otvára sa **iba na „Dnes"**, nikde inde;
+- iba keď je po nastavenej hodine a rituál dnes **ešte nie je hotový**;
+- **nikdy** cez rozpísané zachytenie ani cez iný otvorený dialóg;
+- „Nechať tak" ho odloží **do zajtra**, nie o päť minút;
+- v nastaveniach sa dá vypnúť.
+
+**Časy sa neberú z nových nastavení.** Ranný sprievodca sa viaže na
+`dayStartHour`, večerný na `dayEndHour` — obe už existujú a znamenajú presne
+to, čo treba. Pribudne jediný prepínač `ritualAutoOpen`.
+
+**Hotovosť rituálu je riadok v `reviews`.** Unikátny index nad
+(používateľ, typ, začiatok obdobia) robí z otázky „bol dnes večerný
+shutdown?" jeden lacný dopyt. Zároveň to znamená, že rituál nejde spraviť
+dvakrát — čo je správne.
+
+**Denník je súčasť večerného rituálu, nie zvlášť.** Jedna veta na koniec dňa,
+`journal` má unikátny index na (používateľ, dátum), takže druhý zápis
+prepisuje ten istý riadok.
+
+### Poradie
+
+1. **Serverová vrstva celá naraz** — dotazy a akcie pre `journal` aj `reviews`.
+   Rovnako ako v M3, M4 a M5: stavané po kúskoch si agenti prepisujú rozhrania.
+2. **Večerný shutdown a ranný plán.** Denná dvojica zdieľa kostru dialógu
+   a auto-otváranie, takže sa oplatí robiť ich spolu. Večerný ide prvý — je
+   z nich cennejší a napĺňa denník, z ktorého žijú revízie.
+3. **Týždenná a mesačná revízia.** Sú dlhšie a stoja na dátach, ktoré dovtedy
+   začnú vznikať.
+
+### Odhad
+
+3 večery, ako v pláne. Model je hotový, ale štyria sprievodcovia sú štyri
+rôzne toky — to je hlavná porcia práce.
 
 ---
 
