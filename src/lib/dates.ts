@@ -131,6 +131,28 @@ export function todayIn(timeZone: string, now: Date = new Date()): string {
   return ISO_RE.test(formatted) ? formatted : today(now);
 }
 
+/**
+ * Hodina (0–23) v danom pásme.
+ *
+ * Rituály sa spúšťajú na hodinu, takže ju treba počítať v pásme používateľa —
+ * nie v pásme prehliadača. Pri neplatnom pásme padá na lokálnu hodinu, rovnako
+ * ako `todayIn` padá na lokálny deň.
+ */
+export function hourIn(timeZone: string, now: Date = new Date()): number {
+  if (!isValidDate(now)) return 0;
+  try {
+    const formatted = new Intl.DateTimeFormat("en-GB", {
+      timeZone,
+      hour: "2-digit",
+      hourCycle: "h23",
+    }).format(now);
+    const hour = Number.parseInt(formatted, 10);
+    return Number.isNaN(hour) ? now.getHours() : hour;
+  } catch {
+    return now.getHours();
+  }
+}
+
 /** YYYY-MM-DD ± n dní. */
 export function addDays(iso: string, n: number): string {
   const d = parseIsoDate(iso);
