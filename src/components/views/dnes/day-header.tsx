@@ -46,7 +46,12 @@ export function DayHeader({
         <h1 className="min-w-0 text-lg font-semibold tracking-tight text-fg sm:text-xl">
           {capitalize(formatLongSk(date))}
         </h1>
-        <div className="flex shrink-0 items-center gap-3">
+        {/*
+          Bez `shrink-0`: v tomto rade sú na „Dnes" tri tlačidlá a na 375 px sa
+          v plnej šírke nezmestia. Rad sa preto smie zalomiť aj zmenšiť —
+          samotné tlačidlá si popisky pod `sm` skracujú samy.
+        */}
+        <div className="flex min-w-0 flex-wrap items-center justify-end gap-2">
           <p
             className={cn(
               "text-[13px] tabular-nums sm:text-sm",

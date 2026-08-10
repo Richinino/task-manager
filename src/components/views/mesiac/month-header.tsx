@@ -57,6 +57,8 @@ export interface MonthHeaderProps {
   month: number;
   /** Zobrazujeme mesiac, v ktorom sme dnes? */
   isCurrent: boolean;
+  /** Slot pre akciu vpravo — dnes spúšťač mesačnej revízie. */
+  action?: React.ReactNode;
 }
 
 /**
@@ -73,7 +75,7 @@ const controlBase = cn(
 const iconControl = cn(controlBase, "size-8 p-0 text-fg-muted hover:text-fg");
 const textControl = cn(controlBase, "h-8 px-2.5");
 
-export function MonthHeader({ year, month, isCurrent }: MonthHeaderProps) {
+export function MonthHeader({ year, month, isCurrent, action }: MonthHeaderProps) {
   const prev = shiftMonth(year, month, -1);
   const next = shiftMonth(year, month, 1);
 
@@ -85,6 +87,8 @@ export function MonthHeader({ year, month, isCurrent }: MonthHeaderProps) {
       <h1 className="min-w-0 truncate text-lg font-semibold tracking-tight text-fg">
         {formatMonthTitleSk(year, month)}
       </h1>
+
+      {action}
 
       <nav aria-label="Navigácia mesiacov" className="flex shrink-0 items-center gap-1">
         <Link
