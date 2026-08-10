@@ -21,7 +21,17 @@ import {
   toIsoDate,
   todayIn,
 } from "@/lib/dates";
+import { MonthlyReviewLauncher } from "@/components/rituals/review-launcher";
+import { ritualPeriod } from "@/lib/rituals";
 import { requireUser } from "@/server/auth-guard";
+import {
+  getCompletedCount,
+  getJournalRange,
+  getMostPostponed,
+  getProjectLastActivity,
+  getRitualState,
+} from "@/server/queries/rituals";
+import { listProjects } from "@/server/queries/structure";
 import { getTasksForRange, type TaskWithRelations } from "@/server/queries/tasks";
 
 export const metadata: Metadata = { title: "Mesiac" };
@@ -222,9 +232,60 @@ export default async function MesiacPage({ searchParams }: MesiacPageProps) {
     (task) => task.horizon === "month" && !isSettled(task),
   ).length;
 
+  /*
+    Mesačná revízia sa vždy viaže na AKTUÁLNY mesiac, nie na prezeraný.
+    Listovanie späť do apríla neznamená, že chceš robiť aprílovú revíziu —
+    a `periodStart` je kľúč záznamu, takže omyl by založil revíziu do minulosti.
+  */
+  const monthlyPeriod = ritualPeriod("monthly", todayIso, weekStartsOn);
+
+  const [postponed, completedCount, journalEntries, allProjects, lastActivity, monthlyState] =
+    await Promise.all([
+      getMostPostponed(user.id, monthlyPeriod.start, monthlyPeriod.end),
+      getCompletedCount(user.id, monthlyPeriod.start, monthlyPeriod.end),
+      getJournalRange(user.id, monthlyPeriod.start, monthlyPeriod.end),
+      listProjects(user.id),
+      getProjectLastActivity(user.id),
+      getRitualState(user.id, "monthly", monthlyPeriod),
+    ]);
+
+  const staleProjects = allProjects
+    .filter((project) => project.status === "active" && project.archivedAt === null)
+    .map((project) => ({
+      project,
+      lastActivityDate: lastActivity.get(project.id) ?? null,
+    }))
+    .filter(
+      (row) =>
+        row.lastActivityDate === null || row.lastActivityDate < monthlyPeriod.start,
+    );
+
   return (
     <div className="mx-auto flex w-full max-w-[1500px] flex-col gap-4 p-3 md:p-5">
-      <MonthHeader year={year} month={month} isCurrent={isCurrent} />
+      <MonthHeader
+        year={year}
+        month={month}
+        isCurrent={isCurrent}
+        action={
+          <MonthlyReviewLauncher
+            period={monthlyPeriod}
+            completed={monthlyState.completed}
+            {...(monthlyState.review
+              ? { initialPayload: monthlyState.review.payload as Record<string, unknown> }
+              : {})}
+            todayIso={todayIso}
+            mostPostponed={postponed}
+            staleProjects={staleProjects}
+            journalEntries={journalEntries.map((row) => ({
+              date: row.date,
+              body: row.body,
+              mood: row.mood,
+            }))}
+            completedCount={completedCount}
+            postponeDangerAt={user.settings.postponeBlockAt}
+          />
+        }
+      />
 
       <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:gap-5">
         <div className="flex min-w-0 flex-1 flex-col gap-3">

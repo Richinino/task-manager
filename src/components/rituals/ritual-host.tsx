@@ -178,7 +178,14 @@ export function RitualHost({
         aria-label={`${morningMeta.title} — ${morningMeta.minutes} minúty`}
       >
         <Sunrise aria-hidden="true" size={14} />
-        {morning.completed ? "Deň naplánovaný" : morningMeta.title}
+        {/*
+          Pod `sm` ostáva len ikona — tri tlačidlá s plnými popiskami sa na
+          375 px do hlavičky nezmestia. Názov nesie `aria-label`, takže
+          čítačka ani klávesnica o nič neprichádzajú.
+        */}
+        <span className="hidden sm:inline">
+          {morning.completed ? "Deň naplánovaný" : morningMeta.title}
+        </span>
       </Button>
 
       <MorningPlan
@@ -205,7 +212,9 @@ export function RitualHost({
         aria-label={`${meta.title} — ${meta.minutes} minúty`}
       >
         <Moon aria-hidden="true" size={14} />
-        {completed ? "Deň zavretý" : meta.title}
+        <span className="hidden sm:inline">
+          {completed ? "Deň zavretý" : meta.title}
+        </span>
       </Button>
 
       <EveningShutdown

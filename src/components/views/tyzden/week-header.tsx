@@ -28,6 +28,8 @@ export interface WeekHeaderProps {
   taskCount: number;
   /** Súčet odhadov nedokončených úloh v minútach. */
   totalMin: number;
+  /** Slot pre akciu vpravo — dnes spúšťač týždennej revízie. */
+  action?: React.ReactNode;
 }
 
 /** Spoločný vzhľad odkazov v hlavičke — rovnaké tokeny ako `Button` variant „secondary". */
@@ -70,6 +72,7 @@ export function WeekHeader({
   isCurrentWeek,
   taskCount,
   totalMin,
+  action,
 }: WeekHeaderProps) {
   const range = formatWeekRange(weekStart, weekEnd);
   const previous = addDays(weekStart, -7);
@@ -93,6 +96,8 @@ export function WeekHeader({
           {totalMin > 0 ? ` · odhad ${formatDuration(totalMin)}` : null}
         </p>
       </div>
+
+      {action}
 
       {/*
         Tri odkazy majú pod `sm` plný dotykový cieľ 44 px — palcom sa do 32 px

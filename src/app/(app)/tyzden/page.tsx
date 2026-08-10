@@ -2,9 +2,20 @@ import type { Metadata } from "next";
 
 import { WeekBoard } from "@/components/views/tyzden/week-board";
 import { WeekHeader } from "@/components/views/tyzden/week-header";
+import { WeeklyReviewLauncher } from "@/components/rituals/review-launcher";
 import { parseIsoDate, startOfWeek, todayIn, toIsoDate, weekDays } from "@/lib/dates";
+import { ritualPeriod } from "@/lib/rituals";
 import { requireUser } from "@/server/auth-guard";
-import { getTasksForRange } from "@/server/queries/tasks";
+import {
+  getInboxTasks,
+  getSomedayTasks,
+  getTasksForRange,
+  getWaitingTasks,
+} from "@/server/queries/tasks";
+import { getIncubatorIdeas } from "@/server/queries/ideas";
+import { listProjects } from "@/server/queries/structure";
+import { getRitualState } from "@/server/queries/rituals";
+import { daysSinceTouch } from "@/lib/ideas";
 
 export const metadata: Metadata = {
   title: "Týždeň",
@@ -41,7 +52,26 @@ export default async function TyzdenPage({ searchParams }: TyzdenPageProps) {
   const weekEnd = days.at(-1) ?? weekStart;
 
   // Celý týždeň jedným dotazom — sedem samostatných by bolo sedem ciest do databázy.
-  const tasks = await getTasksForRange(user.id, weekStart, weekEnd);
+  const weeklyPeriod = ritualPeriod("weekly", todayIso, weekStartsOn);
+
+  const [tasks, inbox, waiting, someday, incubator, projects, weeklyState] =
+    await Promise.all([
+      getTasksForRange(user.id, weekStart, weekEnd),
+      getInboxTasks(user.id),
+      getWaitingTasks(user.id),
+      getSomedayTasks(user.id),
+      getIncubatorIdeas(user.id),
+      listProjects(user.id),
+      getRitualState(user.id, "weekly", weeklyPeriod),
+    ]);
+
+  // Vek nápadu počíta server. V klientovi by `new Date()` po hydratácii dal
+  // iné číslo a v inom pásme aj iný deň — tá istá pasca ako pri nápadoch.
+  const now = new Date();
+  const incubatorIdeas = incubator.map((idea) => ({
+    idea,
+    ageDays: daysSinceTouch(idea.createdAt, now),
+  }));
 
   const openTasks = tasks.filter(
     (task) => task.status !== "done" && task.status !== "dropped",
@@ -60,6 +90,21 @@ export default async function TyzdenPage({ searchParams }: TyzdenPageProps) {
         isCurrentWeek={weekStart === startOfWeek(todayIso, weekStartsOn)}
         taskCount={tasks.length}
         totalMin={totalMin}
+        action={
+          <WeeklyReviewLauncher
+            period={weeklyPeriod}
+            completed={weeklyState.completed}
+            {...(weeklyState.review
+              ? { initialPayload: weeklyState.review.payload as Record<string, unknown> }
+              : {})}
+            todayIso={todayIso}
+            inbox={inbox}
+            waiting={waiting}
+            someday={someday}
+            incubatorIdeas={incubatorIdeas}
+            projects={projects}
+          />
+        }
       />
 
       <WeekBoard
