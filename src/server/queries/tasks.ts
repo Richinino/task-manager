@@ -5,6 +5,7 @@ import {
   asc,
   eq,
   gte,
+  inArray,
   isNotNull,
   isNull,
   lt,
@@ -189,6 +190,25 @@ export function getTasksForRange(
 
   const due = and(gte(tasks.dueDate, from), lte(tasks.dueDate, to));
   return selectTasks(userId, or(planned, due));
+}
+
+/**
+ * Úlohy podľa identifikátorov, v poradí, v akom prišli.
+ *
+ * Existuje kvôli mesačnej revízii, ktorá si poradie skladá sama (podľa počtu
+ * odkladov v období) a potrebuje k nemu dotiahnuť celé úlohy. Mäkko zmazané
+ * vypadnú, takže výsledok môže byť kratší než vstup — volajúci s tým počíta.
+ */
+export async function getTasksByIds(
+  userId: string,
+  ids: string[],
+): Promise<TaskWithRelations[]> {
+  if (ids.length === 0) return [];
+  const found = await selectTasks(userId, inArray(tasks.id, ids));
+  const byId = new Map(found.map((task) => [task.id, task]));
+  return ids
+    .map((id) => byId.get(id))
+    .filter((task): task is TaskWithRelations => task !== undefined);
 }
 
 /** Nespracované zachytenia. */

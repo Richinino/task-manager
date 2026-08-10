@@ -33,15 +33,18 @@ export default async function DnesPage() {
   // by inak medzi polnocou a druhou v noci svietili včerajšie úlohy.
   const date = todayIn(user.settings.timezone);
 
-  const shutdownPeriod = ritualPeriod("daily_shutdown", date, user.settings.weekStartsOn);
+  // Denné rituály zdieľajú obdobie — pre oba je to dnešok.
+  const dailyPeriod = ritualPeriod("daily_shutdown", date, user.settings.weekStartsOn);
 
-  const [planned, overdue, actionable, shutdown, journalToday] = await Promise.all([
+  const [planned, overdue, actionable, shutdown, morningState, journalToday] =
+    await Promise.all([
     getTasksForDay(user.id, date),
     getOverdueTasks(user.id, date),
     // „Čo teraz?" siaha ďalej než dnešok — aj na prepadnuté a nenaplánované.
     // Práve to je jeho zmysel: keď sa dnešok minie, stále je čo robiť.
     getActionableTasks(user.id, date),
-    getRitualState(user.id, "daily_shutdown", shutdownPeriod),
+    getRitualState(user.id, "daily_shutdown", dailyPeriod),
+    getRitualState(user.id, "daily_plan", dailyPeriod),
     getJournalEntry(user.id, date),
   ]);
 
@@ -91,7 +94,29 @@ export default async function DnesPage() {
           <>
             <WhatNow tasks={actionable} todayIso={date} />
             <RitualHost
-              period={shutdownPeriod}
+              period={dailyPeriod}
+              dayStartHour={user.settings.dayStartHour}
+              morning={{
+                completed: morningState.completed,
+                ...(morningState.review
+                  ? {
+                      initialPayload: morningState.review.payload as Record<
+                        string,
+                        unknown
+                      >,
+                    }
+                  : {}),
+                overdue,
+                // Priorita dňa sa viaže na `plannedDate`, takže kandidáti musia
+                // byť dnešné nevybavené úlohy — inak by sa označila úloha,
+                // ktorá na obrazovke „Dnes" nikde nesvieti.
+                candidates: openTasks,
+                plannedMin,
+                availableMin,
+                withoutEstimate,
+                postponeWarnAt: user.settings.postponeWarnAt,
+                postponeBlockAt: user.settings.postponeBlockAt,
+              }}
               completed={shutdown.completed}
               {...(shutdown.review
                 ? { initialPayload: shutdown.review.payload as Record<string, unknown> }

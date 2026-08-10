@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Moon } from "lucide-react";
+import { Moon, Sunrise } from "lucide-react";
 
 import { hourIn } from "@/lib/dates";
 import {
@@ -12,6 +12,7 @@ import {
 } from "@/lib/rituals";
 import { Button } from "@/components/ui/button";
 import { EveningShutdown } from "@/components/rituals/evening-shutdown";
+import { MorningPlan } from "@/components/rituals/morning-plan";
 import type { RitualPayload } from "@/components/rituals/ritual-shell";
 import type { TaskWithRelations } from "@/server/queries/tasks";
 
@@ -39,7 +40,22 @@ function isBusy(): boolean {
 }
 
 export interface RitualHostProps {
+  /** Obdobie denných rituálov — pre oba je to dnešok. */
   period: RitualPeriod;
+  /** Podklady pre ranné plánovanie. */
+  morning: {
+    completed: boolean;
+    initialPayload?: RitualPayload;
+    overdue: TaskWithRelations[];
+    candidates: TaskWithRelations[];
+    plannedMin: number;
+    availableMin: number;
+    withoutEstimate: number;
+    postponeWarnAt: number;
+    postponeBlockAt: number;
+  };
+  /** `settings.dayStartHour` — ranné plánovanie sa viaže naň. */
+  dayStartHour: number;
   /** Je večerný shutdown za toto obdobie hotový? */
   completed: boolean;
   /** Rozrobené odpovede, ak sa rituál už začal. */
@@ -57,6 +73,8 @@ export interface RitualHostProps {
 
 export function RitualHost({
   period,
+  morning,
+  dayStartHour,
   completed,
   initialPayload,
   initialJournal,
@@ -67,8 +85,10 @@ export function RitualHost({
   autoOpen,
 }: RitualHostProps) {
   const [open, setOpen] = useState(false);
+  const [morningOpen, setMorningOpen] = useState(false);
 
   const key = snoozeKey("daily_shutdown", period);
+  const morningKey = snoozeKey("daily_plan", period);
 
   /*
     Rozhodnutie o automatickom otvorení beží až po pripojení, nie pri
@@ -100,6 +120,39 @@ export function RitualHost({
     return () => window.clearTimeout(timer);
   }, [completed, key, timeZone, dayEndHour, autoOpen]);
 
+  /*
+    Ranné plánovanie beží rovnako, len s vlastným prahom a vlastným kľúčom
+    odloženia. Zámerne sa neotvára, keď už je po `dayEndHour` — vtedy patrí
+    večer, nie ráno, a dva dialógy naraz by si liezli do cesty.
+  */
+  useEffect(() => {
+    if (morning.completed) return;
+    if (sessionStorage.getItem(morningKey) === "1") return;
+
+    const timer = window.setTimeout(() => {
+      const hour = hourIn(timeZone);
+      if (hour >= dayEndHour) return;
+
+      const should = shouldAutoOpen({
+        type: "daily_plan",
+        hour,
+        triggerHour: dayStartHour,
+        completed: morning.completed,
+        snoozed: false,
+        enabled: autoOpen,
+        busy: isBusy(),
+      });
+      if (should) setMorningOpen(true);
+    }, 400);
+
+    return () => window.clearTimeout(timer);
+  }, [morning.completed, morningKey, timeZone, dayStartHour, dayEndHour, autoOpen]);
+
+  function handleMorningOpenChange(next: boolean): void {
+    setMorningOpen(next);
+    if (!next && !morning.completed) sessionStorage.setItem(morningKey, "1");
+  }
+
   function handleOpenChange(next: boolean): void {
     setOpen(next);
     if (!next && !completed) {
@@ -112,9 +165,37 @@ export function RitualHost({
   }
 
   const meta = RITUAL_META.daily_shutdown;
+  const morningMeta = RITUAL_META.daily_plan;
 
   return (
     <>
+      <Button
+        type="button"
+        variant="secondary"
+        size="sm"
+        className="gap-1.5"
+        onClick={() => setMorningOpen(true)}
+        aria-label={`${morningMeta.title} — ${morningMeta.minutes} minúty`}
+      >
+        <Sunrise aria-hidden="true" size={14} />
+        {morning.completed ? "Deň naplánovaný" : morningMeta.title}
+      </Button>
+
+      <MorningPlan
+        open={morningOpen}
+        onOpenChange={handleMorningOpenChange}
+        period={period}
+        todayIso={todayIso}
+        {...(morning.initialPayload ? { initialPayload: morning.initialPayload } : {})}
+        overdue={morning.overdue}
+        candidates={morning.candidates}
+        plannedMin={morning.plannedMin}
+        availableMin={morning.availableMin}
+        withoutEstimate={morning.withoutEstimate}
+        postponeWarnAt={morning.postponeWarnAt}
+        postponeBlockAt={morning.postponeBlockAt}
+      />
+
       <Button
         type="button"
         variant="secondary"
