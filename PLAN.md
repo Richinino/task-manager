@@ -220,6 +220,8 @@ Každá z týchto vecí pridá réžiu a po troch týždňoch systém opustíš.
 | **M4** | Nápady | entita nápadov, kanban zrenia, povýšenie na projekt, inkubátor, zhnitie | 2 večery |
 | **M5** | Anti-prokrastinácia | počítadlo odkladov, WIP limit, rozpočet dňa, „Čo teraz?" | 2 večery |
 | **M6** | Rituály | 4 sprievodcovia (ráno, večer, týždeň, mesiac) + denník | 3 večery |
+
+> **M0–M6 hotové a nasadené.** Ďalej M7 (návyky a čísla).
 | **M7** | Návyky a čísla | opakovanie, série, mriežka, štatistiky, win report | 2–3 večery |
 | **M8** | Kalendár | Google Calendar read-only, meetingy v dennom pláne a v rozpočte | 1 večer |
 | **M9** | Dolaďovanie | šablóny, `[[odkazy]]`, archív, export, fulltext | 2–3 večery |
