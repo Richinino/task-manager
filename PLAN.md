@@ -441,6 +441,74 @@ rôzne toky — to je hlavná porcia práce.
 
 ---
 
+## 7e. M7 — rozpis
+
+Audit: `habits`, `habit_entries` aj stĺpce `recurrence_rule`
+a `recurrence_parent_id` sú z M0 hotové, kódu k nim je nula. **Migrácia
+netreba.** Štatistiky si vystačia s `task_events`, ktoré už číta mesačná
+revízia.
+
+### Rozhodnutia
+
+**Návyk a opakovaná úloha sú dve rôzne veci.** Zlúčiť ich znamená pokaziť
+jednu z nich:
+
+| | Návyk | Opakovaná úloha |
+|---|---|---|
+| Príklad | cvičiť, čítať | faktúra k 15., kontrola auta |
+| Kde žije | vlastná obrazovka | v „Dnes" ako každá iná úloha |
+| Zapĺňa deň | **nie** | áno |
+| Cieľ | „X× do týždňa" | konkrétny deň |
+| Nesplnenie | séria sa drží, ak sedí týždenný cieľ | prepadne ako každá úloha |
+
+Bez tohto oddelenia by sa deň zaplnil položkami typu „napiť sa vody"
+a WIP limit z M5 by stratil zmysel.
+
+**Opakovanie je podmnožina RRULE, nie celé RRULE.** Ukladá sa do
+`recurrence_rule` v tvare, ktorý je platný RRULE zápis, ale číta sa z neho
+len to, čo appka podporuje:
+
+```
+FREQ=DAILY
+FREQ=WEEKLY;BYDAY=MO,WE,FR
+FREQ=MONTHLY;BYMONTHDAY=15
+```
+
+Pokrýva prakticky všetko reálne, dá sa otestovať ako čistá funkcia a nepýta
+si knižnicu. Keby raz „každý druhý utorok" naozaj chýbal, dá sa parser
+rozšíriť **bez migrácie** — zápis je odteraz kompatibilný.
+
+**Séria sa počíta na TÝŽDNE, nie na dni.** Cieľ je „X× do týždňa", takže
+séria je počet po sebe idúcich týždňov, v ktorých cieľ sedel. Denná séria by
+pri cieli 3× týždenne nedávala zmysel a jedno vynechanie by zhodilo mesiac
+poctivej práce — presne to, čo príručky o návykoch odporúčajú nerobiť.
+
+**Ďalší výskyt vzniká pri dokončení.** Appka nemá cron a zavádzať ho kvôli
+opakovaniu je neúmerné — rovnaká úvaha ako pri zhnití nápadov v M4.
+
+Slabina toho je zrejmá: čo nikdy nedokončíš, sa nikdy nezopakuje. Preto
+ranný sprievodca z M6 na začiatku dobehne zameškané výskyty až po dnešok.
+Rituál beží denne a je to presne ten moment, keď majú dnešné opakované veci
+pribudnúť.
+
+**Win report býva v týždennej revízii.** Zoznam všetkého dokončeného za
+týždeň patrí presne tam, kde sa týždeň zatvára — samostatná obrazovka by
+bola miesto navyše, kam sa chodí raz začas.
+
+### Poradie
+
+1. **Serverová vrstva celá naraz** — `lib/recurrence.ts` a `lib/habits.ts`
+   ako čisté funkcie s testami, k nim dotazy a akcie.
+2. **Obrazovka návykov** — mriežka, série, zakladanie a odškrtávanie.
+3. **Opakované úlohy a win report** — vzor opakovania v detaile úlohy,
+   dobiehanie v rannom rituáli, zoznam dokončeného v týždennej revízii.
+
+### Odhad
+
+2–3 večery. Model je hotový, ale sú to tri samostatné funkcie naraz.
+
+---
+
 ## 8. Otvorené otázky na neskôr
 
 - Farebná schéma a vizuálny štýl (rozhodneme pri M1 na živých obrazovkách)
