@@ -211,6 +211,28 @@ export async function getTasksByIds(
     .filter((task): task is TaskWithRelations => task !== undefined);
 }
 
+/**
+ * Všetko dokončené v období — podklad pre týždenný win report.
+ *
+ * Radí sa od najnovšieho: pri zatváraní týždňa človek najskôr vidí to, čo má
+ * v čerstvej pamäti, a spomienka na zvyšok sa naň nabalí.
+ */
+export function getCompletedInPeriod(
+  userId: string,
+  from: string,
+  to: string,
+): Promise<TaskWithRelations[]> {
+  return selectTasks(
+    userId,
+    and(
+      eq(tasks.status, "done"),
+      isNotNull(tasks.completedAt),
+      gte(sql`${tasks.completedAt}::date`, from),
+      lte(sql`${tasks.completedAt}::date`, to),
+    ),
+  );
+}
+
 /** Nespracované zachytenia. */
 export function getInboxTasks(userId: string): Promise<TaskWithRelations[]> {
   return selectTasks(userId, eq(tasks.status, "inbox"));
