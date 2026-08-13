@@ -658,3 +658,135 @@ ritualAutoOpen: z.boolean().default(true),
 ```
 
 Do `settingsInputSchema` nepribúda žiadna krížová kontrola.
+
+---
+
+# Kontrakty M7 — návyky a čísla
+
+`habits`, `habit_entries` aj `recurrence_rule`/`recurrence_parent_id` sú z M0 hotové. **Žiadna migrácia.**
+
+## Návyk ≠ opakovaná úloha
+
+Dve rôzne veci, ktoré sa nesmú zlúčiť:
+
+| | Návyk | Opakovaná úloha |
+|---|---|---|
+| Kde žije | `/navyky` | v „Dnes" ako každá iná úloha |
+| Zapĺňa deň | **nie** | áno |
+| Cieľ | `targetPerWeek` | konkrétny deň z pravidla |
+| Nesplnenie | séria drží, ak sedí týždenný cieľ | prepadne ako každá úloha |
+
+Návyk sa **nikdy** nesmie dostať do `getTasksForDay`, `getActionableTasks` ani do rozpočtu času. Deň zaplnený položkami „napiť sa vody" by zrušil WIP limit z M5.
+
+## `src/lib/recurrence.ts` — čistá logika
+
+```ts
+export type Frequency = "daily" | "weekly" | "monthly";
+
+export interface Recurrence {
+  freq: Frequency;
+  /** Pri `weekly`: dni v týždni, 0 = nedeľa … 6 = sobota. Nikdy prázdne. */
+  byDay?: number[];
+  /** Pri `monthly`: deň v mesiaci 1–31. */
+  byMonthDay?: number;
+}
+
+/** `FREQ=WEEKLY;BYDAY=MO,WE,FR` → objekt. Nerozpoznané → `null`, nikdy výnimka. */
+export function parseRecurrence(rule: string | null): Recurrence | null;
+/** Späť do RRULE zápisu — to, čo ide do `tasks.recurrence_rule`. */
+export function formatRecurrence(recurrence: Recurrence): string;
+/** Prvý výskyt PO `afterIso`. `null`, keď pravidlo nedáva zmysel. */
+export function nextOccurrence(recurrence: Recurrence, afterIso: string): string | null;
+/** Všetky výskyty v intervale (vrátane oboch krajných dní), zoradené. */
+export function occurrencesBetween(recurrence: Recurrence, fromIso: string, toIso: string): string[];
+/** Čitateľne po slovensky: „každý pondelok, stredu a piatok". */
+export function describeRecurrence(recurrence: Recurrence): string;
+```
+
+**Ukladá sa podmnožina RRULE, nie vlastný formát.** Zápis je platný RRULE, číta sa z neho len podporované. Keby raz „každý druhý utorok" chýbal, parser sa rozšíri **bez migrácie**.
+
+Podporované tvary — nič iné parser nerozpozná:
+
+```
+FREQ=DAILY
+FREQ=WEEKLY;BYDAY=MO,WE,FR
+FREQ=MONTHLY;BYMONTHDAY=15
+```
+
+**`BYMONTHDAY=31` v kratšom mesiaci padá na jeho posledný deň.** Preskočiť február by znamenalo, že mesačná faktúra raz za čas nepríde — a to je práve ten prípad, kvôli ktorému opakovanie existuje.
+
+Platí pravidlo pre celý `src/lib/**`: žiadny import z `src/db` ani `src/server`, žiadne `new Date()`. Testy v `src/lib/recurrence.test.ts`.
+
+## `src/lib/habits.ts` — čistá logika
+
+```ts
+export interface HabitWeek {
+  /** Pondelok (alebo `weekStartsOn`) týždňa. */
+  weekStart: string;
+  /** Koľkokrát sa v tom týždni návyk splnil. */
+  done: number;
+  /** Sedel týždenný cieľ? */
+  met: boolean;
+}
+
+/** Rozdelí splnené dni na týždne a vyhodnotí cieľ. */
+export function habitWeeks(dates: string[], targetPerWeek: number, fromIso: string, toIso: string, weekStartsOn?: number): HabitWeek[];
+/** Séria = počet po sebe idúcich týždňov s naplneným cieľom, od konca. */
+export function currentStreak(weeks: HabitWeek[]): number;
+export function longestStreak(weeks: HabitWeek[]): number;
+/** Podiel splnenia za obdobie, 0–1. */
+export function completionRate(weeks: HabitWeek[], targetPerWeek: number): number;
+```
+
+**Séria sa počíta na TÝŽDNE, nie na dni.** Cieľ je „X× do týždňa", takže denná séria by pri cieli 3× týždenne nedávala zmysel a jedno vynechanie by zhodilo mesiac poctivej práce. Prebiehajúci týždeň sériu **nezhadzuje**, kým sa nedá stihnúť — nedokončený týždeň nie je zlyhanie.
+
+## `src/server/queries/habits.ts`
+
+```ts
+export interface HabitWithStats extends Habit {
+  /** Dni splnenia v načítanom okne, vzostupne. */
+  entries: string[];
+  currentStreak: number;
+  longestStreak: number;
+  /** Splnené v tomto týždni / cieľ. */
+  weekDone: number;
+}
+
+export function listHabits(userId: string, fromIso: string, toIso: string, weekStartsOn?: number): Promise<HabitWithStats[]>;
+export function getHabitGrid(userId: string, habitId: string, fromIso: string, toIso: string): Promise<string[]>;
+```
+
+`habit_entries` nemá `userId` — je viazané cez `habitId`, takže **každý dotaz musí ísť cez JOIN na `habits` a filtrovať používateľa tam**. Priamy dotaz na `habit_entries` by vydal cudzie dáta.
+
+## `src/server/actions/habits.ts`
+
+```ts
+createHabit(input)                 // → { id }
+updateHabit(id, patch)             // názov, cieľ, farba, oblasť
+toggleHabitEntry(id, date)         // odškrtne alebo odškrtnutie zruší
+archiveHabit(id, archived)
+deleteHabit(id)                    // tvrdé — návyk nemá `deletedAt`
+```
+
+`habits` **nemá** `deletedAt`, len `archivedAt`. Mazanie je preto tvrdé a zmaže aj záznamy (`on delete cascade`). V rozhraní sa preto ponúka archivácia ako predvolená voľba a mazanie ako výslovné rozhodnutie.
+
+## Opakované úlohy — rozšírenie `actions/tasks.ts`
+
+```ts
+setRecurrence(id, rule: string | null)   // validuje cez parseRecurrence
+materializeDueRecurrences(todayIso)      // → { created: number }
+```
+
+**Ďalší výskyt vzniká pri dokončení.** `toggleTaskDone` na úlohe s pravidlom založí ďalší výskyt s `recurrenceParentId` na pôvodnú úlohu. Appka nemá cron a zavádzať ho kvôli opakovaniu je neúmerné — rovnaká úvaha ako pri zhnití nápadov v M4.
+
+Slabina je zrejmá: čo sa nikdy nedokončí, sa nikdy nezopakuje. Preto `materializeDueRecurrences` dobehne zameškané výskyty až po dnešok a volá ju **ranný sprievodca z M6** — beží denne a je to presne ten moment, keď majú dnešné opakované veci pribudnúť.
+
+Dobiehanie **nesmie** založiť desiatky úloh naraz: ak od posledného výskytu ubehlo veľa času, vznikne **jeden** výskyt na najbližší platný deň. Sto prepadnutých faktúr v inboxe nikomu nepomôže.
+
+## Win report
+
+Zoznam všetkého dokončeného za týždeň patrí do **týždennej revízie** (M6), nie na vlastnú obrazovku. Zatvára sa ním týždeň a človek tam už aj tak je.
+
+```ts
+export function getCompletedInPeriod(userId: string, from: string, to: string): Promise<TaskWithRelations[]>;
+```
