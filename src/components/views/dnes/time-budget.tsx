@@ -18,35 +18,67 @@ export function taskCountSk(count: number): string {
 export interface TimeBudgetProps {
   /** Súčet odhadov dnešných nedokončených úloh, v minútach. */
   plannedMin: number;
-  /** Dostupný čas dňa z nastavení (dayEndHour − dayStartHour), v minútach. */
+  /**
+   * Hrubý čas dňa z nastavení (dayEndHour − dayStartHour), v minútach —
+   * ešte bez porád. Tie si rozpočet odpočíta sám z `meetingMin`.
+   */
   availableMin: number;
   /** Koľko dnešných nedokončených úloh nemá odhad — číslo je o ne neúplné. */
   withoutEstimate: number;
+  /**
+   * Minúty, ktoré si z dňa berú porady z kalendára. Predvolene nula, lebo
+   * kalendár je doplnok — rozpočet musí dávať zmysel aj bez pripojeného účtu.
+   */
+  meetingMin?: number;
 }
 
 /**
  * Rozpočet času dňa. Tenký pruh a jedna veta — nič viac.
  *
  * Pri prekročení sa pruh aj text prefarbia na `text-danger` a pribudne veta
- * s rozdielom. Úlohy bez odhadu sa priznávajú zvlášť, aby bolo jasné,
- * že súčet je spodný odhad, nie celá pravda.
+ * s rozdielom. Úlohy bez odhadu a porady sa priznávajú zvlášť, aby bolo jasné,
+ * že súčet je spodný odhad, nie celá pravda, a odkiaľ sa vzal dostupný čas.
  */
 export function TimeBudget({
   plannedMin,
   availableMin,
   withoutEstimate,
+  meetingMin = 0,
 }: TimeBudgetProps) {
   const missing = withoutEstimate > 0 ? `${taskCountSk(withoutEstimate)} bez odhadu` : null;
 
-  // Hodiny dňa sa dajú nastaviť tak, že z nich nič nezostane (koniec ≤ začiatok).
-  // Vtedy nemá zmysel kresliť pruh — povieme rovno, čo treba opraviť.
-  if (availableMin <= 0) {
+  /*
+    Porady sa od dostupného času ODPOČÍTAVAJÚ, nepripočítavajú sa
+    k naplánovanému. Dvojhodinová porada neznamená dve hodiny práce navyše,
+    ale dve hodiny, ktoré na prácu nezostali. Keby sa rátala ako naplánovaná
+    práca, pruh by narástol rovnako, ale rozpočet by tvrdil, že na úlohy je
+    stále celý deň — a človek by si podľa toho nabral prácu, na ktorú
+    už nemá kedy siahnuť.
+  */
+  const meetings = Math.max(0, Math.round(meetingMin));
+  const workMin = availableMin - meetings;
+
+  /*
+    Na prácu nemusí zostať nič z dvoch celkom rôznych dôvodov: buď hodiny dňa
+    v nastaveniach nedávajú žiadny čas (koniec ≤ začiatok), alebo sú hodiny
+    v poriadku a do posledného ich zjedli porady. Pruh v oboch prípadoch nemá
+    čo kresliť, ale rada musí sedieť na ten správny dôvod — posielať človeka
+    do nastavení kvôli plnému kalendáru by bola len ďalšia stratená minúta.
+  */
+  if (workMin <= 0) {
     return (
       <div className="flex flex-col gap-1">
         <p className="text-[13px] leading-relaxed text-fg-muted sm:text-xs">
           Naplánovaných{" "}
-          <span className="tabular-nums">{formatDuration(plannedMin)}</span>. Rozpočet
-          času sa nedá spočítať — hodiny dňa v nastaveniach nedávajú žiadny čas.
+          <span className="tabular-nums">{formatDuration(plannedMin)}</span>.{" "}
+          {availableMin <= 0 ? (
+            "Rozpočet času sa nedá spočítať — hodiny dňa v nastaveniach nedávajú žiadny čas."
+          ) : (
+            <>
+              Na prácu neostáva nič — celý deň zaberajú porady (
+              <span className="tabular-nums">{formatDuration(meetings)}</span>).
+            </>
+          )}
         </p>
         {missing ? (
           <p className="text-[13px] text-fg-subtle sm:text-xs">{missing}.</p>
@@ -55,9 +87,9 @@ export function TimeBudget({
     );
   }
 
-  const over = plannedMin > availableMin;
-  const overBy = plannedMin - availableMin;
-  const fill = Math.min(100, Math.round((plannedMin / availableMin) * 100));
+  const over = plannedMin > workMin;
+  const overBy = plannedMin - workMin;
+  const fill = Math.min(100, Math.round((plannedMin / workMin) * 100));
 
   return (
     <div className="flex flex-col gap-1.5">
@@ -73,11 +105,17 @@ export function TimeBudget({
       </div>
 
       {/*
-        Na 375 px je celá veta („4 h 30 min naplánovaných z 10 h — naplánoval
+        Na 375 px je celá veta („4 h 30 min naplánovaných z 8 h — naplánoval
         si o 1 h viac, než máš.") na tri riadky. Pod `sm:` preto vypadávajú
-        len výplňové slová: ostáva „4 h 30 min z 10 h — o 1 h viac, než máš."
+        len výplňové slová: ostáva „4 h 30 min z 8 h — o 1 h viac, než máš."
         Varovanie pri prekročení sa neskracuje nikdy — mení sa len jeho úvod,
         nie údaj ani červená farba.
+
+        Porady dostávajú vlastnú vetu a nie zátvorku pri hodinách dňa: číslo
+        „z 8 h" je už o ne znížené, takže akékoľvek „z toho" by pri ňom klamalo.
+        Takto je vidieť aj to, kam sa podeli hodiny, ktoré v rozpočte chýbajú.
+        Aj z tejto vety vypadáva pod `sm:` iba výplň („z dňa"); podmet aj sloveso
+        ostávajú, lebo skratka bez nich („2 h porady") nie je slovenská veta.
       */}
       <p
         className={cn(
@@ -87,7 +125,7 @@ export function TimeBudget({
       >
         <span className="tabular-nums">{formatDuration(plannedMin)}</span>{" "}
         <span className="hidden sm:inline">naplánovaných </span>z{" "}
-        <span className="tabular-nums">{formatDuration(availableMin)}</span>
+        <span className="tabular-nums">{formatDuration(workMin)}</span>
         {over ? (
           <>
             {" — "}
@@ -98,6 +136,13 @@ export function TimeBudget({
         ) : (
           "."
         )}
+        {meetings > 0 ? (
+          <>
+            {" "}
+            Porady ubrali <span className="hidden sm:inline">z dňa </span>
+            <span className="tabular-nums">{formatDuration(meetings)}</span>.
+          </>
+        ) : null}
       </p>
 
       {missing ? (
