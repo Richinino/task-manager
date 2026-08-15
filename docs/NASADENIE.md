@@ -156,3 +156,27 @@ npm run build && npm run start
 Systém je jednopoužívateľský a `ALLOWED_EMAIL` je jediná zábrana — prihlásiť sa smie iba tento e-mail, ostatných Google účtov sa `signIn` callback zbaví. **Ak ju v produkcii nenastavíš, dostane sa dnu ktokoľvek s Google účtom.**
 
 Service worker odkladá do cache aj HTML s tvojimi úlohami, aby fungoval offline. Na tvojom telefóne je to v poriadku; na cudzom zariadení sa neprihlasuj.
+
+
+---
+
+## 6. Kalendár (M8)
+
+Kód je nasadený, ale kým nespravíš tieto tri kroky, meetingy sa nezobrazia.
+Appka medzitým beží normálne — kalendár je doplnok, nie podmienka.
+
+1. **Google Cloud Console → APIs & Services → Library** → zapni
+   **Google Calendar API**.
+2. **OAuth consent screen → Scopes** → pridaj
+   `https://www.googleapis.com/auth/calendar.readonly`.
+3. **Odhlás sa a znova prihlás.** Bez nového súhlasu Google token pre
+   kalendár nevydá — a tento krok sa najľahšie zabudne.
+
+Keď porady stále nevidno, pozri logy na Verceli. Hľadaj riadky začínajúce
+`[calendar]` alebo `[google-tokens]` — obe vrstvy zlyhanie zapisujú
+a nikdy ho nevyhodia na obrazovku.
+
+**Poznámka k odhláseniu:** refresh token posiela Google iba pri PRVOM
+súhlase. Keby si niekedy potreboval vynútiť nový, odober appke prístup
+na [myaccount.google.com/permissions](https://myaccount.google.com/permissions)
+a prihlás sa znova.
