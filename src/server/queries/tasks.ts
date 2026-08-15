@@ -17,6 +17,8 @@ import {
   type SQL,
 } from "drizzle-orm";
 
+import type { AnyPgColumn } from "drizzle-orm/pg-core";
+
 import { getDb } from "@/db";
 import {
   areas,
@@ -47,6 +49,18 @@ export interface TaskWithRelations extends Task {
 const TERMINAL_STATUSES: TaskStatus[] = ["done", "dropped"];
 
 /** Úloha, ktorá ešte čaká na vybavenie. */
+/**
+ * Deň časovej pečiatky v pásme POUŽÍVATEĽA, nie databázy.
+ *
+ * Samotné `::date` prevádza podľa pásma spojenia — na Verceli je to UTC.
+ * Úloha odškrtnutá v pondelok o 00:30 stredoeurópskeho času by tak spadla
+ * do nedele a v týždennom win reporte by chýbala. Je to tá istá pasca ako
+ * pri `todayIn`, len o vrstvu nižšie.
+ */
+export function localDate(column: AnyPgColumn, timeZone: string): SQL {
+  return sql`(${column} AT TIME ZONE ${timeZone})::date`;
+}
+
 function isOpen(): SQL {
   return notInArray(tasks.status, TERMINAL_STATUSES);
 }
@@ -221,14 +235,15 @@ export function getCompletedInPeriod(
   userId: string,
   from: string,
   to: string,
+  timeZone: string,
 ): Promise<TaskWithRelations[]> {
   return selectTasks(
     userId,
     and(
       eq(tasks.status, "done"),
       isNotNull(tasks.completedAt),
-      gte(sql`${tasks.completedAt}::date`, from),
-      lte(sql`${tasks.completedAt}::date`, to),
+      gte(localDate(tasks.completedAt, timeZone), from),
+      lte(localDate(tasks.completedAt, timeZone), to),
     ),
   );
 }

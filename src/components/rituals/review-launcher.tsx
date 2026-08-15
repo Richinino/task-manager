@@ -69,6 +69,7 @@ function ReviewButton({
 
 export interface WeeklyReviewLauncherProps {
   period: RitualPeriod;
+  /** Je revízia za toto obdobie už uzavretá? Tlačidlo podľa toho píše „hotová". */
   completed: boolean;
   initialPayload?: RitualPayload;
   todayIso: string;
@@ -77,12 +78,19 @@ export interface WeeklyReviewLauncherProps {
   someday: TaskWithRelations[];
   incubatorIdeas: IncubatorItem[];
   projects: ProjectWithCounts[];
+  /**
+   * Dokončené úlohy týždňa pre win report. Volajú sa `completedTasks`, hoci
+   * revízia ich vnútri pozná ako `completed` — v tomto rozhraní už `completed`
+   * znamená uzavretú revíziu a dve veci pod jedným menom by sa raz pomýlili.
+   */
+  completedTasks: TaskWithRelations[];
 }
 
 export function WeeklyReviewLauncher({
   period,
   completed,
   initialPayload,
+  completedTasks,
   ...data
 }: WeeklyReviewLauncherProps) {
   const [open, setOpen] = useState(false);
@@ -95,6 +103,7 @@ export function WeeklyReviewLauncher({
         onOpenChange={setOpen}
         period={period}
         {...(initialPayload ? { initialPayload } : {})}
+        completed={completedTasks}
         {...data}
       />
     </>

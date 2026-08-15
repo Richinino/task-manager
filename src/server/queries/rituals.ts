@@ -11,7 +11,7 @@ import {
   type JournalEntry,
   type Review,
 } from "@/db/schema";
-import { getTasksByIds, type TaskWithRelations } from "@/server/queries/tasks";
+import { getTasksByIds, localDate, type TaskWithRelations } from "@/server/queries/tasks";
 import type { RitualPeriod, RitualType } from "@/lib/rituals";
 
 /* ═══════════════════════════════════════════════════════════════════════════
@@ -124,12 +124,13 @@ export async function getMostPostponed(
   userId: string,
   from: string,
   to: string,
+  timeZone: string,
   limit = 5,
 ): Promise<PostponedWithReasons[]> {
   const db = await getDb();
 
-  // `at` je timestamp, hranice sú dátumy. Pretypovanie na `::date` zahrnie
-  // celý posledný deň obdobia — bez neho by z neho prešla len polnoc.
+  // Deň sa počíta v pásme používateľa, nie databázy: odklad zapísaný o 00:30
+  // stredoeurópskeho času by na UTC databáze spadol do predošlého mesiaca.
   const events = await db
     .select({
       taskId: taskEvents.taskId,
@@ -141,8 +142,8 @@ export async function getMostPostponed(
       and(
         eq(taskEvents.userId, userId),
         eq(taskEvents.type, "postponed"),
-        gte(sql`${taskEvents.at}::date`, from),
-        lte(sql`${taskEvents.at}::date`, to),
+        gte(localDate(taskEvents.at, timeZone), from),
+        lte(localDate(taskEvents.at, timeZone), to),
       ),
     )
     .orderBy(asc(taskEvents.at));
@@ -176,6 +177,7 @@ export async function getCompletedCount(
   userId: string,
   from: string,
   to: string,
+  timeZone: string,
 ): Promise<number> {
   const db = await getDb();
   const rows = await db
@@ -185,8 +187,8 @@ export async function getCompletedCount(
       and(
         eq(tasks.userId, userId),
         isNotNull(tasks.completedAt),
-        gte(sql`${tasks.completedAt}::date`, from),
-        lte(sql`${tasks.completedAt}::date`, to),
+        gte(localDate(tasks.completedAt, timeZone), from),
+        lte(localDate(tasks.completedAt, timeZone), to),
       ),
     );
   return rows[0]?.count ?? 0;
@@ -201,12 +203,13 @@ export async function getCompletedCount(
  */
 export async function getProjectLastActivity(
   userId: string,
+  timeZone: string,
 ): Promise<Map<string, string>> {
   const db = await getDb();
   const rows = await db
     .select({
       projectId: tasks.projectId,
-      last: sql<string>`max(${taskEvents.at}::date)::text`,
+      last: sql<string>`max((${taskEvents.at} AT TIME ZONE ${timeZone})::date)::text`,
     })
     .from(taskEvents)
     .innerJoin(tasks, eq(taskEvents.taskId, tasks.id))

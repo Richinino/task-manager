@@ -7,6 +7,7 @@ import { parseIsoDate, startOfWeek, todayIn, toIsoDate, weekDays } from "@/lib/d
 import { ritualPeriod } from "@/lib/rituals";
 import { requireUser } from "@/server/auth-guard";
 import {
+  getCompletedInPeriod,
   getInboxTasks,
   getSomedayTasks,
   getTasksForRange,
@@ -51,19 +52,38 @@ export default async function TyzdenPage({ searchParams }: TyzdenPageProps) {
   const weekStart = days[0] ?? startOfWeek(anchor, weekStartsOn);
   const weekEnd = days.at(-1) ?? weekStart;
 
-  // Celý týždeň jedným dotazom — sedem samostatných by bolo sedem ciest do databázy.
   const weeklyPeriod = ritualPeriod("weekly", todayIso, weekStartsOn);
 
-  const [tasks, inbox, waiting, someday, incubator, projects, weeklyState] =
-    await Promise.all([
-      getTasksForRange(user.id, weekStart, weekEnd),
-      getInboxTasks(user.id),
-      getWaitingTasks(user.id),
-      getSomedayTasks(user.id),
-      getIncubatorIdeas(user.id),
-      listProjects(user.id),
-      getRitualState(user.id, "weekly", weeklyPeriod),
-    ]);
+  const [
+    tasks,
+    inbox,
+    waiting,
+    someday,
+    incubator,
+    projects,
+    weeklyState,
+    // `completedTasks`, nie `completed`: o pár riadkov nižšie nesie `completed`
+    // z `weeklyState` úplne inú vec — príznak, že revízia je už uzavretá.
+    completedTasks,
+  ] = await Promise.all([
+    // Celý týždeň jedným dotazom — sedem samostatných by bolo sedem ciest do databázy.
+    getTasksForRange(user.id, weekStart, weekEnd),
+    getInboxTasks(user.id),
+    getWaitingTasks(user.id),
+    getSomedayTasks(user.id),
+    getIncubatorIdeas(user.id),
+    listProjects(user.id),
+    getRitualState(user.id, "weekly", weeklyPeriod),
+    // Win report ide za obdobím revízie, nie za prezeraným týždňom: revízia
+    // vždy zatvára ten týždeň, v ktorom človek stojí, aj keď sa pritom pozerá
+    // na tabuľu iného. Inak by sa mu v nej ukázal cudzí zoznam.
+    getCompletedInPeriod(
+        user.id,
+        weeklyPeriod.start,
+        weeklyPeriod.end,
+        user.settings.timezone,
+      ),
+  ]);
 
   // Vek nápadu počíta server. V klientovi by `new Date()` po hydratácii dal
   // iné číslo a v inom pásme aj iný deň — tá istá pasca ako pri nápadoch.
@@ -103,6 +123,7 @@ export default async function TyzdenPage({ searchParams }: TyzdenPageProps) {
             someday={someday}
             incubatorIdeas={incubatorIdeas}
             projects={projects}
+            completedTasks={completedTasks}
           />
         }
       />
