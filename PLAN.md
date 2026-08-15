@@ -509,6 +509,64 @@ bola miesto navyše, kam sa chodí raz začas.
 
 ---
 
+## 7f. M8 — rozpis
+
+Audit: scope `calendar.readonly` aj `access_type: offline` sú v `auth.ts`
+už z M0. Tabuľka `accounts` so stĺpcami na tokeny tiež existuje — ale je
+**úplne nepoužitá**: session je JWT bez adaptéra a callback `jwt` zahadzuje
+objekt `account`, v ktorom Auth.js tokeny posiela. **Migrácia netreba.**
+
+M8 je preto prvý míľnik so **skutočnou externou závislosťou**. Vyžiada si
+jednorazový zásah v Google Cloud Console a nové prihlásenie.
+
+### Rozhodnutia
+
+**Tokeny idú do databázy, nie do JWT.** Refresh token je dlhodobé
+poverenie a v cookie nemá čo robiť. Ide do `accounts`, ktorá naň čaká od M0.
+Prístupový token platí hodinu, takže sa obnovuje na požiadanie — bez cronu,
+rovnako ako všetko ostatné.
+
+**Meetingy UBERAJÚ z dostupného času, nepripočítavajú sa k naplánovanému.**
+Dvojhodinová porada neznamená dve hodiny práce navyše, ale dve hodiny, ktoré
+na prácu nezostali. Rozpočet dňa z M5 tak konečne hovorí pravdu.
+
+**Celodenné udalosti sa zobrazia, ale do rozpočtu sa nerátajú.** „Dovolenka"
+ani „narodeniny" hodiny neujedajú a odpočítať ich by spravilo z rozpočtu
+nezmysel.
+
+**Odmietnuté udalosti sa preskakujú.** Pozvánka, ktorú si odmietol, nie je
+tvoj čas.
+
+**Zatiaľ len hlavný kalendár.** Viac kalendárov je nastavenie navyše
+a pri jednom používateľovi sa oplatí až vtedy, keď to naozaj bude chýbať.
+
+**Bez kalendára appka funguje ďalej.** Nepovolené API, vypršaný refresh
+token aj výpadok siete znamenajú, že sa meetingy jednoducho nezobrazia
+a rozpočet počíta ako doteraz. Kalendár je doplnok, nie podmienka —
+appka, ktorá bez tretej strany nenabehne, je horšia než appka bez kalendára.
+
+### Čo musí spraviť používateľ
+
+1. V Google Cloud Console zapnúť **Google Calendar API**.
+2. Na obrazovke súhlasu pridať scope `calendar.readonly`.
+3. Odhlásiť sa a znova prihlásiť — bez nového súhlasu Google token pre
+   kalendár nevydá.
+
+Kód sa dá nasadiť skôr; dovtedy sa meetingy proste nezobrazia.
+
+### Poradie
+
+1. **Ukladanie a obnova tokenov** — najcitlivejšia časť, ide prvá.
+2. **Klient kalendára** — čítanie udalostí dňa, bez knižnice.
+3. **Meetingy na „Dnes"** a ich odpočet v rozpočte času.
+
+### Odhad
+
+1–2 večery. Kódu je málo, ale obnova tokenov a tiché zlyhanie sa musia
+spraviť poriadne.
+
+---
+
 ## 8. Otvorené otázky na neskôr
 
 - Farebná schéma a vizuálny štýl (rozhodneme pri M1 na živých obrazovkách)

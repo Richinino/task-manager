@@ -790,3 +790,77 @@ Zoznam všetkého dokončeného za týždeň patrí do **týždennej revízie** 
 ```ts
 export function getCompletedInPeriod(userId: string, from: string, to: string): Promise<TaskWithRelations[]>;
 ```
+
+---
+
+# Kontrakty M8 — kalendár
+
+Scope `calendar.readonly`, `access_type: offline` aj tabuľka `accounts` sú z M0. **Žiadna migrácia.**
+
+## Tokeny
+
+**Refresh token nesmie ísť do JWT.** Je to dlhodobé poverenie k cudziemu účtu a cookie je to posledné miesto, kam patrí. Ukladá sa do `accounts`, ktorá naň čaká od M0.
+
+```ts
+// src/server/google-tokens.ts   (bez "use server" — volá sa zo servera priamo)
+export interface GoogleTokens {
+  accessToken: string;
+  expiresAt: Date;
+}
+
+/** Uloží tokeny po prihlásení. Volá sa z callbacku `jwt` v `auth.ts`. */
+export function storeGoogleAccount(userId: string, account: {
+  providerAccountId: string;
+  access_token?: string;
+  refresh_token?: string;
+  expires_at?: number;
+  scope?: string;
+}): Promise<void>;
+
+/**
+ * Platný prístupový token, v prípade potreby obnovený.
+ * `null` = používateľ kalendár nepripojil alebo súhlas odvolal.
+ */
+export function getValidAccessToken(userId: string): Promise<string | null>;
+```
+
+**Refresh token príde len pri PRVOM súhlase.** Google ho pri ďalších prihláseniach neposiela, takže `storeGoogleAccount` ho **nesmie prepísať na `null`** — inak by druhé prihlásenie kalendár odpojilo. Prepisuje sa iba, keď naozaj prišiel nový.
+
+**Obnova je lenivá.** Token platí hodinu; obnovuje sa až keď je potrebný a už vypršal (s minútovou rezervou na cestu po sieti). Žiadny cron — rovnako ako všetko ostatné v appke.
+
+Keď obnova zlyhá s `invalid_grant`, súhlas bol odvolaný: `refresh_token` sa vymaže a appka sa tvári, že kalendár nie je pripojený. Opakovať zlyhávajúcu obnovu pri každom načítaní stránky by len spomaľovalo.
+
+## `src/server/queries/calendar.ts`
+
+```ts
+export interface CalendarEvent {
+  id: string;
+  title: string;
+  /** `HH:MM` v pásme používateľa; `null` pri celodennej udalosti. */
+  start: string | null;
+  end: string | null;
+  /** Celodenná — zobrazí sa, ale do rozpočtu sa NERÁTA. */
+  allDay: boolean;
+  /** Dĺžka v minútach; 0 pri celodennej. */
+  minutes: number;
+}
+
+/** Udalosti dňa z hlavného kalendára. Prázdne pole aj pri chybe. */
+export function getDayEvents(userId: string, dateIso: string, timeZone: string): Promise<CalendarEvent[]>;
+```
+
+**Nikdy nevyhodí výnimku.** Nepovolené API, vypršaný súhlas aj výpadok siete vracajú prázdne pole. Kalendár je doplnok — appka, ktorá bez tretej strany nenabehne, je horšia než appka bez kalendára.
+
+Vylúčené sú udalosti, ktoré používateľ **odmietol** (`responseStatus: "declined"`), a zrušené (`status: "cancelled"`). Pozvánka, ktorú si odmietol, nie je tvoj čas.
+
+## Rozpočet času
+
+**Meetingy UBERAJÚ z dostupného času, nepripočítavajú sa k naplánovanému.**
+
+```
+availableMin = (dayEndHour − dayStartHour) × 60 − súčet minút meetingov
+```
+
+Dvojhodinová porada neznamená dve hodiny práce navyše, ale dve hodiny, ktoré na prácu nezostali. `TimeBudget` z M5 dostane `meetingMin` a v pruhu ho ukáže zvlášť.
+
+Celodenné udalosti majú `minutes: 0` a rozpočet nemenia — „dovolenka" hodiny neujedá a odpočítať ju by z rozpočtu spravilo nezmysel.
