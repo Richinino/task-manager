@@ -97,10 +97,35 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       return true;
     },
 
-    async jwt({ token, user }) {
+    async jwt({ token, user, account }) {
       if (user?.email) {
         token.uid = await ensureUser(user.email.toLowerCase(), user.name, user.image);
       }
+
+      /*
+        Tokeny ku Googlu prídu IBA v tomto callbacku a IBA pri prihlásení —
+        potom sa `account` už nikdy neposiela. Ukladajú sa do `accounts`, nie
+        do JWT: refresh token je dlhodobé poverenie k cudziemu účtu a v cookie
+        nemá čo robiť. Podrobnosti v `server/google-tokens.ts`.
+
+        Zlyhanie zápisu NESMIE zhodiť prihlásenie — kalendár je doplnok, nie
+        podmienka vstupu do appky.
+      */
+      if (account?.provider === "google" && typeof token.uid === "string") {
+        try {
+          const { storeGoogleAccount } = await import("@/server/google-tokens");
+          await storeGoogleAccount(token.uid, {
+            providerAccountId: account.providerAccountId,
+            access_token: account.access_token,
+            refresh_token: account.refresh_token,
+            expires_at: account.expires_at,
+            scope: account.scope,
+          });
+        } catch (error) {
+          console.error("[auth] Tokeny ku Googlu sa nepodarilo uložiť:", error);
+        }
+      }
+
       return token;
     },
 
