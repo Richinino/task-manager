@@ -50,6 +50,8 @@ export interface RitualHostProps {
     candidates: TaskWithRelations[];
     plannedMin: number;
     availableMin: number;
+    /** Minúty porád z kalendára. Rozpočet aj rozsudok si ich odpočítajú sami. */
+    meetingMin?: number;
     withoutEstimate: number;
     postponeWarnAt: number;
     postponeBlockAt: number;
@@ -198,6 +200,7 @@ export function RitualHost({
         candidates={morning.candidates}
         plannedMin={morning.plannedMin}
         availableMin={morning.availableMin}
+        meetingMin={morning.meetingMin ?? 0}
         withoutEstimate={morning.withoutEstimate}
         postponeWarnAt={morning.postponeWarnAt}
         postponeBlockAt={morning.postponeBlockAt}

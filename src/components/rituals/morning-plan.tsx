@@ -33,8 +33,8 @@ import type { TaskWithRelations } from "@/server/queries/tasks";
    dá zavrieť v polovici a to, čo už človek rozhodol, musí platiť — inak by
    ďalšie ráno začínalo tam, kde predošlé.
 
-   Komponent si nepočíta NIČ: dnešok, kandidátov aj obe čísla rozpočtu dostáva
-   propom zo servera. Čokoľvek odvodené z `new Date()` v klientovi by sa
+   Komponent si nepočíta NIČ: dnešok, kandidátov aj všetky čísla rozpočtu
+   (vrátane minút porád z kalendára) dostáva propom zo servera. Čokoľvek odvodené z `new Date()` v klientovi by sa
    rozišlo so serverom — polnoc v pásme používateľa a polnoc v pásme
    prehliadača nie sú ten istý okamih.
    ═══════════════════════════════════════════════════════════════════════════ */
@@ -70,8 +70,17 @@ export interface MorningPlanProps {
   candidates: TaskWithRelations[];
   /** Súčet odhadov naplánovaných na dnes, v minútach. */
   plannedMin: number;
-  /** Dostupný čas dňa (`dayEndHour` − `dayStartHour`), v minútach. */
+  /** Hrubý čas dňa (`dayEndHour` − `dayStartHour`), v minútach — ešte bez porád. */
   availableMin: number;
+  /**
+   * Minúty, ktoré si z dňa berú porady z kalendára.
+   *
+   * Bez nich by rituál o tom istom dni tvrdil niečo iné než obrazovka „Dnes":
+   * osemhodinový deň so štyrmi hodinami porád a piatimi hodinami práce je na
+   * „Dnes" červený, ale rozsudok počítaný z hrubého dňa by ho odobril. Kalendár
+   * je doplnok, takže predvolená nula — bez pripojeného účtu sa nič nemení.
+   */
+  meetingMin?: number;
   /**
    * Koľko dnešných úloh nemá odhad. Bez tohto čísla by súčet vyzeral ako celá
    * pravda, hoci je to len spodný odhad.
@@ -96,6 +105,7 @@ export function MorningPlan({
   candidates,
   plannedMin,
   availableMin,
+  meetingMin = 0,
   withoutEstimate,
   postponeWarnAt,
   postponeBlockAt,
@@ -189,7 +199,15 @@ export function MorningPlan({
     });
   }
 
-  const verdict = loadVerdict(plannedMin, availableMin);
+  /*
+    Porady sa odpočítavajú rovnako ako v rozpočte na obrazovke „Dnes" —
+    rozsudok stojí na čase, ktorý na prácu naozaj zostal, nie na hodinách dňa
+    z nastavení. Inak by ráno odobrilo deň, ktorý o dva kliky vedľa svieti
+    načerveno, a človek by uveril tomu miernejšiemu.
+  */
+  const meetings = Math.max(0, Math.round(meetingMin));
+  const workMin = availableMin - meetings;
+  const verdict = loadVerdict(plannedMin, workMin, availableMin);
 
   const steps: RitualStep[] = [
     {
@@ -346,6 +364,7 @@ export function MorningPlan({
           <TimeBudget
             plannedMin={plannedMin}
             availableMin={availableMin}
+            meetingMin={meetings}
             withoutEstimate={withoutEstimate}
           />
 
@@ -400,15 +419,25 @@ function lateLabel(task: TaskWithRelations, now: Date): string | null {
  */
 function loadVerdict(
   plannedMin: number,
-  availableMin: number,
+  workMin: number,
+  dayMin: number,
 ): { tone: string; text: string } {
-  // Hodiny dňa sa dajú nastaviť tak, že z nich nezostane nič. Porovnávať sa
-  // potom nedá s čím a tvrdiť čokoľvek by bolo klamstvo.
-  if (availableMin <= 0) {
-    return {
-      tone: "text-fg-muted",
-      text: "Prepočet dnes nič nepovie — najprv treba opraviť hodiny dňa v nastaveniach.",
-    };
+  /*
+    Na prácu nemusí zostať nič z dvoch rôznych dôvodov a rada musí sedieť na
+    ten správny. Buď hodiny dňa v nastaveniach nedávajú žiadny čas, alebo sú
+    v poriadku a zjedli ich porady — posielať človeka do nastavení kvôli
+    plnému kalendáru by ho poslalo opravovať niečo, čo je v poriadku.
+  */
+  if (workMin <= 0) {
+    return dayMin <= 0
+      ? {
+          tone: "text-fg-muted",
+          text: "Prepočet dnes nič nepovie — najprv treba opraviť hodiny dňa v nastaveniach.",
+        }
+      : {
+          tone: "text-danger",
+          text: "Na prácu dnes neostáva nič — celý deň zaberajú porady. Čo sa má stať, musí ísť inam.",
+        };
   }
 
   if (plannedMin <= 0) {
@@ -418,14 +447,14 @@ function loadVerdict(
     };
   }
 
-  if (plannedMin > availableMin) {
+  if (plannedMin > workMin) {
     return {
       tone: "text-danger",
       text: "Deň je prepchatý. Niečo z toho dnes nebude — nech to vyberieš ty ráno, nie únava večer.",
     };
   }
 
-  if (plannedMin >= availableMin * TIGHT_RATIO) {
+  if (plannedMin >= workMin * TIGHT_RATIO) {
     return {
       tone: "text-warn",
       text: "Deň je plný po okraj. Prvá nečakaná vec ti ho rozhodí.",

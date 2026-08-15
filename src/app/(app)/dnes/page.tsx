@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 
 import { DayHeader } from "@/components/views/dnes/day-header";
 import { DayList } from "@/components/views/dnes/day-list";
+import { DayMeetings } from "@/components/views/dnes/day-meetings";
 import { DayPriorityCard } from "@/components/views/dnes/day-priority-card";
 import { OverdueSection } from "@/components/views/dnes/overdue-section";
 import { TimeBudget } from "@/components/views/dnes/time-budget";
@@ -16,6 +17,7 @@ import {
   getTasksForDay,
 } from "@/server/queries/tasks";
 import { getJournalEntry, getRitualState } from "@/server/queries/rituals";
+import { getDayEvents, meetingMinutes } from "@/server/queries/calendar";
 
 export const metadata: Metadata = {
   title: "Dnes",
@@ -36,17 +38,21 @@ export default async function DnesPage() {
   // Denné rituály zdieľajú obdobie — pre oba je to dnešok.
   const dailyPeriod = ritualPeriod("daily_shutdown", date, user.settings.weekStartsOn);
 
-  const [planned, overdue, actionable, shutdown, morningState, journalToday] =
+  const [planned, overdue, actionable, shutdown, morningState, journalToday, events] =
     await Promise.all([
-    getTasksForDay(user.id, date),
-    getOverdueTasks(user.id, date),
-    // „Čo teraz?" siaha ďalej než dnešok — aj na prepadnuté a nenaplánované.
-    // Práve to je jeho zmysel: keď sa dnešok minie, stále je čo robiť.
-    getActionableTasks(user.id, date),
-    getRitualState(user.id, "daily_shutdown", dailyPeriod),
-    getRitualState(user.id, "daily_plan", dailyPeriod),
-    getJournalEntry(user.id, date),
-  ]);
+      getTasksForDay(user.id, date),
+      getOverdueTasks(user.id, date),
+      // „Čo teraz?" siaha ďalej než dnešok — aj na prepadnuté a nenaplánované.
+      // Práve to je jeho zmysel: keď sa dnešok minie, stále je čo robiť.
+      getActionableTasks(user.id, date),
+      getRitualState(user.id, "daily_shutdown", dailyPeriod),
+      getRitualState(user.id, "daily_plan", dailyPeriod),
+      getJournalEntry(user.id, date),
+      // Kalendár je doplnok: keď nie je pripojený alebo Google zlyhá, vráti sa
+      // prázdne pole a stránka sa načíta rovnako. Preto smie ísť do rovnakého
+      // `Promise.all` ako všetko ostatné — nemá čo zhodiť.
+      getDayEvents(user.id, date, user.settings.timezone),
+    ]);
 
   // Zahodené úlohy do dnešného záväzku nepatria — v zozname by sa tvárili
   // ako nesplnené a kazili by aj počty.
@@ -63,6 +69,10 @@ export default async function DnesPage() {
     0,
     (user.settings.dayEndHour - user.settings.dayStartHour) * 60,
   );
+  // Minúty porád idú do rozpočtu surové, hodiny dňa sa o ne neskracujú tu:
+  // odpočet si robí `TimeBudget` sám, aby vedel ukázať aj to, koľko z dňa
+  // porady zjedli. Celodenné udalosti sa do súčtu nerátajú.
+  const meetingMin = meetingMinutes(events);
 
   const showFrogCard = frog !== null || openTasks.length > 0;
 
@@ -88,6 +98,7 @@ export default async function DnesPage() {
             plannedMin={plannedMin}
             availableMin={availableMin}
             withoutEstimate={withoutEstimate}
+            meetingMin={meetingMin}
           />
         }
         action={
@@ -113,6 +124,9 @@ export default async function DnesPage() {
                 candidates: openTasks,
                 plannedMin,
                 availableMin,
+                // Rituál dostáva porady tiež — rozpočet aj rozsudok v ňom
+                // musia stáť na tom istom dni ako pruh nad zoznamom.
+                meetingMin,
                 withoutEstimate,
                 postponeWarnAt: user.settings.postponeWarnAt,
                 postponeBlockAt: user.settings.postponeBlockAt,
@@ -133,6 +147,10 @@ export default async function DnesPage() {
           </>
         }
       />
+
+      {/* Porady sedia medzi rozpočtom a prioritou dňa: najprv koľko času
+          zostalo, potom čím je obsadený, až potom čo s tým zvyškom. */}
+      <DayMeetings events={events} />
 
       {showFrogCard ? (
         <DayPriorityCard
