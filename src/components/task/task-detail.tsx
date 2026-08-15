@@ -26,6 +26,7 @@ import { Input } from "@/components/ui/input";
 import { Kbd } from "@/components/ui/kbd";
 import { PostponeBadge } from "@/components/task/postpone-badge";
 import { PriorityDot } from "@/components/task/priority-dot";
+import { RecurrencePicker } from "@/components/task/recurrence-picker";
 import { SubtaskList } from "@/components/task/subtask-list";
 import { TagInput } from "@/components/task/tag-input";
 import {
@@ -751,6 +752,23 @@ export function TaskDetail({
                   />
                 </div>
               </div>
+            </Field>
+
+            {/*
+              Opakovanie si vlastný stav aj ukladanie rieši samo — do `Draft`
+              nepatrí, lebo ho nemení `updateTask`, ale `setRecurrence`.
+              Predvoľby sa odvodia z naplánovaného dňa úlohy; keď žiadny nemá,
+              z dneška zo servera — klient si dátum nikdy nepočíta sám.
+            */}
+            <Field
+              label="Opakovanie"
+              hint="Ďalší výskyt vznikne až vtedy, keď túto úlohu odškrtneš — alebo ho ráno dobehne sprievodca. Dopredu sa nič nezakladá."
+            >
+              <RecurrencePicker
+                taskId={task.id}
+                rule={task.recurrenceRule}
+                anchorIso={task.plannedDate ?? todayIso}
+              />
             </Field>
 
             <div className="flex items-start gap-2.5">

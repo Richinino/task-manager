@@ -241,11 +241,21 @@ export default async function MesiacPage({ searchParams }: MesiacPageProps) {
 
   const [postponed, completedCount, journalEntries, allProjects, lastActivity, monthlyState] =
     await Promise.all([
-      getMostPostponed(user.id, monthlyPeriod.start, monthlyPeriod.end),
-      getCompletedCount(user.id, monthlyPeriod.start, monthlyPeriod.end),
+      getMostPostponed(
+        user.id,
+        monthlyPeriod.start,
+        monthlyPeriod.end,
+        user.settings.timezone,
+      ),
+      getCompletedCount(
+        user.id,
+        monthlyPeriod.start,
+        monthlyPeriod.end,
+        user.settings.timezone,
+      ),
       getJournalRange(user.id, monthlyPeriod.start, monthlyPeriod.end),
       listProjects(user.id),
-      getProjectLastActivity(user.id),
+      getProjectLastActivity(user.id, user.settings.timezone),
       getRitualState(user.id, "monthly", monthlyPeriod),
     ]);
 

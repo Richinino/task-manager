@@ -15,6 +15,7 @@ import {
   Lightbulb,
   LogOut,
   Settings,
+  Sprout,
   type LucideIcon,
 } from "lucide-react";
 
@@ -69,6 +70,9 @@ export interface NavItem {
  * pre „Niekedy" a `c` pre „Čaká sa na". „Nápady" dostali `a`: prvé písmeno `n`
  * má rýchle zachytenie a `i` (idea) drží Inbox, takže ostáva druhé písmeno
  * slova — voľné vo všetkých troch registroch (navigácia, zachytenie, triedenie).
+ * „Návyky" idú tou istou cestou o písmeno ďalej: `n` je obsadené, druhé `á`
+ * nie je klávesa, ktorá by sa dala stlačiť na každom rozložení, takže ostáva
+ * `v` z náVyky — voľné a bez modifikátora.
  *
  * **Odznaky:** len tam, kde číslo znamená „konaj". Po termíne a nezatriedené
  * volajú po akcii dnes, „čaká sa na" pripomína, že niekomu treba pripomenúť.
@@ -107,6 +111,13 @@ export const NAV_ITEMS: readonly NavItem[] = [
     label: "Oblasti",
     shortcut: "o",
     Icon: Layers,
+    group: "structure",
+  },
+  {
+    href: "/navyky",
+    label: "Návyky",
+    shortcut: "v",
+    Icon: Sprout,
     group: "structure",
   },
   { href: "/niekedy", label: "Niekedy", shortcut: "s", Icon: Archive, group: "structure" },
@@ -295,7 +306,7 @@ export interface SidebarProps {
  * Pripnutý bočný panel. Pod `md` sa skrýva — tam preberá úlohu
  * spodná lišta (`mobile-nav.tsx`).
  *
- * Deväť položiek v jednom stĺpci by bola kaša, preto sú v dvoch skupinách
+ * Desať položiek v jednom stĺpci by bola kaša, preto sú v dvoch skupinách
  * oddelených čiarou a nadpisom: hore to, čo otváraš denne, dole miesta,
  * kam chodíš vedome. Panel má na to miesto, ktoré telefón nemá — tam sa
  * druhá skupina schová za „Viac".

@@ -24,6 +24,7 @@ import {
   type RitualPayload,
   type RitualStep,
 } from "@/components/rituals/ritual-shell";
+import { AreaDot } from "@/components/task/area-dot";
 import { agoLabel, touchAgeLabel } from "@/components/views/napady/idea-labels";
 import type { IncubatorItem } from "@/components/views/napady/incubator-strip";
 import { setIdeaStage, touchIdea } from "@/server/actions/ideas";
@@ -34,9 +35,10 @@ import type { TaskWithRelations } from "@/server/queries/tasks";
 /* ═══════════════════════════════════════════════════════════════════════════
    TÝŽDENNÁ REVÍZIA — 15 minút
 
-   Päť krokov: inbox na nulu → čaká sa na → projekty → tri nápady → čo bolo dobré.
+   Šesť krokov: inbox na nulu → čaká sa na → projekty → tri nápady → čo bolo
+   dobré → čo si dokázal.
 
-   Revízia má dva druhy krokov a je dôležité ich nemiešať:
+   Revízia má tri druhy krokov a je dôležité ich nemiešať:
 
      ROZHODNUTIA (čakanie, nápady) menia databázu HNEĎ. Revízia sa dá zavrieť
      v polovici a to, čo už človek rozhodol, musí platiť — inak by ďalší týždeň
@@ -46,6 +48,11 @@ import type { TaskWithRelations } from "@/server/queries/tasks";
      Sú to poznámky o stave, nie príkazy: na otázku „pohol sa projekt?“ niet
      čo v databáze prepísať a domýšľať si z odpovede archiváciu by znamenalo,
      že revízia potichu maže prácu.
+
+     ČÍTANIE (win report) nemení nič a nič neukladá — len ukazuje, čo je za
+     človekom. Je to zámerne POSLEDNÝ krok: päť krokov predtým sa pýta na
+     nedotiahnuté veci a revízia, ktorá sa na nich aj skončí, sa čoskoro
+     prestane robiť.
 
    Rozhodnutia sa preto do payloadu NEZAPISUJÚ. Vrátenie z čakania aj
    zamietnutie nápadu už žijú v databáze; druhá kópia v odpovediach by sa
@@ -95,6 +102,12 @@ export interface WeeklyReviewProps {
   incubatorIdeas: IncubatorItem[];
   /** Projekty s počtami — `listProjects`. Neaktívne si odfiltrujeme sami. */
   projects: ProjectWithCounts[];
+  /**
+   * Všetko, čo sa v tomto týždni dokončilo — `getCompletedInPeriod` nad tým
+   * istým obdobím, aké nesie `period`. Zoznam sa iba číta; win report je jediný
+   * krok revízie, ktorý sa na nič nepýta.
+   */
+  completed: TaskWithRelations[];
 }
 
 export function WeeklyReview({
@@ -108,6 +121,7 @@ export function WeeklyReview({
   someday,
   incubatorIdeas,
   projects,
+  completed,
 }: WeeklyReviewProps) {
   /*
     Prechod cez zoznamy žije v pamäti komponentu, nie v odpovediach. Je to
@@ -129,6 +143,19 @@ export function WeeklyReview({
   const activeProjects = projects.filter(
     (project) => project.status === "active" && project.archivedAt === null,
   );
+
+  /*
+    Dokončené veci rozdelené podľa oblasti. Oblasť je jediné delenie, ktoré si
+    win report dovolí: „päť vecí okolo domu a dve v práci“ je príbeh týždňa,
+    kým čokoľvek jemnejšie by z odmeny spravilo výkaz.
+  */
+  const winGroups = groupByArea(completed);
+  /*
+    Nadpis „Bez oblasti“ dáva zmysel len vtedy, keď je oproti čomu vymedzený.
+    Keď oblasť nemá ani jedna úloha, je to jeden nerozdelený zoznam a nadpis
+    nad celým zoznamom by len tvrdil, že niečo chýba.
+  */
+  const hasNamedAreas = winGroups.some((group) => group.area !== null);
 
   /**
    * Úloha, na ktorú sa už čakať nemusí.
@@ -551,6 +578,81 @@ export function WeeklyReview({
         </div>
       ),
     },
+
+    /* ─────────────────────────────────────────────────────────────────────
+       6. WIN REPORT — ČO SI TENTO TÝŽDEŇ DOKÁZAL
+
+       Odmena, nie výkaz. Preto tu zámerne nie je ani graf, ani percento, ani
+       porovnanie s minulým týždňom: každé z nich vie povedať „menej než
+       predtým“ a týždeň, v ktorom sa nedarilo, netreba dobíjať práve na konci
+       revízie. Ostáva číslo a mená vecí, ktoré sú hotové.
+       ───────────────────────────────────────────────────────────────────── */
+    {
+      key: "wins",
+      title: "Čo si tento týždeň dokázal",
+      hint: "Len na čítanie. Päť krokov predtým sa pýtalo na nedotiahnuté veci — toto je tá druhá polovica pravdy.",
+      render: () => (
+        <div className="flex min-w-0 flex-col gap-3">
+          {completed.length === 0 ? (
+            /*
+              Veľká nula sa tu nevykresľuje. Číslo v ráme je odmena a odmena za
+              nulu je výčitka — v prázdnom týždni preto ostáva len veta, nie
+              skóre.
+            */
+            <p className="text-[13px] leading-relaxed text-fg-muted">
+              Tento týždeň tu nesvieti nič — a nie je to výčitka. Do zoznamu sa
+              dostane len to, čo v ňom aj začalo, a väčšina toho, čo deň zoberie,
+              sa doň nikdy nezapíše. Prázdny týždeň občas znamená len to, že sa
+              žilo mimo zoznamu.
+            </p>
+          ) : (
+            <>
+              <div className="min-w-0 rounded border border-border bg-accent-soft px-3 py-3">
+                <p className="text-3xl font-semibold leading-none tabular-nums text-accent">
+                  {completed.length}
+                </p>
+                <p className="pt-1.5 text-[13px] leading-relaxed text-fg-muted">
+                  {doneTaskLabel(completed.length)} za tento týždeň
+                </p>
+              </div>
+
+              {winGroups.map((group) => (
+                <div
+                  key={group.area?.id ?? NO_AREA_KEY}
+                  className="flex min-w-0 flex-col gap-1.5"
+                >
+                  {group.area !== null ? (
+                    // `AreaDot` už nesie farbu aj čitateľný popis pre čítačku,
+                    // takže nadpis skupiny nepotrebuje nič navyše — len silnejšiu
+                    // farbu textu, aby sa odlíšil od riadkov pod ním.
+                    <AreaDot
+                      color={group.area.color}
+                      name={group.area.name}
+                      size="sm"
+                      className="text-[12px] font-medium text-fg"
+                    />
+                  ) : hasNamedAreas ? (
+                    <p className="text-[12px] font-medium text-fg-subtle">
+                      Bez oblasti
+                    </p>
+                  ) : null}
+
+                  <ul className="flex min-w-0 flex-col gap-1.5">
+                    {group.tasks.map((task) => (
+                      <li key={task.id} className={ritualRowClass}>
+                        <span className="min-w-0 text-sm leading-snug break-words text-fg">
+                          {task.title}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ))}
+            </>
+          )}
+        </div>
+      ),
+    },
   ];
 
   return (
@@ -629,6 +731,62 @@ function openTaskLabel(count: number): string {
   if (count === 1) return "1 otvorená úloha";
   if (count >= 2 && count <= 4) return `${count} otvorené úlohy`;
   return `${count} otvorených úloh`;
+}
+
+/**
+ * Tvar mena k počtu dokončených úloh — bez samotného čísla.
+ *
+ * Vo win reporte stojí číslo samo a vo veľkom; keby ho niesol aj popis pod ním,
+ * bolo by na jednej kartičke dvakrát a pri každej zmene by sa museli opraviť
+ * obe miesta.
+ */
+function doneTaskLabel(count: number): string {
+  if (count === 1) return "dokončená úloha";
+  if (count >= 2 && count <= 4) return "dokončené úlohy";
+  return "dokončených úloh";
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   ZOSKUPENIE PRE WIN REPORT
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/**
+ * Kľúč skupiny bez oblasti pre React. Zámerne taký, aký sa nedá pomýliť
+ * so skutočným `id` oblasti — pri zhode by React po pridaní oblasti prekreslil
+ * cudzí zoznam namiesto toho, aby skupinu založil nanovo.
+ */
+const NO_AREA_KEY = "__bez-oblasti__";
+
+interface WinGroup {
+  /** `null` pre úlohy, ktoré oblasť nemajú. */
+  area: { id: string; name: string; color: string } | null;
+  tasks: TaskWithRelations[];
+}
+
+/**
+ * Dokončené úlohy podľa oblasti, úlohy bez nej na konci.
+ *
+ * Poradie skupín kopíruje poradie zo servera a zámerne sa neradí podľa počtu:
+ * rebríček oblastí by z odmeny spravil súťaž, v ktorej jedna časť života vždy
+ * prehráva. Úlohy bez oblasti idú nakoniec preto, že sú zvyšok, nie skupina.
+ */
+function groupByArea(tasks: TaskWithRelations[]): WinGroup[] {
+  const byArea = new Map<string, WinGroup>();
+  const loose: TaskWithRelations[] = [];
+
+  for (const task of tasks) {
+    if (task.area === null) {
+      loose.push(task);
+      continue;
+    }
+    const group = byArea.get(task.area.id);
+    if (group === undefined) byArea.set(task.area.id, { area: task.area, tasks: [task] });
+    else group.tasks.push(task);
+  }
+
+  const groups = [...byArea.values()];
+  if (loose.length > 0) groups.push({ area: null, tasks: loose });
+  return groups;
 }
 
 /**
