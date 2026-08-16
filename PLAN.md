@@ -567,6 +567,65 @@ spraviť poriadne.
 
 ---
 
+## 7g. M9 — rozpis
+
+Audit: `templates` aj `links` sú z M0 hotové, kódu k nim nula. **Migrácia
+netreba.** Dve zistenia stoja za zmienku:
+
+**Paleta nie je fulltext.** Filtruje zoznam, ktorý sa celý pošle do
+prehliadača (−60 až +180 dní). Čo je mimo okna, nenájde, a nápady ani
+projekty nehľadá vôbec.
+
+**Mäkko zmazané dáta sú neviditeľné.** `deletedAt` máme v celej appke od M0,
+ale nič ho nečíta. Zahodená úloha teda existuje a zároveň je nedosiahnuteľná —
+to je horšie než tvrdé mazanie, lebo o nej človek ani nevie.
+
+### Rozhodnutia
+
+**Diakritika sa skladá v SQL, bez rozšírenia.** `unaccent` je rozšírenie,
+ktoré Neon má a PGlite nemusí — a jedna schéma musí bežať na oboch. Preložíme
+si znaky sami cez `translate()`. Je to fixná tabuľka slovenských písmen, ktorá
+sa nikdy nezmení, a funguje všade rovnako.
+
+Hľadá sa `ILIKE` nad zloženým textom, nie `to_tsvector`. Slovenský slovník
+Postgres nemá, takže by stemming aj tak nefungoval — a pri osobnej appke sú
+to tisíce riadkov, nie milióny.
+
+**Archív nič nemaže ani nič nevracia potichu.** Ukazuje, čo je hotové,
+zahodené a mäkko zmazané, a dáva to vrátiť. Zmazanie natvrdo tam
+zámerne **nie je**: jediné miesto, kde sa v celej appke maže naozaj, ostáva
+návyk — a aj ten sa pýta dvakrát.
+
+**Export je jeden JSON so všetkým.** Nie CSV: úlohy majú podúlohy, štítky,
+históriu a vzťahy, ktoré tabuľka nezachytí. Cieľ nie je otvoriť to v Exceli,
+ale mať dáta von, keby appka zajtra zhorela.
+
+**Šablóna je pole definícií úloh, nie kópia existujúcich.** „Ranná rutina"
+sa nemá rozbiť tým, že sa jedna z pôvodných úloh zmaže.
+
+**`[[odkazy]]` sa ukladajú do `links`, nie len v texte.** Text je pravda pre
+zobrazenie, `links` pre spätné odkazy — bez tabuľky by sa „kto sem odkazuje"
+muselo hľadať prehľadávaním všetkých poznámok.
+
+Odkaz na nič neexistujúce sa **nezahodí**. Ostáva v texte ako obyčajný
+`[[text]]` a keď entita s tým názvom vznikne, odkaz ožije. Vynucovať
+existenciu vopred by z písania spravilo administratívu.
+
+### Poradie
+
+1. **Fulltext, archív a export** — tri čítacie funkcie nad hotovými dátami,
+   žiadna nová entita.
+2. **Šablóny** — vlastná entita s akciami aj obrazovkou.
+3. **Odkazy** — najväčší kus: parsovanie, našepkávanie, spätné odkazy.
+   Ide posledné, lebo sa vešia na všetko ostatné.
+
+### Odhad
+
+3–4 večery. Päť funkcií je na jeden míľnik veľa; odkazy samy o sebe vydajú
+na večer.
+
+---
+
 ## 8. Otvorené otázky na neskôr
 
 - Farebná schéma a vizuálny štýl (rozhodneme pri M1 na živých obrazovkách)

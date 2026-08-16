@@ -864,3 +864,110 @@ availableMin = (dayEndHour − dayStartHour) × 60 − súčet minút meetingov
 Dvojhodinová porada neznamená dve hodiny práce navyše, ale dve hodiny, ktoré na prácu nezostali. `TimeBudget` z M5 dostane `meetingMin` a v pruhu ho ukáže zvlášť.
 
 Celodenné udalosti majú `minutes: 0` a rozpočet nemenia — „dovolenka" hodiny neujedá a odpočítať ju by z rozpočtu spravilo nezmysel.
+
+---
+
+# Kontrakty M9 — dolaďovanie
+
+`templates` aj `links` sú z M0 hotové. **Žiadna migrácia.**
+
+## Skladanie diakritiky — `src/lib/fold.ts`
+
+```ts
+/** „Štvrtok" → „stvrtok". Malé písmená bez diakritiky. */
+export function fold(text: string): string;
+/** Tie isté dvojice ako SQL `translate()` — jeden zdroj pravdy. */
+export const FOLD_FROM: string;
+export const FOLD_TO: string;
+```
+
+**`unaccent` sa nepoužíva.** Je to rozšírenie, ktoré Neon má a PGlite nemusí — a jedna schéma musí bežať na oboch. Znaky si preložíme sami cez `translate()`; je to fixná tabuľka slovenských písmen, ktorá sa nikdy nezmení.
+
+Klient aj SQL musia skladať **rovnako**, inak nájde paleta niečo iné než server. Preto sú dvojice v `src/lib/fold.ts` a SQL si ich odtiaľ berie ako parameter, nie ako druhý zoznam v inom súbore.
+
+## `src/server/queries/search.ts`
+
+```ts
+export type SearchKind = "task" | "idea" | "project" | "area" | "journal";
+
+export interface SearchHit {
+  kind: SearchKind;
+  id: string;
+  title: string;
+  /** Kúsok textu, v ktorom sa zhoda našla. `null`, keď je zhoda v názve. */
+  snippet: string | null;
+  /** Kam odkaz vedie. */
+  href: string;
+  /** Uzavreté, zahodené alebo mäkko zmazané — v zozname sa stlmí. */
+  archived: boolean;
+}
+
+export function search(userId: string, query: string, limit?: number): Promise<SearchHit[]>;
+```
+
+Hľadá sa `ILIKE` nad zloženým textom, nie `to_tsvector`: slovenský slovník Postgres nemá, takže by stemming aj tak nefungoval, a pri osobnej appke ide o tisíce riadkov, nie milióny.
+
+**Prázdny alebo jednoznakový dopyt vráti prázdno**, nie celú databázu.
+
+## `src/server/queries/archive.ts`
+
+```ts
+export interface ArchiveOptions {
+  /** `done` · `dropped` · `deleted`. Predvolene všetky. */
+  kinds?: ("done" | "dropped" | "deleted")[];
+  limit?: number;
+}
+export function getArchivedTasks(userId: string, options?: ArchiveOptions): Promise<TaskWithRelations[]>;
+export function getArchivedIdeas(userId: string): Promise<IdeaWithRelations[]>;
+```
+
+Archív **nemaže natvrdo**. Jediné miesto, kde sa v celej appke maže naozaj, ostáva návyk — a aj ten sa pýta dvakrát. Vracia sa cez existujúce `restoreTask` / `restoreIdea`.
+
+## Export — `src/app/api/export/route.ts`
+
+Jeden JSON so všetkým, cez `GET` s `Content-Disposition: attachment`.
+
+**Nie CSV.** Úlohy majú podúlohy, štítky, históriu a vzťahy, ktoré tabuľka nezachytí. Cieľ nie je otvoriť to v Exceli, ale mať dáta von, keby appka zajtra zhorela.
+
+Export obsahuje **aj mäkko zmazané** riadky — je to záloha, nie prehľad. Neobsahuje tokeny z `accounts`: poverenie ku Googlu do zálohy nepatrí.
+
+## Šablóny — `src/server/actions/templates.ts`
+
+```ts
+/** Definícia jednej úlohy v šablóne. Podmnožina `CreateTaskInput`. */
+export interface TemplateTask {
+  title: string;
+  note?: string;
+  priority?: number;
+  estimateMin?: number;
+  energy?: "low" | "mid" | "high";
+  context?: string;
+  /** Posun oproti dňu použitia: 0 = v ten deň, 1 = nasledujúci. */
+  dayOffset?: number;
+}
+
+createTemplate(input)                      // → { id }
+updateTemplate(id, patch)
+deleteTemplate(id)
+applyTemplate(id, startDateIso)            // → { created: number }
+```
+
+**Šablóna je pole definícií, nie kópia existujúcich úloh.** „Ranná rutina" sa nemá rozbiť tým, že sa jedna z pôvodných úloh zmaže.
+
+`dayOffset` je relatívny — šablóna „Príprava na dovolenku" sa dá použiť kedykoľvek a dni sa dopočítajú od zvoleného začiatku.
+
+## Odkazy — `src/lib/wikilink.ts` a `src/server/actions/links.ts`
+
+```ts
+export interface WikiLink { raw: string; label: string; start: number; end: number }
+/** Nájde `[[…]]` v texte. Nikdy nevyhodí výnimku. */
+export function parseWikiLinks(text: string): WikiLink[];
+```
+
+```ts
+syncLinks(fromType, fromId, text)   // prepočíta `links` podľa textu
+```
+
+**Odkaz na nič neexistujúce sa NEZAHODÍ.** Ostáva v texte ako obyčajný `[[text]]` a keď entita s tým názvom vznikne, odkaz ožije. Vynucovať existenciu vopred by z písania spravilo administratívu.
+
+`links` je len index pre spätné odkazy — **pravda je text**. Preto `syncLinks` riadky prepočítava, nie dopĺňa: zmazaný `[[odkaz]]` musí zmiznúť aj z tabuľky.
