@@ -248,6 +248,45 @@ export function getCompletedInPeriod(
   );
 }
 
+export interface ContextUsage {
+  /** Bez zavináča — ten si dopĺňa rozhranie samo. */
+  name: string;
+  taskCount: number;
+}
+
+/**
+ * Kontexty, ktoré používateľ naozaj používa, od najčastejšieho.
+ *
+ * Zoznam kontextov nikde neexistuje — `@pocitac` vzniká tým, že si ho človek
+ * napíše. Preto sa odvodzuje z úloh: to, čo je použité, je to, čo existuje.
+ *
+ * Zavináč sa odsekáva. Parser ho do `tasks.context` ukladá **aj s ním**
+ * (na rozdiel od štítkov a projektov), ale staršie záznamy ani ručne vyplnené
+ * pole v detaile ho mať nemusia — normalizuje sa preto tu, na jednom mieste.
+ */
+export async function listContexts(userId: string): Promise<ContextUsage[]> {
+  const db = await getDb();
+
+  const rows = await db
+    .select({
+      name: sql<string>`btrim(ltrim(btrim(${tasks.context}), '@'))`,
+      taskCount: sql<number>`cast(count(*) as int)`,
+    })
+    .from(tasks)
+    .where(
+      and(
+        eq(tasks.userId, userId),
+        isNull(tasks.deletedAt),
+        isNotNull(tasks.context),
+        sql`btrim(ltrim(btrim(${tasks.context}), '@')) <> ''`,
+      ),
+    )
+    .groupBy(sql`btrim(ltrim(btrim(${tasks.context}), '@'))`)
+    .orderBy(sql`count(*) desc`);
+
+  return rows.map((row) => ({ name: row.name, taskCount: Number(row.taskCount) }));
+}
+
 /** Nespracované zachytenia. */
 export function getInboxTasks(userId: string): Promise<TaskWithRelations[]> {
   return selectTasks(userId, eq(tasks.status, "inbox"));

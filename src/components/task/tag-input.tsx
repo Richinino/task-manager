@@ -11,6 +11,7 @@ import {
 import { Plus, X } from "lucide-react";
 
 import { cn } from "@/lib/utils";
+import { fold } from "@/lib/fold";
 import { Input } from "@/components/ui/input";
 import type { TagView } from "@/components/task/task-detail-data";
 import { attachTag, detachTag } from "@/server/actions/structure";
@@ -66,11 +67,18 @@ export function TagInput({ taskId, tags, setTags, suggestions }: TagInputProps) 
     [tags],
   );
 
+  /*
+    Návrhy sa porovnávajú cez `fold()`, teda bez ohľadu na diakritiku — „trening"
+    nájde „tréning". Predtým tu bolo obyčajné `toLocaleLowerCase`, čo bola
+    jediná výnimka v celej appke: fulltext aj paleta skladajú diakritiku, a keď
+    to jedno pole robí inak, človek si myslí, že štítok neexistuje, a založí
+    druhý s tým istým významom.
+  */
   const offered = useMemo(() => {
-    const needle = query.toLocaleLowerCase("sk");
+    const needle = fold(query);
     return suggestions
       .filter((tag) => !attached.has(tag.name.toLocaleLowerCase("sk")))
-      .filter((tag) => needle === "" || tag.name.toLocaleLowerCase("sk").includes(needle))
+      .filter((tag) => needle === "" || fold(tag.name).includes(needle))
       .slice(0, MAX_SUGGESTIONS);
   }, [suggestions, attached, query]);
 
