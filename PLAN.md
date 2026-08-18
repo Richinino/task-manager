@@ -221,7 +221,11 @@ Každá z týchto vecí pridá réžiu a po troch týždňoch systém opustíš.
 | **M5** | Anti-prokrastinácia | počítadlo odkladov, WIP limit, rozpočet dňa, „Čo teraz?" | 2 večery |
 | **M6** | Rituály | 4 sprievodcovia (ráno, večer, týždeň, mesiac) + denník | 3 večery |
 
-> **M0–M6 hotové a nasadené.** Ďalej M7 (návyky a čísla).
+> **M0–M9 hotové a nasadené.**
+>
+> Zostáva doriešiť: napojenie `[[odkazov]]` na detail úlohy a nápadu (knižnica
+> a akcie sú hotové), pripojenie kalendára v Google Cloud Console a nevolaná
+> `hasCalendarAccess`, ktorá má zmysel až s obrazovkou stavu kalendára.
 | **M7** | Návyky a čísla | opakovanie, série, mriežka, štatistiky, win report | 2–3 večery |
 | **M8** | Kalendár | Google Calendar read-only, meetingy v dennom pláne a v rozpočte | 1 večer |
 | **M9** | Dolaďovanie | šablóny, `[[odkazy]]`, archív, export, fulltext | 2–3 večery |
