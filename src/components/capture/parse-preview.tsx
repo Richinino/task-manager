@@ -39,6 +39,11 @@ export interface ParsePreviewProps {
   parsed: ParsedCapture | null;
   /** Čo z textu vznikne. Predvolene úloha. */
   mode?: CaptureMode;
+  /**
+   * Názvy existujúcich projektov. Prázdne pole znamená „neviem" — vtedy sa
+   * pri `+projekt` nevaruje, aby náhľad nestrašil zbytočne.
+   */
+  projectNames?: readonly string[];
   className?: string;
 }
 
@@ -127,10 +132,27 @@ function storedContext(context: string): string {
 }
 
 /**
+ * Existuje projekt s týmto názvom?
+ *
+ * Porovnáva sa **presne tak, ako to robí server** — `quickCapture` hľadá cez
+ * `lower(name) = lower(...)`, teda bez ohľadu na veľkosť písmen, ale
+ * s ohľadom na diakritiku. Keby náhľad skladal aj diakritiku cez `fold()`,
+ * tváril by sa, že „+Praca" projekt nájde, a server by ho nenašiel — čo je
+ * horšie než nevarovať vôbec.
+ */
+function projectExists(name: string, known: readonly string[]): boolean {
+  const needle = name.trim().toLowerCase();
+  return known.some((candidate) => candidate.trim().toLowerCase() === needle);
+}
+
+/**
  * Vety o tom, čo sa uloží inak, než je napísané. Prázdne pole znamená,
  * že náhľad a uložený stav sedia znak po znaku.
  */
-function buildClampNotes(parsed: ParsedCapture): string[] {
+function buildClampNotes(
+  parsed: ParsedCapture,
+  projectNames: readonly string[] = [],
+): string[] {
   const notes: string[] = [];
 
   if (parsed.estimateMin !== undefined && parsed.estimateMin > MAX_ESTIMATE_MIN) {
@@ -147,6 +169,24 @@ function buildClampNotes(parsed: ParsedCapture): string[] {
   ) {
     notes.push(
       `Kontext je dlhší než ${MAX_CONTEXT_LENGTH} znakov — uloží sa skrátený.`,
+    );
+  }
+
+  /*
+    Projekt, ktorý neexistuje, sa TICHO zahodí — `quickCapture` ho iba hľadá
+    a nový zámerne nezakladá. Bez tejto vety by čip s názvom projektu tvrdil,
+    že je úloha zaradená, a ona by skončila bez projektu.
+
+    Varuje sa len vtedy, keď zoznam projektov naozaj máme: prázdny zoznam
+    znamená „neviem", nie „žiadny projekt neexistuje".
+  */
+  if (
+    parsed.projectName !== undefined &&
+    projectNames.length > 0 &&
+    !projectExists(parsed.projectName, projectNames)
+  ) {
+    notes.push(
+      `Projekt „${parsed.projectName.trim()}" neexistuje — úloha sa uloží bez projektu.`,
     );
   }
 
@@ -206,7 +246,12 @@ function buildSummary(parsed: ParsedCapture, mode: CaptureMode): string {
 
 /* ── komponent ─────────────────────────────────────────────────────────── */
 
-export function ParsePreview({ parsed, mode = "task", className }: ParsePreviewProps) {
+export function ParsePreview({
+  parsed,
+  mode = "task",
+  projectNames = [],
+  className,
+}: ParsePreviewProps) {
   if (parsed === null) return null;
 
   /** V režime nápadu sa nič z rozpoznaného neuloží — všetko dostane varovný tón. */
@@ -318,12 +363,21 @@ export function ParsePreview({ parsed, mode = "task", className }: ParsePreviewP
   }
 
   if (parsed.projectName !== undefined) {
+    // Neznámy projekt je žltý, nie neutrálny: vetu pod čipmi si človek pri
+    // rýchlom zápise neprečíta, farbu zachytí aj kútikom oka.
+    const unknown =
+      projectNames.length > 0 && !projectExists(parsed.projectName, projectNames);
+
     chips.push(
       <Chip
         key="project"
         Icon={Folder}
-        tone={tone(TONE_NEUTRAL)}
-        title={`projekt ${parsed.projectName}`}
+        tone={tone(unknown ? TONE_CLAMPED : TONE_NEUTRAL)}
+        title={
+          unknown
+            ? `projekt ${parsed.projectName} — neexistuje, neuloží sa`
+            : `projekt ${parsed.projectName}`
+        }
       >
         {parsed.projectName}
       </Chip>,
@@ -360,7 +414,9 @@ export function ParsePreview({ parsed, mode = "task", className }: ParsePreviewP
   // Nič rozpoznané → nič nevykreslíme. Input nesmie poskakovať pri každom znaku.
   if (chips.length === 0) return null;
 
-  const notes = dropped ? [buildDroppedNote(parsed)] : buildClampNotes(parsed);
+  const notes = dropped
+    ? [buildDroppedNote(parsed)]
+    : buildClampNotes(parsed, projectNames);
 
   return (
     <div role="status" aria-live="polite" className={className}>

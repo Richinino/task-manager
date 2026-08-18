@@ -50,7 +50,11 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
         z nej berú stav pripojenia. Preto je nad `CaptureProvider`.
       */}
       <OutboxProvider>
-        <CaptureProvider tasks={searchTasks} weekStartsOn={user.settings.weekStartsOn}>
+        <CaptureProvider
+          tasks={searchTasks}
+          weekStartsOn={user.settings.weekStartsOn}
+          projectNames={projects.map((project) => project.name)}
+        >
           <TaskDetailProvider
             areas={areas}
             projects={projects}

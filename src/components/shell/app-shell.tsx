@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import { LogOut } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { SignOutForm } from "@/components/shell/sign-out-form";
 
 import { MobileNav } from "./mobile-nav";
 import { Sidebar, type NavCounts } from "./sidebar";
@@ -36,7 +37,7 @@ export function AppShell({ user, counts, signOutAction, children }: AppShellProp
           </span>
           <div className="flex shrink-0 items-center gap-1">
             <ThemeToggle />
-            <form action={signOutAction}>
+            <SignOutForm action={signOutAction}>
               <Button
                 type="submit"
                 variant="ghost"
@@ -46,7 +47,7 @@ export function AppShell({ user, counts, signOutAction, children }: AppShellProp
               >
                 <LogOut className="size-[18px] md:size-4" />
               </Button>
-            </form>
+            </SignOutForm>
           </div>
         </header>
 
