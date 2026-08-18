@@ -84,12 +84,18 @@ export interface CaptureProviderProps {
   tasks?: readonly TaskWithRelations[];
   /** Prvý deň týždňa z nastavení používateľa. */
   weekStartsOn?: number;
+  /**
+   * Názvy existujúcich projektov. Náhľad podľa nich pozná, či `+projekt`
+   * na niečo naozaj ukazuje — server nový projekt zámerne nezakladá.
+   */
+  projectNames?: readonly string[];
   children: ReactNode;
 }
 
 export function CaptureProvider({
   tasks,
   weekStartsOn = 1,
+  projectNames,
   children,
 }: CaptureProviderProps) {
   const router = useRouter();
@@ -207,6 +213,7 @@ export function CaptureProvider({
         open={captureOpen}
         onOpenChange={handleCaptureOpenChange}
         weekStartsOn={weekStartsOn}
+        {...(projectNames ? { projectNames } : {})}
         defaultDate={captureDate ?? undefined}
         defaultText={captureText ?? undefined}
       />

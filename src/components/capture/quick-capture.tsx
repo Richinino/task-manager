@@ -72,6 +72,8 @@ export interface QuickCaptureProps {
   defaultDate?: string;
   /** Text rozpísaný inde (pole v dni), aby sa pri prechode sem nestratil. */
   defaultText?: string;
+  /** Názvy existujúcich projektov — náhľad podľa nich varuje pri `+projekt`. */
+  projectNames?: readonly string[];
 }
 
 /**
@@ -111,6 +113,7 @@ export function QuickCapture({
   weekStartsOn = 1,
   defaultDate,
   defaultText,
+  projectNames,
 }: QuickCaptureProps) {
   const [value, setValue] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -433,7 +436,12 @@ export function QuickCapture({
           ) : null}
 
           {/* Náhľad sa objaví, až keď parser naozaj niečo našiel. */}
-          <ParsePreview parsed={parsed} mode={mode} className="pb-1 pl-9 pr-3" />
+          <ParsePreview
+            parsed={parsed}
+            mode={mode}
+            {...(projectNames ? { projectNames } : {})}
+            className="pb-1 pl-9 pr-3"
+          />
 
           {/*
             Čipy sú medzi náhľadom a nápovedou zámerne: nad nimi je vidieť, čo

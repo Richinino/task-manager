@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import { CalendarArrowUp, Star, Trash2 } from "lucide-react";
 
 import type { RitualPeriod } from "@/lib/rituals";
@@ -15,7 +15,12 @@ import {
   type RitualStep,
 } from "@/components/rituals/ritual-shell";
 import { TimeBudget } from "@/components/views/dnes/time-budget";
-import { deleteTask, rescheduleTask, setFrog } from "@/server/actions/tasks";
+import {
+  deleteTask,
+  materializeDueRecurrences,
+  rescheduleTask,
+  setFrog,
+} from "@/server/actions/tasks";
 import type { TaskWithRelations } from "@/server/queries/tasks";
 
 /* ═══════════════════════════════════════════════════════════════════════════
@@ -115,6 +120,32 @@ export function MorningPlan({
    * prekreslení — dovtedy drží riadok preč tento optimistický záznam. Pri
    * zlyhaní sa záznam zmaže a úloha sa vráti aj s hláškou.
    */
+  /*
+    Dobehnutie zameškaných opakovaní.
+
+    Toto je ten moment, o ktorom hovorí kontrakt v `docs/CONVENTIONS.md`:
+    opakovaná úloha zakladá ďalší výskyt až pri odškrtnutí, takže čo sa nikdy
+    neodškrtne, by sa nikdy nezopakovalo — mesačná faktúra by po jednom
+    vynechaní zmizla navždy. Ranný sprievodca beží denne a je to jediné miesto,
+    kde sa to dá dobehnúť bez cronu.
+
+    Beží raz na otvorenie, nie pri každom prekreslení: akcia zapisuje do
+    databázy a `revalidatePath` v nej vzápätí prekreslí stránku, čo by inak
+    spustilo ďalší beh dokola.
+  */
+  const materializedFor = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    if (materializedFor.current === todayIso) return;
+    materializedFor.current = todayIso;
+
+    void materializeDueRecurrences(todayIso).catch(() => {
+      // Zlyhanie nesmie zhodiť rituál — človek si deň naplánuje aj bez toho
+      // a nabudúce sa dobehnutie zopakuje.
+    });
+  }, [open, todayIso]);
+
   const [handled, setHandled] = useState<Record<string, OverdueDecision>>({});
   const [overdueError, setOverdueError] = useState<string | null>(null);
   const [, startOverdueTransition] = useTransition();

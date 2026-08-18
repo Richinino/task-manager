@@ -24,6 +24,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
+import { SignOutForm } from "@/components/shell/sign-out-form";
 
 import { ThemeToggle } from "./theme-toggle";
 
@@ -411,7 +412,7 @@ export function Sidebar({ user, counts, signOutAction }: SidebarProps) {
               <TooltipContent side="top">Nastavenia</TooltipContent>
             </Tooltip>
 
-            <form action={signOutAction}>
+            <SignOutForm action={signOutAction}>
               <Tooltip>
                 <TooltipTrigger asChild>
                   <Button type="submit" variant="ghost" size="icon" aria-label="Odhlásiť sa">
@@ -420,7 +421,7 @@ export function Sidebar({ user, counts, signOutAction }: SidebarProps) {
                 </TooltipTrigger>
                 <TooltipContent side="top">Odhlásiť sa</TooltipContent>
               </Tooltip>
-            </form>
+            </SignOutForm>
           </div>
         </div>
       </div>

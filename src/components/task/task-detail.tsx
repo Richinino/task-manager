@@ -1024,21 +1024,32 @@ export function TaskDetail({
           style={{ paddingBottom: "calc(0.75rem + env(safe-area-inset-bottom))" }}
           className="flex shrink-0 items-center gap-2 border-t border-border bg-surface px-4 pt-3"
         >
+          {/*
+            Text je zámerne „Označiť ako hotovú", nie „Hotovo".
+
+            Panel sa ukladá sám a hneď nad pätou to aj píše — v takom paneli sa
+            krátke „Hotovo" prirodzene číta ako „ulož a zavri" a človek si
+            omylom odškrtne úlohu, ktorú chcel len upraviť. Dlhší text stojí
+            pár pixelov a odstraňuje celú triedu omylov.
+
+            Preto tiež už nie je `primary`: v tejto päte nie je odškrtnutie
+            očakávaný krok, len jedna z možností.
+          */}
           <Button
             type="button"
-            variant={isDone ? "secondary" : "primary"}
+            variant={isDone ? "primary" : "secondary"}
             onClick={toggleDone}
             className="h-11 flex-1 md:h-9"
           >
             {isDone ? (
               <>
                 <Undo2 size={15} aria-hidden="true" />
-                Vrátiť späť
+                Vrátiť medzi nedokončené
               </>
             ) : (
               <>
                 <Check size={15} aria-hidden="true" />
-                Hotovo
+                Označiť ako hotovú
               </>
             )}
           </Button>
