@@ -12,8 +12,10 @@ import {
   Hourglass,
   Inbox,
   Layers,
+  LayoutTemplate,
   Lightbulb,
   LogOut,
+  Search,
   Settings,
   Sprout,
   type LucideIcon,
@@ -72,7 +74,10 @@ export interface NavItem {
  * slova — voľné vo všetkých troch registroch (navigácia, zachytenie, triedenie).
  * „Návyky" idú tou istou cestou o písmeno ďalej: `n` je obsadené, druhé `á`
  * nie je klávesa, ktorá by sa dala stlačiť na každom rozložení, takže ostáva
- * `v` z náVyky — voľné a bez modifikátora.
+ * `v` z náVyky — voľné a bez modifikátora. „Archív" dostal `h` z hľadania:
+ * `a` si vzali Nápady a hľadanie je aj tak to, čím sa na tú obrazovku chodí.
+ * „Šablóny" majú `b` zo šaBlóny: `š` nie je klávesa dostupná na každom
+ * rozložení a `s` drží „Niekedy", takže ostáva druhá spoluhláska slova.
  *
  * **Odznaky:** len tam, kde číslo znamená „konaj". Po termíne a nezatriedené
  * volajú po akcii dnes, „čaká sa na" pripomína, že niekomu treba pripomenúť.
@@ -120,6 +125,19 @@ export const NAV_ITEMS: readonly NavItem[] = [
     Icon: Sprout,
     group: "structure",
   },
+  /*
+    Hneď za návykmi zámerne: obidve obrazovky sú o veciach, ktoré sa opakujú.
+    Rozdiel je v tom, že návyk sa udržuje a nikdy sa nedokončí, kým šablóna
+    vysype hotové úlohy, ktoré sa dokončiť dajú — vedľa seba je ten rozdiel
+    najlepšie vidieť.
+  */
+  {
+    href: "/sablony",
+    label: "Šablóny",
+    shortcut: "b",
+    Icon: LayoutTemplate,
+    group: "structure",
+  },
   { href: "/niekedy", label: "Niekedy", shortcut: "s", Icon: Archive, group: "structure" },
   {
     href: "/caka-sa-na",
@@ -134,6 +152,19 @@ export const NAV_ITEMS: readonly NavItem[] = [
     label: "Nápady",
     shortcut: "a",
     Icon: Lightbulb,
+    group: "structure",
+  },
+  /*
+    Lupa, nie truhlica: `Archive` už patrí položke „Niekedy" a dva takmer
+    rovnaké piktogramy v jednom stĺpci by sa len pliedli. Navyše sa na túto
+    obrazovku chodí hľadať — archív je to, čo tam človek nájde, nie to, čo
+    tam ide robiť.
+  */
+  {
+    href: "/archiv",
+    label: "Archív",
+    shortcut: "h",
+    Icon: Search,
     group: "structure",
   },
 ];
@@ -306,7 +337,7 @@ export interface SidebarProps {
  * Pripnutý bočný panel. Pod `md` sa skrýva — tam preberá úlohu
  * spodná lišta (`mobile-nav.tsx`).
  *
- * Desať položiek v jednom stĺpci by bola kaša, preto sú v dvoch skupinách
+ * Dvanásť položiek v jednom stĺpci by bola kaša, preto sú v dvoch skupinách
  * oddelených čiarou a nadpisom: hore to, čo otváraš denne, dole miesta,
  * kam chodíš vedome. Panel má na to miesto, ktoré telefón nemá — tam sa
  * druhá skupina schová za „Viac".
