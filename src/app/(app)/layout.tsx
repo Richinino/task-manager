@@ -15,17 +15,22 @@ import {
   getInboxTasks,
   getProjects,
   getTasksForRange,
+  listContexts,
 } from "@/server/queries/tasks";
+import { listTags } from "@/server/queries/structure";
 
 export default async function AppLayout({ children }: { children: ReactNode }) {
   const user = await requireUser();
   const todayIso = todayIn(user.settings.timezone);
   const counts = await getCounts(user.id, todayIso);
 
-  // Zoznamy pre výbery v paneli s detailom úlohy.
-  const [areas, projects] = await Promise.all([
+  // Zoznamy pre výbery v paneli s detailom úlohy a pre našepkávanie
+  // v zachytení. Kontexty sa odvodzujú z úloh — vlastný zoznam nikdy nebol.
+  const [areas, projects, contexts, tags] = await Promise.all([
     getAreas(user.id),
     getProjects(user.id),
+    listContexts(user.id),
+    listTags(user.id),
   ]);
 
   // Zásoba pre vyhľadávanie v Ctrl+K palete: naplánované okolo dneška + inbox.
@@ -54,6 +59,8 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
           tasks={searchTasks}
           weekStartsOn={user.settings.weekStartsOn}
           projectNames={projects.map((project) => project.name)}
+          contexts={contexts}
+          tags={tags.map((tag) => ({ name: tag.name, taskCount: tag.taskCount }))}
         >
           <TaskDetailProvider
             areas={areas}

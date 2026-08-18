@@ -89,6 +89,9 @@ export interface CaptureProviderProps {
    * na niečo naozaj ukazuje — server nový projekt zámerne nezakladá.
    */
   projectNames?: readonly string[];
+  /** Použité kontexty a existujúce štítky pre našepkávanie. */
+  contexts?: readonly { name: string; taskCount: number }[];
+  tags?: readonly { name: string; taskCount: number }[];
   children: ReactNode;
 }
 
@@ -96,6 +99,8 @@ export function CaptureProvider({
   tasks,
   weekStartsOn = 1,
   projectNames,
+  contexts,
+  tags,
   children,
 }: CaptureProviderProps) {
   const router = useRouter();
@@ -214,6 +219,8 @@ export function CaptureProvider({
         onOpenChange={handleCaptureOpenChange}
         weekStartsOn={weekStartsOn}
         {...(projectNames ? { projectNames } : {})}
+        {...(contexts ? { contexts } : {})}
+        {...(tags ? { tags } : {})}
         defaultDate={captureDate ?? undefined}
         defaultText={captureText ?? undefined}
       />
