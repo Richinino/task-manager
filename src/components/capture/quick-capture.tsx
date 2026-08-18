@@ -1,10 +1,14 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState, useTransition } from "react";
+import { useEffect, useId, useMemo, useRef, useState, useTransition } from "react";
 import { Lightbulb, LoaderCircle, Sparkles } from "lucide-react";
 
 import { CaptureChips, type CaptureMode } from "@/components/capture/capture-chips";
 import { ParsePreview } from "@/components/capture/parse-preview";
+import {
+  CaptureSuggestions,
+  type Suggestion,
+} from "@/components/capture/capture-suggestions";
 import { useOutbox } from "@/components/pwa/outbox-provider";
 import { Button } from "@/components/ui/button";
 import {
@@ -19,6 +23,8 @@ import type { SyntaxEdit } from "@/lib/capture-syntax";
 import { formatLongSk } from "@/lib/dates";
 import { parseCapture, type ParsedCapture } from "@/lib/parse";
 import { cn } from "@/lib/utils";
+import { fold } from "@/lib/fold";
+import { activeTrigger, applySuggestion } from "@/lib/capture-suggest";
 import { createIdea } from "@/server/actions/ideas";
 import { quickCapture } from "@/server/actions/tasks";
 
@@ -74,6 +80,10 @@ export interface QuickCaptureProps {
   defaultText?: string;
   /** Názvy existujúcich projektov — náhľad podľa nich varuje pri `+projekt`. */
   projectNames?: readonly string[];
+  /** Použité kontexty s počtami, od najčastejšieho. */
+  contexts?: readonly { name: string; taskCount: number }[];
+  /** Existujúce štítky s počtami. */
+  tags?: readonly { name: string; taskCount: number }[];
 }
 
 /**
@@ -107,6 +117,9 @@ const IDEA_HINT_SHORT = "nápad = možnosť · uloží sa len názov";
  */
 const IDEA_OFFLINE_ERROR = "Nápad sa bez pripojenia uložiť nedá, skús to znova online.";
 
+/** Viac než osem návrhov sa aj tak neprečíta a zoznam by zakryl náhľad. */
+const MAX_SUGGESTIONS = 8;
+
 export function QuickCapture({
   open,
   onOpenChange,
@@ -114,6 +127,8 @@ export function QuickCapture({
   defaultDate,
   defaultText,
   projectNames,
+  contexts,
+  tags,
 }: QuickCaptureProps) {
   const [value, setValue] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -138,6 +153,19 @@ export function QuickCapture({
    * ktorá už v texte je) sa musí fokus vrátiť do poľa.
    */
   const caretRef = useRef<number | null>(null);
+
+  /*
+    Poloha kurzora, podľa ktorej sa pozná rozpísaná značka.
+
+    Drží sa v stave, nie v ref: keď sa zmení, musí sa prepočítať zoznam
+    návrhov, a ref by prekreslenie nespustil. Aktualizuje sa pri každom
+    podnete, ktorý kurzorom hýbe — písanie, klik aj šípky.
+  */
+  const suggestionsId = useId();
+  const [caret, setCaret] = useState(0);
+  const [highlight, setHighlight] = useState(0);
+  /** Escape zoznam skryje, kým sa nezačne písať znova. */
+  const [dismissed, setDismissed] = useState(false);
   const [caretNonce, setCaretNonce] = useState(0);
 
   // Mimo `OutboxProvider` je `null` — vtedy sa ukladá po starom, priamo na server.
@@ -150,6 +178,53 @@ export function QuickCapture({
     () => (trimmed === "" ? null : parseCapture(value, { weekStartsOn })),
     [value, trimmed, weekStartsOn],
   );
+
+  /* ── našepkávanie značiek ────────────────────────────────────────────────
+     Zoznam sa neriadi tým, čo je v texte, ale tým, čo sa práve píše POD
+     KURZOROM — `activeTrigger` to vie povedať a je otestovaný zvlášť.
+     ──────────────────────────────────────────────────────────────────── */
+
+  const trigger = useMemo(
+    () => (dismissed ? null : activeTrigger(value, caret)),
+    [value, caret, dismissed],
+  );
+
+  const offered = useMemo<Suggestion[]>(() => {
+    if (trigger === null) return [];
+    const needle = fold(trigger.query);
+
+    const pool: Suggestion[] =
+      trigger.kind === "context"
+        ? (contexts ?? []).map((item) => ({ name: item.name, count: item.taskCount }))
+        : trigger.kind === "tag"
+          ? (tags ?? []).map((item) => ({ name: item.name, count: item.taskCount }))
+          : (projectNames ?? []).map((name) => ({ name, count: null }));
+
+    return pool
+      .filter((item) => needle === "" || fold(item.name).includes(needle))
+      .slice(0, MAX_SUGGESTIONS);
+  }, [trigger, contexts, tags, projectNames]);
+
+  /*
+    Zvýraznenie sa vracia na začiatok vždy, keď sa zoznam zmení. Bez toho by
+    po dopísaní písmena ostal vybraný tretí návrh zo starého zoznamu — a Enter
+    by doplnil niečo úplne iné, než človek vidí navrchu.
+  */
+  useEffect(() => {
+    setHighlight(0);
+  }, [trigger?.kind, trigger?.query]);
+
+  /** Doplní návrh do textu a vráti kurzor za neho. */
+  function pickSuggestion(name: string): void {
+    if (trigger === null) return;
+    const edit = applySuggestion(value, trigger, name);
+    setValue(edit.text);
+    if (saved !== null) setSaved(null);
+    if (error !== null) setError(null);
+    caretRef.current = edit.cursor;
+    setCaret(edit.cursor);
+    setCaretNonce((n) => n + 1);
+  }
 
   /*
     Stav sa nastavuje pri OTVORENÍ, nie pri zatvorení: okno sa má zakaždým
@@ -380,10 +455,60 @@ export function QuickCapture({
               value={value}
               onChange={(event) => {
                 setValue(event.target.value);
+                setCaret(event.target.selectionStart ?? event.target.value.length);
+                // Písanie zoznam vracia — Escape ho skryl len pre tú chvíľu.
+                if (dismissed) setDismissed(false);
                 if (saved !== null) setSaved(null);
                 if (error !== null) setError(null);
               }}
+              onSelect={(event) => {
+                // Klik aj šípky hýbu kurzorom bez `onChange` — bez tohto by
+                // zoznam ostal viazaný na starú polohu.
+                const el = event.target as HTMLInputElement;
+                setCaret(el.selectionStart ?? 0);
+              }}
+              role="combobox"
+              aria-expanded={offered.length > 0}
+              aria-controls={suggestionsId}
+              aria-autocomplete="list"
+              {...(offered.length > 0
+                ? { "aria-activedescendant": `${suggestionsId}-${highlight}` }
+                : {})}
               onKeyDown={(event) => {
+                /*
+                  Kým je otvorený zoznam návrhov, patria mu šípky, Tab aj
+                  Enter. Enter je tu ten chúlostivý: bez tejto vetvy by uložil
+                  úlohu s rozpísanou značkou namiesto toho, aby ju dokončil —
+                  presne v momente, keď človek čaká doplnenie.
+                */
+                if (offered.length > 0) {
+                  if (event.key === "ArrowDown") {
+                    event.preventDefault();
+                    setHighlight((index) => (index + 1) % offered.length);
+                    return;
+                  }
+                  if (event.key === "ArrowUp") {
+                    event.preventDefault();
+                    setHighlight((index) => (index - 1 + offered.length) % offered.length);
+                    return;
+                  }
+                  if (event.key === "Escape") {
+                    // Zoznam sa zavrie, dialóg NIE — preto sa šírenie zastaví.
+                    event.preventDefault();
+                    event.stopPropagation();
+                    setDismissed(true);
+                    return;
+                  }
+                  if (event.key === "Enter" || event.key === "Tab") {
+                    const pick = offered[highlight];
+                    if (pick !== undefined) {
+                      event.preventDefault();
+                      pickSuggestion(pick.name);
+                      return;
+                    }
+                  }
+                }
+
                 if (event.key !== "Enter") return;
                 /*
                   Enter obsluhujeme sami, oba varianty.
@@ -436,6 +561,18 @@ export function QuickCapture({
           ) : null}
 
           {/* Náhľad sa objaví, až keď parser naozaj niečo našiel. */}
+          {/*
+            Návrhy idú NAD náhľad: sú to jediná vec v okne, s ktorou sa
+            v tej chvíli pracuje, a náhľad je len zrkadlo.
+          */}
+          <CaptureSuggestions
+            id={suggestionsId}
+            kind={trigger?.kind ?? "context"}
+            items={offered}
+            activeIndex={highlight}
+            onPick={pickSuggestion}
+          />
+
           <ParsePreview
             parsed={parsed}
             mode={mode}
