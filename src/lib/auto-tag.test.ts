@@ -1,6 +1,12 @@
 import { describe, expect, it } from "vitest";
 
-import { hasSuggestion, suggestAutoTags, type AutoTagRule } from "@/lib/auto-tag";
+import {
+  hasSuggestion,
+  rulesToText,
+  suggestAutoTags,
+  textToRules,
+  type AutoTagRule,
+} from "@/lib/auto-tag";
 
 const RULES: AutoTagRule[] = [
   { match: "trening", tags: ["trening"], context: "domino" },
@@ -113,5 +119,63 @@ describe("hasSuggestion", () => {
     expect(hasSuggestion({ tags: [], context: null })).toBe(false);
     expect(hasSuggestion({ tags: ["a"], context: null })).toBe(true);
     expect(hasSuggestion({ tags: [], context: "doma" })).toBe(true);
+  });
+});
+
+describe("rulesToText a textToRules", () => {
+  it("prežije cestu tam a späť", () => {
+    const rules: AutoTagRule[] = [
+      { match: "trening", tags: ["trening"], context: "domino" },
+      { match: "faktura", tags: ["financie", "praca"] },
+    ];
+    expect(textToRules(rulesToText(rules))).toEqual(rules);
+  });
+
+  it("prečíta pravidlo aj bez medzier okolo rovnítka", () => {
+    expect(textToRules("trening=#trening")).toEqual([
+      { match: "trening", tags: ["trening"] },
+    ]);
+  });
+
+  it("zvládne viac medzier aj tabulátor", () => {
+    expect(textToRules("trening   =   #a    #b")).toEqual([
+      { match: "trening", tags: ["a", "b"] },
+    ]);
+  });
+
+  it("rozpísaný riadok nezhodí zvyšok zoznamu", () => {
+    const text = ["trening = #trening", "rozpisane", "faktura = #financie"].join("\n");
+    expect(textToRules(text)).toEqual([
+      { match: "trening", tags: ["trening"] },
+      { match: "faktura", tags: ["financie"] },
+    ]);
+  });
+
+  it("prázdne riadky sa preskočia", () => {
+    const text = ["", "trening = #trening", "   ", ""].join("\n");
+    expect(textToRules(text)).toHaveLength(1);
+  });
+
+  it("riadok bez značiek sa zahodí — nemá čo priradiť", () => {
+    expect(textToRules("trening = ")).toEqual([]);
+    expect(textToRules("trening = nieco")).toEqual([]);
+  });
+
+  it("druhý kontext v riadku sa ignoruje, kontext je jeden", () => {
+    expect(textToRules("x = @a @b")).toEqual([{ match: "x", tags: [], context: "a" }]);
+  });
+
+  it("match smie obsahovať medzery", () => {
+    expect(textToRules("ist na trening = #sport")).toEqual([
+      { match: "ist na trening", tags: ["sport"] },
+    ]);
+  });
+
+  it("prázdny text dá prázdny zoznam", () => {
+    expect(textToRules("")).toEqual([]);
+  });
+
+  it("holé # alebo @ sa neberie ako značka", () => {
+    expect(textToRules("x = # @")).toEqual([]);
   });
 });

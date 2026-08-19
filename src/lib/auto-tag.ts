@@ -18,8 +18,12 @@ import { parseCapture } from "@/lib/parse";
 export interface AutoTagRule {
   /** Slovo alebo fráza, ktorá sa hľadá v názve. Bez diakritiky nezáleží. */
   match: string;
-  /** Štítky na priradenie, bez `#`. */
-  tags?: string[];
+  /**
+   * Štítky na priradenie, bez `#`. Vždy pole — prázdne pravidlo, ktoré
+   * priraďuje len kontext, má tu `[]`. Voliteľnosť by sa rozišla so schémou
+   * nastavení, kde má pole `.default([])`, a typy by si to potom prehadzovali.
+   */
+  tags: string[];
   /** Kontext na priradenie, bez `@`. */
   context?: string;
 }
@@ -109,4 +113,65 @@ export function suggestAutoTags(
 /** Je vôbec čo ponúknuť? Rozhranie sa podľa toho rozhoduje, či niečo zobrazí. */
 export function hasSuggestion(suggestion: AutoTagSuggestion): boolean {
   return suggestion.tags.length > 0 || suggestion.context !== null;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   PREVOD NA TEXT A SPÄŤ
+
+   Pravidlá sa v nastaveniach zadávajú ako text, riadok na pravidlo:
+
+       trening = #trening @domino
+       faktura = #financie #praca
+
+   Prevod žije tu, nie v komponente: sú to čisté funkcie a v komponente by sa
+   nedali otestovať. Práve tu pritom vzniká najviac chýb — okolo medzier,
+   prázdnych riadkov a rozpísaného textu.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+export function rulesToText(rules: readonly AutoTagRule[]): string {
+  return rules
+    .map((rule) => {
+      const parts = [
+        ...(rule.tags ?? []).map((tag) => `#${tag}`),
+        ...(rule.context !== undefined && rule.context !== ""
+          ? [`@${rule.context}`]
+          : []),
+      ];
+      return `${rule.match} = ${parts.join(" ")}`.trimEnd();
+    })
+    .join("\n");
+}
+
+/**
+ * Prečíta pravidlá z textu.
+ *
+ * Riadky, ktorým nerozumie, **ticho preskočí** — rozpísaný riadok uprostred
+ * písania nesmie zhodiť zvyšok zoznamu. Kontext je jeden na pravidlo, takže
+ * druhý zapísaný sa ignoruje.
+ */
+export function textToRules(text: string): AutoTagRule[] {
+  const rules: AutoTagRule[] = [];
+
+  for (const line of text.split("\n")) {
+    const separator = line.indexOf("=");
+    if (separator < 0) continue;
+
+    const match = line.slice(0, separator).trim();
+    if (match === "") continue;
+
+    const tags: string[] = [];
+    let context: string | undefined;
+
+    for (const token of line.slice(separator + 1).trim().split(/\s+/)) {
+      if (token.startsWith("#") && token.length > 1) tags.push(token.slice(1));
+      else if (token.startsWith("@") && token.length > 1 && context === undefined) {
+        context = token.slice(1);
+      }
+    }
+
+    if (tags.length === 0 && context === undefined) continue;
+    rules.push({ match, tags, ...(context !== undefined ? { context } : {}) });
+  }
+
+  return rules;
 }
