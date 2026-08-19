@@ -61,6 +61,7 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
           projectNames={projects.map((project) => project.name)}
           contexts={contexts}
           tags={tags.map((tag) => ({ name: tag.name, taskCount: tag.taskCount }))}
+          autoTagRules={user.settings.autoTagRules}
         >
           <TaskDetailProvider
             areas={areas}

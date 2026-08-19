@@ -4,6 +4,7 @@ import { useId, useRef, useState, useTransition } from "react";
 import { LoaderCircle, TriangleAlert } from "lucide-react";
 
 import type { Settings } from "@/lib/settings";
+import { rulesToText, textToRules } from "@/lib/auto-tag";
 import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
 import {
@@ -116,6 +117,12 @@ export interface SettingsFormProps {
 export function SettingsForm({ settings }: SettingsFormProps) {
   const [draft, setDraft] = useState<Settings>(settings);
   const [error, setError] = useState<string | null>(null);
+  /*
+    Pravidlá majú vlastný rozpracovaný text: prevod tam a späť by pri každom
+    písmene prehádzal medzery a poradie, a človeku by pod rukami skákal kurzor.
+    Ukladá sa až pri opustení poľa.
+  */
+  const [rulesText, setRulesText] = useState(() => rulesToText(settings.autoTagRules));
   const [isPending, startTransition] = useTransition();
 
   /** Posledný stav potvrdený serverom — sem sa formulár vracia pri odmietnutí. */
@@ -315,6 +322,40 @@ export function SettingsForm({ settings }: SettingsFormProps) {
           hint="Stále je v hre — dotyk ho vráti späť. Musí byť viac než inkubátor."
         >
           {numberField("fadeAfterDays", 30, 3650)}
+        </Field>
+      </Section>
+
+      <Section
+        title="Automatické štítky"
+        description="Keď názov obsahuje slovo vľavo, zachytenie ponúkne značky vpravo. Ponúkne — nedoplní: kliknutie je na tebe."
+      >
+        <Field
+          id={fieldId("autoTagRules")}
+          label="Pravidlá"
+          hint="Riadok na pravidlo, v tvare „slovo = #štítok @kontext“. Na diakritike ani veľkosti písmen nezáleží a slovo sa hľadá aj v skloňovaných tvaroch."
+        >
+          <textarea
+            id={fieldId("autoTagRules")}
+            value={rulesText}
+            onChange={(event) => setRulesText(event.target.value)}
+            onBlur={() => {
+              const next = textToRules(rulesText);
+              // Prepisuje sa len pri skutočnej zmene — inak by opustenie poľa
+              // posielalo zápis pri každom preklikaní.
+              if (JSON.stringify(next) === JSON.stringify(savedRef.current.autoTagRules)) {
+                return;
+              }
+              commit({ autoTagRules: next });
+            }}
+            rows={4}
+            spellCheck={false}
+            placeholder={"trening = #trening @domino\nfaktura = #financie"}
+            className={cn(
+              "w-full resize-y rounded border border-border bg-surface px-2.5 py-2",
+              "font-mono text-base leading-relaxed text-fg placeholder:text-fg-subtle sm:text-sm",
+              "transition-colors duration-100 ease-out hover:border-border-strong",
+            )}
+          />
         </Field>
       </Section>
 

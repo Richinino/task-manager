@@ -13,6 +13,7 @@ import { useRouter } from "next/navigation";
 import { Plus } from "lucide-react";
 
 import { QuickCapture } from "@/components/capture/quick-capture";
+import type { AutoTagRule } from "@/lib/auto-tag";
 import { CommandPalette, type CommandTask } from "@/components/command/command-palette";
 import { NAV_ITEMS } from "@/components/shell/sidebar";
 import { registerShortcuts, type Shortcut } from "@/lib/keyboard";
@@ -92,6 +93,8 @@ export interface CaptureProviderProps {
   /** Použité kontexty a existujúce štítky pre našepkávanie. */
   contexts?: readonly { name: string; taskCount: number }[];
   tags?: readonly { name: string; taskCount: number }[];
+  /** Pravidlá automatického prideľovania z nastavení používateľa. */
+  autoTagRules?: readonly AutoTagRule[];
   children: ReactNode;
 }
 
@@ -101,6 +104,7 @@ export function CaptureProvider({
   projectNames,
   contexts,
   tags,
+  autoTagRules,
   children,
 }: CaptureProviderProps) {
   const router = useRouter();
@@ -221,6 +225,7 @@ export function CaptureProvider({
         {...(projectNames ? { projectNames } : {})}
         {...(contexts ? { contexts } : {})}
         {...(tags ? { tags } : {})}
+        {...(autoTagRules ? { autoTagRules } : {})}
         defaultDate={captureDate ?? undefined}
         defaultText={captureText ?? undefined}
       />

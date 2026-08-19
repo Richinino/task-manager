@@ -25,6 +25,7 @@ import { parseCapture, type ParsedCapture } from "@/lib/parse";
 import { cn } from "@/lib/utils";
 import { fold } from "@/lib/fold";
 import { activeTrigger, applySuggestion } from "@/lib/capture-suggest";
+import { hasSuggestion, suggestAutoTags, type AutoTagRule } from "@/lib/auto-tag";
 import { createIdea } from "@/server/actions/ideas";
 import { quickCapture } from "@/server/actions/tasks";
 
@@ -84,6 +85,8 @@ export interface QuickCaptureProps {
   contexts?: readonly { name: string; taskCount: number }[];
   /** Existujúce štítky s počtami. */
   tags?: readonly { name: string; taskCount: number }[];
+  /** Pravidlá na automatické prideľovanie z nastavení. */
+  autoTagRules?: readonly AutoTagRule[];
 }
 
 /**
@@ -129,6 +132,7 @@ export function QuickCapture({
   projectNames,
   contexts,
   tags,
+  autoTagRules,
 }: QuickCaptureProps) {
   const [value, setValue] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -204,6 +208,39 @@ export function QuickCapture({
       .filter((item) => needle === "" || fold(item.name).includes(needle))
       .slice(0, MAX_SUGGESTIONS);
   }, [trigger, contexts, tags, projectNames]);
+
+  /*
+    Návrh podľa pravidiel — „ísť na tréning" ponúkne `#trening @domino`.
+
+    Počíta sa len vtedy, keď sa práve nepíše značka: kým človek ťuká `@dom`,
+    patrí zoznam našepkávaču a druhá ponuka pod ním by len prekážala.
+  */
+  const auto = useMemo(
+    () =>
+      trigger !== null || trimmed === ""
+        ? { tags: [], context: null }
+        : suggestAutoTags(value, autoTagRules ?? []),
+    [value, trimmed, trigger, autoTagRules],
+  );
+
+  /** Doplní celý návrh naraz — štítky aj kontext — na koniec textu. */
+  function applyAuto(): void {
+    const parts: string[] = [
+      ...auto.tags.map((tag) => `#${tag}`),
+      ...(auto.context !== null ? [`@${auto.context}`] : []),
+    ];
+    if (parts.length === 0) return;
+
+    const base = value.trimEnd();
+    const text = `${base} ${parts.join(" ")} `;
+
+    setValue(text);
+    if (saved !== null) setSaved(null);
+    if (error !== null) setError(null);
+    caretRef.current = text.length;
+    setCaret(text.length);
+    setCaretNonce((n) => n + 1);
+  }
 
   /*
     Zvýraznenie sa vracia na začiatok vždy, keď sa zoznam zmení. Bez toho by
@@ -572,6 +609,39 @@ export function QuickCapture({
             activeIndex={highlight}
             onPick={pickSuggestion}
           />
+
+          {/*
+            Ponuka podľa pravidiel. Je to tlačidlo, nie automatický zásah do
+            textu — návrh sa má dať prehliadnuť aj odmietnuť tým, že naň
+            človek jednoducho neklikne.
+          */}
+          {hasSuggestion(auto) && !idea ? (
+            <div className="px-3 pb-1 pl-9">
+              <button
+                type="button"
+                onMouseDown={(event) => {
+                  // Fokus musí ostať v poli — rovnaký dôvod ako pri návrhoch.
+                  event.preventDefault();
+                  applyAuto();
+                }}
+                className={cn(
+                  "inline-flex min-h-11 items-center gap-1.5 rounded border border-border",
+                  "bg-surface-2 px-2.5 text-[13px] text-fg-muted sm:min-h-8",
+                  "transition-colors duration-100 ease-out",
+                  "hover:border-border-strong hover:text-fg",
+                )}
+              >
+                <Sparkles aria-hidden="true" size={13} className="shrink-0" />
+                <span className="min-w-0">
+                  Doplniť{" "}
+                  {[
+                    ...auto.tags.map((tag) => `#${tag}`),
+                    ...(auto.context !== null ? [`@${auto.context}`] : []),
+                  ].join(" ")}
+                </span>
+              </button>
+            </div>
+          ) : null}
 
           <ParsePreview
             parsed={parsed}
