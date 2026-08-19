@@ -28,6 +28,27 @@ export const settingsSchema = z.object({
   fadeAfterDays: z.number().int().min(30).default(180),
 
   /**
+   * Pravidlá na automatické prideľovanie štítkov a kontextu.
+   *
+   * Píše si ich používateľ sám — appka nič nehádá ani sa neučí. Návrh sa
+   * v zachytení **ponúkne, nevnúti**: automaticky priradený štítok, ktorý sa
+   * nedá odmietnuť, je horší než žiadny, lebo po prvom omyle začneš
+   * kontrolovať každý zápis.
+   *
+   * Je to jsonb v `users.settings`, takže pridanie nestálo migráciu.
+   */
+  autoTagRules: z
+    .array(
+      z.object({
+        match: z.string().trim().min(1).max(80),
+        tags: z.array(z.string().trim().min(1).max(64)).max(5).default([]),
+        context: z.string().trim().max(64).optional(),
+      }),
+    )
+    .max(50)
+    .default([]),
+
+  /**
    * Má sa denný rituál otvoriť sám, keď príde jeho čas?
    *
    * Časy sa neberú odtiaľto: ranné plánovanie sa viaže na `dayStartHour`,
