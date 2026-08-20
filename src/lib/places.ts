@@ -81,3 +81,56 @@ export function formatDistance(meters: number): string {
   if (meters < 1000) return `${meters} m`;
   return `${(meters / 1000).toFixed(1).replace(".", ",")} km`;
 }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   PREVOD NA TEXT A SPÄŤ
+
+   Miesta sa v nastaveniach zadávajú ako text, riadok na miesto:
+
+       domino = 48.1445, 17.1102
+
+   Rovnaký vzor ako pri pravidlách automatických štítkov — a rovnako patrí do
+   knižnice, nie do komponentu: sú to čisté funkcie a práve tu vzniká najviac
+   chýb, okolo desatinnej čiarky a rozpísaného riadku.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+export function placesToText(places: readonly Place[]): string {
+  return places
+    .map((place) => `${place.context} = ${place.lat}, ${place.lon}`)
+    .join("\n");
+}
+
+/**
+ * Prečíta miesta z textu. Riadky, ktorým nerozumie, ticho preskočí.
+ *
+ * Desatinná čiarka sa berie ako bodka: na slovenskej klávesnici je čiarka
+ * prirodzenejšia a nikto nebude rozmýšľať nad tým, že súradnice sú Angličan.
+ * Oddeľovačom dvojice je preto stredník ALEBO medzera, nie čiarka samotná —
+ * inak by sa „48,14, 17,11" nedalo rozobrať jednoznačne.
+ */
+export function textToPlaces(text: string): Place[] {
+  const places: Place[] = [];
+
+  for (const line of text.split("\n")) {
+    const separator = line.indexOf("=");
+    if (separator < 0) continue;
+
+    const context = line.slice(0, separator).trim().replace(/^@/, "");
+    if (context === "") continue;
+
+    const numbers = line
+      .slice(separator + 1)
+      .split(/[;\s]+/)
+      .map((part) => Number.parseFloat(part.trim().replace(",", ".")))
+      .filter((value) => !Number.isNaN(value));
+
+    const lat = numbers[0];
+    const lon = numbers[1];
+    if (lat === undefined || lon === undefined) continue;
+    if (lat < -90 || lat > 90 || lon < -180 || lon > 180) continue;
+
+    places.push({ context, lat, lon });
+  }
+
+  return places;
+}

@@ -4,6 +4,8 @@ import {
   distanceMeters,
   formatDistance,
   nearestPlace,
+  placesToText,
+  textToPlaces,
   type Place,
 } from "@/lib/places";
 
@@ -89,5 +91,65 @@ describe("formatDistance", () => {
   it("kilometre s desatinnou čiarkou", () => {
     expect(formatDistance(1400)).toBe("1,4 km");
     expect(formatDistance(1000)).toBe("1,0 km");
+  });
+});
+
+describe("placesToText a textToPlaces", () => {
+  it("prežije cestu tam a späť", () => {
+    const places: Place[] = [
+      { context: "domino", lat: 48.1445, lon: 17.1102 },
+      { context: "praca", lat: 48.15, lon: 17.12 },
+    ];
+    expect(textToPlaces(placesToText(places))).toEqual(places);
+  });
+
+  /*
+    Zápis používa čiarku ako oddeľovač dvojice, rozoberanie zas medzeru —
+    drží to pohromade len vďaka medzere za čiarkou. Preto je na to test.
+  */
+  it("zvládne vlastný zápisový tvar s čiarkou", () => {
+    expect(textToPlaces("domino = 48.1445, 17.1102")).toEqual([
+      { context: "domino", lat: 48.1445, lon: 17.1102 },
+    ]);
+  });
+
+  it("desatinná čiarka funguje ako bodka", () => {
+    expect(textToPlaces("domino = 48,1445 17,1102")).toEqual([
+      { context: "domino", lat: 48.1445, lon: 17.1102 },
+    ]);
+  });
+
+  it("stredník ako oddeľovač tiež prejde", () => {
+    expect(textToPlaces("domino = 48.14; 17.11")).toEqual([
+      { context: "domino", lat: 48.14, lon: 17.11 },
+    ]);
+  });
+
+  it("zavináč v názve sa odsekne", () => {
+    expect(textToPlaces("@domino = 48.14 17.11")[0]?.context).toBe("domino");
+  });
+
+  it("rozpísaný riadok nezhodí zvyšok", () => {
+    const text = ["domino = 48.14 17.11", "rozpisane", "praca = 48.15 17.12"].join("\n");
+    expect(textToPlaces(text)).toHaveLength(2);
+  });
+
+  it("riadok s jedným číslom sa zahodí", () => {
+    expect(textToPlaces("domino = 48.14")).toEqual([]);
+  });
+
+  it("súradnice mimo rozsahu sa zahodia", () => {
+    expect(textToPlaces("x = 200 17")).toEqual([]);
+    expect(textToPlaces("x = 48 400")).toEqual([]);
+  });
+
+  it("záporné súradnice sú v poriadku", () => {
+    expect(textToPlaces("juh = -33.86, 151.2")).toEqual([
+      { context: "juh", lat: -33.86, lon: 151.2 },
+    ]);
+  });
+
+  it("prázdny text dá prázdny zoznam", () => {
+    expect(textToPlaces("")).toEqual([]);
   });
 });
