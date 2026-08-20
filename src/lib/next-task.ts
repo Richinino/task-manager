@@ -1,3 +1,5 @@
+import { fold } from "@/lib/fold";
+
 /**
  * „Čo teraz?" — výber jednej úlohy podľa toho, koľko máš sily a času.
  *
@@ -27,6 +29,8 @@ export interface NextTaskCandidate {
   /** `YYYY-MM-DD` alebo `null`. */
   dueDate: string | null;
   postponeCount: number;
+  /** Kontext úlohy, so zavináčom alebo bez neho. `null` = žiadny. */
+  context: string | null;
   /**
    * Vznik úlohy ako ISO reťazec, nie `Date` — funkcia má ostať čistá
    * a porovnateľná bez ohľadu na časové pásmo behu.
@@ -41,6 +45,14 @@ export interface NextTaskQuery {
   availableMin: number;
   /** Dnešok v pásme používateľa, `YYYY-MM-DD`. */
   todayIso: string;
+  /**
+   * Kde som — filtruje sa podľa kontextu. `null` znamená „kdekoľvek".
+   *
+   * Na rozdiel od sily a času je toto **tvrdý filter, nie strop**: úlohu
+   * `@pocitac` v aute naozaj spraviť nejde, takže nemá zmysel ju ponúkať ani
+   * na konci zoznamu. Preto sa nesediace kontexty vyhadzujú, nie odsúvajú.
+   */
+  context?: string | null;
 }
 
 /** Prečo práve táto úloha. Jeden dôvod, ten najsilnejší. */
@@ -73,6 +85,26 @@ const ENERGY_RANK: Record<EnergyLevel, number> = { low: 1, mid: 2, high: 3 };
 function fitsEnergy(candidate: NextTaskCandidate, have: EnergyLevel): boolean {
   if (candidate.energy === null) return true;
   return ENERGY_RANK[candidate.energy] <= ENERGY_RANK[have];
+}
+
+/**
+ * Sedí kontext?
+ *
+ * Toto je jediný TVRDÝ filter — na rozdiel od sily a času sa nesediaci
+ * kontext nevyhadzuje na koniec, ale von. Úlohu `@pocitac` v aute naozaj
+ * spraviť nejde a ponúkať ju „aspoň ako natiahnutie" by bola rada, ktorú sa
+ * nedá poslúchnuť.
+ *
+ * Úloha bez kontextu sadne vždy: nevyplnené pole neznamená „nedá sa tu".
+ * Porovnáva sa cez `fold` a bez zavináča, lebo ten parser do hodnoty ukladá,
+ * ale ručne vyplnené pole ho mať nemusí.
+ */
+function fitsContext(candidate: NextTaskCandidate, want: string | null | undefined): boolean {
+  if (want === null || want === undefined || want.trim() === "") return true;
+  if (candidate.context === null) return true;
+
+  const strip = (value: string): string => fold(value.trim().replace(/^@/, ""));
+  return strip(candidate.context) === strip(want);
 }
 
 /** Čas je strop rovnako. Bez odhadu sadne vždy. */
@@ -114,13 +146,15 @@ export function rankNextTasks(
   candidates: readonly NextTaskCandidate[],
   query: NextTaskQuery,
 ): NextTaskPick[] {
-  const scored = candidates.map((candidate) => ({
-    candidate,
-    stretch: !(
-      fitsEnergy(candidate, query.energy) && fitsTime(candidate, query.availableMin)
-    ),
-    tier: tier(candidate, query.todayIso),
-  }));
+  const scored = candidates
+    .filter((candidate) => fitsContext(candidate, query.context))
+    .map((candidate) => ({
+      candidate,
+      stretch: !(
+        fitsEnergy(candidate, query.energy) && fitsTime(candidate, query.availableMin)
+      ),
+      tier: tier(candidate, query.todayIso),
+    }));
 
   scored.sort((a, b) => {
     // Nesediace až za všetkými sediacimi, nech je poradie čitateľné.

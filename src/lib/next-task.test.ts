@@ -17,6 +17,7 @@ function task(overrides: Partial<NextTaskCandidate> & { id: string }): NextTaskC
     isFrog: false,
     dueDate: null,
     postponeCount: 0,
+    context: null,
     createdAtIso: "2026-01-01T00:00:00.000Z",
     ...overrides,
   };
@@ -226,5 +227,57 @@ describe("rankNextTasks — okraje", () => {
     );
     expect(picks[0]).toMatchObject({ taskId: "bez", stretch: false });
     expect(picks[1]).toMatchObject({ taskId: "sOdhadom", stretch: true });
+  });
+});
+
+describe("rankNextTasks — kontext", () => {
+  it("bez zadaného kontextu prejde všetko", () => {
+    expect(
+      order([task({ id: "a", context: "@pocitac" }), task({ id: "b", context: "@mesto" })]),
+    ).toHaveLength(2);
+  });
+
+  it("zadaný kontext VYHODÍ nesediace, neodsunie ich", () => {
+    const picks = rankNextTasks(
+      [task({ id: "pc", context: "@pocitac" }), task({ id: "mesto", context: "@mesto" })],
+      query({ context: "pocitac" }),
+    );
+    expect(picks.map((p) => p.taskId)).toEqual(["pc"]);
+  });
+
+  it("úloha bez kontextu prejde vždy — prázdne pole nie je zákaz", () => {
+    const picks = rankNextTasks(
+      [task({ id: "bez" }), task({ id: "mesto", context: "@mesto" })],
+      query({ context: "pocitac" }),
+    );
+    expect(picks.map((p) => p.taskId)).toEqual(["bez"]);
+  });
+
+  it("na zavináči nezáleží ani na jednej strane", () => {
+    const picks = rankNextTasks(
+      [task({ id: "a", context: "pocitac" })],
+      query({ context: "@pocitac" }),
+    );
+    expect(picks).toHaveLength(1);
+  });
+
+  it("na diakritike ani veľkosti písmen nezáleží", () => {
+    const picks = rankNextTasks(
+      [task({ id: "a", context: "@Počítač" })],
+      query({ context: "pocitac" }),
+    );
+    expect(picks).toHaveLength(1);
+  });
+
+  it("prázdny reťazec znamená „kdekoľvek“, nie „bez kontextu“", () => {
+    expect(
+      rankNextTasks([task({ id: "a", context: "@mesto" })], query({ context: "   " })),
+    ).toHaveLength(1);
+  });
+
+  it("nesediaci kontext môže vyprázdniť celý výsledok", () => {
+    expect(
+      rankNextTasks([task({ id: "a", context: "@mesto" })], query({ context: "pocitac" })),
+    ).toEqual([]);
   });
 });
