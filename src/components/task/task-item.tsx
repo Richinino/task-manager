@@ -3,7 +3,6 @@
 import { useOptimistic } from "react";
 import { CalendarClock, CalendarDays, Folder, Hash, ListChecks, Star } from "lucide-react";
 
-import type { TaskStatus } from "@/db/schema";
 import type { TaskWithRelations } from "@/server/queries/tasks";
 import { formatRelativeSk, isPast, parseIsoDate } from "@/lib/dates";
 import { cn } from "@/lib/utils";
@@ -201,17 +200,16 @@ export function TaskItem({
     (previous, next) => ({ ...previous, ...next }),
   );
 
-  const isDone = patch.done ?? task.status === "done";
-  const status: TaskStatus = isDone
-    ? "done"
-    : task.status === "done"
-      ? "todo"
-      : task.status;
+  /*
+    Odškrtnutie nejde cez záplatu: vlastní ho `TaskCheckbox`, ktorý obaľuje
+    riadok a prefarbí ho cez `data-done`. Kým ho ponúkalo aj menu, držali sa
+    tu dve optimistické kópie jedného poľa.
+  */
+  const isDone = task.status === "done";
 
   // Úloha tak, ako ju riadok práve kreslí — vrátane ešte neuložených zmien.
   const shown: TaskWithRelations = {
     ...task,
-    status,
     priority: patch.priority ?? task.priority,
     isFrog: patch.isFrog ?? task.isFrog,
     plannedDate:
