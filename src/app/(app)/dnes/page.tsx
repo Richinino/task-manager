@@ -15,6 +15,7 @@ import {
   getActionableTasks,
   getOverdueTasks,
   getTasksForDay,
+  listContexts,
 } from "@/server/queries/tasks";
 import { getJournalEntry, getRitualState } from "@/server/queries/rituals";
 import { getDayEvents, meetingMinutes } from "@/server/queries/calendar";
@@ -38,8 +39,16 @@ export default async function DnesPage() {
   // Denné rituály zdieľajú obdobie — pre oba je to dnešok.
   const dailyPeriod = ritualPeriod("daily_shutdown", date, user.settings.weekStartsOn);
 
-  const [planned, overdue, actionable, shutdown, morningState, journalToday, events] =
-    await Promise.all([
+  const [
+    planned,
+    overdue,
+    actionable,
+    shutdown,
+    morningState,
+    journalToday,
+    events,
+    contexts,
+  ] = await Promise.all([
       getTasksForDay(user.id, date),
       getOverdueTasks(user.id, date),
       // „Čo teraz?" siaha ďalej než dnešok — aj na prepadnuté a nenaplánované.
@@ -52,6 +61,8 @@ export default async function DnesPage() {
       // prázdne pole a stránka sa načíta rovnako. Preto smie ísť do rovnakého
       // `Promise.all` ako všetko ostatné — nemá čo zhodiť.
       getDayEvents(user.id, date, user.settings.timezone),
+      // Kontexty pre výber „kde si" v „Čo teraz?".
+      listContexts(user.id),
     ]);
 
   // Zahodené úlohy do dnešného záväzku nepatria — v zozname by sa tvárili
@@ -103,7 +114,12 @@ export default async function DnesPage() {
         }
         action={
           <>
-            <WhatNow tasks={actionable} todayIso={date} />
+            <WhatNow
+              tasks={actionable}
+              todayIso={date}
+              contexts={contexts.map((item) => item.name)}
+              places={user.settings.places}
+            />
             <RitualHost
               period={dailyPeriod}
               dayStartHour={user.settings.dayStartHour}
