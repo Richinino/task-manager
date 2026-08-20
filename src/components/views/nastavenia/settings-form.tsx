@@ -5,7 +5,7 @@ import { LoaderCircle, TriangleAlert } from "lucide-react";
 
 import type { Settings } from "@/lib/settings";
 import { rulesToText, textToRules } from "@/lib/auto-tag";
-import { placesToText, textToPlaces } from "@/lib/places";
+import { placesToText } from "@/lib/places";
 import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
 import {
@@ -15,7 +15,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { updateSettings } from "@/server/actions/settings";
+import { savePlaces, updateSettings } from "@/server/actions/settings";
 
 /* ═══════════════════════════════════════════════════════════════════════════
    NASTAVENIA
@@ -125,6 +125,14 @@ export function SettingsForm({ settings }: SettingsFormProps) {
   */
   const [rulesText, setRulesText] = useState(() => rulesToText(settings.autoTagRules));
   const [placesText, setPlacesText] = useState(() => placesToText(settings.places));
+  /*
+    Miesta majú vlastný stav ukladania, lebo ako jediné potrebujú sieť:
+    adresa sa prekladá na súradnice a to trvá sekundu na každú novú. Bez
+    viditeľného „prekladám" vyzerá pole tak, že sa nič nedeje.
+  */
+  const [placesBusy, setPlacesBusy] = useState(false);
+  /** Adresy, ktoré služba nenašla — neuložili sa a treba ich opraviť. */
+  const [unresolved, setUnresolved] = useState<string[]>([]);
   const [isPending, startTransition] = useTransition();
 
   /** Posledný stav potvrdený serverom — sem sa formulár vracia pri odmietnutí. */
@@ -158,6 +166,43 @@ export function SettingsForm({ settings }: SettingsFormProps) {
         revert(result.error);
       } catch {
         revert("Nastavenie sa nepodarilo uložiť.");
+      }
+    });
+  }
+
+  /**
+   * Uloží miesta. Ide vlastnou cestou, nie cez `commit`, lebo adresy sa
+   * musia najprv preložiť na súradnice — a to je jediná vec v nastaveniach,
+   * ktorá siaha na sieť a môže sa čiastočne nepodariť.
+   *
+   * Text sa po uložení **neprepisuje** podľa toho, čo prešlo. Nenájdená
+   * adresa sa medzi miesta nedostane, takže prepis by ten riadok človeku
+   * zmazal spod rúk — namiesto toho ostane, kde bol, a je pri ňom napísané,
+   * že sa nenašiel.
+   */
+  function commitPlaces(): void {
+    if (placesText === placesToText(savedRef.current.places)) {
+      setUnresolved([]);
+      return;
+    }
+
+    setError(null);
+    setPlacesBusy(true);
+
+    startTransition(async () => {
+      try {
+        const result = await savePlaces(placesText);
+        if (result.ok) {
+          savedRef.current = result.data.settings;
+          setDraft(result.data.settings);
+          setUnresolved(result.data.unresolved);
+        } else {
+          setError(result.error);
+        }
+      } catch {
+        setError("Miesta sa nepodarilo uložiť.");
+      } finally {
+        setPlacesBusy(false);
       }
     });
   }
@@ -329,31 +374,47 @@ export function SettingsForm({ settings }: SettingsFormProps) {
 
       <Section
         title="Miesta"
-        description="Spájajú kontext so súradnicami. Vďaka nim vie „Čo teraz?“ po stlačení „Som tu“ zistiť, kde si, a ponúknuť úlohy pre to miesto."
+        description="Spájajú kontext s adresou. Vďaka nim vie „Čo teraz?“ po stlačení „Som tu“ zistiť, kde si, a ponúknuť úlohy pre to miesto."
       >
         <Field
           id={fieldId("places")}
-          label="Miesta so súradnicami"
-          hint="Riadok na miesto, v tvare „kontext = zemepisná šírka, dĺžka“. Súradnice nájdeš v Mapách pravým klikom na bod. Poloha sa číta len vtedy, keď o to sám požiadaš — appka ťa na pozadí nesleduje a webová stránka to ani nevie."
+          label="Miesta a ich adresy"
+          hint="Riadok na miesto, v tvare „kontext = adresa“. Adresa sa pri uložení raz preloží na súradnice cez OpenStreetMap — je to jediná vec, ktorá pri tom odchádza von, a odchádza len samotná adresa. Ak už súradnice máš, môžeš ich napísať namiesto adresy. Poloha sa číta len vtedy, keď o to sám požiadaš — appka ťa na pozadí nesleduje a webová stránka to ani nevie."
         >
           <textarea
             id={fieldId("places")}
             value={placesText}
             onChange={(event) => setPlacesText(event.target.value)}
-            onBlur={() => {
-              const next = textToPlaces(placesText);
-              if (JSON.stringify(next) === JSON.stringify(savedRef.current.places)) return;
-              commit({ places: next });
-            }}
+            onBlur={commitPlaces}
             rows={3}
             spellCheck={false}
-            placeholder={"domino = 48.1445, 17.1102\npraca = 48.1500, 17.1200"}
+            placeholder={"domino = Trnavská cesta 100, Bratislava\npraca = Einsteinova 25, Bratislava"}
             className={cn(
               "w-full resize-y rounded border border-border bg-surface px-2.5 py-2",
               "font-mono text-base leading-relaxed text-fg placeholder:text-fg-subtle sm:text-sm",
               "transition-colors duration-100 ease-out hover:border-border-strong",
             )}
           />
+
+          {placesBusy ? (
+            <p role="status" className="flex items-center gap-1.5 text-[12px] text-fg-muted">
+              <LoaderCircle aria-hidden="true" size={13} className="animate-spin" />
+              Prekladám adresy na súradnice…
+            </p>
+          ) : null}
+
+          {/* Nenájdená adresa sa neuloží — bez súradníc by sa nikdy
+              nezhodovala a miesto by ticho nefungovalo. */}
+          {!placesBusy && unresolved.length > 0 ? (
+            <p role="status" className="flex items-start gap-1.5 text-[12px] text-danger">
+              <TriangleAlert aria-hidden="true" size={13} className="mt-0.5 shrink-0" />
+              <span>
+                Tieto adresy sa nepodarilo nájsť a neuložili sa:{" "}
+                <span className="font-medium">{unresolved.join(" · ")}</span>. Skús ich
+                napísať presnejšie, aj s mestom.
+              </span>
+            </p>
+          ) : null}
         </Field>
       </Section>
 

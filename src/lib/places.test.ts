@@ -4,8 +4,9 @@ import {
   distanceMeters,
   formatDistance,
   nearestPlace,
+  parseCoordinates,
   placesToText,
-  textToPlaces,
+  textToPlaceEntries,
   type Place,
 } from "@/lib/places";
 
@@ -94,62 +95,112 @@ describe("formatDistance", () => {
   });
 });
 
-describe("placesToText a textToPlaces", () => {
-  it("prežije cestu tam a späť", () => {
+describe("placesToText", () => {
+  it("vypíše adresu, nie súradnice — práve tú človek napísal", () => {
     const places: Place[] = [
-      { context: "domino", lat: 48.1445, lon: 17.1102 },
-      { context: "praca", lat: 48.15, lon: 17.12 },
+      { context: "domino", address: "Trnavská cesta 100, Bratislava", lat: 48.1, lon: 17.1 },
     ];
-    expect(textToPlaces(placesToText(places))).toEqual(places);
+    expect(placesToText(places)).toBe("domino = Trnavská cesta 100, Bratislava");
   });
 
   /*
-    Zápis používa čiarku ako oddeľovač dvojice, rozoberanie zas medzeru —
-    drží to pohromade len vďaka medzere za čiarkou. Preto je na to test.
+    Miesta uložené ešte pred adresami adresu nemajú. Keby sa vypísali prázdne
+    alebo inak, po prvom otvorení nastavení by sa ticho zmenili na niečo iné.
   */
-  it("zvládne vlastný zápisový tvar s čiarkou", () => {
-    expect(textToPlaces("domino = 48.1445, 17.1102")).toEqual([
-      { context: "domino", lat: 48.1445, lon: 17.1102 },
-    ]);
+  it("miesto bez adresy vypíše súradnicami", () => {
+    expect(placesToText([{ context: "domino", lat: 48.1445, lon: 17.1102 }])).toBe(
+      "domino = 48.1445, 17.1102",
+    );
   });
 
-  it("desatinná čiarka funguje ako bodka", () => {
-    expect(textToPlaces("domino = 48,1445 17,1102")).toEqual([
-      { context: "domino", lat: 48.1445, lon: 17.1102 },
-    ]);
+  it("prázdny zoznam dá prázdny text", () => {
+    expect(placesToText([])).toBe("");
   });
+});
 
-  it("stredník ako oddeľovač tiež prejde", () => {
-    expect(textToPlaces("domino = 48.14; 17.11")).toEqual([
-      { context: "domino", lat: 48.14, lon: 17.11 },
+describe("textToPlaceEntries", () => {
+  it("rozdelí riadok na kontext a adresu", () => {
+    expect(textToPlaceEntries("domino = Trnavská cesta 100, Bratislava")).toEqual([
+      { context: "domino", query: "Trnavská cesta 100, Bratislava" },
     ]);
   });
 
   it("zavináč v názve sa odsekne", () => {
-    expect(textToPlaces("@domino = 48.14 17.11")[0]?.context).toBe("domino");
+    expect(textToPlaceEntries("@domino = Bratislava")[0]?.context).toBe("domino");
   });
 
   it("rozpísaný riadok nezhodí zvyšok", () => {
-    const text = ["domino = 48.14 17.11", "rozpisane", "praca = 48.15 17.12"].join("\n");
-    expect(textToPlaces(text)).toHaveLength(2);
+    const text = ["domino = Bratislava", "rozpisane", "praca = Košice"].join("\n");
+    expect(textToPlaceEntries(text)).toHaveLength(2);
   });
 
-  it("riadok s jedným číslom sa zahodí", () => {
-    expect(textToPlaces("domino = 48.14")).toEqual([]);
+  it("riadok bez pravej strany sa zahodí — nemá sa čo prekladať", () => {
+    expect(textToPlaceEntries("domino =   ")).toEqual([]);
   });
 
-  it("súradnice mimo rozsahu sa zahodia", () => {
-    expect(textToPlaces("x = 200 17")).toEqual([]);
-    expect(textToPlaces("x = 48 400")).toEqual([]);
-  });
-
-  it("záporné súradnice sú v poriadku", () => {
-    expect(textToPlaces("juh = -33.86, 151.2")).toEqual([
-      { context: "juh", lat: -33.86, lon: 151.2 },
-    ]);
+  it("riadok bez kontextu sa zahodí", () => {
+    expect(textToPlaceEntries(" = Bratislava")).toEqual([]);
   });
 
   it("prázdny text dá prázdny zoznam", () => {
-    expect(textToPlaces("")).toEqual([]);
+    expect(textToPlaceEntries("")).toEqual([]);
+  });
+
+  it("adresu neskracuje na prvej čiarke — je jej súčasťou", () => {
+    const entry = textToPlaceEntries("a = Hlavná 1, Trnava, Slovensko")[0];
+    expect(entry?.query).toBe("Hlavná 1, Trnava, Slovensko");
+  });
+});
+
+describe("parseCoordinates", () => {
+  it("prečíta dvojicu s čiarkou — vlastný zápisový tvar", () => {
+    expect(parseCoordinates("48.1445, 17.1102")).toEqual({ lat: 48.1445, lon: 17.1102 });
+  });
+
+  it("desatinná čiarka funguje ako bodka", () => {
+    expect(parseCoordinates("48,1445 17,1102")).toEqual({ lat: 48.1445, lon: 17.1102 });
+  });
+
+  it("stredník ako oddeľovač tiež prejde", () => {
+    expect(parseCoordinates("48.14; 17.11")).toEqual({ lat: 48.14, lon: 17.11 });
+  });
+
+  it("záporné súradnice sú v poriadku", () => {
+    expect(parseCoordinates("-33.86, 151.2")).toEqual({ lat: -33.86, lon: 151.2 });
+  });
+
+  /*
+    Koncová nula sa pri prevode čísla späť na reťazec stratí. Kontrola tvaru
+    preto nesmie stáť na porovnaní s `String(parseFloat(...))`.
+  */
+  it("koncová nula v desatinnej časti prejde", () => {
+    expect(parseCoordinates("48.10, 17.10")).toEqual({ lat: 48.1, lon: 17.1 });
+  });
+
+  /*
+    Toto je ten dôležitý: adresa sa začína číslom a bez kontroly tvaru by
+    `parseFloat` prečítal „100" a zvyšok zahodil — miesto by tak dostalo
+    nezmyselné súradnice namiesto toho, aby sa adresa preložila.
+  */
+  it("adresa začínajúca číslom NIE je dvojica súradníc", () => {
+    expect(parseCoordinates("100, Bratislava")).toBeNull();
+    expect(parseCoordinates("Trnavská 100")).toBeNull();
+  });
+
+  it("jedno číslo nestačí", () => {
+    expect(parseCoordinates("48.14")).toBeNull();
+  });
+
+  it("tri čísla sú tiež nič", () => {
+    expect(parseCoordinates("48.14 17.11 100")).toBeNull();
+  });
+
+  it("hodnoty mimo rozsahu sa odmietnu", () => {
+    expect(parseCoordinates("200 17")).toBeNull();
+    expect(parseCoordinates("48 400")).toBeNull();
+  });
+
+  it("prázdny reťazec je null", () => {
+    expect(parseCoordinates("   ")).toBeNull();
   });
 });
