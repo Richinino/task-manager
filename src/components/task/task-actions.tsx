@@ -15,7 +15,6 @@ import {
   Check,
   Ellipsis,
   Pencil,
-  RotateCcw,
   Star,
   Sun,
   Sunrise,
@@ -39,7 +38,6 @@ import {
   rescheduleTask,
   restoreTask,
   setFrog,
-  toggleTaskDone,
   updateTask,
 } from "@/server/actions/tasks";
 import type { TaskWithRelations } from "@/server/queries/tasks";
@@ -57,10 +55,14 @@ type Result = { ok: true } | { ok: false; error: string };
  * Riadok si tieto polia drží v `useOptimistic`, takže zmena je vidieť
  * okamžite a po dobehnutí akcie sa ticho vráti k údajom zo servera.
  */
+/*
+  Odškrtnutie tu zámerne nie je: to si drží `TaskCheckbox`, ktorý je v riadku
+  vždy. Kým ho ponúkalo aj menu, existovali dve cesty k tomu istému poľu a dve
+  optimistické kópie jeho stavu.
+*/
 export interface TaskRowPatch {
   priority?: number;
   isFrog?: boolean;
-  done?: boolean;
   plannedDate?: string | null;
 }
 
@@ -329,6 +331,58 @@ function MenuSeparator() {
   return <div role="separator" className="my-1 h-px bg-border" />;
 }
 
+/**
+ * Priorita ako jeden vodorovný rad, nie tri riadky pod sebou.
+ *
+ * Tri úrovne nie sú tri akcie — je to jedno pole s tromi hodnotami. Ako tri
+ * samostatné položky zaberali štvrtinu menu a čítali sa ako ponuka, hoci je
+ * to prepínač; navyše sa dve z troch nikdy nehodili, lebo jedna už platí.
+ *
+ * Rad je preto **jedna zastávka** zvislej navigácie a medzi hodnotami sa
+ * chodí šípkami vľavo/vpravo — presne tak, ako sa v skupine prepínačov chodí
+ * všade inde. Zvislé šípky doň vstupujú na práve platnej hodnote, nie na
+ * prvej, takže sa fokus nezačína inde, než je zaškrtnutie.
+ */
+function MenuPriorityRow({
+  value,
+  onPick,
+}: {
+  value: number;
+  onPick: (level: 1 | 2 | 3) => void;
+}) {
+  return (
+    <div role="group" aria-label="Úroveň priority" className="flex gap-1 px-2 py-0.5">
+      {([1, 2, 3] as const).map((level) => {
+        const checked = value === level;
+        return (
+          <button
+            key={level}
+            type="button"
+            role="menuitemradio"
+            aria-checked={checked}
+            aria-label={`Priorita ${level}`}
+            // Podľa tohto atribútu vie klávesnica, že tieto tri patria k sebe.
+            data-row="priority"
+            tabIndex={-1}
+            onClick={() => onPick(level)}
+            className={cn(
+              "flex min-h-9 flex-1 items-center justify-center gap-1.5 rounded border",
+              "text-[13px] transition-colors duration-100 ease-out",
+              checked
+                ? "border-accent bg-accent/10 font-medium text-fg"
+                : "border-border text-fg-muted hover:bg-surface-2 hover:text-fg",
+              "focus-visible:bg-surface-2",
+            )}
+          >
+            <PriorityDot priority={level} size="sm" />
+            {level}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
 /* ═══════════════════════════════════════════════════════════════════════════
    MENU AKCIÍ
    ═══════════════════════════════════════════════════════════════════════════ */
@@ -375,7 +429,6 @@ export function TaskActions({
     return () => window.clearTimeout(timer);
   }, [error]);
 
-  const isDone = task.status === "done";
   const plannedDate = task.plannedDate;
 
   /**
@@ -451,37 +504,83 @@ export function TaskActions({
     return Array.from(root.querySelectorAll<HTMLElement>('[role^="menuitem"]'));
   }, []);
 
-  const focusItem = useCallback(
-    (index: number) => {
-      const items = menuItems();
-      if (items.length === 0) return;
-      const wrapped = ((index % items.length) + items.length) % items.length;
-      items[wrapped]?.focus();
+  /**
+   * Zastávky **zvislej** navigácie.
+   *
+   * Z vodorovného radu priority je medzi nimi len jedna — tá zaškrtnutá —
+   * inak by šípka nadol prešla tri hodnoty toho istého poľa ako tri položky
+   * a fokus by pritom skákal do strán.
+   */
+  const menuStops = useCallback((): HTMLElement[] => {
+    const all = menuItems();
+    const row = all.filter((item) => item.dataset["row"] === "priority");
+    // Zaškrtnutá je vždy práve jedna, ale poistka pre prípad neplatnej
+    // hodnoty v dátach: rad nesmie zo zoznamu vypadnúť celý.
+    const entry =
+      row.find((item) => item.getAttribute("aria-checked") === "true") ?? row[0];
+    return all.filter((item) => item.dataset["row"] !== "priority" || item === entry);
+  }, [menuItems]);
+
+  /** Súrodenci v tom istom vodorovnom rade — prázdne, ak fokus v rade nie je. */
+  const rowSiblings = useCallback(
+    (element: Element | null): HTMLElement[] => {
+      const row = (element as HTMLElement | null)?.dataset["row"];
+      if (row === undefined) return [];
+      return menuItems().filter((item) => item.dataset["row"] === row);
     },
     [menuItems],
   );
 
-  function handleMenuKeyDown(event: React.KeyboardEvent<HTMLDivElement>) {
-    const items = menuItems();
+  const focusAt = useCallback((items: HTMLElement[], index: number) => {
     if (items.length === 0) return;
-    const current = items.findIndex((item) => item === document.activeElement);
+    const wrapped = ((index % items.length) + items.length) % items.length;
+    items[wrapped]?.focus();
+  }, []);
+
+  function handleMenuKeyDown(event: React.KeyboardEvent<HTMLDivElement>) {
+    const active = document.activeElement;
+
+    if (event.key === "ArrowRight" || event.key === "ArrowLeft") {
+      const row = rowSiblings(active);
+      if (row.length === 0) return;
+      event.preventDefault();
+      const at = row.findIndex((item) => item === active);
+      focusAt(row, at + (event.key === "ArrowRight" ? 1 : -1));
+      return;
+    }
+
+    const stops = menuStops();
+    if (stops.length === 0) return;
+
+    /*
+      Fokus môže sedieť na hodnote, ktorá medzi zastávkami nie je — po kroku
+      do strany stojí napríklad na „Priorita 3", zatiaľ čo rad zastupuje
+      zaškrtnutá jednotka. Vtedy sa za súčasnú zastávku berie zástupca radu,
+      inak by sa šípka nadol vrátila na začiatok menu.
+    */
+    const activeRow = (active as HTMLElement | null)?.dataset["row"];
+    const current = stops.findIndex(
+      (item) =>
+        item === active ||
+        (activeRow !== undefined && item.dataset["row"] === activeRow),
+    );
 
     switch (event.key) {
       case "ArrowDown":
         event.preventDefault();
-        focusItem(current + 1);
+        focusAt(stops, current + 1);
         return;
       case "ArrowUp":
         event.preventDefault();
-        focusItem(current === -1 ? -1 : current - 1);
+        focusAt(stops, current === -1 ? -1 : current - 1);
         return;
       case "Home":
         event.preventDefault();
-        focusItem(0);
+        focusAt(stops, 0);
         return;
       case "End":
         event.preventDefault();
-        focusItem(items.length - 1);
+        focusAt(stops, stops.length - 1);
         return;
       default:
         // Escape a Tab si berie Popover: zavrie sa a vráti fokus na spúšťač.
@@ -538,7 +637,7 @@ export function TaskActions({
           className="w-60 max-w-[calc(100vw-1.5rem)]"
           onOpenAutoFocus={(event) => {
             event.preventDefault();
-            focusItem(0);
+            focusAt(menuStops(), 0);
           }}
           // Kliknutie v menu nesmie prebublať do riadku pod ním.
           onPointerDown={(event) => event.stopPropagation()}
@@ -619,22 +718,16 @@ export function TaskActions({
             <MenuSeparator />
 
             <MenuGroup label="Priorita">
-              {([1, 2, 3] as const).map((level) => (
-                <MenuItem
-                  key={level}
-                  role="menuitemradio"
-                  checked={task.priority === level}
-                  icon={<PriorityDot priority={level} size="sm" />}
-                  label={`Priorita ${level}`}
-                  onSelect={() =>
-                    run(
-                      { priority: level },
-                      () => updateTask(task.id, { priority: level }),
-                      "Prioritu sa nepodarilo zmeniť. Skús to znova.",
-                    )
-                  }
-                />
-              ))}
+              <MenuPriorityRow
+                value={task.priority}
+                onPick={(level) =>
+                  run(
+                    { priority: level },
+                    () => updateTask(task.id, { priority: level }),
+                    "Prioritu sa nepodarilo zmeniť. Skús to znova.",
+                  )
+                }
+              />
 
               {/* Prioritou dňa môže byť len úloha s naplánovaným dňom — server
                   to odmietne, tak to ani neponúkame. */}
@@ -661,21 +754,6 @@ export function TaskActions({
             </MenuGroup>
 
             <MenuSeparator />
-
-            <MenuItem
-              icon={isDone ? <RotateCcw size={14} /> : <Check size={14} />}
-              label={isDone ? "Vrátiť medzi nedokončené" : "Označiť ako hotovú"}
-              onSelect={() =>
-                run(
-                  { done: !isDone },
-                  async () => {
-                    const result = await toggleTaskDone(task.id);
-                    return result.ok ? { ok: true } : result;
-                  },
-                  "Stav úlohy sa nepodarilo zmeniť. Skús to znova.",
-                )
-              }
-            />
 
             <MenuItem
               icon={<Trash2 size={14} />}
