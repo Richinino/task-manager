@@ -10,7 +10,15 @@ import {
   CommandItem,
   CommandList,
 } from "cmdk";
-import { Circle, CircleCheck, Plus, Search, SunMoon } from "lucide-react";
+import {
+  Circle,
+  CircleCheck,
+  FolderPlus,
+  Layers,
+  Plus,
+  Search,
+  SunMoon,
+} from "lucide-react";
 
 import { NAV_ITEMS } from "@/components/shell/sidebar";
 import { toggleTheme } from "@/components/shell/theme-toggle";
@@ -272,6 +280,45 @@ export function CommandPalette({
                 <span className="hidden shrink-0 sm:inline-flex">
                   <Kbd>n</Kbd>
                 </span>
+              </CommandItem>
+
+              {/*
+                Zakladanie projektu a oblasti je paleta, nie vlastný dialóg.
+
+                Formuláre už existujú a sú prvým prvkom na `/projekty`
+                a `/oblasti` — chýbala len cesta k nim. Na telefóne sú obe
+                obrazovky až za „Viac", takže sa človek pýtal „ako vytvorím
+                oblasť?", hoci formulár je hneď navrchu. Skopírovať ho do
+                dialógu by znamenalo dve miesta, ktoré sa raz rozídu.
+              */}
+              <CommandItem
+                value="akcia:novy-projekt"
+                keywords={[
+                  "Nový projekt",
+                  "založiť projekt",
+                  "vytvoriť projekt",
+                  "project",
+                ]}
+                onSelect={() => runAndClose(() => router.push("/projekty"))}
+                className={ITEM_CLASS}
+              >
+                <FolderPlus aria-hidden="true" className="size-4 shrink-0" />
+                <span className="min-w-0 flex-1 truncate">Nový projekt…</span>
+              </CommandItem>
+
+              <CommandItem
+                value="akcia:nova-oblast"
+                keywords={[
+                  "Nová oblasť",
+                  "založiť oblasť",
+                  "vytvoriť oblasť",
+                  "area",
+                ]}
+                onSelect={() => runAndClose(() => router.push("/oblasti"))}
+                className={ITEM_CLASS}
+              >
+                <Layers aria-hidden="true" className="size-4 shrink-0" />
+                <span className="min-w-0 flex-1 truncate">Nová oblasť…</span>
               </CommandItem>
 
               <CommandItem
