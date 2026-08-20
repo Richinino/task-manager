@@ -28,6 +28,29 @@ export const settingsSchema = z.object({
   fadeAfterDays: z.number().int().min(30).default(180),
 
   /**
+   * Miesta so súradnicami — spájajú kontext s bodom na mape.
+   *
+   * `@domino` prestáva byť len slovom: keď stlačíš „som tu", appka zistí
+   * polohu a nájde najbližšie z týchto miest. Súradnice sú v nastaveniach,
+   * nie vo vlastnej tabuľke, lebo je ich hŕstka a nemenia sa.
+   *
+   * **Nie je to geofencing.** Poloha sa číta len vtedy, keď máš appku
+   * otvorenú a sám si o to povieš — prehliadač appku na pozadí nespustí
+   * a žiadne nastavenie to nezmení.
+   */
+  places: z
+    .array(
+      z.object({
+        /** Kontext bez `@`, napríklad `domino`. */
+        context: z.string().trim().min(1).max(64),
+        lat: z.number().min(-90).max(90),
+        lon: z.number().min(-180).max(180),
+      }),
+    )
+    .max(30)
+    .default([]),
+
+  /**
    * Pravidlá na automatické prideľovanie štítkov a kontextu.
    *
    * Píše si ich používateľ sám — appka nič nehádá ani sa neučí. Návrh sa

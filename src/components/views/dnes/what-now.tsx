@@ -1,7 +1,15 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { BatteryLow, BatteryMedium, BatteryFull, Compass, RotateCw } from "lucide-react";
+import {
+  BatteryLow,
+  BatteryMedium,
+  BatteryFull,
+  Compass,
+  LoaderCircle,
+  MapPin,
+  RotateCw,
+} from "lucide-react";
 
 import {
   rankNextTasks,
@@ -10,6 +18,7 @@ import {
   type NextTaskReason,
 } from "@/lib/next-task";
 import { formatDuration } from "@/lib/dates";
+import { formatDistance, nearestPlace, type Place } from "@/lib/places";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import {
@@ -82,14 +91,22 @@ export interface WhatNowProps {
   tasks: TaskWithRelations[];
   /** Dnešok z pásma používateľa. Klient si ho nikdy nepočíta sám. */
   todayIso: string;
+  /** Kontexty, ktoré sa v úlohách naozaj používajú. */
+  contexts?: readonly string[];
+  /** Miesta so súradnicami z nastavení — podklad pre „som tu". */
+  places?: readonly Place[];
 }
 
-export function WhatNow({ tasks, todayIso }: WhatNowProps) {
+export function WhatNow({ tasks, todayIso, contexts, places }: WhatNowProps) {
   const [open, setOpen] = useState(false);
   const [energy, setEnergy] = useState<EnergyLevel | null>(null);
   const [availableMin, setAvailableMin] = useState<number | null>(null);
   /** Koľkokrát človek povedal „daj inú" — index do zoradeného poradia. */
   const [skipped, setSkipped] = useState(0);
+  /** Kde som. `null` = kdekoľvek. */
+  const [context, setContext] = useState<string | null>(null);
+  const [locating, setLocating] = useState(false);
+  const [locationNote, setLocationNote] = useState<string | null>(null);
 
   const detail = useTaskDetail();
 
@@ -104,8 +121,9 @@ export function WhatNow({ tasks, todayIso }: WhatNowProps) {
       energy,
       availableMin,
       todayIso,
+      context,
     });
-  }, [tasks, energy, availableMin, todayIso]);
+  }, [tasks, energy, availableMin, todayIso, context]);
 
   const pick = ranked[skipped] ?? null;
   const picked = pick ? (byId.get(pick.taskId) ?? null) : null;
@@ -114,6 +132,56 @@ export function WhatNow({ tasks, todayIso }: WhatNowProps) {
     setEnergy(null);
     setAvailableMin(null);
     setSkipped(0);
+    setContext(null);
+    setLocationNote(null);
+  }
+
+  /**
+   * Zistí polohu a nastaví kontext podľa najbližšieho miesta.
+   *
+   * Jednorazovo, na vyžiadanie. Prehliadač si povolenie pamätá, takže sa pýta
+   * len prvýkrát — ale appku na pozadí nespustí, takže toto tlačidlo je jediný
+   * moment, kedy sa poloha vôbec dá prečítať.
+   */
+  function locate(): void {
+    if (typeof navigator === "undefined" || !navigator.geolocation) {
+      setLocationNote("Tento prehliadač polohu nevie.");
+      return;
+    }
+    if ((places ?? []).length === 0) {
+      setLocationNote("Najprv si v nastaveniach ulož miesta so súradnicami.");
+      return;
+    }
+
+    setLocating(true);
+    setLocationNote(null);
+
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const found = nearestPlace(
+          { lat: position.coords.latitude, lon: position.coords.longitude },
+          places ?? [],
+        );
+        setLocating(false);
+        setSkipped(0);
+
+        if (found === null) {
+          setLocationNote("Nie si pri žiadnom uloženom mieste.");
+          return;
+        }
+        setContext(found.place.context);
+        setLocationNote(
+          `Si pri @${found.place.context} (${formatDistance(found.meters)}).`,
+        );
+      },
+      () => {
+        setLocating(false);
+        // Odmietnuté povolenie sa z JavaScriptu znova vypýtať nedá — treba to
+        // prepnúť v nastaveniach stránky. Preto rada, nie ďalší pokus.
+        setLocationNote("Polohu sa nepodarilo zistiť. Skontroluj povolenie v prehliadači.");
+      },
+      { timeout: 10_000, maximumAge: 60_000 },
+    );
   }
 
   const answered = energy !== null && availableMin !== null;
@@ -208,6 +276,91 @@ export function WhatNow({ tasks, todayIso }: WhatNowProps) {
               })}
             </div>
           </fieldset>
+
+          {/*
+            Kde som. Nepovinné — bez výberu sa neobmedzuje nič. Zobrazuje sa,
+            len keď kontexty naozaj existujú: prázdny prepínač by pýtal
+            rozhodnutie, ktoré sa nedá spraviť.
+          */}
+          {(contexts ?? []).length > 0 ? (
+            <fieldset className="flex flex-col gap-2">
+              <legend className="pb-1.5 text-[13px] font-medium text-fg">
+                Kde si?
+              </legend>
+              <div className="flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  aria-pressed={context === null}
+                  onClick={() => {
+                    setContext(null);
+                    setSkipped(0);
+                    setLocationNote(null);
+                  }}
+                  className={cn(
+                    "inline-flex min-h-11 items-center rounded border px-3 text-sm",
+                    "transition-colors duration-100 ease-out sm:min-h-9",
+                    context === null
+                      ? "border-accent bg-accent-soft font-medium text-accent"
+                      : "border-border bg-surface text-fg hover:border-border-strong hover:bg-surface-2",
+                  )}
+                >
+                  Kdekoľvek
+                </button>
+
+                {(contexts ?? []).map((name) => {
+                  const active = context === name;
+                  return (
+                    <button
+                      key={name}
+                      type="button"
+                      aria-pressed={active}
+                      onClick={() => {
+                        setContext(name);
+                        setSkipped(0);
+                        setLocationNote(null);
+                      }}
+                      className={cn(
+                        "inline-flex min-h-11 items-center rounded border px-3 text-sm",
+                        "transition-colors duration-100 ease-out sm:min-h-9",
+                        active
+                          ? "border-accent bg-accent-soft font-medium text-accent"
+                          : "border-border bg-surface text-fg hover:border-border-strong hover:bg-surface-2",
+                      )}
+                    >
+                      @{name}
+                    </button>
+                  );
+                })}
+
+                {(places ?? []).length > 0 ? (
+                  <button
+                    type="button"
+                    onClick={locate}
+                    disabled={locating}
+                    className={cn(
+                      "inline-flex min-h-11 items-center gap-1.5 rounded border border-border",
+                      "bg-surface-2 px-3 text-sm text-fg-muted sm:min-h-9",
+                      "transition-colors duration-100 ease-out hover:text-fg",
+                      "disabled:pointer-events-none disabled:opacity-45",
+                    )}
+                  >
+                    {locating ? (
+                      <LoaderCircle aria-hidden="true" size={14} className="animate-spin" />
+                    ) : (
+                      <MapPin aria-hidden="true" size={14} />
+                    )}
+                    Som tu
+                  </button>
+                ) : null}
+              </div>
+
+              {locationNote !== null ? (
+                <p aria-live="polite" className="text-[13px] leading-relaxed text-fg-muted">
+                  {locationNote}
+                </p>
+              ) : null}
+            </fieldset>
+          ) : null}
 
           {/* ── odpoveď ─────────────────────────────────────────────────────── */}
 
