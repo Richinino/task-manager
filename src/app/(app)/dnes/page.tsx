@@ -8,7 +8,7 @@ import { OverdueSection } from "@/components/views/dnes/overdue-section";
 import { TimeBudget } from "@/components/views/dnes/time-budget";
 import { WhatNow } from "@/components/views/dnes/what-now";
 import { RitualHost } from "@/components/rituals/ritual-host";
-import { todayIn } from "@/lib/dates";
+import { addDays, parseIsoDate, todayIn, toIsoDate } from "@/lib/dates";
 import { ritualPeriod } from "@/lib/rituals";
 import { requireUser } from "@/server/auth-guard";
 import {
@@ -30,11 +30,32 @@ export const metadata: Metadata = {
  * Zhora nadol: dátum a rozpočet času → priorita dňa → čo horí (po termíne) →
  * dnešné úlohy. Poradie je zámerné: najprv záväzok, potom dlh, až potom zoznam.
  */
-export default async function DnesPage() {
+interface DnesPageProps {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}
+
+/**
+ * Zobrazovaný deň z `?den=RRRR-MM-DD`.
+ *
+ * Rovnaká kontrola ako v týždennom pohľade: `2026-02-31` prejde regulárnym
+ * výrazom, ale po prevode tam a späť vyjde iný deň, takže sa zahodí.
+ */
+function readDay(value: string | string[] | undefined): string | null {
+  const raw = Array.isArray(value) ? value[0] : value;
+  if (raw === undefined || raw === "") return null;
+  const parsed = parseIsoDate(raw);
+  return toIsoDate(parsed) === raw ? raw : null;
+}
+
+export default async function DnesPage({ searchParams }: DnesPageProps) {
   const user = await requireUser();
+  const params = await searchParams;
+
   // Dnešok berieme z pásma používateľa, nie z pásma procesu — na Verceli (UTC)
   // by inak medzi polnocou a druhou v noci svietili včerajšie úlohy.
-  const date = todayIn(user.settings.timezone);
+  const todayIso = todayIn(user.settings.timezone);
+  const date = readDay(params["den"]) ?? todayIso;
+  const isToday = date === todayIso;
 
   // Denné rituály zdieľajú obdobie — pre oba je to dnešok.
   const dailyPeriod = ritualPeriod("daily_shutdown", date, user.settings.weekStartsOn);
@@ -102,6 +123,7 @@ export default async function DnesPage() {
     <div className="mx-auto flex w-full max-w-3xl flex-col gap-5 px-4 py-5 md:px-6 md:py-7">
       <DayHeader
         date={date}
+        todayIso={todayIso}
         doneCount={doneCount}
         totalCount={dayTasks.length}
         budget={
@@ -113,10 +135,17 @@ export default async function DnesPage() {
           />
         }
         action={
+          /*
+            Akcie patria len dnešku. „Čo teraz?" je otázka o TERAZ a rituál je
+            záväzok na dnešný deň — pri prezeraní včerajška by oboje ponúkalo
+            rozhodnutia o čase, ktorý už prešiel. Rituál by sa navyše otvoril
+            sám, čo by pri listovaní dozadu bolo priam nepríjemné.
+          */
+          isToday ? (
           <>
             <WhatNow
               tasks={actionable}
-              todayIso={date}
+              todayIso={todayIso}
               contexts={contexts.map((item) => item.name)}
               places={user.settings.places}
             />
@@ -155,12 +184,13 @@ export default async function DnesPage() {
                 ? { initialJournal: { body: journalToday.body, mood: journalToday.mood } }
                 : {})}
               tasks={dayTasks}
-              todayIso={date}
+              todayIso={todayIso}
               timeZone={user.settings.timezone}
               dayEndHour={user.settings.dayEndHour}
               autoOpen={user.settings.ritualAutoOpen}
             />
           </>
+          ) : null
         }
       />
 
@@ -172,7 +202,7 @@ export default async function DnesPage() {
         <DayPriorityCard
           frog={frog}
           candidates={openTasks}
-          todayIso={date}
+          todayIso={todayIso}
           postponeWarnAt={user.settings.postponeWarnAt}
           postponeBlockAt={user.settings.postponeBlockAt}
         />
@@ -180,7 +210,7 @@ export default async function DnesPage() {
 
       <OverdueSection
         tasks={overdue}
-        todayIso={date}
+        todayIso={todayIso}
         postponeWarnAt={user.settings.postponeWarnAt}
         postponeBlockAt={user.settings.postponeBlockAt}
       />
@@ -190,7 +220,7 @@ export default async function DnesPage() {
         frogInCard={frogInCard}
         openCount={openTasks.length}
         wipLimit={user.settings.wipLimit}
-        todayIso={date}
+        todayIso={todayIso}
         postponeWarnAt={user.settings.postponeWarnAt}
         postponeBlockAt={user.settings.postponeBlockAt}
       />
