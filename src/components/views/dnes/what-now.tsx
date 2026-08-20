@@ -72,6 +72,7 @@ function toCandidate(task: TaskWithRelations): NextTaskCandidate {
     isFrog: task.isFrog,
     dueDate: task.dueDate,
     postponeCount: task.postponeCount,
+    context: task.context,
     createdAtIso: task.createdAt.toISOString(),
   };
 }

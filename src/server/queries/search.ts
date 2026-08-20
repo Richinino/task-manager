@@ -86,6 +86,7 @@ export async function search(
         id: tasks.id,
         title: tasks.title,
         note: tasks.note,
+        context: tasks.context,
         status: tasks.status,
         deletedAt: tasks.deletedAt,
       })
@@ -93,7 +94,13 @@ export async function search(
       .where(
         and(
           eq(tasks.userId, userId),
-          or(matches(tasks.title, needle), matches(tasks.note, needle)),
+          or(
+            matches(tasks.title, needle),
+            matches(tasks.note, needle),
+            // Kontext bol doteraz mimo hľadania, hoci je to jediný spôsob,
+            // ako nájsť „všetko, čo sa dá vybaviť v meste".
+            matches(tasks.context, needle),
+          ),
         ),
       )
       .limit(perKind),
@@ -152,7 +159,11 @@ export async function search(
       kind: "task",
       id: row.id,
       title: row.title,
-      snippet: snippetAround(row.note, needle),
+      // Keď zhoda sedí na kontext a nie na poznámku, ukáže sa kontext —
+      // inak by výsledok vyzeral, akoby sa našiel bez dôvodu.
+      snippet:
+        snippetAround(row.note, needle) ??
+        (row.context !== null && fold(row.context).includes(needle) ? row.context : null),
       // Úloha nemá vlastnú adresu — panel s detailom sa otvára z obrazoviek.
       href: "/dnes",
       archived:

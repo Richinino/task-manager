@@ -467,7 +467,12 @@ export function TaskItem({
         {task.context ? (
           <span
             title={`kontext ${normalizeContext(task.context)}`}
-            className="hidden max-w-28 min-w-0 shrink truncate md:block"
+            /*
+              Kontext bol schovaný pod 768 px, takže na telefóne — kde sa
+              appka používa najviac — nebolo vidno vôbec, kde sa úloha dá
+              spraviť. Na úzkej obrazovke je užší, ale je.
+            */
+            className="max-w-20 min-w-0 shrink truncate md:max-w-28"
           >
             {normalizeContext(task.context)}
           </span>
