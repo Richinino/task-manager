@@ -26,6 +26,7 @@ import { cn } from "@/lib/utils";
 import { fold } from "@/lib/fold";
 import { activeTrigger, applySuggestion } from "@/lib/capture-suggest";
 import { hasSuggestion, suggestAutoTags, type AutoTagRule } from "@/lib/auto-tag";
+import { createProject } from "@/server/actions/structure";
 import { createIdea } from "@/server/actions/ideas";
 import { quickCapture } from "@/server/actions/tasks";
 
@@ -170,12 +171,25 @@ export function QuickCapture({
   const [highlight, setHighlight] = useState(0);
   /** Escape zoznam skryje, kým sa nezačne písať znova. */
   const [dismissed, setDismissed] = useState(false);
+  /*
+    Projekty založené priamo odtiaľto. Prop `projectNames` prichádza zo
+    servera a po založení je zastaraný až do prekreslenia — bez tohto zoznamu
+    by varovanie „projekt neexistuje" svietilo aj sekundu po tom, čo vznikol.
+  */
+  const [createdProjects, setCreatedProjects] = useState<string[]>([]);
+  const [creatingProject, setCreatingProject] = useState(false);
   const [caretNonce, setCaretNonce] = useState(0);
 
   // Mimo `OutboxProvider` je `null` — vtedy sa ukladá po starom, priamo na server.
   const outbox = useOutbox();
 
   const trimmed = value.trim();
+
+  /** Projekty zo servera plus tie, čo práve vznikli v tomto okne. */
+  const knownProjects = useMemo(
+    () => [...(projectNames ?? []), ...createdProjects],
+    [projectNames, createdProjects],
+  );
 
   // Parser je čistá a lacná funkcia — pokojne beží pri každom znaku.
   const parsed = useMemo<ParsedCapture | null>(
@@ -222,6 +236,35 @@ export function QuickCapture({
         : suggestAutoTags(value, autoTagRules ?? []),
     [value, trimmed, trigger, autoTagRules],
   );
+
+  /**
+   * Založí projekt, ktorý človek napísal cez `+názov`, ale ešte neexistuje.
+   *
+   * Zakladá sa len s názvom. Cieľ, oblasť ani termín sa tu nepýtajú — ide
+   * o odbočku uprostred zapisovania úlohy a každé pole navyše je dôvod, prečo
+   * to človek nedokončí. Doplniť sa dajú kedykoľvek v detaile projektu.
+   */
+  function createMissingProject(): void {
+    const name = parsed?.projectName?.trim();
+    if (name === undefined || name === "" || creatingProject) return;
+
+    setCreatingProject(true);
+    startTransition(async () => {
+      try {
+        const result = await createProject({ name });
+        if (result.ok) {
+          setCreatedProjects((current) => [...current, name]);
+          if (error !== null) setError(null);
+        } else {
+          setError(result.error);
+        }
+      } catch {
+        setError("Projekt sa nepodarilo založiť.");
+      } finally {
+        setCreatingProject(false);
+      }
+    });
+  }
 
   /** Doplní celý návrh naraz — štítky aj kontext — na koniec textu. */
   function applyAuto(): void {
@@ -611,6 +654,43 @@ export function QuickCapture({
           />
 
           {/*
+            Neznámy projekt sa dá založiť rovno odtiaľto. Bez toho by
+            varovanie len konštatovalo problém a poslalo človeka preč
+            z rozpísanej úlohy — čo je presne to, po čom sa úloha nezapíše.
+          */}
+          {!idea &&
+          parsed?.projectName !== undefined &&
+          knownProjects.length > 0 &&
+          !knownProjects.some(
+            (name) =>
+              name.trim().toLowerCase() === parsed.projectName?.trim().toLowerCase(),
+          ) ? (
+            <div className="px-3 pb-1 pl-9">
+              <button
+                type="button"
+                disabled={creatingProject}
+                onMouseDown={(event) => {
+                  event.preventDefault();
+                  createMissingProject();
+                }}
+                className={cn(
+                  "inline-flex min-h-11 items-center gap-1.5 rounded border border-warn/40",
+                  "bg-warn/10 px-2.5 text-[13px] text-warn sm:min-h-8",
+                  "transition-colors duration-100 ease-out hover:border-warn",
+                  "disabled:pointer-events-none disabled:opacity-45",
+                )}
+              >
+                {creatingProject ? (
+                  <LoaderCircle aria-hidden="true" size={13} className="animate-spin" />
+                ) : null}
+                <span className="min-w-0">
+                  Založiť projekt „{parsed.projectName.trim()}"
+                </span>
+              </button>
+            </div>
+          ) : null}
+
+          {/*
             Ponuka podľa pravidiel. Je to tlačidlo, nie automatický zásah do
             textu — návrh sa má dať prehliadnuť aj odmietnuť tým, že naň
             človek jednoducho neklikne.
@@ -646,7 +726,7 @@ export function QuickCapture({
           <ParsePreview
             parsed={parsed}
             mode={mode}
-            {...(projectNames ? { projectNames } : {})}
+            projectNames={knownProjects}
             className="pb-1 pl-9 pr-3"
           />
 
