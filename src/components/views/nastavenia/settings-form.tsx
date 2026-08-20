@@ -5,6 +5,7 @@ import { LoaderCircle, TriangleAlert } from "lucide-react";
 
 import type { Settings } from "@/lib/settings";
 import { rulesToText, textToRules } from "@/lib/auto-tag";
+import { placesToText, textToPlaces } from "@/lib/places";
 import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
 import {
@@ -123,6 +124,7 @@ export function SettingsForm({ settings }: SettingsFormProps) {
     Ukladá sa až pri opustení poľa.
   */
   const [rulesText, setRulesText] = useState(() => rulesToText(settings.autoTagRules));
+  const [placesText, setPlacesText] = useState(() => placesToText(settings.places));
   const [isPending, startTransition] = useTransition();
 
   /** Posledný stav potvrdený serverom — sem sa formulár vracia pri odmietnutí. */
@@ -322,6 +324,36 @@ export function SettingsForm({ settings }: SettingsFormProps) {
           hint="Stále je v hre — dotyk ho vráti späť. Musí byť viac než inkubátor."
         >
           {numberField("fadeAfterDays", 30, 3650)}
+        </Field>
+      </Section>
+
+      <Section
+        title="Miesta"
+        description="Spájajú kontext so súradnicami. Vďaka nim vie „Čo teraz?“ po stlačení „Som tu“ zistiť, kde si, a ponúknuť úlohy pre to miesto."
+      >
+        <Field
+          id={fieldId("places")}
+          label="Miesta so súradnicami"
+          hint="Riadok na miesto, v tvare „kontext = zemepisná šírka, dĺžka“. Súradnice nájdeš v Mapách pravým klikom na bod. Poloha sa číta len vtedy, keď o to sám požiadaš — appka ťa na pozadí nesleduje a webová stránka to ani nevie."
+        >
+          <textarea
+            id={fieldId("places")}
+            value={placesText}
+            onChange={(event) => setPlacesText(event.target.value)}
+            onBlur={() => {
+              const next = textToPlaces(placesText);
+              if (JSON.stringify(next) === JSON.stringify(savedRef.current.places)) return;
+              commit({ places: next });
+            }}
+            rows={3}
+            spellCheck={false}
+            placeholder={"domino = 48.1445, 17.1102\npraca = 48.1500, 17.1200"}
+            className={cn(
+              "w-full resize-y rounded border border-border bg-surface px-2.5 py-2",
+              "font-mono text-base leading-relaxed text-fg placeholder:text-fg-subtle sm:text-sm",
+              "transition-colors duration-100 ease-out hover:border-border-strong",
+            )}
+          />
         </Field>
       </Section>
 
