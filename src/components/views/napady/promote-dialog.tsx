@@ -232,7 +232,6 @@ function PromoteBody({ idea, onClose, onPromoted }: PromoteBodyProps) {
           }}
           // 16 px pod `sm`: menšie písmo si mobilné prehliadače vysvetlia
           // ako „toto sa nedá prečítať" a stránku pri fokuse priblížia.
-          className="h-11 text-base sm:h-9 sm:text-sm"
         />
         <p className="text-[11px] leading-relaxed text-fg-subtle">
           Uloží sa k nápadu a hneď z neho vznikne prvá úloha projektu — stav

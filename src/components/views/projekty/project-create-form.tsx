@@ -35,12 +35,6 @@ import { createProject } from "@/server/actions/structure";
 /** Radix Select neberie prázdny reťazec ako hodnotu — „nič" má vlastný kľúč. */
 const NONE = "__none__";
 
-/** Ovládacie prvky: palec pod `sm`, hustota od `sm`. */
-const controlClass = "h-11 text-base sm:h-9 sm:text-sm";
-
-/** Položky rozbaleného výberu musia byť na dotyk rovnako veľké ako spúšťač. */
-const selectContentClass = "[&_[role=option]]:h-11 sm:[&_[role=option]]:h-8";
-
 export interface ProjectCreateFormProps {
   /** Aktívne oblasti do výberu. Archivované sa neponúkajú. */
   areas: Area[];
@@ -133,7 +127,7 @@ export function ProjectCreateForm({ areas, onOptimisticAdd }: ProjectCreateFormP
             setName(event.target.value);
             if (error !== null) setError(null);
           }}
-          className={controlClass}
+         
         />
       </div>
 
@@ -145,10 +139,10 @@ export function ProjectCreateForm({ areas, onOptimisticAdd }: ProjectCreateFormP
             value={areaId ?? NONE}
             onValueChange={(value) => setAreaId(value === NONE ? null : value)}
           >
-            <SelectTrigger aria-label="Oblasť projektu" className={controlClass}>
+            <SelectTrigger aria-label="Oblasť projektu">
               <SelectValue placeholder="Bez oblasti" />
             </SelectTrigger>
-            <SelectContent className={selectContentClass}>
+            <SelectContent>
               <SelectItem value={NONE}>Bez oblasti</SelectItem>
               {areas.length > 0 ? <SelectSeparator /> : null}
               {areas.map((area) => (
@@ -175,7 +169,7 @@ export function ProjectCreateForm({ areas, onOptimisticAdd }: ProjectCreateFormP
             type="date"
             value={deadline}
             onChange={(event) => setDeadline(event.target.value)}
-            className={cn(controlClass, "dark:[color-scheme:dark]")}
+            className={"dark:[color-scheme:dark]"}
           />
         </div>
       </div>

@@ -18,8 +18,11 @@ export function SelectTrigger({
   return (
     <SelectPrimitive.Trigger
       className={cn(
-        "flex h-9 w-full items-center justify-between gap-2 rounded border border-border bg-surface px-2.5",
-        "text-sm text-fg data-[placeholder]:text-fg-subtle",
+        // Dotykový cieľ je tu, nie u volajúceho — rovnako ako v `Input`.
+        // `text-base` na telefóne bráni tomu, aby si Safari na iOS pri
+        // otvorení výberu sám priblížil stránku.
+        "flex h-11 w-full items-center justify-between gap-2 rounded border border-border bg-surface px-2.5 md:h-9",
+        "text-base text-fg data-[placeholder]:text-fg-subtle md:text-sm",
         "transition-colors duration-100 ease-out hover:border-border-strong",
         "disabled:pointer-events-none disabled:opacity-45",
         "[&>span]:truncate",
@@ -75,7 +78,8 @@ export function SelectItem({
   return (
     <SelectPrimitive.Item
       className={cn(
-        "relative flex h-8 cursor-default select-none items-center gap-2 rounded pl-2 pr-7",
+        // Položky v otvorenom zozname sa vyberajú prstom rovnako ako spúšťač.
+        "relative flex h-11 cursor-default select-none items-center gap-2 rounded pl-2 pr-7 md:h-8",
         "text-[13px] text-fg outline-none",
         "data-[highlighted]:bg-surface-2",
         "data-[state=checked]:text-accent",

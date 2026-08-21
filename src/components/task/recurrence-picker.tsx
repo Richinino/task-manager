@@ -292,7 +292,7 @@ export function RecurrencePicker({ taskId, rule, anchorIso }: RecurrencePickerPr
             apply({ ...choice, byMonthDay: day });
           }}
         >
-          <SelectTrigger aria-label="Deň v mesiaci" className="h-11 md:h-9">
+          <SelectTrigger aria-label="Deň v mesiaci">
             <SelectValue />
           </SelectTrigger>
           {/* Položky kreslí Radix v portáli — inak než cez triedu na obsahu sa

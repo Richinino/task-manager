@@ -280,7 +280,7 @@ export function DayColumn({
               if (adding) closeAdding();
               else setAdding(true);
             }}
-            className={cn("-mr-1 size-11 md:size-7", adding && "bg-surface-2 text-fg")}
+            className={cn("-mr-1", adding && "bg-surface-2 text-fg")}
           />
         </span>
       </header>

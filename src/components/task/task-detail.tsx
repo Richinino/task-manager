@@ -157,16 +157,6 @@ const timeInputClass = cn(
   "md:h-9 md:w-28 md:text-sm",
 );
 
-/** Ovládacie prvky panela: palec pod `md`, hustota od `md`. */
-const controlClass = "h-11 md:h-9";
-
-/**
- * Položky rozbaleného výberu. Radix ich kreslí v portáli, takže sa k nim
- * inak než cez potomka obsahu dostať nedá — 32 px vysoká položka je pod
- * dotykovou hranicou a v štvorici výberov by sa trafiť nedala.
- */
-const selectContentClass = "[&_[role=option]]:h-11 md:[&_[role=option]]:h-8";
-
 /** Prázdne pole znamená „vymazať hodnotu", nie „ulož prázdny reťazec". */
 function orNull(value: string): string | null {
   const trimmed = value.trim();
@@ -827,8 +817,7 @@ export function TaskDetail({
                       }
                       className={cn(
                         "inline-flex flex-1 items-center justify-center gap-1.5 rounded border",
-                        controlClass,
-                        "text-[13px] font-medium transition-colors duration-100 ease-out",
+                                                "text-[13px] font-medium transition-colors duration-100 ease-out",
                         active
                           ? "border-accent bg-accent-soft text-fg"
                           : "border-border bg-surface text-fg-muted hover:border-border-strong",
@@ -855,10 +844,10 @@ export function TaskDetail({
                     );
                   }}
                 >
-                  <SelectTrigger aria-label="Odhad trvania" className={controlClass}>
+                  <SelectTrigger aria-label="Odhad trvania">
                     <SelectValue placeholder="Bez odhadu" />
                   </SelectTrigger>
-                  <SelectContent className={selectContentClass}>
+                  <SelectContent>
                     <SelectItem value={NONE}>Bez odhadu</SelectItem>
                     <SelectSeparator />
                     {estimates.map((minutes) => (
@@ -886,11 +875,10 @@ export function TaskDetail({
                 >
                   <SelectTrigger
                     aria-label="Energetická náročnosť"
-                    className={controlClass}
                   >
                     <SelectValue placeholder="Neurčená" />
                   </SelectTrigger>
-                  <SelectContent className={selectContentClass}>
+                  <SelectContent>
                     <SelectItem value={NONE}>Neurčená</SelectItem>
                     <SelectSeparator />
                     <SelectItem value="low">{ENERGY_LABELS.low}</SelectItem>
@@ -944,10 +932,10 @@ export function TaskDetail({
                   );
                 }}
               >
-                <SelectTrigger aria-label="Projekt úlohy" className={controlClass}>
+                <SelectTrigger aria-label="Projekt úlohy">
                   <SelectValue placeholder="Bez projektu" />
                 </SelectTrigger>
-                <SelectContent className={selectContentClass}>
+                <SelectContent>
                   <SelectItem value={NONE}>Bez projektu</SelectItem>
                   {projects.length > 0 ? <SelectSeparator /> : null}
                   {projects.map((project) => (
@@ -971,10 +959,10 @@ export function TaskDetail({
                   );
                 }}
               >
-                <SelectTrigger aria-label="Oblasť úlohy" className={controlClass}>
+                <SelectTrigger aria-label="Oblasť úlohy">
                   <SelectValue placeholder="Bez oblasti" />
                 </SelectTrigger>
-                <SelectContent className={selectContentClass}>
+                <SelectContent>
                   <SelectItem value={NONE}>Bez oblasti</SelectItem>
                   {areas.length > 0 ? <SelectSeparator /> : null}
                   {areas.map((area) => (

@@ -237,7 +237,6 @@ export function EveningShutdown({
             onChange={(event) => setJournalBody(event.target.value)}
             placeholder="Napr. konečne som rozbehol nasadenie"
             maxLength={10_000}
-            className="h-11 text-base sm:h-9 sm:text-sm"
           />
 
           <fieldset className="flex flex-col gap-2">

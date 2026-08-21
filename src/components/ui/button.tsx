@@ -33,10 +33,25 @@ const variants: Record<ButtonVariant, string> = {
     "border-transparent bg-danger text-accent-fg hover:bg-danger/90 active:bg-danger/80",
 };
 
+/*
+  Dotykový cieľ je súčasťou veľkosti, nie záplata na volajúcom.
+
+  Doteraz bolo `icon` 32 px — teda pod hranicou 44 px, ktorú palec potrebuje —
+  a obchádzalo sa to ručne `className="size-11 md:size-8"` na KAŽDOM mieste.
+  Takých obchádzok bolo v projekte 148 v 60 súboroch a stačilo raz zabudnúť.
+
+  Teraz je veľkosť na telefóne dotyková a od `md:` sa sťahuje na hustotu,
+  ktorú chce myš. Volajúci nemusí robiť nič.
+*/
 const sizes: Record<ButtonSize, string> = {
-  sm: "h-7 px-2 text-[13px]",
-  md: "h-9 px-3 text-sm",
-  icon: "size-8 p-0",
+  /*
+    `sm` je ZÁMERNE aj na telefóne pod 44 px: je to hustá veľkosť do riadkov
+    a paneli, kde dotykovú plochu nesie celý riadok. Nikdy ju nedávaj
+    tlačidlu, ktoré je na mobile jediným cieľom — na to je `md` alebo `icon`.
+  */
+  sm: "h-8 px-2 text-[13px] md:h-7",
+  md: "h-11 px-3 text-sm md:h-9",
+  icon: "size-11 p-0 md:size-8",
 };
 
 /**

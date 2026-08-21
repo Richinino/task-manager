@@ -279,7 +279,6 @@ export function PostponeGuardProvider({ children }: { children: ReactNode }) {
                 }}
                 placeholder="Napr. čakám na podklady od Petra"
                 maxLength={500}
-                className="h-11 text-base sm:h-9 sm:text-sm"
               />
             </div>
 

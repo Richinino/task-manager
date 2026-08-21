@@ -41,10 +41,6 @@ import {
 /** Radix Select neberie prázdny reťazec ako hodnotu — „nič" má vlastný kľúč. */
 const NONE = "__none__";
 
-/** Ovládacie prvky: palec pod `sm`, hustota od `sm`. */
-const controlClass = "h-11 text-base sm:h-9 sm:text-sm";
-const selectContentClass = "[&_[role=option]]:h-11 sm:[&_[role=option]]:h-8";
-
 /** Šírka poradového čísla plus medzera — polia začínajú pod názvom úlohy. */
 const indentClass = "pl-[26px]";
 
@@ -183,7 +179,7 @@ export function TemplateTaskRow({
           aria-label={`Názov ${step}. úlohy šablóny`}
           placeholder="Čo sa má spraviť"
           onChange={(event) => onChange({ title: event.target.value })}
-          className={cn("min-w-0 flex-1", controlClass)}
+          className={cn("min-w-0 flex-1")}
         />
 
         {/* Presun a mazanie sú ikony bez textu — na 375 px by tri tlačidlá
@@ -234,11 +230,10 @@ export function TemplateTaskRow({
           >
             <SelectTrigger
               aria-label={`Deň ${step}. úlohy oproti dňu použitia`}
-              className={controlClass}
             >
               <SelectValue />
             </SelectTrigger>
-            <SelectContent className={selectContentClass}>
+            <SelectContent>
               {dayChoices.map((offset) => (
                 <SelectItem key={offset} value={String(offset)}>
                   {dayOffsetLabel(offset)}
@@ -321,10 +316,10 @@ function RowDetails({ draft, disabled, fieldId, onChange }: RowDetailsProps) {
             disabled={disabled}
             onValueChange={(value) => onChange({ priority: Number(value) })}
           >
-            <SelectTrigger id={fieldId("priority")} className={controlClass}>
+            <SelectTrigger id={fieldId("priority")}>
               <SelectValue />
             </SelectTrigger>
-            <SelectContent className={selectContentClass}>
+            <SelectContent>
               {PRIORITY_CHOICES.map((choice) => (
                 <SelectItem key={choice.value} value={String(choice.value)}>
                   {choice.label}
@@ -348,10 +343,10 @@ function RowDetails({ draft, disabled, fieldId, onChange }: RowDetailsProps) {
               onChange({ estimateMin: value === NONE ? null : Number(value) })
             }
           >
-            <SelectTrigger id={fieldId("estimate")} className={controlClass}>
+            <SelectTrigger id={fieldId("estimate")}>
               <SelectValue />
             </SelectTrigger>
-            <SelectContent className={selectContentClass}>
+            <SelectContent>
               <SelectItem value={NONE}>Bez odhadu</SelectItem>
               {estimateChoices.map((minutes) => (
                 <SelectItem key={minutes} value={String(minutes)}>
@@ -379,10 +374,10 @@ function RowDetails({ draft, disabled, fieldId, onChange }: RowDetailsProps) {
               })
             }
           >
-            <SelectTrigger id={fieldId("energy")} className={controlClass}>
+            <SelectTrigger id={fieldId("energy")}>
               <SelectValue />
             </SelectTrigger>
-            <SelectContent className={selectContentClass}>
+            <SelectContent>
               <SelectItem value={NONE}>Neurčená</SelectItem>
               {ENERGY_CHOICES.map((choice) => (
                 <SelectItem key={choice.value} value={choice.value}>
@@ -409,7 +404,7 @@ function RowDetails({ draft, disabled, fieldId, onChange }: RowDetailsProps) {
           disabled={disabled}
           placeholder="@pocitac, @telefon, @mesto"
           onChange={(event) => onChange({ context: event.target.value })}
-          className={controlClass}
+         
         />
       </div>
 
