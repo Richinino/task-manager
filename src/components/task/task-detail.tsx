@@ -29,6 +29,7 @@ import { PriorityDot } from "@/components/task/priority-dot";
 import { RecurrencePicker } from "@/components/task/recurrence-picker";
 import { SubtaskList } from "@/components/task/subtask-list";
 import { ProjectQuickCreate } from "@/components/task/project-quick-create";
+import { WikiLinkText, type WikiLinkTarget } from "@/components/task/wikilink-text";
 import { TagInput } from "@/components/task/tag-input";
 import {
   loadTaskExtras,
@@ -50,6 +51,7 @@ import {
   toggleTaskDone,
   updateTask,
 } from "@/server/actions/tasks";
+import { syncLinks } from "@/server/actions/links";
 import { usePostponeGuard } from "@/components/task/postpone-guard";
 import type { TaskWithRelations } from "@/server/queries/tasks";
 
@@ -217,6 +219,9 @@ export function TaskDetail({
     [],
   );
 
+  /** Entity, na ktoré odkazuje poznámka cez `[[…]]`. */
+  const [linkTargets, setLinkTargets] = useState<WikiLinkTarget[]>([]);
+
   /** Projekty zo servera aj tie, ktoré vznikli v tomto paneli. */
   const allProjects = [...projects, ...createdProjects];
   const [isPending, startTransition] = useTransition();
@@ -252,7 +257,7 @@ export function TaskDetail({
   useEffect(() => {
     let cancelled = false;
 
-    void loadTaskExtras(task.id)
+    void loadTaskExtras(task.id, task.note)
       .then((result) => {
         if (cancelled) return;
         if (!result.ok) {
@@ -262,6 +267,7 @@ export function TaskDetail({
         setSubtasks(result.data.subtasks);
         setTags(result.data.tags);
         setTagSuggestions(result.data.suggestions);
+        setLinkTargets(result.data.linkTargets);
       })
       .catch(() => {
         if (cancelled) return;
@@ -336,6 +342,27 @@ export function TaskDetail({
       () => updateTask(task.id, { note: orNull(next) }),
       "Poznámku sa nepodarilo uložiť.",
     );
+
+    /*
+      Odkazy `[[…]]` sa prepočítajú po každom uložení poznámky — inak by
+      spätné odkazy ukazovali stav spred úpravy a mazanie odkazu by sa
+      nikdy neprejavilo.
+
+      Beží mimo `commit` a jeho zlyhanie sa NEHLÁSI: poznámka je už uložená
+      a hláška „nepodarilo sa" by pri úspešnom zápise mýlila. Odkazy sa
+      dorovnajú pri ďalšej úprave.
+    */
+    void syncLinks("task", task.id, next)
+      // Zápis vráti len počty, nie ciele — náhľad si ich dotiahne znova.
+      // Je to jedna cesta na server navyše, ale spúšťa ju uloženie poznámky,
+      // nie písanie, takže sa nedeje pri každom písmene.
+      .then(() => loadTaskExtras(task.id, next))
+      .then((result) => {
+        if (result.ok) setLinkTargets(result.data.linkTargets);
+      })
+      .catch((chyba: unknown) => {
+        console.error("[task-detail] odkazy sa nepodarilo prepočítať", chyba);
+      });
   }
 
   function commitContext(): void {
@@ -626,6 +653,25 @@ export function TaskDetail({
                 "transition-colors duration-100 ease-out hover:border-border-strong",
               )}
             />
+
+            {/*
+              Náhľad odkazov pod poľom, nie namiesto neho.
+
+              Prepínať pole na vykreslený text pri opustení by znamenalo, že
+              na opravu preklepu treba najprv kliknúť „späť do úprav" — a
+              poznámka sa upravuje častejšie, než sa číta. Náhľad je preto
+              samostatný riadok a objaví sa len vtedy, keď je čo ukázať.
+            */}
+            {linkTargets.length > 0 ? (
+              <div className="flex flex-col gap-1 rounded border border-border bg-surface-2 px-2.5 py-2">
+                <span className="label text-fg-subtle">Odkazy v poznámke</span>
+                <WikiLinkText
+                  text={draft.note}
+                  targets={linkTargets}
+                  className="text-meta leading-relaxed text-fg-muted"
+                />
+              </div>
+            ) : null}
           </Field>
 
           {/* ── kroky ──────────────────────────────────────────────────── */}
