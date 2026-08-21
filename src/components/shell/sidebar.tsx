@@ -21,6 +21,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
@@ -293,19 +294,13 @@ export function navBadge(item: NavItem, counts: NavCounts): NavBadgeData | null 
 
 function NavBadge({ badge }: { badge: NavBadgeData }) {
   return (
-    <span
+    <Badge
       title={badge.label}
       aria-label={badge.label}
-      className={cn(
-        "inline-flex h-4 min-w-4 items-center justify-center rounded-full px-1",
-        "text-[10px] font-semibold tabular-nums",
-        badge.tone === "danger"
-          ? "bg-danger/10 text-danger"
-          : "bg-surface-2 text-fg-muted",
-      )}
+      tone={badge.tone === "danger" ? "danger" : "neutral"}
     >
       {badge.value}
-    </span>
+    </Badge>
   );
 }
 

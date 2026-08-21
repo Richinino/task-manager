@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { Ellipsis, Settings } from "lucide-react";
 
+import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 
 import {
@@ -60,7 +61,7 @@ function BarBadge({ item, counts }: { item: NavItem; counts: NavCounts }) {
       aria-label={badge.label}
       className={cn(
         "absolute -right-2.5 -top-1.5 inline-flex h-4 min-w-4 items-center justify-center",
-        "rounded-full px-1 text-[10px] font-semibold tabular-nums text-accent-fg",
+        "rounded-full px-1 font-mono text-[10px] font-medium tabular-nums text-accent-fg",
         badge.tone === "danger" ? "bg-danger" : "bg-accent",
       )}
     >
@@ -252,18 +253,13 @@ export function MobileNav({ counts }: { counts: NavCounts }) {
                       />
                       <span className="min-w-0 flex-1 truncate">{item.label}</span>
                       {badge ? (
-                        <span
+                        <Badge
                           aria-label={badge.label}
-                          className={cn(
-                            "inline-flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full px-1.5",
-                            "text-[11px] font-semibold tabular-nums",
-                            badge.tone === "danger"
-                              ? "bg-danger/10 text-danger"
-                              : "bg-surface-2 text-fg-muted",
-                          )}
+                          tone={badge.tone === "danger" ? "danger" : "neutral"}
+                          className="shrink-0"
                         >
                           {badge.value}
-                        </span>
+                        </Badge>
                       ) : null}
                     </Link>
                   </li>
