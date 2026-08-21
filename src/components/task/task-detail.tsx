@@ -28,6 +28,7 @@ import { PostponeBadge } from "@/components/task/postpone-badge";
 import { PriorityDot } from "@/components/task/priority-dot";
 import { RecurrencePicker } from "@/components/task/recurrence-picker";
 import { SubtaskList } from "@/components/task/subtask-list";
+import { ProjectQuickCreate } from "@/components/task/project-quick-create";
 import { TagInput } from "@/components/task/tag-input";
 import {
   loadTaskExtras,
@@ -205,6 +206,19 @@ export function TaskDetail({
   const guard = usePostponeGuard();
   const [draft, setDraft] = useState<Draft>(() => toDraft(task));
   const [error, setError] = useState<string | null>(null);
+
+  /*
+    Projekty prídu zo servera ako prop. Ten, ktorý práve vznikol, v ňom ešte
+    nie je — revalidácia dobehne až po zavretí panela. Bez tohto zoznamu by
+    sa novo založený projekt do výberu nedostal a priradenie by vyzeralo,
+    že sa nič nestalo.
+  */
+  const [createdProjects, setCreatedProjects] = useState<{ id: string; name: string }[]>(
+    [],
+  );
+
+  /** Projekty zo servera aj tie, ktoré vznikli v tomto paneli. */
+  const allProjects = [...projects, ...createdProjects];
   const [isPending, startTransition] = useTransition();
   const titleRef = useRef<HTMLTextAreaElement>(null);
 
@@ -937,14 +951,25 @@ export function TaskDetail({
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value={NONE}>Bez projektu</SelectItem>
-                  {projects.length > 0 ? <SelectSeparator /> : null}
-                  {projects.map((project) => (
+                  {allProjects.length > 0 ? <SelectSeparator /> : null}
+                  {allProjects.map((project) => (
                     <SelectItem key={project.id} value={project.id}>
                       {project.name}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
+
+              <ProjectQuickCreate
+                onCreated={(project) => {
+                  setCreatedProjects((current) => [...current, project]);
+                  commit(
+                    { projectId: project.id },
+                    () => updateTask(task.id, { projectId: project.id }),
+                    "Projekt sa nepodarilo priradiť.",
+                  );
+                }}
+              />
             </Field>
 
             <Field label="Oblasť">
