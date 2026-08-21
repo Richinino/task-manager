@@ -16,6 +16,7 @@ import { Button } from "@/components/ui/button";
 import type { Area } from "@/db/schema";
 import { effectiveIdeaStage } from "@/lib/ideas";
 import { cn } from "@/lib/utils";
+import { Badge } from "@/components/ui/badge";
 import {
   deleteIdea,
   restoreIdea,
@@ -542,15 +543,13 @@ function Column({ title, hint, count, emptyText, children }: ColumnProps) {
 
 function CountBadge({ count }: { count: number }) {
   return (
-    <span
+    <Badge
       aria-hidden="true"
-      className={cn(
-        "inline-flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full px-1.5",
-        "text-[11px] font-semibold tabular-nums",
-        count === 0 ? "bg-surface-2 text-fg-subtle" : "bg-accent-soft text-fg",
-      )}
+      // Prázdna fáza sa nezvýrazňuje: nula je informácia, nie signál.
+      tone={count === 0 ? "neutral" : "accent"}
+      className="shrink-0"
     >
       {count}
-    </span>
+    </Badge>
   );
 }

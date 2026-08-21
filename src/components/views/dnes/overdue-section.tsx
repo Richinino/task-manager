@@ -5,6 +5,7 @@ import { ChevronRight, TriangleAlert } from "lucide-react";
 
 import { TaskItem } from "@/components/task/task-item";
 import { cn } from "@/lib/utils";
+import { Badge } from "@/components/ui/badge";
 import type { TaskWithRelations } from "@/server/queries/tasks";
 
 export interface OverdueSectionProps {
@@ -60,15 +61,9 @@ export function OverdueSection({
           />
           <TriangleAlert aria-hidden="true" size={13} className="shrink-0 text-danger" />
           <span className="label min-w-0 truncate text-danger">Po termíne</span>
-          <span
-            aria-hidden="true"
-            className={cn(
-              "inline-flex h-4 min-w-4 shrink-0 items-center justify-center rounded-full px-1",
-              "bg-danger/10 text-[10px] font-semibold tabular-nums text-danger",
-            )}
-          >
+          <Badge aria-hidden="true" tone="danger" className="shrink-0">
             {tasks.length}
-          </span>
+          </Badge>
           <span className="sr-only">, {tasks.length}</span>
         </button>
       </h2>
