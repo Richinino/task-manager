@@ -62,6 +62,16 @@ export interface NavItem {
   Icon: LucideIcon;
   group: NavGroup;
   badge?: NavBadgeKey;
+  /**
+   * Je položka v spodnej lište na telefóne?
+   *
+   * Je to ZÁMERNE iná otázka než `group`. `group` hovorí, čo tá obrazovka
+   * znamená (a podľa toho sa delí bočný panel), `bar` hovorí, či sa zmestila
+   * medzi štyri miesta, na ktoré dosiahne palec. Kým to bolo jedno pole,
+   * nedalo sa vytiahnuť Projekty do lišty bez toho, aby sa v paneli
+   * presťahovali medzi dennú prácu, kam nepatria.
+   */
+  bar?: true;
 }
 
 /**
@@ -94,8 +104,16 @@ export const NAV_ITEMS: readonly NavItem[] = [
     Icon: CalendarCheck,
     group: "day",
     badge: "overdue",
+    bar: true,
   },
-  { href: "/tyzden", label: "Týždeň", shortcut: "w", Icon: CalendarRange, group: "day" },
+  {
+    href: "/tyzden",
+    label: "Týždeň",
+    shortcut: "w",
+    Icon: CalendarRange,
+    group: "day",
+    bar: true,
+  },
   { href: "/mesiac", label: "Mesiac", shortcut: "m", Icon: CalendarDays, group: "day" },
   {
     href: "/inbox",
@@ -104,6 +122,7 @@ export const NAV_ITEMS: readonly NavItem[] = [
     Icon: Inbox,
     group: "day",
     badge: "inbox",
+    bar: true,
   },
   {
     href: "/projekty",
@@ -111,6 +130,13 @@ export const NAV_ITEMS: readonly NavItem[] = [
     shortcut: "p",
     Icon: FolderKanban,
     group: "structure",
+    /*
+      V lište napriek tomu, že patrí do štruktúry: projekt sa zakladá
+      a otvára často, a spod „Viac" to boli tri ťuknutia. Miesto uvoľnil
+      „Mesiac" — mesačný pohľad je vec plánovania, nie behu dňa, a otvára
+      sa rádovo menej.
+    */
+    bar: true,
   },
   {
     href: "/oblasti",
@@ -170,26 +196,44 @@ export const NAV_ITEMS: readonly NavItem[] = [
   },
 ];
 
-/** Denná práca — na telefóne ostáva v spodnej lište. */
+/* ── skupiny bočného panela (podľa významu) ────────────────────────────── */
+
+/** Denná práca. */
 export const PRIMARY_NAV: readonly NavItem[] = NAV_ITEMS.filter(
   (item) => item.group === "day",
 );
 
-/** Štruktúra a odkladiská — na telefóne za piatou položkou „Viac". */
+/** Štruktúra a odkladiská. */
 export const SECONDARY_NAV: readonly NavItem[] = NAV_ITEMS.filter(
   (item) => item.group === "structure",
 );
 
-/** Nadpis druhej skupiny. Používa ho panel aj mobilný hárok. */
+/* ── spodná lišta na telefóne (podľa dosahu palca) ─────────────────────── */
+
+/** Štyri miesta v lište. Piate si berie „Viac". */
+export const BAR_NAV: readonly NavItem[] = NAV_ITEMS.filter((item) => item.bar === true);
+
+/** Všetko ostatné — vysunie sa v hárku nad lištou. */
+export const SHEET_NAV: readonly NavItem[] = NAV_ITEMS.filter((item) => item.bar !== true);
+
+/** Nadpis druhej skupiny v bočnom paneli. */
 export const SECONDARY_NAV_LABEL = "Štruktúra a odkladiská";
+
+/** Nadpis prvej skupiny. V paneli sa nekreslí, v mobilnom hárku áno. */
+export const PRIMARY_NAV_LABEL = "Deň";
 
 export function isNavItemActive(pathname: string, href: string): boolean {
   return pathname === href || pathname.startsWith(`${href}/`);
 }
 
-/** Je práve otvorená niektorá z položiek druhej skupiny? */
-export function isSecondaryActive(pathname: string): boolean {
-  return SECONDARY_NAV.some((item) => isNavItemActive(pathname, item.href));
+/**
+ * Je práve otvorená obrazovka, ktorá v spodnej lište nie je?
+ *
+ * Podľa toho sa rozsvieti „Viac" — inak by človek pri otvorenom Mesiaci
+ * alebo Archíve nevidel v lište nič aktívne a nevedel by, kde je.
+ */
+export function isSheetActive(pathname: string): boolean {
+  return SHEET_NAV.some((item) => isNavItemActive(pathname, item.href));
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════

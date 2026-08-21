@@ -28,7 +28,7 @@ export function AppShell({ user, counts, signOutAction, children }: AppShellProp
       <div className="flex min-w-0 flex-1 flex-col">
         {/*
           Na telefóne nie je sidebar, takže téma a odhlásenie musia byť tu.
-          Lišta je 3.5rem vysoká, aby sa do nej zmestili dotykové ciele 44 px —
+          Lišta je vysoká `--bar-height`, aby sa do nej zmestili dotykové ciele 44 px —
           na 12 rem (48 px) by sa prepínač témy nevošiel.
         */}
         <header className="sticky top-0 z-30 flex h-14 shrink-0 items-center justify-between gap-2 border-b border-border bg-bg/90 px-3 backdrop-blur-sm md:hidden">
@@ -52,13 +52,15 @@ export function AppShell({ user, counts, signOutAction, children }: AppShellProp
 
         {/*
           Spodný odstup na telefóne musí uvoľniť všetko, čo nad obsahom pláva:
-            3.5rem  spodná lišta (`mobile-nav`)
-          + safe-area-inset-bottom  gesture bar telefónu
+            --bar-inset  spodná lišta aj s výrezom telefónu
           + 0.75rem + 3rem  plávajúce tlačidlo zachytenia (`capture-provider`)
           Indikátor pripojenia sedí medzi lištou a tlačidlom, takže sa uvoľní
           spolu s ním. Bez toho posledné riadky zoznamu končia pod tlačidlom.
+
+          Výška lišty je teraz JEDEN token — dovtedy to bola tá istá hodnota
+          opísaná na štyroch nezávislých miestach.
         */}
-        <main className="min-w-0 flex-1 pb-[calc(7.25rem+env(safe-area-inset-bottom))] md:pb-0">
+        <main className="min-w-0 flex-1 pb-[calc(var(--bar-inset)+3.75rem)] md:pb-0">
           {children}
         </main>
       </div>
