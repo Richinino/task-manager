@@ -53,10 +53,58 @@ Používaj **výhradne** sémantické tokeny z `globals.css`, nikdy priame Tailw
 | `text-frog`, `bg-frog-soft` | žaba dňa — **nikde inde** |
 | `text-success`, `text-warn`, `text-danger` | sémantika stavu |
 | `text-energy-low/mid/high` | energetická náročnosť |
+| `bg-accent-badge`, `bg-frog-tint`, `bg-danger-tint` | priesvitné podklady odznakov |
 
-Zaoblenie `rounded` (0.5rem). Ikony: `lucide-react`, veľkosť 16 px v riadkoch, 18 px v navigácii.
+Hodnoty pochádzajú z návrhu „Terminál" (Claude Design, 8/2026) a sú prepísané doslovne vrátane tmavej vetvy.
+
+**Jantárová a červená sú obsadené významom.** `frog` znamená prioritu dňa, `danger` znamená „po termíne". Akcent sa im nesmie priblížiť — inak prestane byť rozoznateľné, čo je dôležité a čo je len tlačidlo. Pri výmene palety to platí ako prvé.
 
 Tmavý režim funguje cez triedu `.dark` na `<html>`. Nikdy nepíš `dark:` s natvrdo zadanou farbou — tokeny sa prepínajú samy.
+
+### Typografia
+
+Písmo: **IBM Plex Sans** na rozhranie, **JetBrains Mono** na štítky, čísla, časy a termíny — všetko, čo sa má dať prebehnúť očami v stĺpci. Obe cez `next/font` so subsetom `latin-ext`; bez neho vypadnú slovenské diakritické znaky na náhradné písmo.
+
+| Trieda | Veľkosť | Použitie |
+|---|---|---|
+| `text-micro` | 10 px | odznaky s počtom, klávesy |
+| `text-mini` | 11 px | štítky sekcií, metadáta v riadku |
+| `text-meta` | 12 px | doplnkový text pod poľom |
+| `text-body` | 13 px | bežný text v hustých zoznamoch |
+
+Nikdy nepíš `text-[13px]` — je to tá istá škála bez mena a nedá sa zmeniť naraz. Tailwindové `text-sm`/`text-lg` ostávajú v platnosti pre nadpisy a väčší text.
+
+> **Pozor pri pridávaní ďalšej veľkosti:** meno treba dopísať aj do `extendTailwindMerge` v `src/lib/utils.ts`. Bez toho si `tailwind-merge` vyloží `text-nieco` ako FARBU a pri kolízii s naozajstnou farbou veľkosť ticho zahodí. Preklad ani testy to nechytia.
+
+Čísla, ktoré sa menia (počty, časy, dátumy), patria do `font-mono tabular-nums`. V proporcionálnom písme je jednotka užšia než osmička, takže odznak pri každej zmene podskočí.
+
+Štítok sekcie je utilita `.label` (mono, veľké písmená, preloženie 0.14em). **Farbu nenesie** — dopĺňa ju každé použitie, lebo sa mení podľa stavu.
+
+### Tvar a elevácia
+
+Zaoblenie: `rounded-xs` (2), `rounded-sm` (4), `rounded` (6), `rounded-lg` (10), `rounded-xl` (16). Návrh je ostrý — prevažujú 4–6 px.
+
+Tiene: `shadow-sm` (jemné vyvýšenie), `shadow-lg` (plávajúce panely), `shadow-accent` (žiara pod primárnou akciou). Nepoužívaj tailwindové predvolené tiene — v tmavom režime nie sú ladené.
+
+Ikony: `lucide-react`, veľkosť 13–15 px v riadkoch, 18 px v navigácii.
+
+**Zdrojové premenné sa nesmú volať rovnako ako tailwindové tokeny.** `--radius-sm: var(--radius-sm)` v `@theme` je odkaz sám na seba a celú skupinu znefunkční — `rounded-lg` ticho vypadne na 0 px. Preto sú tiene v `:root` pod `--sh-*`.
+
+### Dotykové ciele
+
+Na telefóne má byť každý cieľ aspoň **44 px**. Nesie to primitív, nie volajúci: `Button`, `Input`, `SelectTrigger` aj `SelectItem` sú na telefóne 44 px a od `md:` sa sťahujú na hustotu pre myš. Nepíš `className="h-11 md:h-9"` — to je záplata, ktorá bola v projekte 148-krát.
+
+Výnimka je `Button size="sm"`: je to hustá veľkosť do riadkov, kde dotykovú plochu nesie celý riadok. Nikdy ju nedávaj tlačidlu, ktoré je na mobile jediným cieľom.
+
+Kde sa cieľ nezmestí (hviezdička priority dňa má 14 px), rozšír ho neviditeľným pseudoprvkom `before:absolute before:-inset-2` — riadok sa tým neroztiahne ani o pixel.
+
+### Rozloženie
+
+`--bar-height` a `--bar-inset` držia výšku spodnej lišty na telefóne. Nikdy ju nepíš ako `calc(3.5rem + env(safe-area-inset-bottom))` — bola to tá istá konštanta na štyroch nezávislých miestach a stačilo zmeniť tri.
+
+Breakpointy: **`md`** delí telefón od počítača (bočný panel vs. spodná lišta, dotyk vs. myš), **`sm`** ladí hustotu obsahu, **`lg`** zapína druhý stĺpec tam, kde ho obrazovka má.
+
+Vrstvy: `z-30` mobilná hlavička, `z-40` spodná lišta a plávajúce prvky, `z-50` dialógy a vyskakovacie panely.
 
 ## Prístupnosť
 
