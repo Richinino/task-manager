@@ -239,7 +239,6 @@ export function AreaRow({ area, onOptimisticRemove, onError }: AreaRowProps) {
                 ? "Vrátiť z archívu"
                 : "Archivovať — oblasť sa schová z výberov, úlohy aj projekty ostanú"
             }
-            className="size-11 sm:size-8"
           >
             {archived ? (
               <ArchiveRestore aria-hidden="true" size={15} />

@@ -151,7 +151,7 @@ function PromoteBody({ idea, onClose, onPromoted }: PromoteBodyProps) {
         </ul>
 
         <DialogFooter>
-          <Button type="button" onClick={onClose} className="h-11 sm:h-9">
+          <Button type="button" onClick={onClose}>
             Zavrieť
           </Button>
           <Link
@@ -246,7 +246,7 @@ function PromoteBody({ idea, onClose, onPromoted }: PromoteBodyProps) {
       </div>
 
       <DialogFooter>
-        <Button type="button" onClick={onClose} disabled={isPending} className="h-11 sm:h-9">
+        <Button type="button" onClick={onClose} disabled={isPending}>
           Zrušiť
         </Button>
         <Button

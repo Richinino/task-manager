@@ -82,7 +82,7 @@ export default async function PrihlaseniePage({
                   {googleEnabled ? (
                     <div className="flex items-center gap-2 py-1">
                       <span className="h-px flex-1 bg-border" />
-                      <span className="text-mini uppercase tracking-wide text-fg-subtle">
+                      <span className="label text-fg-subtle">
                         alebo
                       </span>
                       <span className="h-px flex-1 bg-border" />
