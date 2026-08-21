@@ -370,6 +370,24 @@ export function getSomedayTasks(userId: string): Promise<TaskWithRelations[]> {
 }
 
 /**
+ * Úlohy s pravidlom opakovania — podklad obrazovky `/opakovane`.
+ *
+ * Zámerne BEZ `isOpen()`: opakovaná úloha je v stave `done` úplne bežne,
+ * lebo práve odškrtnutie zrodí ďalší výskyt. Filtrovať otvorené by znamenalo,
+ * že pravidlo z prehľadu zmizne v okamihu, keď si ho splnil — teda presne
+ * vtedy, keď je namieste pozrieť sa, kedy príde nabudúce.
+ *
+ * Nezobrazujú sa deti opakovania (`recurrenceParentId`), len samotné
+ * pravidlá; inak by tu po roku ležalo päťdesiat kópií tej istej veci.
+ */
+export function getRecurringTasks(userId: string): Promise<TaskWithRelations[]> {
+  return selectTasks(
+    userId,
+    and(isNotNull(tasks.recurrenceRule), isNull(tasks.recurrenceParentId)),
+  );
+}
+
+/**
  * Úlohy, ktoré blokuje niekto iný. Stav `waiting` doteraz v aplikácii
  * nemal žiadne miesto, hoci v schéme je od začiatku.
  */
