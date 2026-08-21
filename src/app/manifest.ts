@@ -27,8 +27,8 @@ export default function manifest(): MetadataRoute.Manifest {
     display: "standalone",
     orientation: "portrait",
 
-    background_color: "#fbfbfa",
-    theme_color: "#fbfbfa",
+    background_color: "#faf9f7",
+    theme_color: "#faf9f7",
     categories: ["productivity"],
 
     // Next.js 16 (Turbopack) publikuje ikony generované cez `ImageResponse`
