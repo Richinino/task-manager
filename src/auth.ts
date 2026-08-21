@@ -7,6 +7,7 @@ import { getDb } from "@/db";
 import { DEFAULT_AREAS } from "@/db/default-areas";
 import { areas, users } from "@/db/schema";
 import { isAllowed, parseAllowList } from "@/lib/allowlist";
+import { grantsCalendar, LOGIN_SCOPE } from "@/lib/google-scopes";
 import { uuidv7 } from "@/lib/id";
 import { DEFAULT_SETTINGS } from "@/lib/settings";
 
@@ -117,15 +118,20 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           Google({
             clientId: googleClientId,
             clientSecret: env("AUTH_GOOGLE_SECRET"),
-            authorization: {
-              params: {
-                // Kalendár len na čítanie (M8). Offline access kvôli refresh tokenu.
-                scope:
-                  "openid email profile https://www.googleapis.com/auth/calendar.readonly",
-                access_type: "offline",
-                prompt: "consent",
-              },
-            },
+            /*
+              Prihlásenie pýta LEN identitu — žiadny kalendár, žiadny
+              `access_type: offline`.
+
+              Kalendár sa dopytuje zvlášť z nastavení, tým istým
+              poskytovateľom a tou istou callback adresou, len s parametrami
+              navyše (`signIn("google", …, { scope, access_type, prompt })`).
+              Vlastný poskytovateľ by znamenal druhú callback adresu, ktorú by
+              bolo treba zaregistrovať v Google Console — takto netreba nič.
+
+              `prompt: "consent"` tu tiež nie je: pri každom ďalšom prihlásení
+              by zbytočne nútil znovu odklikať súhlas.
+            */
+            authorization: { params: { scope: LOGIN_SCOPE } },
           }),
         ]
       : []),
@@ -163,10 +169,18 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         do JWT: refresh token je dlhodobé poverenie k cudziemu účtu a v cookie
         nemá čo robiť. Podrobnosti v `server/google-tokens.ts`.
 
+        Ukladá sa len súhlas, ktorý naozaj nesie kalendár. Bežné prihlásenie
+        ho už nepýta, takže by inak prepísalo uložený prístup hodnotami bez
+        neho a kalendár by sa po každom prihlásení ticho odpojil.
+
         Zlyhanie zápisu NESMIE zhodiť prihlásenie — kalendár je doplnok, nie
         podmienka vstupu do appky.
       */
-      if (account?.provider === "google" && typeof token.uid === "string") {
+      if (
+        account?.provider === "google" &&
+        typeof token.uid === "string" &&
+        grantsCalendar(account.scope)
+      ) {
         try {
           const { storeGoogleAccount } = await import("@/server/google-tokens");
           await storeGoogleAccount(token.uid, {

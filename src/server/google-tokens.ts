@@ -4,6 +4,7 @@ import { and, eq } from "drizzle-orm";
 
 import { getDb } from "@/db";
 import { accounts } from "@/db/schema";
+import { grantsCalendar } from "@/lib/google-scopes";
 
 /* ═══════════════════════════════════════════════════════════════════════════
    GOOGLE TOKENY
@@ -100,8 +101,44 @@ async function forgetRefreshToken(userId: string): Promise<void> {
   const db = await getDb();
   await db
     .update(accounts)
-    .set({ refreshToken: null, accessToken: null, expiresAt: null })
+    .set({ refreshToken: null, accessToken: null, expiresAt: null, scope: null })
     .where(and(eq(accounts.provider, PROVIDER), eq(accounts.userId, userId)));
+}
+
+/**
+ * Odpojí kalendár na žiadosť používateľa.
+ *
+ * Najprv sa súhlas **odvolá u Googlu**, až potom sa zmaže u nás. Samotné
+ * zmazanie nášho záznamu by totiž nechalo povolenie ďalej svietiť v účte
+ * Googlu — appka by tvrdila „odpojené", zatiaľ čo prístup by formálne trval.
+ *
+ * Odvolanie sa smie nepodariť (vypršaný token, výpadok siete) a napriek tomu
+ * sa lokálny záznam maže: keď človek povie „odpoj", appka mu jeho dáta držať
+ * ďalej nebude. Zvyšok si vie dorobiť v nastaveniach účtu Googlu.
+ */
+export async function disconnectCalendar(userId: string): Promise<void> {
+  try {
+    const db = await getDb();
+    const rows = await db
+      .select({ refreshToken: accounts.refreshToken, accessToken: accounts.accessToken })
+      .from(accounts)
+      .where(and(eq(accounts.provider, PROVIDER), eq(accounts.userId, userId)))
+      .limit(1);
+
+    const token = rows[0]?.refreshToken ?? rows[0]?.accessToken;
+    if (token) {
+      await fetch("https://oauth2.googleapis.com/revoke", {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: new URLSearchParams({ token }),
+        cache: "no-store",
+      });
+    }
+  } catch (error) {
+    console.error("[google-tokens] Súhlas sa nepodarilo odvolať u Googlu:", error);
+  }
+
+  await forgetRefreshToken(userId);
 }
 
 interface RefreshResponse {
@@ -200,7 +237,7 @@ export async function hasCalendarAccess(userId: string): Promise<boolean> {
 
     const row = rows[0];
     if (!row || row.refreshToken === null) return false;
-    return (row.scope ?? "").includes("calendar.readonly");
+    return grantsCalendar(row.scope);
   } catch {
     return false;
   }
