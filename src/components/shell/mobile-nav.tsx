@@ -8,11 +8,12 @@ import { Ellipsis, Settings } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 import {
-  PRIMARY_NAV,
-  SECONDARY_NAV,
+  BAR_NAV,
+  PRIMARY_NAV_LABEL,
   SECONDARY_NAV_LABEL,
+  SHEET_NAV,
   isNavItemActive,
-  isSecondaryActive,
+  isSheetActive,
   navBadge,
   type NavCounts,
   type NavItem,
@@ -21,23 +22,34 @@ import {
 /* ═══════════════════════════════════════════════════════════════════════════
    SPODNÁ LIŠTA
 
-   Deväť obrazoviek sa do spodnej lišty nezmestí — rozumný strop je päť položiek
-   (na 375 px to je 75 px na stĺpec). V lište preto ostáva denná práca a piata
-   položka „Viac" vysunie zvyšok v hárku tesne nad lištou. Každá obrazovka je
-   tak najviac na dve ťuknutia a palec na ne dosiahne.
+   Dvanásť obrazoviek sa do spodnej lišty nezmestí — rozumný strop je päť
+   položiek (na 375 px to je 75 px na stĺpec). Štyri z nich sú obrazovky,
+   na ktoré sa chodí najčastejšie, piata je „Viac" a vysunie zvyšok v hárku
+   tesne nad lištou. Každá obrazovka je tak najviac na dve ťuknutia.
 
-   Hárok „Viac" rastie s druhou skupinou (dnes päť položiek po 44 px plus
-   nadpis, teda okolo 250 px). Preto má strop `60dvh` a vlastné rolovanie:
-   ani na nízkej obrazovke nemôže prerásť cez celú stránku a lišta pod ním
-   ostane vždy prístupná.
+   Čo je v lište, hovorí pole `bar` v `NAV_ITEMS` — NIE skupina. Sú to dve
+   rôzne otázky: skupina hovorí, čo obrazovka znamená, `bar` to, či na ňu
+   dosiahne palec. Preto sú v lište aj Projekty (zakladajú sa často) a Mesiac
+   z nej vypadol (plánovacia obrazovka, otvára sa rádovo menej).
 
-   Výška lišty musí ostať 3.5rem + výrez: presne s týmto číslom počíta odsadenie
-   obsahu v `app-shell.tsx`, plávajúce tlačidlo zachytenia aj indikátor
-   pripojenia. Zmena výšky by ich všetky posunula pod lištu.
+   Hárok „Viac" je zoskupený rovnako ako bočný panel, takže Mesiac v ňom
+   nesedí medzi archívmi, ale pod vlastným nadpisom. Strop `60dvh` a vlastné
+   rolovanie: ani na nízkej obrazovke nemôže prerásť cez celú stránku.
+
+   Výšku lišty drží `--bar-height` v `globals.css`. Dovtedy to bola tá istá
+   konštanta opísaná na štyroch nezávislých miestach (tu, v `app-shell`,
+   v plávajúcom tlačidle zachytenia a v indikátore pripojenia) — stačilo
+   zmeniť tri z nich a posledné riadky zoznamu skončili pod lištou.
    ═══════════════════════════════════════════════════════════════════════════ */
 
-/** Výška lišty aj s výrezom telefónu — hárok sedí presne na nej. */
-const BAR_HEIGHT = "calc(3.5rem + env(safe-area-inset-bottom))";
+/** Výška lišty aj s výrezom telefónu. Jediný zdroj je `--bar-inset`. */
+const BAR_HEIGHT = "var(--bar-inset)";
+
+/** Poradie skupín v hárku „Viac" — rovnaké ako v bočnom paneli. */
+const SHEET_GROUPS = [
+  { key: "day", label: PRIMARY_NAV_LABEL },
+  { key: "structure", label: SECONDARY_NAV_LABEL },
+] as const;
 
 function BarBadge({ item, counts }: { item: NavItem; counts: NavCounts }) {
   const badge = navBadge(item, counts);
@@ -73,7 +85,7 @@ export function MobileNav({ counts }: { counts: NavCounts }) {
   const triggerRef = useRef<HTMLButtonElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
 
-  const secondaryActive = isSecondaryActive(pathname);
+  const sheetActive = isSheetActive(pathname);
 
   /* Prechod na inú obrazovku hárok zavrie — inak by ostal visieť nad novým obsahom. */
   useEffect(() => {
@@ -127,7 +139,7 @@ export function MobileNav({ counts }: { counts: NavCounts }) {
         )}
       >
         <ul className="grid grid-cols-5">
-          {PRIMARY_NAV.map((item) => {
+          {BAR_NAV.map((item) => {
             const active = isNavItemActive(pathname, item.href);
             const Icon = item.Icon;
 
@@ -157,13 +169,13 @@ export function MobileNav({ counts }: { counts: NavCounts }) {
               type="button"
               aria-expanded={open}
               aria-controls="mobile-nav-viac"
-              aria-label={`Viac — ${SECONDARY_NAV_LABEL}`}
+              aria-label="Viac — ďalšie obrazovky"
               onClick={() => setOpen((current) => !current)}
               className={cn(
                 BAR_ITEM,
                 // Otvorený hárok aj otvorená obrazovka z druhej skupiny musia
                 // byť vidieť: inak človek nevie, kde v aplikácii vlastne je.
-                open || secondaryActive
+                open || sheetActive
                   ? "font-medium text-accent"
                   : "text-fg-subtle active:text-fg",
               )}
@@ -191,15 +203,27 @@ export function MobileNav({ counts }: { counts: NavCounts }) {
               "rounded-t border-x border-t border-border bg-surface p-1.5 shadow-md",
             )}
           >
+            {/*
+              Hárok je zoskupený rovnako ako bočný panel. Bez toho by „Mesiac"
+              sedel medzi archívmi a odkladiskami, kam významom nepatrí.
+              Skupina bez položiek sa vôbec nevykreslí — nadpis nad prázdnom
+              je horší než žiadny.
+            */}
+            {SHEET_GROUPS.map((group, groupIndex) => {
+              const items = SHEET_NAV.filter((item) => item.group === group.key);
+              if (items.length === 0) return null;
+
+              return (
+                <div key={group.key}>
             <h2
-              id="mobile-nav-viac-title"
+              id={groupIndex === 0 ? "mobile-nav-viac-title" : undefined}
               className="truncate px-2 pb-1 pt-1 text-[11px] font-medium uppercase tracking-wide text-fg-subtle"
             >
-              {SECONDARY_NAV_LABEL}
+              {group.label}
             </h2>
 
             <ul className="flex flex-col gap-0.5">
-              {SECONDARY_NAV.map((item) => {
+              {items.map((item) => {
                 const active = isNavItemActive(pathname, item.href);
                 const badge = navBadge(item, counts);
                 const Icon = item.Icon;
@@ -245,12 +269,18 @@ export function MobileNav({ counts }: { counts: NavCounts }) {
                   </li>
                 );
               })}
+            </ul>
+                </div>
+              );
+            })}
 
-              {/*
-                Nastavenia sú oddelené čiarou, lebo nie sú obrazovka na prácu.
-                V hárku ale byť MUSIA: na telefóne je bočný panel skrytý a bez
-                tohto by sa na Androide k nastaveniam nedalo dostať vôbec.
-              */}
+            {/*
+              Nastavenia sú oddelené čiarou, lebo nie sú obrazovka na prácu.
+              V hárku ale byť MUSIA: na telefóne je bočný panel skrytý a bez
+              tohto by sa na Androide k nastaveniam nedalo dostať vôbec.
+              Sú mimo skupín — inak by sa zopakovali pod každou.
+            */}
+            <ul className="flex flex-col gap-0.5">
               <li className="mt-1 border-t border-border pt-1">
                 <Link
                   href="/nastavenia"

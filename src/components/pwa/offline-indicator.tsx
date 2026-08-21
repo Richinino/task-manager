@@ -58,10 +58,10 @@ export function OfflineIndicator() {
         // mu miesto, nech sa odznak nikdy nedostane pod palec.
         "pl-3 pr-[4.5rem] md:pr-3",
         /*
-          Nad spodnú lištu, ktorá má 3.5rem a pod sebou bezpečnú zónu telefónu.
+          Nad spodnú lištu. Jej výšku aj s výrezom drží `--bar-inset`.
           Na desktope lišta nie je, takže stačí odsadenie od spodného okraja.
         */
-        "[bottom:calc(3.5rem_+_env(safe-area-inset-bottom)_+_0.5rem)]",
+        "[bottom:calc(var(--bar-inset)_+_0.5rem)]",
         "md:[bottom:calc(env(safe-area-inset-bottom)_+_1rem)]",
       )}
     >

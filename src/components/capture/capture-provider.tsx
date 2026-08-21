@@ -208,7 +208,7 @@ export function CaptureProvider({
         type="button"
         onClick={() => openCapture()}
         aria-label="Rýchle zachytenie úlohy"
-        style={{ bottom: "calc(3.5rem + env(safe-area-inset-bottom) + 0.75rem)" }}
+        style={{ bottom: "calc(var(--bar-inset) + 0.75rem)" }}
         className={cn(
           "fixed right-4 z-40 inline-flex size-12 items-center justify-center rounded-full",
           "bg-accent text-accent-fg shadow-md transition-colors duration-100 active:bg-accent/80",
