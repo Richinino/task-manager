@@ -24,6 +24,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
 import { updateProject } from "@/server/actions/structure";
 import type { ProjectWithCounts } from "@/server/queries/structure";
 
@@ -283,7 +284,6 @@ export function ProjectDetail({ project, areas, todayIso }: ProjectDetailProps) 
           className={cn(
             "w-full rounded border border-border bg-surface px-2.5 py-2",
             "text-lg font-semibold tracking-tight text-fg placeholder:text-fg-subtle",
-            "transition-colors duration-100 ease-out hover:border-border-strong",
           )}
         />
       </div>
@@ -309,7 +309,7 @@ export function ProjectDetail({ project, areas, todayIso }: ProjectDetailProps) 
         htmlFor={fieldId("goal")}
         hint="Prečo to robíš. Jedna veta, ktorá prežije aj to, keď sa úlohy zmenia."
       >
-        <textarea
+        <Textarea
           id={fieldId("goal")}
           value={draft.goal}
           rows={2}
@@ -336,7 +336,7 @@ export function ProjectDetail({ project, areas, todayIso }: ProjectDetailProps) 
         htmlFor={fieldId("dod")}
         hint="Podľa čoho spoznáš, že projekt je uzavretý. Musí sa to dať overiť, nie len cítiť."
       >
-        <textarea
+        <Textarea
           id={fieldId("dod")}
           value={draft.definitionOfDone}
           rows={3}

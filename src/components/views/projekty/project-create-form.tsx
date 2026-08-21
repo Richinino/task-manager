@@ -17,6 +17,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
 import { createProject } from "@/server/actions/structure";
 
 /* ═══════════════════════════════════════════════════════════════════════════
@@ -181,18 +182,13 @@ export function ProjectCreateForm({ areas, onOptimisticAdd }: ProjectCreateFormP
         >
           Definícia hotovo
         </label>
-        <textarea
+        <Textarea
           id={fieldId("dod")}
           value={definitionOfDone}
           rows={2}
           maxLength={5000}
           placeholder="Podľa čoho spoznáš, že projekt je uzavretý?"
           onChange={(event) => setDefinitionOfDone(event.target.value)}
-          className={cn(
-            "w-full resize-y rounded border border-border bg-surface px-2.5 py-2",
-            "text-base leading-relaxed text-fg placeholder:text-fg-subtle sm:text-sm",
-            "transition-colors duration-100 ease-out hover:border-border-strong",
-          )}
         />
         <p className="text-mini leading-relaxed text-fg-subtle">
           Bez nej sa projekt nikdy nezavrie — vždy sa nájde ešte jedna úloha.

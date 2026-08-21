@@ -12,6 +12,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
 import { formatDuration } from "@/lib/dates";
 import { cn } from "@/lib/utils";
 import type { TemplateTask } from "@/server/queries/templates";
@@ -419,7 +420,7 @@ function RowDetails({ draft, disabled, fieldId, onChange }: RowDetailsProps) {
           Natívny `textarea` a nie `Input`: poznámka v predpise býva návod
           („kľúče sú v druhej zásuvke") a ten sa do jedného riadka nezmestí.
         */}
-        <textarea
+        <Textarea
           id={fieldId("note")}
           value={draft.note}
           rows={2}
@@ -427,12 +428,6 @@ function RowDetails({ draft, disabled, fieldId, onChange }: RowDetailsProps) {
           disabled={disabled}
           placeholder="Čo si treba pri tejto úlohe pamätať"
           onChange={(event) => onChange({ note: event.target.value })}
-          className={cn(
-            "w-full resize-y rounded border border-border bg-surface px-2.5 py-2",
-            "text-base leading-relaxed text-fg placeholder:text-fg-subtle sm:text-sm",
-            "transition-colors duration-100 ease-out hover:border-border-strong",
-            "disabled:pointer-events-none disabled:opacity-45",
-          )}
         />
       </div>
     </div>

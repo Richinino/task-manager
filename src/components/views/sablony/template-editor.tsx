@@ -5,6 +5,7 @@ import { LoaderCircle, Plus, Save } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import { createTemplate, updateTemplate } from "@/server/actions/templates";
 import type { TemplateSummary, TemplateTask } from "@/server/queries/templates";
@@ -195,7 +196,7 @@ export function TemplateEditor({ template, onCancel, onSaved }: TemplateEditorPr
         >
           Popis
         </label>
-        <textarea
+        <Textarea
           id={fieldId("description")}
           value={description}
           rows={2}
@@ -203,12 +204,6 @@ export function TemplateEditor({ template, onCancel, onSaved }: TemplateEditorPr
           disabled={isPending}
           placeholder="Kedy sa táto šablóna používa?"
           onChange={(event) => setDescription(event.target.value)}
-          className={cn(
-            "w-full resize-y rounded border border-border bg-surface px-2.5 py-2",
-            "text-base leading-relaxed text-fg placeholder:text-fg-subtle sm:text-sm",
-            "transition-colors duration-100 ease-out hover:border-border-strong",
-            "disabled:pointer-events-none disabled:opacity-45",
-          )}
         />
         <p className="text-mini leading-relaxed text-fg-subtle">
           Nepovinné. O pol roka to bude jediné, podľa čoho spoznáš, načo si

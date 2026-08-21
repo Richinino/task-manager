@@ -16,6 +16,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
 import { savePlaces, updateSettings } from "@/server/actions/settings";
 
 /* ═══════════════════════════════════════════════════════════════════════════
@@ -378,7 +379,7 @@ export function SettingsForm({ settings }: SettingsFormProps) {
           label="Miesta a ich adresy"
           hint="Riadok na miesto, v tvare „kontext = adresa“. Adresa sa pri uložení raz preloží na súradnice cez OpenStreetMap — je to jediná vec, ktorá pri tom odchádza von, a odchádza len samotná adresa. Ak už súradnice máš, môžeš ich napísať namiesto adresy. Poloha sa číta len vtedy, keď o to sám požiadaš — appka ťa na pozadí nesleduje a webová stránka to ani nevie."
         >
-          <textarea
+          <Textarea
             id={fieldId("places")}
             value={placesText}
             onChange={(event) => setPlacesText(event.target.value)}
@@ -386,11 +387,9 @@ export function SettingsForm({ settings }: SettingsFormProps) {
             rows={3}
             spellCheck={false}
             placeholder={"domino = Trnavská cesta 100, Bratislava\npraca = Einsteinova 25, Bratislava"}
-            className={cn(
-              "w-full resize-y rounded border border-border bg-surface px-2.5 py-2",
-              "font-mono text-base leading-relaxed text-fg placeholder:text-fg-subtle sm:text-sm",
-              "transition-colors duration-100 ease-out hover:border-border-strong",
-            )}
+            // Strojopis nie je ozdoba: riadky „kľúč = hodnota" sa pod sebou
+            // zarovnajú a preklep je vidieť na prvý pohľad.
+            className="font-mono"
           />
 
           {placesBusy ? (
@@ -424,7 +423,7 @@ export function SettingsForm({ settings }: SettingsFormProps) {
           label="Pravidlá"
           hint="Riadok na pravidlo, v tvare „slovo = #štítok @kontext“. Na diakritike ani veľkosti písmen nezáleží a slovo sa hľadá aj v skloňovaných tvaroch."
         >
-          <textarea
+          <Textarea
             id={fieldId("autoTagRules")}
             value={rulesText}
             onChange={(event) => setRulesText(event.target.value)}
@@ -440,11 +439,7 @@ export function SettingsForm({ settings }: SettingsFormProps) {
             rows={4}
             spellCheck={false}
             placeholder={"trening = #trening @domino\nfaktura = #financie"}
-            className={cn(
-              "w-full resize-y rounded border border-border bg-surface px-2.5 py-2",
-              "font-mono text-base leading-relaxed text-fg placeholder:text-fg-subtle sm:text-sm",
-              "transition-colors duration-100 ease-out hover:border-border-strong",
-            )}
+            className="font-mono"
           />
         </Field>
       </Section>
