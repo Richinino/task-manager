@@ -58,10 +58,8 @@ export function OverdueSection({
               open && "rotate-90",
             )}
           />
-          <TriangleAlert aria-hidden="true" size={16} className="shrink-0 text-danger" />
-          <span className="min-w-0 truncate text-sm font-semibold text-danger">
-            Po termíne
-          </span>
+          <TriangleAlert aria-hidden="true" size={13} className="shrink-0 text-danger" />
+          <span className="label min-w-0 truncate text-danger">Po termíne</span>
           <span
             aria-hidden="true"
             className={cn(
