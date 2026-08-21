@@ -402,7 +402,6 @@ export function AddTaskInline({
           disabled={trimmed === ""}
           aria-label={`Uložiť úlohu na ${dayOnto}`}
           title="Uložiť (Enter)"
-          className="size-11 sm:size-8"
         >
           {isPending ? (
             <LoaderCircle aria-hidden="true" className="size-4 animate-spin" />

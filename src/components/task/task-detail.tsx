@@ -1027,7 +1027,7 @@ export function TaskDetail({
             type="button"
             variant={isDone ? "primary" : "secondary"}
             onClick={toggleDone}
-            className="h-11 flex-1 md:h-9"
+            className="flex-1"
           >
             {isDone ? (
               <>

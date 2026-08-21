@@ -144,7 +144,6 @@ export function TemplateCard({
               setConfirming(false);
               onDelete();
             }}
-            className="h-11 sm:h-9"
           >
             Zmazať
           </Button>
@@ -153,7 +152,6 @@ export function TemplateCard({
             variant="ghost"
             disabled={busy}
             onClick={() => setConfirming(false)}
-            className="h-11 sm:h-9"
           >
             Nechať
           </Button>
@@ -165,7 +163,6 @@ export function TemplateCard({
             variant="primary"
             disabled={busy || count === 0}
             onClick={onApply}
-            className="h-11 sm:h-9"
           >
             <CalendarPlus aria-hidden="true" size={15} />
             Použiť
@@ -176,7 +173,6 @@ export function TemplateCard({
             disabled={busy}
             onClick={onEdit}
             aria-label={`Upraviť šablónu ${template.name}`}
-            className="h-11 sm:h-9"
           >
             <Pencil aria-hidden="true" size={15} />
             Upraviť

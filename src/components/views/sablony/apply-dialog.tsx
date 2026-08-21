@@ -175,7 +175,6 @@ function ApplyBody({ template, todayIso, onClose, onApplied }: ApplyBodyProps) {
               variant={startDate === choice.iso ? "primary" : "secondary"}
               disabled={isPending}
               onClick={() => setStartDate(choice.iso)}
-              className="h-11 sm:h-9"
             >
               {choice.label}
             </Button>
@@ -243,7 +242,6 @@ function ApplyBody({ template, todayIso, onClose, onApplied }: ApplyBodyProps) {
           variant="primary"
           onClick={apply}
           disabled={isPending}
-          className="h-11 sm:h-9"
         >
           {isPending ? (
             <LoaderCircle aria-hidden="true" size={15} className="animate-spin" />
