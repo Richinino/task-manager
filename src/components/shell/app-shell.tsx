@@ -32,7 +32,7 @@ export function AppShell({ user, counts, signOutAction, children }: AppShellProp
           na 12 rem (48 px) by sa prepínač témy nevošiel.
         */}
         <header className="sticky top-0 z-30 flex h-14 shrink-0 items-center justify-between gap-2 border-b border-border bg-bg/90 px-3 backdrop-blur-sm md:hidden">
-          <span className="min-w-0 truncate text-[13px] font-semibold tracking-tight text-fg">
+          <span className="min-w-0 truncate text-body font-semibold tracking-tight text-fg">
             Task manažér
           </span>
           <div className="flex shrink-0 items-center gap-1">

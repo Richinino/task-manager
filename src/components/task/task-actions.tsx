@@ -192,8 +192,8 @@ export function DiscardedRow({
         "flex w-full rounded border border-dashed border-border bg-surface px-2 py-1.5",
         "text-fg-muted",
         compact
-          ? "flex-col items-start gap-1 text-[11px]"
-          : "items-center gap-2 text-[13px]",
+          ? "flex-col items-start gap-1 text-mini"
+          : "items-center gap-2 text-body",
       )}
     >
       <span className="flex min-w-0 max-w-full items-center gap-1.5">
@@ -230,7 +230,7 @@ export function RowError({ message }: { message: string }) {
       role="status"
       className={cn(
         "pointer-events-none absolute right-0 top-full z-20 mt-1 rounded border border-danger",
-        "bg-surface px-1.5 py-0.5 text-[11px] font-medium text-danger shadow-sm",
+        "bg-surface px-1.5 py-0.5 text-mini font-medium text-danger shadow-sm",
         // Bez `w-max` by sa hláška zmestila len do šírky svojho obalu — a tým
         // je pri menu 28 px široké tlačidlo, takže by spadla na jedno písmeno
         // v riadku. `max-w` ju zároveň udrží v okne telefónu.
@@ -279,7 +279,7 @@ function MenuItem({
       aria-checked={role === "menuitem" ? undefined : checked === true}
       onClick={onSelect}
       className={cn(
-        "flex min-h-9 w-full items-center gap-2 rounded px-2 py-1.5 text-left text-[13px]",
+        "flex min-h-9 w-full items-center gap-2 rounded px-2 py-1.5 text-left text-body",
         "transition-colors duration-100 ease-out",
         tone === "danger"
           ? "text-danger hover:bg-danger/10"
@@ -300,7 +300,7 @@ function MenuItem({
       <span className="min-w-0 flex-1 truncate">{label}</span>
 
       {hint ? (
-        <span aria-hidden="true" className="shrink-0 text-[11px] text-fg-subtle">
+        <span aria-hidden="true" className="shrink-0 text-mini text-fg-subtle">
           {hint}
         </span>
       ) : null}
@@ -367,7 +367,7 @@ function MenuPriorityRow({
             onClick={() => onPick(level)}
             className={cn(
               "flex min-h-9 flex-1 items-center justify-center gap-1.5 rounded border",
-              "text-[13px] transition-colors duration-100 ease-out",
+              "text-body transition-colors duration-100 ease-out",
               checked
                 ? "border-accent bg-accent/10 font-medium text-fg"
                 : "border-border text-fg-muted hover:bg-surface-2 hover:text-fg",

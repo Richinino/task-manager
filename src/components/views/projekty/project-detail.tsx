@@ -219,7 +219,7 @@ export function ProjectDetail({ project, areas, todayIso }: ProjectDetailProps) 
           href="/projekty"
           className={cn(
             "-ml-1 inline-flex h-11 items-center gap-1.5 rounded px-1.5 sm:h-8",
-            "text-[13px] text-fg-muted transition-colors duration-100 ease-out",
+            "text-body text-fg-muted transition-colors duration-100 ease-out",
             "hover:bg-surface-2 hover:text-fg",
           )}
         >
@@ -234,7 +234,7 @@ export function ProjectDetail({ project, areas, todayIso }: ProjectDetailProps) 
           />
         ) : null}
 
-        <span className="ml-auto shrink-0 text-[11px] text-fg-subtle">
+        <span className="ml-auto shrink-0 text-mini text-fg-subtle">
           {total === 0
             ? "zatiaľ bez úloh"
             : `hotové ${project.doneTaskCount} z ${total}`}
@@ -244,14 +244,14 @@ export function ProjectDetail({ project, areas, todayIso }: ProjectDetailProps) 
       {error !== null ? (
         <p
           role="alert"
-          className="rounded border border-danger bg-surface px-3 py-2 text-[13px] font-medium text-danger"
+          className="rounded border border-danger bg-surface px-3 py-2 text-body font-medium text-danger"
         >
           {error}
         </p>
       ) : null}
 
       {archived ? (
-        <p className="flex items-start gap-2 rounded border border-border bg-surface-2 px-3 py-2 text-[13px] text-fg-muted">
+        <p className="flex items-start gap-2 rounded border border-border bg-surface-2 px-3 py-2 text-body text-fg-muted">
           <Archive aria-hidden="true" size={15} className="mt-0.5 shrink-0" />
           <span className="min-w-0">
             Projekt je archivovaný. Neponúka sa vo výberoch ani v parseri, ale
@@ -294,7 +294,7 @@ export function ProjectDetail({ project, areas, todayIso }: ProjectDetailProps) 
         ešte jedna úloha a nikto nevie povedať, či je to už koniec.
       */}
       {definitionMissing ? (
-        <p className="flex items-start gap-2 rounded border border-warn bg-surface px-3 py-2 text-[13px] text-fg">
+        <p className="flex items-start gap-2 rounded border border-warn bg-surface px-3 py-2 text-body text-fg">
           <TriangleAlert aria-hidden="true" size={15} className="mt-0.5 shrink-0 text-warn" />
           <span className="min-w-0">
             <span className="font-medium">Projekt nemá definíciu hotovo.</span>{" "}
@@ -426,7 +426,7 @@ export function ProjectDetail({ project, areas, todayIso }: ProjectDetailProps) 
         </Field>
       </div>
 
-      <p className="text-[11px] leading-relaxed text-fg-subtle">
+      <p className="text-mini leading-relaxed text-fg-subtle">
         Tlačidlo „Uložiť" tu nie je — každá zmena sa ukladá sama. Texty pri
         opustení poľa alebo klávesmi Ctrl a Enter.
       </p>
@@ -447,7 +447,7 @@ interface FieldProps {
 }
 
 function Field({ label, htmlFor, hint, children }: FieldProps) {
-  const labelClass = "text-[12px] font-medium text-fg-muted";
+  const labelClass = "text-meta font-medium text-fg-muted";
 
   return (
     <div className="flex min-w-0 flex-col gap-1.5">
@@ -460,7 +460,7 @@ function Field({ label, htmlFor, hint, children }: FieldProps) {
       )}
       {children}
       {hint !== undefined ? (
-        <p className="text-[11px] leading-relaxed text-fg-subtle">{hint}</p>
+        <p className="text-mini leading-relaxed text-fg-subtle">{hint}</p>
       ) : null}
     </div>
   );

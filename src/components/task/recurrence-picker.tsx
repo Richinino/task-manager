@@ -234,7 +234,7 @@ export function RecurrencePicker({ taskId, rule, anchorIso }: RecurrencePickerPr
               onClick={() => selectMode(option.value)}
               className={cn(
                 "inline-flex min-h-11 min-w-0 items-center justify-center rounded border px-2",
-                "text-[13px] font-medium transition-colors duration-100 ease-out md:min-h-9",
+                "text-body font-medium transition-colors duration-100 ease-out md:min-h-9",
                 active
                   ? "border-accent bg-accent-soft text-fg"
                   : "border-border bg-surface text-fg-muted hover:border-border-strong",
@@ -269,7 +269,7 @@ export function RecurrencePicker({ taskId, rule, anchorIso }: RecurrencePickerPr
                   "inline-flex min-h-11 min-w-0 items-center justify-center rounded border",
                   // Skratky sú v knižnici malými písmenami; veľké začiatočné
                   // písmeno rieši CSS, nech netreba druhú tabuľku názvov.
-                  "text-[13px] font-medium capitalize md:min-h-9",
+                  "text-body font-medium capitalize md:min-h-9",
                   "transition-colors duration-100 ease-out",
                   active
                     ? "border-accent bg-accent-soft text-fg"
@@ -309,7 +309,7 @@ export function RecurrencePicker({ taskId, rule, anchorIso }: RecurrencePickerPr
 
       {/* Ľudský popis pravidla. Skladá ho `describeRecurrence`, aby sa zhodoval
           so všetkým ostatným, čo o opakovaní v appke niekde napíšeme. */}
-      <p className="text-[12px] leading-relaxed text-fg-muted">
+      <p className="text-meta leading-relaxed text-fg-muted">
         {recurrence === null
           ? "Úloha sa neopakuje — po odškrtnutí nič nové nevznikne."
           : `Opakuje sa ${describeRecurrence(recurrence)}.`}
@@ -317,14 +317,14 @@ export function RecurrencePicker({ taskId, rule, anchorIso }: RecurrencePickerPr
 
       {/* Bez tejto vety pôsobí 31. v februári ako chyba appky, nie ako zámer. */}
       {choice.mode === "monthly" ? (
-        <p className="text-[11px] leading-relaxed text-fg-subtle">
+        <p className="text-mini leading-relaxed text-fg-subtle">
           Keď mesiac toľko dní nemá — napríklad 31. vo februári — výskyt padne na
           jeho posledný deň, nepreskočí sa.
         </p>
       ) : null}
 
       {error !== null ? (
-        <p role="alert" className="text-[11px] font-medium text-danger">
+        <p role="alert" className="text-mini font-medium text-danger">
           {error}
         </p>
       ) : null}

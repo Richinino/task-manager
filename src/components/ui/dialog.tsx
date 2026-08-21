@@ -107,7 +107,7 @@ export function DialogDescription({
 }: React.ComponentProps<typeof DialogPrimitive.Description>) {
   return (
     <DialogPrimitive.Description
-      className={cn("text-[13px] leading-relaxed text-fg-muted", className)}
+      className={cn("text-body leading-relaxed text-fg-muted", className)}
       {...props}
     />
   );

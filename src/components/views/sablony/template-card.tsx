@@ -61,7 +61,7 @@ export function TemplateCard({
           {template.name}
         </h2>
         {description !== "" ? (
-          <p className="min-w-0 break-words text-[13px] leading-relaxed text-fg-muted">
+          <p className="min-w-0 break-words text-body leading-relaxed text-fg-muted">
             {description}
           </p>
         ) : null}
@@ -74,7 +74,7 @@ export function TemplateCard({
         aria-controls={listId}
         className={cn(
           "inline-flex h-11 min-w-0 items-center gap-1.5 self-start rounded px-1 text-left sm:h-8",
-          "text-[12px] text-fg-muted transition-colors duration-100 ease-out",
+          "text-meta text-fg-muted transition-colors duration-100 ease-out",
           "hover:bg-surface-2 hover:text-fg",
         )}
       >
@@ -90,7 +90,7 @@ export function TemplateCard({
 
       <div id={listId} hidden={!open}>
         {count === 0 ? (
-          <p className="rounded border border-dashed border-border px-3 py-3 text-[12px] leading-relaxed text-fg-subtle">
+          <p className="rounded border border-dashed border-border px-3 py-3 text-meta leading-relaxed text-fg-subtle">
             Šablóna nemá ani jednu úlohu — pri použití by nevzniklo nič. Doplň
             jej kroky cez „Upraviť".
           </p>
@@ -101,9 +101,9 @@ export function TemplateCard({
                 // Riadky šablóny nemajú vlastný identifikátor — sú to hodnoty
                 // v poli, takže poradie JE ich totožnosť.
                 key={`${index}-${task.title}`}
-                className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 text-[13px]"
+                className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 text-body"
               >
-                <span className="shrink-0 rounded bg-surface-2 px-1.5 py-0.5 text-[11px] tabular-nums text-fg-muted">
+                <span className="shrink-0 rounded bg-surface-2 px-1.5 py-0.5 text-mini tabular-nums text-fg-muted">
                   {dayOffsetShort(task.dayOffset ?? 0)}
                 </span>
                 <span className="min-w-0 flex-1 break-words text-fg">{task.title}</span>
@@ -115,12 +115,12 @@ export function TemplateCard({
                   <EnergyBadge energy={task.energy} size="sm" />
                 ) : null}
                 {task.estimateMin !== undefined ? (
-                  <span className="shrink-0 text-[11px] tabular-nums text-fg-subtle">
+                  <span className="shrink-0 text-mini tabular-nums text-fg-subtle">
                     {formatDuration(task.estimateMin)}
                   </span>
                 ) : null}
                 {task.context !== undefined ? (
-                  <span className="shrink-0 text-[11px] text-fg-subtle">
+                  <span className="shrink-0 text-mini text-fg-subtle">
                     {task.context}
                   </span>
                 ) : null}
@@ -132,7 +132,7 @@ export function TemplateCard({
 
       {confirming ? (
         <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-2 rounded border border-danger bg-surface-2 px-2.5 py-2">
-          <p className="min-w-0 flex-1 break-words text-[13px] text-fg-muted">
+          <p className="min-w-0 flex-1 break-words text-body text-fg-muted">
             Zmazať šablónu „{template.name}"? Úlohy, ktoré z nej už vznikli,
             ostanú — mizne len predpis.
           </p>

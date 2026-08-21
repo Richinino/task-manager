@@ -165,7 +165,7 @@ export function TemplateTaskRow({
       <div className="flex min-w-0 items-center gap-1.5">
         <span
           aria-hidden="true"
-          className="w-5 shrink-0 text-right text-[12px] font-semibold tabular-nums text-fg-subtle"
+          className="w-5 shrink-0 text-right text-meta font-semibold tabular-nums text-fg-subtle"
         >
           {step}.
         </span>
@@ -250,7 +250,7 @@ export function TemplateTaskRow({
           aria-expanded={detailsOpen}
           aria-controls={fieldId("details")}
           onClick={() => setDetailsOpen((open) => !open)}
-          className="h-11 shrink-0 px-2 text-[12px] sm:h-9"
+          className="h-11 shrink-0 px-2 text-meta sm:h-9"
         >
           {detailsOpen ? (
             <ChevronDown aria-hidden="true" size={14} />
@@ -307,7 +307,7 @@ function RowDetails({ draft, disabled, fieldId, onChange }: RowDetailsProps) {
         <div className="flex min-w-0 flex-col gap-1.5">
           <label
             htmlFor={fieldId("priority")}
-            className="text-[12px] font-medium text-fg-muted"
+            className="text-meta font-medium text-fg-muted"
           >
             Priorita
           </label>
@@ -332,7 +332,7 @@ function RowDetails({ draft, disabled, fieldId, onChange }: RowDetailsProps) {
         <div className="flex min-w-0 flex-col gap-1.5">
           <label
             htmlFor={fieldId("estimate")}
-            className="text-[12px] font-medium text-fg-muted"
+            className="text-meta font-medium text-fg-muted"
           >
             Odhad
           </label>
@@ -360,7 +360,7 @@ function RowDetails({ draft, disabled, fieldId, onChange }: RowDetailsProps) {
         <div className="flex min-w-0 flex-col gap-1.5">
           <label
             htmlFor={fieldId("energy")}
-            className="text-[12px] font-medium text-fg-muted"
+            className="text-meta font-medium text-fg-muted"
           >
             Energia
           </label>
@@ -392,7 +392,7 @@ function RowDetails({ draft, disabled, fieldId, onChange }: RowDetailsProps) {
       <div className="flex min-w-0 flex-col gap-1.5">
         <label
           htmlFor={fieldId("context")}
-          className="text-[12px] font-medium text-fg-muted"
+          className="text-meta font-medium text-fg-muted"
         >
           Kontext
         </label>
@@ -411,7 +411,7 @@ function RowDetails({ draft, disabled, fieldId, onChange }: RowDetailsProps) {
       <div className="flex min-w-0 flex-col gap-1.5">
         <label
           htmlFor={fieldId("note")}
-          className="text-[12px] font-medium text-fg-muted"
+          className="text-meta font-medium text-fg-muted"
         >
           Poznámka
         </label>

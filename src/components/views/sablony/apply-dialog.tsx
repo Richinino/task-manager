@@ -165,7 +165,7 @@ function ApplyBody({ template, todayIso, onClose, onApplied }: ApplyBodyProps) {
       </DialogHeader>
 
       <div className="flex min-w-0 flex-col gap-2">
-        <span className="text-[12px] font-medium text-fg-muted">Začať dňom</span>
+        <span className="text-meta font-medium text-fg-muted">Začať dňom</span>
 
         <div className="flex min-w-0 flex-wrap items-center gap-2">
           {quickChoices.map((choice) => (
@@ -202,12 +202,12 @@ function ApplyBody({ template, todayIso, onClose, onApplied }: ApplyBodyProps) {
       </div>
 
       <div className="mt-3 flex min-w-0 flex-col gap-2">
-        <span className="text-[12px] font-medium text-fg-muted">Vznikne toto</span>
+        <span className="text-meta font-medium text-fg-muted">Vznikne toto</span>
 
         <ul className="flex min-w-0 flex-col gap-2">
           {groups.map((group) => (
             <li key={group.iso} className="flex min-w-0 flex-col gap-1">
-              <p className="min-w-0 text-[12px] font-medium text-fg">
+              <p className="min-w-0 text-meta font-medium text-fg">
                 {formatRelativeSk(group.iso, now)}{" "}
                 <span className="font-normal text-fg-subtle">
                   · {formatLongSk(group.iso)}
@@ -217,7 +217,7 @@ function ApplyBody({ template, todayIso, onClose, onApplied }: ApplyBodyProps) {
                 {group.tasks.map((task, index) => (
                   <li
                     key={`${index}-${task.title}`}
-                    className="min-w-0 break-words text-[13px] text-fg-muted"
+                    className="min-w-0 break-words text-body text-fg-muted"
                   >
                     {task.title}
                   </li>
@@ -230,7 +230,7 @@ function ApplyBody({ template, todayIso, onClose, onApplied }: ApplyBodyProps) {
 
       <div role="alert" aria-live="polite" className="min-w-0">
         {error !== null ? (
-          <p className="mt-3 text-[13px] font-medium break-words text-danger">{error}</p>
+          <p className="mt-3 text-body font-medium break-words text-danger">{error}</p>
         ) : null}
       </div>
 

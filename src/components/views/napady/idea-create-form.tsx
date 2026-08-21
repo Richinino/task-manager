@@ -104,7 +104,7 @@ export function IdeaCreateForm({ areas, onOptimisticAdd }: IdeaCreateFormProps) 
       }}
       className="flex flex-col gap-3 rounded border border-border bg-surface p-3"
     >
-      <h2 className="text-[11px] font-semibold tracking-wide uppercase text-fg-subtle">
+      <h2 className="text-mini font-semibold tracking-wide uppercase text-fg-subtle">
         Nový nápad
       </h2>
 
@@ -130,14 +130,14 @@ export function IdeaCreateForm({ areas, onOptimisticAdd }: IdeaCreateFormProps) 
       {/* Na 375 px idú iskra a oblasť pod seba; od `sm` vedľa seba. */}
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <div className="flex min-w-0 flex-col gap-1.5">
-          <span className="text-[12px] font-medium text-fg-muted">Iskra</span>
+          <span className="text-meta font-medium text-fg-muted">Iskra</span>
           <div className="flex h-11 items-center sm:h-9">
             <SparkPicker value={spark} onChange={setSpark} label="nový nápad" />
           </div>
         </div>
 
         <div className="flex min-w-0 flex-col gap-1.5">
-          <span className="text-[12px] font-medium text-fg-muted">Oblasť</span>
+          <span className="text-meta font-medium text-fg-muted">Oblasť</span>
           <Select
             value={areaId ?? NONE}
             onValueChange={(value) => setAreaId(value === NONE ? null : value)}
@@ -164,7 +164,7 @@ export function IdeaCreateForm({ areas, onOptimisticAdd }: IdeaCreateFormProps) 
       <div className="flex flex-col gap-1.5">
         <label
           htmlFor={fieldId("step")}
-          className="text-[12px] font-medium text-fg-muted"
+          className="text-meta font-medium text-fg-muted"
         >
           Ďalší krok
         </label>
@@ -177,7 +177,7 @@ export function IdeaCreateForm({ areas, onOptimisticAdd }: IdeaCreateFormProps) 
           onChange={(event) => setNextStep(event.target.value)}
          
         />
-        <p className="text-[11px] leading-relaxed text-fg-subtle">
+        <p className="text-mini leading-relaxed text-fg-subtle">
           Nepovinné, ale pri povýšení práve z neho vznikne prvá úloha projektu.
         </p>
       </div>
@@ -199,7 +199,7 @@ export function IdeaCreateForm({ areas, onOptimisticAdd }: IdeaCreateFormProps) 
 
         <div role="alert" aria-live="polite" className="min-w-0">
           {error !== null ? (
-            <p className={cn("text-[13px] font-medium break-words text-danger")}>{error}</p>
+            <p className={cn("text-body font-medium break-words text-danger")}>{error}</p>
           ) : null}
         </div>
       </div>

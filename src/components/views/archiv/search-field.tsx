@@ -162,7 +162,7 @@ export function SearchField({ query, filter }: SearchFieldProps) {
 
       {/* Pevná výška: rada sa mení pri písaní a poskakujúci obsah pod poľom
           by tlačil zoznam výsledkov hore-dole. */}
-      <p aria-live="polite" className="min-h-4 text-[11px] leading-4 text-fg-subtle">
+      <p aria-live="polite" className="min-h-4 text-mini leading-4 text-fg-subtle">
         {hint}
       </p>
     </form>

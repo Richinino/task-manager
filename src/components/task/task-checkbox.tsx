@@ -124,7 +124,7 @@ export function TaskCheckbox({
           role="status"
           className={cn(
             "pointer-events-none absolute right-1.5 top-1 z-10 rounded border border-danger",
-            "bg-surface px-1.5 py-0.5 text-[11px] font-medium text-danger shadow-sm",
+            "bg-surface px-1.5 py-0.5 text-mini font-medium text-danger shadow-sm",
           )}
         >
           Nepodarilo sa uložiť

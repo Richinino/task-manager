@@ -49,7 +49,7 @@ const sizes: Record<ButtonSize, string> = {
     a paneli, kde dotykovú plochu nesie celý riadok. Nikdy ju nedávaj
     tlačidlu, ktoré je na mobile jediným cieľom — na to je `md` alebo `icon`.
   */
-  sm: "h-8 px-2 text-[13px] md:h-7",
+  sm: "h-8 px-2 text-body md:h-7",
   md: "h-11 px-3 text-sm md:h-9",
   icon: "size-11 p-0 md:size-8",
 };

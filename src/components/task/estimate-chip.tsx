@@ -23,7 +23,7 @@ export function EstimateChip({ minutes, size = "md", className }: EstimateChipPr
       title={label}
       className={cn(
         "inline-flex shrink-0 items-center gap-1 whitespace-nowrap text-fg-muted",
-        size === "sm" ? "text-[11px]" : "text-xs",
+        size === "sm" ? "text-mini" : "text-xs",
         className,
       )}
     >

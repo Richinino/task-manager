@@ -50,7 +50,7 @@ export default async function PrihlaseniePage({
       <div className="w-full max-w-[22rem]">
         <div className="mb-6">
           <h1 className="text-lg font-semibold tracking-tight text-fg">Task manažér</h1>
-          <p className="mt-1 text-[13px] leading-relaxed text-fg-muted">
+          <p className="mt-1 text-body leading-relaxed text-fg-muted">
             Osobný systém na riadenie úloh a nápadov.
           </p>
         </div>
@@ -61,7 +61,7 @@ export default async function PrihlaseniePage({
             className="mb-4 flex items-start gap-2 rounded border border-border bg-surface px-3 py-2.5"
           >
             <TriangleAlert className="mt-0.5 size-4 shrink-0 text-danger" />
-            <p className="text-[13px] leading-relaxed text-fg">{errorMessage}</p>
+            <p className="text-body leading-relaxed text-fg">{errorMessage}</p>
           </div>
         ) : null}
 
@@ -82,7 +82,7 @@ export default async function PrihlaseniePage({
                   {googleEnabled ? (
                     <div className="flex items-center gap-2 py-1">
                       <span className="h-px flex-1 bg-border" />
-                      <span className="text-[11px] uppercase tracking-wide text-fg-subtle">
+                      <span className="text-mini uppercase tracking-wide text-fg-subtle">
                         alebo
                       </span>
                       <span className="h-px flex-1 bg-border" />
@@ -97,7 +97,7 @@ export default async function PrihlaseniePage({
                       Pokračovať vo vývojovom režime
                     </Button>
                   </form>
-                  <p className="text-[12px] leading-relaxed text-fg-subtle">
+                  <p className="text-meta leading-relaxed text-fg-subtle">
                     Dočasné riešenie. Funguje len mimo produkcie a vypneš ho
                     odstránením <code className="font-mono">AUTH_DEV_BYPASS</code> z
                     <code className="font-mono"> .env.local</code>.
@@ -107,23 +107,23 @@ export default async function PrihlaseniePage({
             </div>
           ) : (
             <div className="flex flex-col gap-3">
-              <p className="text-[13px] font-medium text-fg">
+              <p className="text-body font-medium text-fg">
                 Nie je nastavený žiadny spôsob prihlásenia.
               </p>
-              <p className="text-[13px] leading-relaxed text-fg-muted">
+              <p className="text-body leading-relaxed text-fg-muted">
                 Do súboru <code className="font-mono">.env.local</code> doplň prihlásenie
                 cez Google:
               </p>
-              <pre className="overflow-x-auto rounded border border-border bg-surface-2 px-3 py-2 font-mono text-[12px] leading-relaxed text-fg-muted">
+              <pre className="overflow-x-auto rounded border border-border bg-surface-2 px-3 py-2 font-mono text-meta leading-relaxed text-fg-muted">
                 {"AUTH_GOOGLE_ID=…\nAUTH_GOOGLE_SECRET=…"}
               </pre>
-              <p className="text-[13px] leading-relaxed text-fg-muted">
+              <p className="text-body leading-relaxed text-fg-muted">
                 alebo dočasné vývojové prihlásenie bez Googlu:
               </p>
-              <pre className="overflow-x-auto rounded border border-border bg-surface-2 px-3 py-2 font-mono text-[12px] leading-relaxed text-fg-muted">
+              <pre className="overflow-x-auto rounded border border-border bg-surface-2 px-3 py-2 font-mono text-meta leading-relaxed text-fg-muted">
                 {"AUTH_DEV_BYPASS=1"}
               </pre>
-              <p className="text-[12px] leading-relaxed text-fg-subtle">
+              <p className="text-meta leading-relaxed text-fg-subtle">
                 Po zmene reštartuj <code className="font-mono">npm run dev</code>. Vzor
                 všetkých premenných je v súbore{" "}
                 <code className="font-mono">.env.example</code>.
@@ -132,7 +132,7 @@ export default async function PrihlaseniePage({
           )}
         </div>
 
-        <p className="mt-4 text-center text-[12px] text-fg-subtle">
+        <p className="mt-4 text-center text-meta text-fg-subtle">
           Prístup majú len povolené účty.
         </p>
       </div>

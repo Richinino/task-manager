@@ -147,14 +147,14 @@ const ITEM_CLASS = cn(
   "flex cursor-pointer select-none items-center gap-2.5 rounded px-2 py-1.5",
   // Pod `sm` je riadok plnohodnotný dotykový cieľ; od `sm` ostáva hustý zoznam.
   "min-h-11 sm:min-h-0",
-  "text-[13px] text-fg-muted outline-none",
+  "text-body text-fg-muted outline-none",
   "data-[selected=true]:bg-accent-soft data-[selected=true]:text-accent",
   "data-[disabled=true]:pointer-events-none data-[disabled=true]:opacity-45",
 );
 
 const HEADING_CLASS = cn(
   "[&_[cmdk-group-heading]]:px-2 [&_[cmdk-group-heading]]:pb-1 [&_[cmdk-group-heading]]:pt-2",
-  "[&_[cmdk-group-heading]]:text-[10px] [&_[cmdk-group-heading]]:font-semibold",
+  "[&_[cmdk-group-heading]]:text-micro [&_[cmdk-group-heading]]:font-semibold",
   "[&_[cmdk-group-heading]]:uppercase [&_[cmdk-group-heading]]:tracking-wider",
   "[&_[cmdk-group-heading]]:text-fg-subtle",
 );
@@ -245,7 +245,7 @@ export function CommandPalette({
 
           {/* Pod `sm` nižší strop: nad zoznamom má ostať miesto na klávesnicu. */}
           <CommandList className="max-h-[min(45vh,24rem)] overflow-y-auto overscroll-contain p-1.5 sm:max-h-[min(60vh,24rem)]">
-            <CommandEmpty className="px-2 py-6 text-center text-[13px] text-fg-muted">
+            <CommandEmpty className="px-2 py-6 text-center text-body text-fg-muted">
               Nič sa nenašlo.
             </CommandEmpty>
 
@@ -359,7 +359,7 @@ export function CommandPalette({
                       >
                         {task.title}
                       </span>
-                      <span className="max-w-32 shrink-0 truncate text-[11px] text-fg-subtle">
+                      <span className="max-w-32 shrink-0 truncate text-mini text-fg-subtle">
                         {taskHint(task)}
                       </span>
                     </CommandItem>
@@ -374,7 +374,7 @@ export function CommandPalette({
             aria-hidden="true"
             className={cn(
               "hidden flex-wrap items-center gap-x-3 gap-y-1 border-t border-border sm:flex",
-              "bg-surface-2 px-3 py-2 text-[11px] text-fg-subtle",
+              "bg-surface-2 px-3 py-2 text-mini text-fg-subtle",
             )}
           >
             <span className="inline-flex items-center gap-1">

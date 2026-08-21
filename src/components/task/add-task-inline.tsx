@@ -324,7 +324,7 @@ export function AddTaskInline({
       onPointerDown={(event) => event.stopPropagation()}
     >
       {showDay ? (
-        <p className="px-0.5 text-[11px] font-medium text-fg-muted">{dayLabel}</p>
+        <p className="px-0.5 text-mini font-medium text-fg-muted">{dayLabel}</p>
       ) : null}
 
       <Input
@@ -368,7 +368,7 @@ export function AddTaskInline({
           mobilné prehliadače vysvetľujú ako „toto sa nedá čítať" a pri fokuse
           stránku priblížia — potom sa z nej už nedá dostať späť.
         */
-        className="h-11 text-base sm:h-9 sm:text-[13px]"
+        className="h-11 text-base sm:h-9 sm:text-body"
       />
 
       <div className="flex items-center justify-between gap-1">
@@ -418,14 +418,14 @@ export function AddTaskInline({
         „Uložiť" by sa pri každom rozpoznanom tokene posunul pod prstom.
       */}
       {error !== null ? (
-        <p role="alert" className="text-[11px] font-medium text-danger">
+        <p role="alert" className="text-mini font-medium text-danger">
           {error}
         </p>
       ) : savedTitle !== null ? (
         <p
           role="status"
           className={cn(
-            "truncate text-[11px]",
+            "truncate text-mini",
             savedQueued ? "text-warn" : "text-success",
           )}
         >
@@ -438,13 +438,13 @@ export function AddTaskInline({
               zalamujú a jednotlivo skracujú, takže nič nepretečie. */}
           <ParsePreview parsed={parsed} />
           {dayOverridden ? (
-            <p className="mt-1 text-[10px] leading-4 text-warn">
+            <p className="mt-1 text-micro leading-4 text-warn">
               Deň z textu má prednosť pred stĺpcom.
             </p>
           ) : null}
         </div>
       ) : (
-        <div aria-hidden="true" className="min-w-0 text-[10px] text-fg-subtle">
+        <div aria-hidden="true" className="min-w-0 text-micro text-fg-subtle">
           <p className="truncate">Enter uloží, Esc zavrie</p>
           {/*
             Nezalamuje sa do `truncate`: v stĺpci týždňa má nápoveda okolo

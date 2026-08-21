@@ -70,7 +70,7 @@ export function OfflineIndicator() {
           className={cn(
             "animate-in-fast inline-flex max-w-full items-center gap-1.5 rounded",
             "border border-border-strong bg-surface px-2.5 py-1.5 shadow-md",
-            "text-[12px] font-medium text-fg-muted",
+            "text-meta font-medium text-fg-muted",
           )}
         >
           {online ? (

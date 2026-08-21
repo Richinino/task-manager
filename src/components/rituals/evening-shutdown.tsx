@@ -138,7 +138,7 @@ export function EveningShutdown({
       render: () => (
         <div className="flex flex-col gap-2">
           {openTasks.length === 0 ? (
-            <p className="text-[13px] leading-relaxed text-fg-muted">
+            <p className="text-body leading-relaxed text-fg-muted">
               Na dnes nič neostalo. {doneCount > 0 ? "Všetko hotové." : ""}
             </p>
           ) : (
@@ -191,7 +191,7 @@ export function EveningShutdown({
       render: () => (
         <div className="flex flex-col gap-2">
           {remaining.length === 0 ? (
-            <p className="text-[13px] leading-relaxed text-fg-muted">
+            <p className="text-body leading-relaxed text-fg-muted">
               Nič neostalo visieť. Pekný deň.
             </p>
           ) : (
@@ -220,7 +220,7 @@ export function EveningShutdown({
             ))
           )}
           {rowError ? (
-            <p className="text-[13px] leading-relaxed text-danger">{rowError}</p>
+            <p className="text-body leading-relaxed text-danger">{rowError}</p>
           ) : null}
         </div>
       ),
@@ -240,7 +240,7 @@ export function EveningShutdown({
           />
 
           <fieldset className="flex flex-col gap-2">
-            <legend className="pb-1.5 text-[13px] font-medium text-fg">
+            <legend className="pb-1.5 text-body font-medium text-fg">
               Aký bol deň?
             </legend>
             <div className="flex flex-wrap gap-1.5">
@@ -305,7 +305,7 @@ function DecisionButton({
       onClick={onClick}
       className={cn(
         "inline-flex min-h-11 items-center gap-1.5 rounded border border-border bg-surface px-2.5",
-        "text-[13px] text-fg transition-colors duration-100 ease-out sm:min-h-8",
+        "text-body text-fg transition-colors duration-100 ease-out sm:min-h-8",
         danger
           ? "hover:border-danger hover:text-danger"
           : "hover:border-border-strong hover:bg-surface-2",

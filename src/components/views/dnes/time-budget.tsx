@@ -68,7 +68,7 @@ export function TimeBudget({
   if (workMin <= 0) {
     return (
       <div className="flex flex-col gap-1">
-        <p className="text-[13px] leading-relaxed text-fg-muted sm:text-xs">
+        <p className="text-body leading-relaxed text-fg-muted sm:text-xs">
           Naplánovaných{" "}
           <span className="tabular-nums">{formatDuration(plannedMin)}</span>.{" "}
           {availableMin <= 0 ? (
@@ -81,7 +81,7 @@ export function TimeBudget({
           )}
         </p>
         {missing ? (
-          <p className="text-[13px] text-fg-subtle sm:text-xs">{missing}.</p>
+          <p className="text-body text-fg-subtle sm:text-xs">{missing}.</p>
         ) : null}
       </div>
     );
@@ -119,7 +119,7 @@ export function TimeBudget({
       */}
       <p
         className={cn(
-          "text-[13px] leading-relaxed sm:text-xs",
+          "text-body leading-relaxed sm:text-xs",
           over ? "text-danger" : "text-fg-muted",
         )}
       >
@@ -146,7 +146,7 @@ export function TimeBudget({
       </p>
 
       {missing ? (
-        <p className="text-[13px] text-fg-subtle sm:text-xs">
+        <p className="text-body text-fg-subtle sm:text-xs">
           {missing} — skutočný čas bude vyšší.
         </p>
       ) : null}

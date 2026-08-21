@@ -336,7 +336,7 @@ function NavList({ items, counts, pathname, label, labelledBy }: NavListProps) {
               href={item.href}
               aria-current={active ? "page" : undefined}
               className={cn(
-                "group flex h-8 items-center gap-2.5 rounded px-2 text-[13px]",
+                "group flex h-8 items-center gap-2.5 rounded px-2 text-body",
                 "transition-colors duration-100 ease-out",
                 active
                   ? "bg-accent-soft font-medium text-accent"
@@ -388,7 +388,7 @@ export function Sidebar({ user, counts, signOutAction }: SidebarProps) {
   return (
     <aside className="sticky top-0 hidden h-dvh w-[220px] shrink-0 flex-col border-r border-border bg-surface md:flex">
       <div className="flex h-12 shrink-0 items-center px-3">
-        <span className="truncate text-[13px] font-semibold tracking-tight text-fg">
+        <span className="truncate text-body font-semibold tracking-tight text-fg">
           Task manažér
         </span>
       </div>
@@ -420,7 +420,7 @@ export function Sidebar({ user, counts, signOutAction }: SidebarProps) {
       <div className="shrink-0 border-t border-border p-2">
         <p
           title={user.email}
-          className="truncate px-1.5 pb-1.5 text-[12px] text-fg-muted"
+          className="truncate px-1.5 pb-1.5 text-meta text-fg-muted"
         >
           {user.name ?? user.email}
         </p>

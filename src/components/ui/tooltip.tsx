@@ -36,7 +36,7 @@ export function TooltipContent({
         collisionPadding={collisionPadding}
         className={cn(
           "animate-in-fast z-50 max-w-56 rounded border border-border bg-surface px-2 py-1",
-          "text-[12px] leading-snug text-fg shadow-md",
+          "text-meta leading-snug text-fg shadow-md",
           className,
         )}
         {...props}

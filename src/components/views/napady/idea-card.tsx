@@ -82,7 +82,7 @@ export function IdeaCard({
 
       {/* Meta riadok sa zalamuje — na 375 px sa oblasť aj vek vedľa seba
           nezmestia a `flex-wrap` je jediné, čo tam nepretečie. */}
-      <div className="flex min-w-0 flex-wrap items-center gap-x-2.5 gap-y-1 text-[11px] text-fg-muted">
+      <div className="flex min-w-0 flex-wrap items-center gap-x-2.5 gap-y-1 text-mini text-fg-muted">
         {idea.area ? (
           <AreaDot
             color={idea.area.color}
@@ -114,12 +114,12 @@ export function IdeaCard({
       )}
 
       {nextStep !== "" ? (
-        <p className="min-w-0 text-[12px] leading-snug break-words text-fg-muted">
+        <p className="min-w-0 text-meta leading-snug break-words text-fg-muted">
           <span className="text-fg-subtle">Ďalší krok: </span>
           {nextStep}
         </p>
       ) : settled ? null : (
-        <p className="text-[11px] leading-snug text-fg-subtle">
+        <p className="text-mini leading-snug text-fg-subtle">
           Bez ďalšieho kroku — pri povýšení by z neho vznikla prvá úloha projektu.
         </p>
       )}
@@ -129,7 +129,7 @@ export function IdeaCard({
           <Link
             href={`/projekty/${idea.promotedProject.id}`}
             className={cn(
-              "inline-flex min-w-0 items-center gap-1.5 rounded text-[12px] font-medium text-accent",
+              "inline-flex min-w-0 items-center gap-1.5 rounded text-meta font-medium text-accent",
               "underline-offset-2 hover:underline",
             )}
           >
@@ -139,7 +139,7 @@ export function IdeaCard({
             </span>
           </Link>
         ) : (
-          <p className="text-[11px] leading-snug text-fg-subtle">
+          <p className="text-mini leading-snug text-fg-subtle">
             Projekt, ktorý z tohto nápadu vznikol, už neexistuje.
           </p>
         )
@@ -280,7 +280,7 @@ export function PendingIdeaCard({ title }: { title: string }) {
       <span className="min-w-0 text-sm leading-snug font-medium break-words text-fg">
         {title}
       </span>
-      <span className="text-[11px] text-fg-subtle">zapisuje sa…</span>
+      <span className="text-mini text-fg-subtle">zapisuje sa…</span>
     </li>
   );
 }

@@ -80,7 +80,7 @@ export function SelectItem({
       className={cn(
         // Položky v otvorenom zozname sa vyberajú prstom rovnako ako spúšťač.
         "relative flex h-11 cursor-default select-none items-center gap-2 rounded pl-2 pr-7 md:h-8",
-        "text-[13px] text-fg outline-none",
+        "text-body text-fg outline-none",
         "data-[highlighted]:bg-surface-2",
         "data-[state=checked]:text-accent",
         "data-[disabled]:pointer-events-none data-[disabled]:opacity-45",

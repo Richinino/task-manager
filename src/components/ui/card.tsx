@@ -57,7 +57,7 @@ export function CardHeader({
       <div className="flex min-w-0 flex-col gap-1">
         <div className="text-sm font-medium text-fg">{title}</div>
         {description ? (
-          <p className="text-[13px] leading-relaxed text-fg-muted">{description}</p>
+          <p className="text-body leading-relaxed text-fg-muted">{description}</p>
         ) : null}
       </div>
       {action ? <div className="ml-auto shrink-0">{action}</div> : null}

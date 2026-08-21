@@ -184,7 +184,7 @@ export function HabitGridCaption({
   const suffix = extra === undefined ? "" : ` · ${extra}`;
 
   return (
-    <p className="min-w-0 truncate text-[10px] leading-none text-fg-subtle">
+    <p className="min-w-0 truncate text-micro leading-none text-fg-subtle">
       <span className="sm:hidden">
         {compactStart === undefined
           ? `posledné týždne${suffix}`

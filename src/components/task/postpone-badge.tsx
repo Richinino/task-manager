@@ -52,7 +52,7 @@ export function PostponeBadge({
       className={cn(
         "inline-flex shrink-0 items-center gap-1 whitespace-nowrap",
         isDanger ? "font-semibold text-danger" : "text-warn",
-        size === "sm" ? "text-[11px]" : "text-xs",
+        size === "sm" ? "text-mini" : "text-xs",
         className,
       )}
     >

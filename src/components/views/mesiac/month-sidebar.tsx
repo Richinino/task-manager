@@ -81,7 +81,7 @@ export function MonthSidebar({
       className="flex w-full shrink-0 flex-col gap-3 lg:w-[320px]"
     >
       <section className="flex flex-col gap-2 rounded border border-border bg-surface p-3">
-        <h2 className="flex items-center gap-2 text-[13px] font-semibold text-fg">
+        <h2 className="flex items-center gap-2 text-body font-semibold text-fg">
           <CalendarClock aria-hidden="true" size={16} className="shrink-0 text-danger" />
           <span className="min-w-0 flex-1 truncate">Termíny v tomto mesiaci</span>
           <span className="shrink-0 text-xs font-normal tabular-nums text-fg-muted">

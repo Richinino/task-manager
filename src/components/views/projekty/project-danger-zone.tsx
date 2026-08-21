@@ -94,7 +94,7 @@ export function ProjectDangerZone({
       {error !== null ? (
         <p
           role="alert"
-          className="rounded border border-danger bg-surface px-3 py-2 text-[13px] font-medium text-danger"
+          className="rounded border border-danger bg-surface px-3 py-2 text-body font-medium text-danger"
         >
           {error}
         </p>
@@ -102,10 +102,10 @@ export function ProjectDangerZone({
 
       <div className="flex flex-col gap-3 rounded border border-border bg-surface p-3 sm:flex-row sm:items-start sm:gap-4">
         <div className="min-w-0 flex-1">
-          <p className="text-[13px] font-medium text-fg">
+          <p className="text-body font-medium text-fg">
             {archived ? "Vrátiť z archívu" : "Archivovať"}
           </p>
-          <p className="mt-0.5 text-[12px] leading-relaxed text-fg-muted">
+          <p className="mt-0.5 text-meta leading-relaxed text-fg-muted">
             {archived
               ? "Projekt sa vráti medzi živé a znovu sa začne ponúkať vo výberoch."
               : "Projekt sa schová z výberov a z parsera, ale úlohy aj história ostanú nedotknuté. Kedykoľvek sa dá vrátiť späť."}
@@ -130,8 +130,8 @@ export function ProjectDangerZone({
 
       <div className="flex flex-col gap-3 rounded border border-border bg-surface p-3 sm:flex-row sm:items-start sm:gap-4">
         <div className="min-w-0 flex-1">
-          <p className="text-[13px] font-medium text-fg">Zmazať projekt</p>
-          <p className="mt-0.5 text-[12px] leading-relaxed text-fg-muted">
+          <p className="text-body font-medium text-fg">Zmazať projekt</p>
+          <p className="mt-0.5 text-meta leading-relaxed text-fg-muted">
             Projekt sa zahodí, jeho úlohy nie —{" "}
             {taskCount === 0
               ? "len stratia príslušnosť k projektu a ostanú visieť samostatne."
@@ -175,7 +175,7 @@ export function ProjectDangerZone({
             {error !== null ? (
               <p
                 role="alert"
-                className="rounded border border-danger bg-surface px-3 py-2 text-[13px] font-medium text-danger"
+                className="rounded border border-danger bg-surface px-3 py-2 text-body font-medium text-danger"
               >
                 {error}
               </p>

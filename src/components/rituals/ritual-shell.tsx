@@ -167,7 +167,7 @@ export function RitualShell({
         <DialogHeader>
           <DialogTitle className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
             <span>{meta.title}</span>
-            <span className="text-[13px] font-normal text-fg-subtle">
+            <span className="text-body font-normal text-fg-subtle">
               {meta.minutes} min
             </span>
           </DialogTitle>
@@ -185,7 +185,7 @@ export function RitualShell({
               className="h-full rounded-full bg-accent transition-[width] duration-200 ease-out"
             />
           </div>
-          <span className="shrink-0 text-[12px] tabular-nums text-fg-subtle">
+          <span className="shrink-0 text-meta tabular-nums text-fg-subtle">
             {index + 1}/{steps.length}
           </span>
         </div>
@@ -195,7 +195,7 @@ export function RitualShell({
             <div className="flex flex-col gap-1">
               <h3 className="text-sm font-medium text-fg">{step.title}</h3>
               {step.hint ? (
-                <p className="text-[13px] leading-relaxed text-fg-muted">{step.hint}</p>
+                <p className="text-body leading-relaxed text-fg-muted">{step.hint}</p>
               ) : null}
             </div>
 
@@ -207,7 +207,7 @@ export function RitualShell({
 
         <div aria-live="polite" className="min-h-5">
           {error ? (
-            <p className="text-[13px] leading-relaxed text-danger">{error}</p>
+            <p className="text-body leading-relaxed text-danger">{error}</p>
           ) : null}
         </div>
 

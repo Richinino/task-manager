@@ -61,7 +61,7 @@ function ReviewButton({
       <span className="hidden sm:inline">{meta.title}</span>
       <span className="sm:hidden">Revízia</span>
       {completed ? (
-        <span className="text-[12px] font-normal text-fg-subtle">hotová</span>
+        <span className="text-meta font-normal text-fg-subtle">hotová</span>
       ) : null}
     </Button>
   );

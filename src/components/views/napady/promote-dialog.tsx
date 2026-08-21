@@ -127,7 +127,7 @@ function PromoteBody({ idea, onClose, onPromoted }: PromoteBodyProps) {
           <DialogDescription>Toto sa práve založilo:</DialogDescription>
         </DialogHeader>
 
-        <ul className="flex flex-col gap-1.5 text-[13px] leading-relaxed text-fg-muted">
+        <ul className="flex flex-col gap-1.5 text-body leading-relaxed text-fg-muted">
           <li className="min-w-0 break-words">
             <span className="font-medium text-fg">Projekt „{name}"</span>
             {goal !== "" ? " — s cieľom prevzatým z popisu nápadu." : " — zatiaľ bez cieľa."}
@@ -181,7 +181,7 @@ function PromoteBody({ idea, onClose, onPromoted }: PromoteBodyProps) {
         </DialogDescription>
       </DialogHeader>
 
-      <ul className="flex flex-col gap-1.5 text-[13px] leading-relaxed text-fg-muted">
+      <ul className="flex flex-col gap-1.5 text-body leading-relaxed text-fg-muted">
         <li className="min-w-0 break-words">
           Vznikne projekt <span className="font-medium text-fg">„{name}"</span> —
           názov sa berie z nápadu. Ak už taký projekt máš, povýšenie sa zastaví
@@ -203,7 +203,7 @@ function PromoteBody({ idea, onClose, onPromoted }: PromoteBodyProps) {
         <div
           className={cn(
             "mt-3 flex min-w-0 gap-2 rounded border border-warn/50 bg-surface-2 px-3 py-2.5",
-            "text-[13px] leading-relaxed text-fg-muted",
+            "text-body leading-relaxed text-fg-muted",
           )}
         >
           <CircleAlert aria-hidden="true" size={15} className="mt-0.5 shrink-0 text-warn" />
@@ -216,7 +216,7 @@ function PromoteBody({ idea, onClose, onPromoted }: PromoteBodyProps) {
       ) : null}
 
       <div className="mt-3 flex flex-col gap-1.5">
-        <label htmlFor="povysenie-prvy-krok" className="text-[12px] font-medium text-fg-muted">
+        <label htmlFor="povysenie-prvy-krok" className="text-meta font-medium text-fg-muted">
           Prvý krok projektu
         </label>
         <Input
@@ -233,7 +233,7 @@ function PromoteBody({ idea, onClose, onPromoted }: PromoteBodyProps) {
           // 16 px pod `sm`: menšie písmo si mobilné prehliadače vysvetlia
           // ako „toto sa nedá prečítať" a stránku pri fokuse priblížia.
         />
-        <p className="text-[11px] leading-relaxed text-fg-subtle">
+        <p className="text-mini leading-relaxed text-fg-subtle">
           Uloží sa k nápadu a hneď z neho vznikne prvá úloha projektu — stav
           „urobiť", horizont týždeň.
         </p>
@@ -241,7 +241,7 @@ function PromoteBody({ idea, onClose, onPromoted }: PromoteBodyProps) {
 
       <div role="alert" aria-live="polite" className="min-w-0">
         {error !== null ? (
-          <p className="mt-3 text-[13px] font-medium break-words text-danger">{error}</p>
+          <p className="mt-3 text-body font-medium break-words text-danger">{error}</p>
         ) : null}
       </div>
 

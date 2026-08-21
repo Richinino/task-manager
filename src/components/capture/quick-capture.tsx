@@ -628,12 +628,12 @@ export function QuickCapture({
           {defaultDate !== undefined ? (
             idea ? (
               /* Nápad deň neunesie. Predvyplnenie by sa ticho stratilo — povedzme to. */
-              <p className="pb-1 pl-9 pr-3 text-[12px] text-warn">
+              <p className="pb-1 pl-9 pr-3 text-meta text-warn">
                 Predvyplnený deň ({formatLongSk(defaultDate)}) sa do nápadu neuloží —
                 nápad nemá dátum.
               </p>
             ) : (
-              <p className="pb-1 pl-9 pr-3 text-[12px] text-fg-muted">
+              <p className="pb-1 pl-9 pr-3 text-meta text-fg-muted">
                 Predvyplnený deň: {formatLongSk(defaultDate)} — deň napísaný
                 v texte má prednosť.
               </p>
@@ -675,7 +675,7 @@ export function QuickCapture({
                 }}
                 className={cn(
                   "inline-flex min-h-11 items-center gap-1.5 rounded border border-warn/40",
-                  "bg-warn/10 px-2.5 text-[13px] text-warn sm:min-h-8",
+                  "bg-warn/10 px-2.5 text-body text-warn sm:min-h-8",
                   "transition-colors duration-100 ease-out hover:border-warn",
                   "disabled:pointer-events-none disabled:opacity-45",
                 )}
@@ -706,7 +706,7 @@ export function QuickCapture({
                 }}
                 className={cn(
                   "inline-flex min-h-11 items-center gap-1.5 rounded border border-border",
-                  "bg-surface-2 px-2.5 text-[13px] text-fg-muted sm:min-h-8",
+                  "bg-surface-2 px-2.5 text-body text-fg-muted sm:min-h-8",
                   "transition-colors duration-100 ease-out",
                   "hover:border-border-strong hover:text-fg",
                 )}
@@ -747,7 +747,7 @@ export function QuickCapture({
             <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1.5">
               <p
                 className={cn(
-                  "min-w-0 font-mono text-[11px]",
+                  "min-w-0 font-mono text-mini",
                   // Nápoveda nápadu nesie akcent — je to štvrtý signál o tom,
                   // že sa neukladá úloha.
                   idea ? "font-medium text-accent" : "text-fg-subtle",
@@ -761,7 +761,7 @@ export function QuickCapture({
                 {/* Klávesová nápoveda dáva zmysel len tam, kde je klávesnica. */}
                 <p
                   aria-hidden="true"
-                  className="hidden flex-wrap items-center gap-x-2 gap-y-1 text-[11px] text-fg-subtle sm:flex"
+                  className="hidden flex-wrap items-center gap-x-2 gap-y-1 text-mini text-fg-subtle sm:flex"
                 >
                   <span className="inline-flex items-center gap-1">
                     <Kbd>↵</Kbd> uložiť
@@ -787,7 +787,7 @@ export function QuickCapture({
                   // Prázdny názov po vybratí tokenov znamená, že uložiť sa nedá —
                   // tlačidlo to má povedať vopred, nie až server po odoslaní.
                   disabled={trimmed === "" || parsed?.title.trim() === "" || isPending}
-                  className="h-11 min-w-[5.5rem] px-4 sm:h-8 sm:min-w-0 sm:px-3 sm:text-[13px]"
+                  className="h-11 min-w-[5.5rem] px-4 sm:h-8 sm:min-w-0 sm:px-3 sm:text-body"
                 >
                   {idea ? "Uložiť nápad" : "Uložiť"}
                 </Button>
@@ -795,14 +795,14 @@ export function QuickCapture({
             </div>
 
             {error !== null ? (
-              <p role="alert" className="mt-1.5 text-[12px] font-medium text-danger">
+              <p role="alert" className="mt-1.5 text-meta font-medium text-danger">
                 {error}
               </p>
             ) : saved !== null ? (
               <p
                 role="status"
                 className={cn(
-                  "mt-1.5 truncate text-[12px]",
+                  "mt-1.5 truncate text-meta",
                   saved.queued ? "text-warn" : "text-success",
                 )}
               >

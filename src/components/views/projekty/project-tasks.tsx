@@ -53,11 +53,11 @@ export function ProjectTasks({
         <ListTodo aria-hidden="true" size={15} className="shrink-0 text-fg-subtle" />
         <h2
           id="ulohy-projektu"
-          className="min-w-0 truncate text-[13px] font-semibold text-fg"
+          className="min-w-0 truncate text-body font-semibold text-fg"
         >
           Úlohy projektu
         </h2>
-        <span className="shrink-0 text-[11px] text-fg-subtle">
+        <span className="shrink-0 text-mini text-fg-subtle">
           {taskCountLabel(open.length)} nevybavených
         </span>
       </div>
@@ -94,7 +94,7 @@ export function ProjectTasks({
             aria-controls="uzavrete-ulohy-projektu"
             className={cn(
               "inline-flex h-11 w-full items-center gap-2 rounded px-1 text-left sm:h-8",
-              "text-[13px] font-medium text-fg-muted",
+              "text-body font-medium text-fg-muted",
               "transition-colors duration-100 ease-out hover:bg-surface-2 hover:text-fg",
             )}
           >

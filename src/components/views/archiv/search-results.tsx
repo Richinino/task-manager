@@ -31,7 +31,7 @@ function Note({ children }: { children: ReactNode }) {
   return (
     <p
       role="status"
-      className="rounded border border-dashed border-border px-3 py-4 text-[13px] leading-relaxed text-fg-muted"
+      className="rounded border border-dashed border-border px-3 py-4 text-body leading-relaxed text-fg-muted"
     >
       {children}
     </p>
@@ -70,7 +70,7 @@ export function SearchResults({ query, hits }: SearchResultsProps) {
     <section aria-labelledby="vysledky-nadpis" className="flex min-w-0 flex-col gap-2">
       <h2
         id="vysledky-nadpis"
-        className="px-1 text-[11px] font-semibold tracking-wide text-fg-subtle uppercase"
+        className="px-1 text-mini font-semibold tracking-wide text-fg-subtle uppercase"
       >
         Výsledky ({hits.length})
       </h2>
@@ -110,26 +110,26 @@ export function SearchResults({ query, hits }: SearchResultsProps) {
                   <span className="flex min-w-0 flex-wrap items-baseline gap-x-2 gap-y-0.5">
                     <span
                       className={cn(
-                        "min-w-0 text-[13px] leading-snug font-medium break-words",
+                        "min-w-0 text-body leading-snug font-medium break-words",
                         hit.archived ? "text-fg-muted" : "text-fg",
                       )}
                     >
                       {hit.title}
                     </span>
 
-                    <span className="shrink-0 text-[11px] text-fg-subtle">
+                    <span className="shrink-0 text-mini text-fg-subtle">
                       {mark.label}
                     </span>
 
                     {hit.archived ? (
-                      <span className="shrink-0 rounded-full bg-surface-2 px-1.5 py-px text-[10px] font-medium text-fg-subtle">
+                      <span className="shrink-0 rounded-full bg-surface-2 px-1.5 py-px text-micro font-medium text-fg-subtle">
                         v archíve
                       </span>
                     ) : null}
                   </span>
 
                   {hit.snippet === null ? null : (
-                    <span className="min-w-0 text-[12px] leading-snug break-words text-fg-subtle">
+                    <span className="min-w-0 text-meta leading-snug break-words text-fg-subtle">
                       {hit.snippet}
                     </span>
                   )}

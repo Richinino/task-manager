@@ -95,7 +95,7 @@ function Chip({
       title={title}
       className={cn(
         "inline-flex max-w-full items-center gap-1 whitespace-nowrap rounded border",
-        "px-1.5 py-0.5 text-[11px] leading-4",
+        "px-1.5 py-0.5 text-mini leading-4",
         tone,
       )}
     >
@@ -432,7 +432,7 @@ export function ParsePreview({
       {/* Ticho orezanú hodnotu by používateľ nikdy neodhalil — povieme mu to
           skôr, než stlačí Enter. */}
       {notes.length > 0 ? (
-        <p aria-hidden="true" className="mt-1 text-[11px] leading-4 text-warn">
+        <p aria-hidden="true" className="mt-1 text-mini leading-4 text-warn">
           {notes.join(" ")}
         </p>
       ) : null}

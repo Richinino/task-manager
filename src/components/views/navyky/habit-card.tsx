@@ -208,7 +208,7 @@ export function HabitCard({
             Séria je to, čo človek nechce zlomiť; číslo týždňa je len účtovníctvo
             k nej. Oblasť ide na koniec a na telefóne sa oreže ako prvá.
           */}
-          <p className="min-w-0 truncate text-[11px] leading-relaxed text-fg-subtle">
+          <p className="min-w-0 truncate text-mini leading-relaxed text-fg-subtle">
             <span className={streak > 0 ? "font-medium text-fg-muted" : undefined}>
               {streakLabel(streak)}
             </span>
@@ -247,7 +247,7 @@ export function HabitCard({
             }
             className={cn(
               "inline-flex min-h-11 shrink-0 items-center gap-1.5 rounded border px-2.5 sm:min-h-9",
-              "text-[13px] font-medium transition-colors duration-100 ease-out",
+              "text-body font-medium transition-colors duration-100 ease-out",
               doneToday
                 ? "border-success bg-surface-2 text-fg"
                 : "border-border bg-surface text-fg-muted hover:border-border-strong hover:bg-surface-2 hover:text-fg",
@@ -334,7 +334,7 @@ export function HabitCard({
       </div>
 
       {error !== null ? (
-        <p role="alert" className="mt-1.5 text-[12px] font-medium text-danger">
+        <p role="alert" className="mt-1.5 text-meta font-medium text-danger">
           {error}
         </p>
       ) : null}

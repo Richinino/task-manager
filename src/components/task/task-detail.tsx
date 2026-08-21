@@ -546,7 +546,7 @@ export function TaskDetail({
         {error ? (
           <p
             role="alert"
-            className="shrink-0 border-b border-danger bg-surface px-4 py-2 text-[13px] font-medium text-danger"
+            className="shrink-0 border-b border-danger bg-surface px-4 py-2 text-body font-medium text-danger"
           >
             {error}
           </p>
@@ -631,7 +631,7 @@ export function TaskDetail({
           {/* ── kedy ───────────────────────────────────────────────────── */}
           <section className="flex flex-col gap-3">
             <SectionTitle>Kedy</SectionTitle>
-            <p className="text-[12px] leading-relaxed text-fg-muted">
+            <p className="text-meta leading-relaxed text-fg-muted">
               „Naplánované na" je deň, keď to ideš robiť; „termín" je deň, dokedy
               to musí byť hotové.
             </p>
@@ -786,7 +786,7 @@ export function TaskDetail({
                   <Star aria-hidden="true" size={14} className="fill-current text-frog" />
                   Priorita dňa
                 </span>
-                <span className="mt-0.5 block text-[12px] leading-relaxed text-fg-muted">
+                <span className="mt-0.5 block text-meta leading-relaxed text-fg-muted">
                   {draft.plannedDate === null
                     ? "Prioritou dňa môže byť len úloha s naplánovaným dňom."
                     : "Jedna úloha na deň. Zapnutím ju odoberieš tej doterajšej."}
@@ -817,7 +817,7 @@ export function TaskDetail({
                       }
                       className={cn(
                         "inline-flex flex-1 items-center justify-center gap-1.5 rounded border",
-                                                "text-[13px] font-medium transition-colors duration-100 ease-out",
+                                                "text-body font-medium transition-colors duration-100 ease-out",
                         active
                           ? "border-accent bg-accent-soft text-fg"
                           : "border-border bg-surface text-fg-muted hover:border-border-strong",
@@ -994,7 +994,7 @@ export function TaskDetail({
           {/* Klávesová nápoveda dáva zmysel len tam, kde je klávesnica. */}
           <p
             aria-hidden="true"
-            className="hidden flex-wrap items-center gap-x-3 gap-y-1.5 text-[11px] text-fg-subtle sm:flex"
+            className="hidden flex-wrap items-center gap-x-3 gap-y-1.5 text-mini text-fg-subtle sm:flex"
           >
             <span className="inline-flex items-center gap-1">
               <Kbd>Ctrl</Kbd>
@@ -1079,7 +1079,7 @@ interface FieldProps {
 }
 
 function Field({ label, htmlFor, hint, children }: FieldProps) {
-  const labelClass = "text-[12px] font-medium text-fg-muted";
+  const labelClass = "text-meta font-medium text-fg-muted";
 
   return (
     <div className="flex min-w-0 flex-col gap-1.5">
@@ -1092,7 +1092,7 @@ function Field({ label, htmlFor, hint, children }: FieldProps) {
       )}
       {children}
       {hint !== undefined ? (
-        <p className="text-[11px] leading-relaxed text-fg-subtle">{hint}</p>
+        <p className="text-mini leading-relaxed text-fg-subtle">{hint}</p>
       ) : null}
     </div>
   );
@@ -1104,7 +1104,7 @@ function Field({ label, htmlFor, hint, children }: FieldProps) {
  */
 function LoadingLine({ label }: { label: string }) {
   return (
-    <p role="status" className="flex h-9 items-center gap-2 text-[12px] text-fg-subtle">
+    <p role="status" className="flex h-9 items-center gap-2 text-meta text-fg-subtle">
       <LoaderCircle aria-hidden="true" className="size-3.5 animate-spin" />
       {label}
     </p>
