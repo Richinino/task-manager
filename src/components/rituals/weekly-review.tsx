@@ -18,6 +18,7 @@ import {
 import { diffDays, formatDayMonthSk } from "@/lib/dates";
 import type { RitualPeriod } from "@/lib/rituals";
 import { cn } from "@/lib/utils";
+import { Textarea } from "@/components/ui/textarea";
 import {
   RitualShell,
   ritualRowClass,
@@ -559,7 +560,7 @@ export function WeeklyReview({
             `text-base` pod `sm:` je povinné — 16 px je hranica, pod ktorou
             iOS pri fokuse priblíži celú stránku.
           */}
-          <textarea
+          <Textarea
             value={readText(context.payload, KEY_GOOD)}
             onChange={(event) => context.setValue(KEY_GOOD, event.target.value)}
             rows={4}
@@ -567,9 +568,7 @@ export function WeeklyReview({
             placeholder="Napr. konečne som zavrel projekt, ktorý sa vliekol od jari"
             className={cn(
               "min-h-24 w-full min-w-0 resize-y rounded border border-border bg-surface px-2.5 py-2",
-              "text-base leading-relaxed text-fg placeholder:text-fg-subtle sm:text-sm",
-              "transition-colors duration-100 ease-out hover:border-border-strong",
-            )}
+                )}
           />
           <p className="text-meta leading-relaxed text-fg-subtle">
             Nikam sa to neposiela. O mesiac to bude jediný doklad o tom, že sa
