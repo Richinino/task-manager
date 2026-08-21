@@ -15,6 +15,7 @@ import {
   LayoutTemplate,
   Lightbulb,
   LogOut,
+  Repeat,
   Search,
   Settings,
   Sprout,
@@ -154,10 +155,21 @@ export const NAV_ITEMS: readonly NavItem[] = [
     group: "structure",
   },
   /*
-    Hneď za návykmi zámerne: obidve obrazovky sú o veciach, ktoré sa opakujú.
-    Rozdiel je v tom, že návyk sa udržuje a nikdy sa nedokončí, kým šablóna
-    vysype hotové úlohy, ktoré sa dokončiť dajú — vedľa seba je ten rozdiel
-    najlepšie vidieť.
+    Medzi návykmi a šablónami zámerne. Všetky tri sú o veciach, ktoré sa
+    vracajú, a rozdiel medzi nimi je najlepšie vidieť vedľa seba: návyk sa
+    udržuje a nikdy sa nedokončí, opakovaná úloha zaberie miesto v dni
+    a musí sa spraviť, šablóna vysype nové úlohy až vtedy, keď ju použiješ.
+  */
+  {
+    href: "/opakovane",
+    label: "Opakované",
+    shortcut: "r",
+    Icon: Repeat,
+    group: "structure",
+  },
+  /*
+    Šablóny hneď za opakovanými: obe vyrábajú úlohy, len jedna sama od seba
+    a druhá na požiadanie.
   */
   {
     href: "/sablony",
