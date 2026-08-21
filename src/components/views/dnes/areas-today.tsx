@@ -1,4 +1,5 @@
 import { AreaDot } from "@/components/task/area-dot";
+import { shortDuration, summarizeAreas } from "@/lib/area-summary";
 import type { TaskWithRelations } from "@/server/queries/tasks";
 
 /**
@@ -15,62 +16,10 @@ export interface AreasTodayProps {
   tasks: readonly TaskWithRelations[];
 }
 
-interface AreaSummary {
-  id: string;
-  name: string;
-  color: string;
-  count: number;
-  /** Súčet odhadov, v minútach. Úlohy bez odhadu doň neprispejú. */
-  minutes: number;
-  /** Koľko z nich odhad nemá — číslo minút je o ne neúplné. */
-  withoutEstimate: number;
-}
-
-/** „60 m" · „2 h" · „2 h 30 m" — do úzkeho stĺpca sa dlhší zápis nezmestí. */
-function shortDuration(minutes: number): string {
-  if (minutes < 60) return `${minutes} m`;
-  const hours = Math.floor(minutes / 60);
-  const rest = minutes % 60;
-  return rest === 0 ? `${hours} h` : `${hours} h ${rest} m`;
-}
-
-function summarize(tasks: readonly TaskWithRelations[]): AreaSummary[] {
-  const byArea = new Map<string, AreaSummary>();
-
-  for (const task of tasks) {
-    if (!task.area) continue;
-    const existing = byArea.get(task.area.id) ?? {
-      id: task.area.id,
-      name: task.area.name,
-      color: task.area.color,
-      count: 0,
-      minutes: 0,
-      withoutEstimate: 0,
-    };
-    existing.count += 1;
-    if (task.estimateMin === null) existing.withoutEstimate += 1;
-    else existing.minutes += task.estimateMin;
-    byArea.set(task.area.id, existing);
-  }
-
-  /*
-    Zoradené podľa času, nie podľa počtu ani abecedy. Otázka znie „kam mi
-    tečie deň", a na tú odpovedajú minúty — päť päťminútoviek nie je to isté
-    ako jedna dvojhodinovka. Pri zhode rozhoduje počet a potom meno, aby sa
-    poradie medzi načítaniami nehýbalo.
-  */
-  return [...byArea.values()].sort(
-    (a, b) =>
-      b.minutes - a.minutes || b.count - a.count || a.name.localeCompare(b.name, "sk"),
-  );
-}
-
 export function AreasToday({ tasks }: AreasTodayProps) {
-  const areas = summarize(tasks);
+  const { areas, unassigned } = summarizeAreas(tasks);
   // Bez oblastí by tu ostal nadpis nad prázdnom — vtedy sekcia radšej zmizne.
   if (areas.length === 0) return null;
-
-  const unassigned = tasks.filter((task) => !task.area).length;
 
   return (
     <section className="flex flex-col gap-2">
