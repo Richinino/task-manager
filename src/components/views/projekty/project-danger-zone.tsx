@@ -86,7 +86,7 @@ export function ProjectDangerZone({
     <section aria-labelledby="sprava-projektu" className="flex flex-col gap-3">
       <h2
         id="sprava-projektu"
-        className="text-[11px] font-semibold uppercase tracking-wide text-fg-subtle"
+        className="label text-fg-subtle"
       >
         Správa projektu
       </h2>

@@ -217,7 +217,7 @@ export function MobileNav({ counts }: { counts: NavCounts }) {
                 <div key={group.key}>
             <h2
               id={groupIndex === 0 ? "mobile-nav-viac-title" : undefined}
-              className="truncate px-2 pb-1 pt-1 text-[11px] font-medium uppercase tracking-wide text-fg-subtle"
+              className="label truncate px-2 pb-1 pt-1 text-fg-subtle"
             >
               {group.label}
             </h2>

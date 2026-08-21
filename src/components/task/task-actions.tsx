@@ -318,7 +318,7 @@ function MenuGroup({ label, children }: { label: string; children: ReactNode }) 
     <div role="group" aria-label={label}>
       <p
         aria-hidden="true"
-        className="px-2 pb-0.5 pt-1 text-[11px] font-medium uppercase tracking-wide text-fg-subtle"
+        className="label px-2 pb-0.5 pt-1 text-fg-subtle"
       >
         {label}
       </p>

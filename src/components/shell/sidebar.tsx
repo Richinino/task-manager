@@ -410,7 +410,7 @@ export function Sidebar({ user, counts, signOutAction }: SidebarProps) {
 
         <h2
           id="nav-struktura"
-          className="truncate px-2 pb-1 text-[11px] font-medium uppercase tracking-wide text-fg-subtle"
+          className="label truncate px-2 pb-1 text-fg-subtle"
         >
           {SECONDARY_NAV_LABEL}
         </h2>
