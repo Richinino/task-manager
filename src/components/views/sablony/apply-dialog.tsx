@@ -234,7 +234,7 @@ function ApplyBody({ template, todayIso, onClose, onApplied }: ApplyBodyProps) {
       </div>
 
       <DialogFooter>
-        <Button type="button" onClick={onClose} disabled={isPending} className="h-11 sm:h-9">
+        <Button type="button" onClick={onClose} disabled={isPending}>
           Zrušiť
         </Button>
         <Button

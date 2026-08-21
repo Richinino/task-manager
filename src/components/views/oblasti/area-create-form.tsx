@@ -98,7 +98,6 @@ export function AreaCreateForm({ usedColors, onOptimisticAdd }: AreaCreateFormPr
           disabled={trimmed === "" || isPending}
           aria-label="Založiť oblasť"
           title="Založiť oblasť (Enter)"
-          className="size-11 sm:size-9"
         >
           {isPending ? (
             <LoaderCircle aria-hidden="true" size={16} className="animate-spin" />

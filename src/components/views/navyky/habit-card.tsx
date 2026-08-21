@@ -309,7 +309,6 @@ export function HabitCard({
                 ? "Vrátiť z archívu — séria sa počíta ďalej"
                 : "Archivovať — návyk sa schová, ale história aj séria ostanú"
             }
-            className="size-11 sm:size-8"
           >
             {archived ? (
               <ArchiveRestore aria-hidden="true" size={15} />

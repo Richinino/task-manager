@@ -107,7 +107,7 @@ export function HabitGrid({
             <span
               key={row}
               className={cn(
-                "flex h-3.5 items-center text-[9px] leading-none text-fg-subtle sm:h-3",
+                "flex h-3.5 items-center text-micro leading-none text-fg-subtle sm:h-3",
                 row % 2 === 1 && "invisible",
               )}
             >
