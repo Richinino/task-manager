@@ -242,7 +242,7 @@ export function DayColumn({
           z úzkej hlavičky.
         */}
         {isToday ? (
-          <span className="label shrink-0 rounded bg-accent-soft px-1.5 py-0.5 text-micro text-accent md:hidden">
+          <span className="label shrink-0 rounded bg-accent-soft px-1.5 py-0.5 text-accent md:hidden">
             dnes
           </span>
         ) : null}
