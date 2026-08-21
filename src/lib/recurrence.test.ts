@@ -225,3 +225,40 @@ describe("describeRecurrence", () => {
     );
   });
 });
+
+describe("describeRecurrence — rod dňa", () => {
+  /*
+    Slovenčina ohýba člen podľa rodu dňa. Kým bol „každý" natvrdo, appka
+    v riadku úlohy tvrdila „opakuje sa každý nedeľu".
+  */
+  it("mužské dni majú „každý“", () => {
+    expect(describeRecurrence(parseRecurrence("FREQ=WEEKLY;BYDAY=MO")!)).toBe(
+      "každý pondelok",
+    );
+    expect(describeRecurrence(parseRecurrence("FREQ=WEEKLY;BYDAY=TH")!)).toBe(
+      "každý štvrtok",
+    );
+  });
+
+  it("ženské dni majú „každú“", () => {
+    expect(describeRecurrence(parseRecurrence("FREQ=WEEKLY;BYDAY=SU")!)).toBe(
+      "každú nedeľu",
+    );
+    expect(describeRecurrence(parseRecurrence("FREQ=WEEKLY;BYDAY=WE")!)).toBe(
+      "každú stredu",
+    );
+    expect(describeRecurrence(parseRecurrence("FREQ=WEEKLY;BYDAY=SA")!)).toBe(
+      "každú sobotu",
+    );
+  });
+
+  it("pri viacerých dňoch sa člen riadi prvým v poradí", () => {
+    expect(describeRecurrence(parseRecurrence("FREQ=WEEKLY;BYDAY=MO,WE,FR")!)).toBe(
+      "každý pondelok, stredu a piatok",
+    );
+    // Nedeľa je v poradí prvá (index 0), takže „každú".
+    expect(describeRecurrence(parseRecurrence("FREQ=WEEKLY;BYDAY=SU,MO")!)).toBe(
+      "každú nedeľu a pondelok",
+    );
+  });
+});

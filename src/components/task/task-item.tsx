@@ -1,10 +1,15 @@
 "use client";
 
 import { useOptimistic } from "react";
-import { CalendarClock, CalendarDays, Folder, Hash, ListChecks, Star } from "lucide-react";
+import { CalendarClock, CalendarDays, Folder, Hash, ListChecks, Repeat, Star } from "lucide-react";
 
 import type { TaskWithRelations } from "@/server/queries/tasks";
 import { formatRelativeSk, isPast, parseIsoDate } from "@/lib/dates";
+import {
+  describeRecurrence,
+  parseRecurrence,
+  type Recurrence,
+} from "@/lib/recurrence";
 import { cn } from "@/lib/utils";
 import { AreaDot, areaLabel } from "@/components/task/area-dot";
 import { EnergyBadge, energyLabel } from "@/components/task/energy-badge";
@@ -129,6 +134,8 @@ function buildSummary(
     now: Date;
     postponeWarnAt: number;
     tags: TaskItemTag[];
+    /** Rozobrané pravidlo opakovania, alebo `null`. */
+    recurrence: Recurrence | null;
   },
 ): string {
   const parts: string[] = [];
@@ -157,6 +164,10 @@ function buildSummary(
 
   if (task.subtaskCount > 0) {
     parts.push(`podúlohy ${task.doneSubtaskCount} z ${task.subtaskCount}`);
+  }
+  // Ikona opakovania v riadku je bez textu — čítačke to musí povedať slovami.
+  if (opts.recurrence !== null) {
+    parts.push(`opakuje sa ${describeRecurrence(opts.recurrence)}`);
   }
   // Rovnaký prah ako vizuálny odznak — čítačka nesmie hlásiť viac ani menej.
   if (task.postponeCount >= opts.postponeWarnAt) {
@@ -224,6 +235,13 @@ export function TaskItem({
 
   const isFrog = shown.isFrog && showFrog;
 
+  /*
+    Pravidlo sa rozoberá tu, nie v `buildSummary`: potrebuje ho aj odznak
+    v riadku, aj súhrn pre čítačku, a rozoberať ten istý reťazec dvakrát
+    pri každom prekreslení by bola zbytočná práca.
+  */
+  const recurrence = parseRecurrence(task.recurrenceRule);
+
   // Lokálna polnoc dneška zo servera. `today(now)` z nej vráti späť presne
   // `todayIso`, takže všetky relatívne výpočty stoja na jednom dni.
   const now = parseIsoDate(todayIso);
@@ -238,6 +256,7 @@ export function TaskItem({
     now,
     postponeWarnAt,
     tags: shownTags,
+    recurrence,
   });
 
   const firstTag = shownTags[0];
@@ -451,6 +470,25 @@ export function TaskItem({
           >
             <ListChecks aria-hidden="true" size={13} className="shrink-0" />
             {task.doneSubtaskCount}/{task.subtaskCount}
+          </span>
+        ) : null}
+
+        {/*
+          Že je úloha opakovaná, sa dalo dovtedy zistiť len otvorením detailu —
+          v zozname o tom nebolo ani slovo. Pritom je to rozdiel, ktorý mení
+          rozhodovanie: odškrtnutie opakovanej úlohy ju nezruší, len posunie
+          na ďalší výskyt, takže „mám to za sebou" znamená niečo iné.
+
+          Ikona bez textu zámerne: celé znenie („každý týždeň v pondelok")
+          by v riadku zabralo viac než názov úlohy. Nesie ho `title` a čítačka
+          ho dostane v súhrne riadku.
+        */}
+        {recurrence !== null ? (
+          <span
+            title={`opakuje sa ${describeRecurrence(recurrence)}`}
+            className="hidden shrink-0 items-center text-fg-subtle sm:inline-flex"
+          >
+            <Repeat aria-hidden="true" size={13} />
           </span>
         ) : null}
 

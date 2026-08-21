@@ -34,6 +34,23 @@ const DAY_NAMES_SK = [
   "sobotu",
 ] as const;
 
+/**
+ * Člen pred názvom dňa. Slovenčina ho ohýba podľa rodu: „každý pondelok",
+ * ale „každú stredu". Bez toho z toho vyjde „každý nedeľu".
+ *
+ * Pri viacerých dňoch sa člen riadi PRVÝM v poradí — „každý pondelok, stredu
+ * a piatok". Zhoda s ostatnými sa v takomto výpočte nevyžaduje.
+ */
+const DAY_DETERMINER_SK = [
+  "každú", // nedeľu
+  "každý", // pondelok
+  "každý", // utorok
+  "každú", // stredu
+  "každý", // štvrtok
+  "každý", // piatok
+  "každú", // sobotu
+] as const;
+
 /** Rozloží `FREQ=WEEKLY;BYDAY=MO,WE` na dvojice kľúč–hodnota. */
 function parseParts(rule: string): Map<string, string> {
   const parts = new Map<string, string>();
@@ -204,11 +221,12 @@ export function describeRecurrence(recurrence: Recurrence): string {
     if (days.length === 7) return "každý deň";
 
     const names = days.map((day) => DAY_NAMES_SK[day] ?? "");
-    if (names.length === 1) return `každý ${names[0]}`;
+    const determiner = DAY_DETERMINER_SK[days[0] ?? 1] ?? "každý";
+    if (names.length === 1) return `${determiner} ${names[0]}`;
 
     // Posledný sa spája spojkou „a", nie čiarkou — inak to znie ako zoznam.
     const head = names.slice(0, -1).join(", ");
-    return `každý ${head} a ${names[names.length - 1]}`;
+    return `${determiner} ${head} a ${names[names.length - 1]}`;
   }
 
   const day = recurrence.byMonthDay ?? 1;
