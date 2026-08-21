@@ -1,6 +1,8 @@
 "use server";
 
+import { parseWikiLinks } from "@/lib/wikilink";
 import { requireUser } from "@/server/auth-guard";
+import { resolveLinkTargets } from "@/server/queries/links";
 import { getSubtasks, getTaskTags, listTags } from "@/server/queries/structure";
 
 /* ═══════════════════════════════════════════════════════════════════════════
@@ -33,12 +35,24 @@ export interface TagView {
   name: string;
 }
 
+/** Cieľ odkazu `[[…]]` nájdený v poznámke. */
+export interface LinkTargetView {
+  kind: "task" | "idea" | "project" | "area" | "journal";
+  id: string;
+  name: string;
+}
+
 export interface TaskExtras {
   subtasks: SubtaskView[];
   /** Štítky priradené tejto úlohe. */
   tags: TagView[];
   /** Všetky štítky používateľa — návrhy do poľa, od najpoužívanejších. */
   suggestions: TagView[];
+  /**
+   * Entity, na ktoré odkazuje poznámka. Odkazy bez cieľa sa nevracajú —
+   * ostanú obyčajným textom, presne ako v `WikiLinkText`.
+   */
+  linkTargets: LinkTargetView[];
 }
 
 export type TaskExtrasResult =
@@ -51,13 +65,23 @@ export type TaskExtrasResult =
  * `requireUser()` je zámerne mimo `try` — presmerovanie neprihláseného
  * pracuje s výnimkou a `catch` by ho premenil na hlášku „nepodarilo sa".
  */
-export async function loadTaskExtras(taskId: string): Promise<TaskExtrasResult> {
+export async function loadTaskExtras(
+  taskId: string,
+  /** Poznámka úlohy — z nej sa prekladajú odkazy `[[…]]`. */
+  note: string | null,
+): Promise<TaskExtrasResult> {
   const user = await requireUser();
   try {
-    const [subtasks, tags, all] = await Promise.all([
+    // Prázdna poznámka sa na server vôbec nepýta — bez odkazov nie je čo hľadať.
+    const labels = note === null ? [] : parseWikiLinks(note).map((link) => link.label);
+
+    const [subtasks, tags, all, targets] = await Promise.all([
       getSubtasks(user.id, taskId),
       getTaskTags(user.id, taskId),
       listTags(user.id),
+      labels.length > 0
+        ? resolveLinkTargets(user.id, labels)
+        : Promise.resolve(new Map()),
     ]);
 
     return {
@@ -77,6 +101,7 @@ export async function loadTaskExtras(taskId: string): Promise<TaskExtrasResult> 
               b.taskCount - a.taskCount || a.name.localeCompare(b.name, "sk"),
           )
           .map((tag) => ({ id: tag.id, name: tag.name })),
+        linkTargets: [...targets.values()],
       },
     };
   } catch (error) {
