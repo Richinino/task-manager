@@ -20,6 +20,7 @@ import { restoreTask } from "@/server/actions/tasks";
 import type { TaskWithRelations } from "@/server/queries/tasks";
 
 import { InboxHeader } from "./inbox-header";
+import { TriageProgress } from "./triage-progress";
 import {
   TRIAGE_ACTIONS,
   TRIAGE_ORDER,
@@ -334,6 +335,8 @@ export function InboxList({
         />
       ) : (
         <>
+          <TriageProgress position={cursor + 1} total={visible.length} />
+
           <ul ref={listRef} className="flex flex-col gap-2">
             {visible.map((task, index) => (
               <TriageRow
