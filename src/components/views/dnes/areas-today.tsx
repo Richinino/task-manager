@@ -74,7 +74,7 @@ export function AreasToday({ tasks }: AreasTodayProps) {
 
   return (
     <section className="flex flex-col gap-2">
-      <h2 className="label">Oblasti dnes</h2>
+      <h2 className="label text-fg-subtle">Oblasti dnes</h2>
 
       <ul className="flex flex-col gap-1.5">
         {areas.map((area) => (
