@@ -28,6 +28,7 @@ import {
   useTaskDiscard,
   type TaskRowPatch,
 } from "@/components/task/task-actions";
+import { FrogToggle } from "@/components/task/frog-toggle";
 import { TaskCheckbox } from "@/components/task/task-checkbox";
 import { useTaskDetail } from "@/components/task/task-detail-provider";
 
@@ -332,12 +333,27 @@ export function TaskItem({
     />
   );
 
-  const frogMark = isFrog ? (
-    <Star
-      aria-hidden="true"
-      size={compact ? 11 : 14}
-      className="shrink-0 fill-current text-frog"
+  /*
+    Hviezdička sa v plnom riadku kreslí VŽDY (keď je povolená a úloha má deň)
+    a dá sa na ňu kliknúť — podrobnosti v `FrogToggle`. V úzkom stĺpci týždňa
+    ostáva dekoráciou: má 11 px, dotykový cieľ sa tam nezmestí a riadok je
+    zároveň úchyt pre ťahanie, takže tlačidlo vnútri by ho rozbilo.
+  */
+  const canBeFrog = shown.plannedDate !== null;
+
+  const frogMark = compact ? (
+    isFrog ? (
+      <Star aria-hidden="true" size={11} className="shrink-0 fill-current text-frog" />
+    ) : null
+  ) : showFrog && canBeFrog ? (
+    <FrogToggle
+      taskId={task.id}
+      isFrog={isFrog}
+      title={task.title}
+      onOptimistic={(next) => applyPatch({ isFrog: next })}
     />
+  ) : isFrog ? (
+    <Star aria-hidden="true" size={14} className="shrink-0 fill-current text-frog" />
   ) : null;
 
   /* ── compact: dvojriadková kartička do ~150 px širokého stĺpca ────────── */
