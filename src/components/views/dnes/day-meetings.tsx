@@ -46,9 +46,9 @@ export function DayMeetings({ events }: DayMeetingsProps) {
     >
       <h2
         id="dnes-porady"
-        className="flex min-w-0 items-center gap-2 px-3 pt-2.5 pb-1.5 text-sm font-semibold text-fg"
+        className="label flex min-w-0 items-center gap-2 px-3 pb-1.5 pt-2.5"
       >
-        <CalendarClock aria-hidden="true" size={16} className="shrink-0 text-fg-muted" />
+        <CalendarClock aria-hidden="true" size={13} className="shrink-0" />
         <span className="min-w-0 truncate">Porady</span>
       </h2>
 

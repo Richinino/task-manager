@@ -2,7 +2,9 @@ import type { Metadata } from "next";
 
 import { DayHeader } from "@/components/views/dnes/day-header";
 import { DayList } from "@/components/views/dnes/day-list";
+import { AreasToday } from "@/components/views/dnes/areas-today";
 import { DayMeetings } from "@/components/views/dnes/day-meetings";
+import { DayRail } from "@/components/views/dnes/day-rail";
 import { DayPriorityCard } from "@/components/views/dnes/day-priority-card";
 import { OverdueSection } from "@/components/views/dnes/overdue-section";
 import { TimeBudget } from "@/components/views/dnes/time-budget";
@@ -114,13 +116,21 @@ export default async function DnesPage({ searchParams }: DnesPageProps) {
   // v hlavičke ani do rozpočtu času to nesiaha — tie stoja na
   // `dayTasks`/`openTasks`. Zo zoznamu ju vyberáme len vtedy, keď je karta
   // naozaj vykreslená, aby nemohla vypadnúť z oboch miest naraz.
+  /*
+    Prázdna lišta by aj tak zabrala svojich 248 px a hlavný stĺpec by
+    zbytočne stlačila — vykreslí sa až vtedy, keď má čo ukázať. Obe jej
+    sekcie sa pri prázdne skrývajú samy, takže bez tejto podmienky by ostal
+    stĺpec bez obsahu a bez výšky.
+  */
+  const showRail = events.length > 0 || dayTasks.some((task) => task.area !== null);
+
   const frogInCard = showFrogCard && frog !== null;
   const listTasks = frogInCard
     ? dayTasks.filter((task) => task.id !== frog.id)
     : dayTasks;
 
   return (
-    <div className="mx-auto flex w-full max-w-3xl flex-col gap-5 px-4 py-5 md:px-6 md:py-7">
+    <div className="mx-auto flex w-full max-w-5xl flex-col gap-5 px-4 py-5 md:px-6 md:py-7">
       <DayHeader
         date={date}
         todayIso={todayIso}
@@ -194,36 +204,60 @@ export default async function DnesPage({ searchParams }: DnesPageProps) {
         }
       />
 
-      {/* Porady sedia medzi rozpočtom a prioritou dňa: najprv koľko času
-          zostalo, potom čím je obsadený, až potom čo s tým zvyškom. */}
-      <DayMeetings events={events} />
+      {/*
+        Dva stĺpce od `lg`. Hlavný nesie to, čo sa odškrtáva; pravá lišta to,
+        na čo sa pri rozhodovaní pozeráš. Pod `lg` je z toho jeden stĺpec
+        a lišta sa nekreslí vôbec — podrobnosti v `DayRail`.
+      */}
+      <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:gap-8">
+        <div className="flex min-w-0 flex-1 flex-col gap-5">
+          {/*
+            Porady sedia nad prioritou dňa: najprv čím je deň obsadený, až
+            potom čo s tým zvyškom. Od `lg` ich prevezme pravá lišta, preto sú
+            tu skryté. Je to ten istý komponent dvakrát v strome, ale kreslí
+            iba značky a bez stavu — lacnejšie než ho na telefóne stratiť.
+          */}
+          <div className="lg:hidden">
+            <DayMeetings events={events} />
+          </div>
 
-      {showFrogCard ? (
-        <DayPriorityCard
-          frog={frog}
-          candidates={openTasks}
-          todayIso={todayIso}
-          postponeWarnAt={user.settings.postponeWarnAt}
-          postponeBlockAt={user.settings.postponeBlockAt}
-        />
-      ) : null}
+          {showFrogCard ? (
+            <DayPriorityCard
+              frog={frog}
+              candidates={openTasks}
+              todayIso={todayIso}
+              postponeWarnAt={user.settings.postponeWarnAt}
+              postponeBlockAt={user.settings.postponeBlockAt}
+            />
+          ) : null}
 
-      <OverdueSection
-        tasks={overdue}
-        todayIso={todayIso}
-        postponeWarnAt={user.settings.postponeWarnAt}
-        postponeBlockAt={user.settings.postponeBlockAt}
-      />
+          <OverdueSection
+            tasks={overdue}
+            todayIso={todayIso}
+            postponeWarnAt={user.settings.postponeWarnAt}
+            postponeBlockAt={user.settings.postponeBlockAt}
+          />
 
-      <DayList
-        tasks={listTasks}
-        frogInCard={frogInCard}
-        openCount={openTasks.length}
-        wipLimit={user.settings.wipLimit}
-        todayIso={todayIso}
-        postponeWarnAt={user.settings.postponeWarnAt}
-        postponeBlockAt={user.settings.postponeBlockAt}
-      />
+          <DayList
+            tasks={listTasks}
+            frogInCard={frogInCard}
+            openCount={openTasks.length}
+            wipLimit={user.settings.wipLimit}
+            todayIso={todayIso}
+            postponeWarnAt={user.settings.postponeWarnAt}
+            postponeBlockAt={user.settings.postponeBlockAt}
+          />
+        </div>
+
+        {showRail ? (
+          <div className="hidden lg:block">
+            <DayRail
+              meetings={<DayMeetings events={events} />}
+              areas={<AreasToday tasks={dayTasks} />}
+            />
+          </div>
+        ) : null}
+      </div>
     </div>
   );
 }

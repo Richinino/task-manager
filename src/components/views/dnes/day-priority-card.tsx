@@ -56,9 +56,9 @@ export function DayPriorityCard({
   const heading = (
     <h2
       id={headingId}
-      className="flex min-w-0 items-center gap-1.5 text-sm font-semibold text-fg"
+      className="label flex min-w-0 items-center gap-1.5 text-fg-muted"
     >
-      <Star aria-hidden="true" size={16} className="shrink-0 fill-current text-frog" />
+      <Star aria-hidden="true" size={13} className="shrink-0 fill-current text-frog" />
       Priorita dňa
     </h2>
   );
