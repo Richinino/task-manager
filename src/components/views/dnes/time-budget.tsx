@@ -105,6 +105,26 @@ export function TimeBudget({
       </div>
 
       {/*
+        Rozpis, kam sa deň delí. Pruh povie KOĽKO je zabraté, toto povie ČÍM —
+        a to je rozdiel, ktorý mení rozhodnutie: osem hodín zabratých prácou
+        sa dá presunúť, osem hodín zabratých poradami nie.
+
+        Až od `sm:`. Na 375 px je pod pruhom veta a tretí riadok čísel by
+        z rozpočtu spravil tabuľku práve tam, kde má byť jeden pohľad.
+        Skryté aj pre čítačku — všetky tri čísla sú vo vete pod tým.
+      */}
+      <p
+        aria-hidden="true"
+        className="hidden items-center gap-2 font-mono text-mini tabular-nums text-fg-subtle sm:flex"
+      >
+        <span className={over ? "text-danger" : undefined}>
+          úlohy {formatDuration(plannedMin)}
+        </span>
+        {meetings > 0 ? <span>· porady {formatDuration(meetings)}</span> : null}
+        {!over ? <span>· voľné {formatDuration(workMin - plannedMin)}</span> : null}
+      </p>
+
+      {/*
         Na 375 px je celá veta („4 h 30 min naplánovaných z 8 h — naplánoval
         si o 1 h viac, než máš.") na tri riadky. Pod `sm:` preto vypadávajú
         len výplňové slová: ostáva „4 h 30 min z 8 h — o 1 h viac, než máš."
