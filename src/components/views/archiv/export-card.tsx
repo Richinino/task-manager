@@ -1,6 +1,7 @@
 import { Download } from "lucide-react";
 
 import { cn } from "@/lib/utils";
+import { Card } from "@/components/ui/card";
 
 /* ═══════════════════════════════════════════════════════════════════════════
    EXPORT
@@ -17,10 +18,8 @@ import { cn } from "@/lib/utils";
 
 export function ExportCard() {
   return (
-    <section
-      aria-labelledby="export-nadpis"
-      className="min-w-0 rounded border border-border bg-surface p-4"
-    >
+    <section aria-labelledby="export-nadpis" className="min-w-0">
+      <Card>
       <h2
         id="export-nadpis"
         className="text-sm font-semibold tracking-tight text-fg"
@@ -50,6 +49,7 @@ export function ExportCard() {
         <Download aria-hidden="true" size={15} className="shrink-0" />
         Stiahnuť zálohu
       </a>
+      </Card>
     </section>
   );
 }

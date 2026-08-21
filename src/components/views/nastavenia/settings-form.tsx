@@ -7,6 +7,7 @@ import type { Settings } from "@/lib/settings";
 import { rulesToText, textToRules } from "@/lib/auto-tag";
 import { placesToText } from "@/lib/places";
 import { cn } from "@/lib/utils";
+import { Card, CardHeader } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -74,12 +75,11 @@ function Section({
   children: React.ReactNode;
 }) {
   return (
-    <section className="flex flex-col gap-3 rounded border border-border bg-surface p-4">
-      <div className="flex flex-col gap-1">
-        <h2 className="text-sm font-medium text-fg">{title}</h2>
-        <p className="text-[13px] leading-relaxed text-fg-muted">{description}</p>
-      </div>
-      <div className="flex flex-col gap-4">{children}</div>
+    <section>
+      <Card className="flex flex-col gap-3">
+        <CardHeader title={title} description={description} />
+        <div className="flex flex-col gap-4">{children}</div>
+      </Card>
     </section>
   );
 }
