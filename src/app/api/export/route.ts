@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm";
+import { eq, getTableColumns } from "drizzle-orm";
 
 import { getDb } from "@/db";
 import {
@@ -42,6 +42,17 @@ export async function GET(): Promise<Response> {
   try {
     const db = await getDb();
 
+    /*
+      Dve väzobné tabuľky nemajú `userId` — `habit_entries` visí na návyku
+      a `taggables` na štítku. Obmedzujú sa preto spojením cez svojho rodiča,
+      rovnako ako to robí `queries/habits.ts`.
+
+      Predtým sa sťahovali CELÉ a filtrovali až v pamäti. Výsledok bol
+      správny, ale bolo to jediné miesto v appke, kde sa cudzie riadky vôbec
+      dostali do pamäte tejto požiadavky — a jedna nepozorná úprava od toho,
+      aby sa dostali aj do súboru. `getTableColumns` udrží tvar výstupu:
+      vráti len stĺpce dieťaťa, nie obal so spojenou tabuľkou.
+    */
     const [
       userTasks,
       userTaskEvents,
@@ -54,6 +65,8 @@ export async function GET(): Promise<Response> {
       userReviews,
       userTemplates,
       userLinks,
+      userHabitEntries,
+      userTaggables,
     ] = await Promise.all([
       db.select().from(tasks).where(eq(tasks.userId, user.id)),
       db.select().from(taskEvents).where(eq(taskEvents.userId, user.id)),
@@ -66,24 +79,17 @@ export async function GET(): Promise<Response> {
       db.select().from(reviews).where(eq(reviews.userId, user.id)),
       db.select().from(templates).where(eq(templates.userId, user.id)),
       db.select().from(links).where(eq(links.userId, user.id)),
+      db
+        .select(getTableColumns(habitEntries))
+        .from(habitEntries)
+        .innerJoin(habits, eq(habitEntries.habitId, habits.id))
+        .where(eq(habits.userId, user.id)),
+      db
+        .select(getTableColumns(taggables))
+        .from(taggables)
+        .innerJoin(tags, eq(taggables.tagId, tags.id))
+        .where(eq(tags.userId, user.id)),
     ]);
-
-    /*
-      Dve väzobné tabuľky nemajú `userId` — `habit_entries` visí na návyku
-      a `taggables` na štítku. Sťahujú sa preto až po svojich rodičoch
-      a filtrujú sa podľa nich. Samostatný dotaz bez tohto filtra by do zálohy
-      pribalil cudzie riadky, čo je pri exporte to posledné, čo chceme.
-    */
-    const habitIds = new Set(userHabits.map((habit) => habit.id));
-    const tagIds = new Set(userTags.map((tag) => tag.id));
-
-    const [allEntries, allTaggables] = await Promise.all([
-      db.select().from(habitEntries),
-      db.select().from(taggables),
-    ]);
-
-    const userHabitEntries = allEntries.filter((entry) => habitIds.has(entry.habitId));
-    const userTaggables = allTaggables.filter((row) => tagIds.has(row.tagId));
 
     const payload = {
       exportedAt: new Date().toISOString(),

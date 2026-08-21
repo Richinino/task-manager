@@ -138,8 +138,21 @@ async function selectTasks(
       tags: taskTags.list,
     })
     .from(tasks)
-    .leftJoin(areas, eq(tasks.areaId, areas.id))
-    .leftJoin(projects, eq(tasks.projectId, projects.id))
+    /*
+      Vlastník sa overuje aj v spojení, nie len v `where`.
+
+      Dnes `tasks.areaId` na cudziu oblasť nikdy neukazuje — stráži to
+      `checkRefs()` v akciách. Lenže to je pravidlo držané kódom, nie
+      databázou, a stačí jedno miesto, kde sa naň zabudne (import, šablóna,
+      budúca funkcia), aby sa v riadku úlohy zobrazil **cudzí názov oblasti**.
+
+      Podmienka patrí do `on`, nie do `where`: pri `where` by sa `leftJoin`
+      správal ako `innerJoin` a úloha s cudzou väzbou by zo zoznamu zmizla
+      celá. Takto sa len oblasť vykreslí ako prázdna — presne ako pri úlohe
+      bez oblasti. Rovnako to už robí `queries/ideas.ts`.
+    */
+    .leftJoin(areas, and(eq(tasks.areaId, areas.id), eq(areas.userId, userId)))
+    .leftJoin(projects, and(eq(tasks.projectId, projects.id), eq(projects.userId, userId)))
     .leftJoin(subtaskCounts, eq(subtaskCounts.parentId, tasks.id))
     .leftJoin(taskTags, eq(taskTags.taskId, tasks.id))
     .where(and(eq(tasks.userId, userId), isNull(tasks.deletedAt), extra))

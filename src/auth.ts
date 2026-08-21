@@ -4,7 +4,9 @@ import Credentials from "next-auth/providers/credentials";
 import { eq } from "drizzle-orm";
 
 import { getDb } from "@/db";
-import { users } from "@/db/schema";
+import { DEFAULT_AREAS } from "@/db/default-areas";
+import { areas, users } from "@/db/schema";
+import { isAllowed, parseAllowList } from "@/lib/allowlist";
 import { uuidv7 } from "@/lib/id";
 import { DEFAULT_SETTINGS } from "@/lib/settings";
 
@@ -25,10 +27,48 @@ function env(name: string): string | undefined {
 /** Vývojové prihlásenie bez Googlu — v produkcii je tvrdo vypnuté. */
 const devBypassEnabled = !isProd && env("AUTH_DEV_BYPASS") === "1";
 
-const allowedEmail = env("ALLOWED_EMAIL")?.toLowerCase();
+/**
+ * Kto smie dnu — zoznam e-mailov oddelených čiarkou v `ALLOWED_EMAILS`.
+ *
+ * Kým bol systém jednopoužívateľský, stačila jedna hodnota v `ALLOWED_EMAIL`.
+ * Ten názov ostáva ako záloha, aby sa nasadenie nerozbilo skôr, než sa na
+ * Verceli premenná premenuje.
+ *
+ * Samotné rozhodovanie žije v `@/lib/allowlist` a má testy — je to jediná
+ * zábrana pri vstupe a jej zlyhanie by nebolo vidieť.
+ */
+const allowedEmails = parseAllowList(env("ALLOWED_EMAILS") ?? env("ALLOWED_EMAIL"));
+
+/** Prvý zo zoznamu — potrebuje ho len vývojové prihlásenie. */
+const primaryEmail = [...allowedEmails][0];
 
 /** Google sa zaregistruje len s reálnym client id — prázdna hodnota je nenastavená. */
 const googleClientId = env("AUTH_GOOGLE_ID");
+
+/**
+ * Založí novému používateľovi predvolené oblasti.
+ *
+ * Zlyhanie sa **prehltne**: appka bez oblastí je chudobnejšia, ale funguje,
+ * kým appka, do ktorej sa nedá prihlásiť, nie je na nič. Je to ten istý
+ * kompromis, aký už platí pre ukladanie tokenov ku Googlu nižšie.
+ */
+async function seedDefaultAreas(userId: string): Promise<void> {
+  try {
+    const db = await getDb();
+    await db.insert(areas).values(
+      DEFAULT_AREAS.map((area, index) => ({
+        id: uuidv7(),
+        userId,
+        name: area.name,
+        color: area.color,
+        icon: area.icon,
+        sort: index,
+      })),
+    );
+  } catch (error) {
+    console.error("[auth] Predvolené oblasti sa nepodarilo založiť:", error);
+  }
+}
 
 /** Zaručí, že pre daný e-mail existuje riadok v `users`, a vráti jeho id. */
 async function ensureUser(email: string, name?: string | null, image?: string | null) {
@@ -37,14 +77,31 @@ async function ensureUser(email: string, name?: string | null, image?: string | 
   if (existing) return existing.id;
 
   const id = uuidv7();
-  await db.insert(users).values({
-    id,
-    email,
-    name: name ?? null,
-    image: image ?? null,
-    settings: DEFAULT_SETTINGS,
-  });
-  return id;
+  /*
+    `onConflictDoNothing` a dohľadanie namiesto holého `insert`: `users.email`
+    má UNIQUE a dve súbežné prvé prihlásenia (dve karty, dvojklik na tlačidlo)
+    by inak zhodili prihlásenie na porušení unikátnosti — práve to prvé, ktoré
+    má človek zažiť.
+  */
+  await db
+    .insert(users)
+    .values({
+      id,
+      email,
+      name: name ?? null,
+      image: image ?? null,
+      settings: DEFAULT_SETTINGS,
+    })
+    .onConflictDoNothing();
+
+  const created = await db.query.users.findFirst({ where: eq(users.email, email) });
+  if (!created) throw new Error("Používateľa sa nepodarilo založiť.");
+
+  // Oblasti len k riadku, ktorý sme naozaj vložili my. Pri súbehu vyhral
+  // niekto iný a ten si ich založil sám — inak by ich nový človek mal dvakrát.
+  if (created.id === id) await seedDefaultAreas(created.id);
+
+  return created.id;
 }
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
@@ -80,7 +137,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
             name: "Vývojové prihlásenie",
             credentials: {},
             async authorize() {
-              const email = allowedEmail ?? "dev@localhost";
+              const email = primaryEmail ?? "dev@localhost";
               return { id: "dev", email, name: "Vývojár" };
             },
           }),
@@ -90,11 +147,9 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
 
   callbacks: {
     async signIn({ user }) {
-      const email = user.email?.toLowerCase();
-      if (!email) return false;
-      // Jednopoužívateľský systém: pustíme dnu iba povolený e-mail.
-      if (allowedEmail && email !== allowedEmail) return false;
-      return true;
+      // Prázdny zoznam znamená v produkcii „nikto" — podrobnosti aj testy
+      // sú v `@/lib/allowlist`.
+      return isAllowed(user.email ?? "", allowedEmails, isProd);
     },
 
     async jwt({ token, user, account }) {

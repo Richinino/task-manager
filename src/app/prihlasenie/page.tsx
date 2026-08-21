@@ -11,7 +11,7 @@ export const metadata: Metadata = {
 /** Chybové kódy, ktoré sem Auth.js vracia v query parametri `error`. */
 const ERROR_MESSAGES: Record<string, string> = {
   AccessDenied:
-    "Tento účet nemá prístup. Prihlás sa e-mailom uvedeným v premennej ALLOWED_EMAIL.",
+    "Tento účet nemá prístup. Prihlás sa účtom, ktorý je v appke povolený.",
   Configuration:
     "Prihlásenie nie je správne nastavené. Skontroluj premenné v .env.local a reštartuj server.",
   Verification: "Odkaz na prihlásenie už neplatí. Skús to znova.",
@@ -133,7 +133,7 @@ export default async function PrihlaseniePage({
         </div>
 
         <p className="mt-4 text-center text-[12px] text-fg-subtle">
-          Prístup má jediný účet — ten z premennej ALLOWED_EMAIL.
+          Prístup majú len povolené účty.
         </p>
       </div>
     </main>
