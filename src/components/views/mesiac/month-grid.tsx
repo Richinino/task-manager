@@ -128,7 +128,7 @@ export function MonthGrid({ days }: MonthGridProps) {
             <div
               key={day.iso}
               title={WEEKDAYS_SK[weekday] ?? ""}
-              className="truncate px-1 pb-0.5 text-[11px] font-medium uppercase tracking-wide text-fg-subtle"
+              className="label truncate px-1 pb-0.5 text-fg-subtle"
             >
               {WEEKDAYS_SHORT_SK[weekday] ?? ""}
             </div>

@@ -105,7 +105,7 @@ export function MonthSidebar({
                 <li key={group.date} className="flex flex-col gap-1">
                   <h3
                     className={cn(
-                      "text-[11px] font-semibold uppercase tracking-wide",
+                      "label",
                       overdue
                         ? "text-danger"
                         : todayGroup

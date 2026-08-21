@@ -161,7 +161,7 @@ export function TemplateEditor({ template, onCancel, onSaved }: TemplateEditorPr
       }}
       className="flex flex-col gap-3 rounded border border-border bg-surface p-3"
     >
-      <h2 className="text-[11px] font-semibold uppercase tracking-wide text-fg-subtle">
+      <h2 className="label text-fg-subtle">
         {isNew ? "Nová šablóna" : "Úprava šablóny"}
       </h2>
 
