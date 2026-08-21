@@ -74,7 +74,7 @@ export function DayList({
           <TriangleAlert aria-hidden="true" size={16} className="mt-px shrink-0 text-warn" />
           <span className="min-w-0">
             Na dnes máš {taskCountSk(openCount)}, tvoj limit je{" "}
-            <span className="tabular-nums">{wipLimit}</span>. Ak sa niečo nezmestí,
+            <span className="font-mono tabular-nums">{wipLimit}</span>. Ak sa niečo nezmestí,
             presuň to na iný deň.
           </span>
         </p>

@@ -103,7 +103,7 @@ export function TemplateCard({
                 key={`${index}-${task.title}`}
                 className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 text-body"
               >
-                <span className="shrink-0 rounded bg-surface-2 px-1.5 py-0.5 text-mini tabular-nums text-fg-muted">
+                <span className="shrink-0 rounded bg-surface-2 px-1.5 py-0.5 text-mini font-mono tabular-nums text-fg-muted">
                   {dayOffsetShort(task.dayOffset ?? 0)}
                 </span>
                 <span className="min-w-0 flex-1 break-words text-fg">{task.title}</span>
@@ -115,7 +115,7 @@ export function TemplateCard({
                   <EnergyBadge energy={task.energy} size="sm" />
                 ) : null}
                 {task.estimateMin !== undefined ? (
-                  <span className="shrink-0 text-mini tabular-nums text-fg-subtle">
+                  <span className="shrink-0 text-mini font-mono tabular-nums text-fg-subtle">
                     {formatDuration(task.estimateMin)}
                   </span>
                 ) : null}

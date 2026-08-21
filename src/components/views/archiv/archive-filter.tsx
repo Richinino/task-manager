@@ -49,7 +49,7 @@ export function ArchiveFilter({ active, query, counts }: ArchiveFilterProps) {
             <span
               aria-hidden="true"
               className={cn(
-                "shrink-0 text-mini tabular-nums",
+                "shrink-0 text-mini font-mono tabular-nums",
                 current ? "text-accent" : "text-fg-subtle",
               )}
             >

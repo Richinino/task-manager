@@ -214,7 +214,7 @@ export function HabitCard({
             </span>
             {" · "}
             <span
-              className={cn("tabular-nums", targetMet && "font-medium text-success")}
+              className={cn("font-mono tabular-nums", targetMet && "font-medium text-success")}
             >
               {weekDone} / {target}
             </span>{" "}

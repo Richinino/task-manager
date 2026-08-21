@@ -185,7 +185,7 @@ export function RitualShell({
               className="h-full rounded-full bg-accent transition-[width] duration-200 ease-out"
             />
           </div>
-          <span className="shrink-0 text-meta tabular-nums text-fg-subtle">
+          <span className="shrink-0 text-meta font-mono tabular-nums text-fg-subtle">
             {index + 1}/{steps.length}
           </span>
         </div>

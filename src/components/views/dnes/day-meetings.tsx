@@ -63,7 +63,7 @@ export function DayMeetings({ events }: DayMeetingsProps) {
               >
                 {range === null ? null : (
                   // Časy sú v pásme používateľa a majú pod sebou držať stĺpec,
-                  // preto tabular-nums a žiadne zalamovanie.
+                  // preto font-mono tabular-nums a žiadne zalamovanie.
                   <span className="shrink-0 text-xs tabular-nums whitespace-nowrap text-fg-muted">
                     {range}
                   </span>

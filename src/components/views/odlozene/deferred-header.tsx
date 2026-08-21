@@ -73,7 +73,7 @@ export function DeferredHeader({ kind, count }: DeferredHeaderProps) {
         {empty ? null : (
           <span
             aria-hidden="true"
-            className="inline-flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full bg-surface-2 px-1.5 text-mini font-semibold tabular-nums text-fg-muted"
+            className="inline-flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full bg-surface-2 px-1.5 text-mini font-semibold font-mono tabular-nums text-fg-muted"
           >
             {count}
           </span>

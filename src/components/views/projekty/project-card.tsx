@@ -85,7 +85,7 @@ export function ProjectCard({ project, todayIso, className }: ProjectCardProps) 
         <span
           aria-hidden="true"
           className={cn(
-            "shrink-0 rounded-full px-2 py-0.5 text-mini font-semibold tabular-nums",
+            "shrink-0 rounded-full px-2 py-0.5 text-mini font-semibold font-mono tabular-nums",
             project.openTaskCount === 0
               ? "bg-surface-2 text-fg-subtle"
               : "bg-accent-soft text-fg",

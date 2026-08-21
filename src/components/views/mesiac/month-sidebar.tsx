@@ -84,7 +84,7 @@ export function MonthSidebar({
         <h2 className="flex items-center gap-2 text-body font-semibold text-fg">
           <CalendarClock aria-hidden="true" size={16} className="shrink-0 text-danger" />
           <span className="min-w-0 flex-1 truncate">Termíny v tomto mesiaci</span>
-          <span className="shrink-0 text-xs font-normal tabular-nums text-fg-muted">
+          <span className="shrink-0 text-xs font-normal font-mono tabular-nums text-fg-muted">
             {dueTasks.length}
           </span>
         </h2>
@@ -146,7 +146,7 @@ export function MonthSidebar({
           <CalendarRange size={18} />
         </span>
         <div className="min-w-0">
-          <p className="text-lg font-semibold leading-tight tabular-nums text-fg">
+          <p className="text-lg font-semibold leading-tight font-mono tabular-nums text-fg">
             {monthHorizonCount}
           </p>
           <p className="text-xs text-fg-muted">
