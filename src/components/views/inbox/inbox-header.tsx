@@ -1,8 +1,14 @@
 import { Inbox } from "lucide-react";
 
+import { Badge } from "@/components/ui/badge";
+
 /**
  * Hlavička inboxu. Nesie jedinú metriku, na ktorej tu záleží — koľko vecí
  * ešte čaká na rozhodnutie — a jednu vetu, čo s tým.
+ *
+ * Veta je zámerne krátka a v rozkazovacom spôsobe („rozhodni a choď ďalej").
+ * Inbox nie je zoznam na čítanie, ale fronta na vyprázdnenie; dlhší popis by
+ * človeka zdržal presne na mieste, kde má konať.
  *
  * Počet dostáva zvonku, aby klesal optimisticky spolu so zoznamom.
  */
@@ -19,10 +25,6 @@ function countLabel(count: number): string {
 
 export function InboxHeader({ count }: InboxHeaderProps) {
   const empty = count === 0;
-  const headline = empty ? "Inbox je na nule." : `${countLabel(count)}.`;
-  const sentence = empty
-    ? "Nič nečaká na rozhodnutie — presne tak to má vyzerať."
-    : "Choď zhora nadol a každej daj deň, projekt alebo ju rovno zahoď. Cieľ je nula.";
 
   return (
     <header className="pb-4">
@@ -32,20 +34,19 @@ export function InboxHeader({ count }: InboxHeaderProps) {
           Inbox
         </h1>
         {empty ? null : (
-          <span
-            aria-hidden="true"
-            className="inline-flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full bg-surface-2 px-1.5 text-[11px] font-semibold tabular-nums text-fg-muted"
-          >
+          <Badge aria-hidden="true" tone="neutral" className="shrink-0">
             {count}
-          </span>
+          </Badge>
         )}
       </div>
 
       <p className="mt-1 text-sm text-fg-muted">
         <span aria-live="polite" className="font-medium text-fg">
-          {headline}
+          {empty ? "Inbox je na nule." : `${countLabel(count)}.`}
         </span>{" "}
-        {sentence}
+        {empty
+          ? "Nič nečaká na rozhodnutie — presne tak to má vyzerať."
+          : "Jedna vec naraz — rozhodni a choď ďalej. Cieľ je nula."}
       </p>
     </header>
   );
