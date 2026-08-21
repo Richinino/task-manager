@@ -405,7 +405,6 @@ function RowDetails({ draft, disabled, fieldId, onChange }: RowDetailsProps) {
           disabled={disabled}
           placeholder="@pocitac, @telefon, @mesto"
           onChange={(event) => onChange({ context: event.target.value })}
-         
         />
       </div>
 

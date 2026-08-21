@@ -117,7 +117,6 @@ export function TemplateList({ templates, todayIso }: TemplateListProps) {
             type="button"
             variant="primary"
             onClick={() => setMode({ kind: "create" })}
-            className="h-11 sm:h-9"
           >
             <Plus aria-hidden="true" size={15} />
             Nová šablóna

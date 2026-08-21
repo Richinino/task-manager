@@ -185,7 +185,6 @@ export function TemplateEditor({ template, onCancel, onSaved }: TemplateEditorPr
             setName(event.target.value);
             if (error !== null) setError(null);
           }}
-         
         />
       </div>
 
@@ -263,7 +262,6 @@ export function TemplateEditor({ template, onCancel, onSaved }: TemplateEditorPr
           type="submit"
           variant="primary"
           disabled={isPending || trimmedName === ""}
-          className="h-11 sm:h-9"
         >
           {isPending ? (
             <LoaderCircle aria-hidden="true" size={15} className="animate-spin" />
@@ -278,7 +276,6 @@ export function TemplateEditor({ template, onCancel, onSaved }: TemplateEditorPr
           variant="ghost"
           disabled={isPending}
           onClick={onCancel}
-          className="h-11 sm:h-9"
         >
           Zrušiť
         </Button>

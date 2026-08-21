@@ -186,7 +186,6 @@ export function ProjectDangerZone({
                 type="button"
                 onClick={() => setConfirmOpen(false)}
                 disabled={isPending}
-                className="h-11 sm:h-9"
               >
                 Zrušiť
               </Button>
@@ -195,7 +194,6 @@ export function ProjectDangerZone({
                 variant="danger"
                 onClick={remove}
                 disabled={isPending}
-                className="h-11 sm:h-9"
               >
                 {isPending ? (
                   <LoaderCircle aria-hidden="true" size={15} className="animate-spin" />

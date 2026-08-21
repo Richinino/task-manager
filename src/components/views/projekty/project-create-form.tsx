@@ -128,7 +128,6 @@ export function ProjectCreateForm({ areas, onOptimisticAdd }: ProjectCreateFormP
             setName(event.target.value);
             if (error !== null) setError(null);
           }}
-         
         />
       </div>
 
@@ -201,7 +200,6 @@ export function ProjectCreateForm({ areas, onOptimisticAdd }: ProjectCreateFormP
           type="submit"
           variant="primary"
           disabled={trimmedName === "" || isPending}
-          className="h-11 sm:h-9"
         >
           {isPending ? (
             <LoaderCircle aria-hidden="true" size={15} className="animate-spin" />

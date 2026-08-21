@@ -123,7 +123,6 @@ export function IdeaCreateForm({ areas, onOptimisticAdd }: IdeaCreateFormProps) 
             setTitle(event.target.value);
             if (error !== null) setError(null);
           }}
-         
         />
       </div>
 
@@ -175,7 +174,6 @@ export function IdeaCreateForm({ areas, onOptimisticAdd }: IdeaCreateFormProps) 
           autoComplete="off"
           placeholder="Najmenšia vec, ktorou sa to dá pohnúť"
           onChange={(event) => setNextStep(event.target.value)}
-         
         />
         <p className="text-mini leading-relaxed text-fg-subtle">
           Nepovinné, ale pri povýšení práve z neho vznikne prvá úloha projektu.
@@ -187,7 +185,6 @@ export function IdeaCreateForm({ areas, onOptimisticAdd }: IdeaCreateFormProps) 
           type="submit"
           variant="primary"
           disabled={trimmed === "" || isPending}
-          className="h-11 sm:h-9"
         >
           {isPending ? (
             <LoaderCircle aria-hidden="true" size={15} className="animate-spin" />

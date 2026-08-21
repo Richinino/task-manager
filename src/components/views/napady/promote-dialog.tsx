@@ -256,7 +256,6 @@ function PromoteBody({ idea, onClose, onPromoted }: PromoteBodyProps) {
           variant={missingStep ? "secondary" : "primary"}
           onClick={promote}
           disabled={isPending}
-          className="h-11 sm:h-9"
         >
           {isPending ? (
             <LoaderCircle aria-hidden="true" size={15} className="animate-spin" />

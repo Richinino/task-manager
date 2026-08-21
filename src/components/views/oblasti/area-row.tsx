@@ -293,7 +293,6 @@ export function AreaRow({ area, onOptimisticRemove, onError }: AreaRowProps) {
                 type="button"
                 onClick={() => setConfirmOpen(false)}
                 disabled={isPending}
-                className="h-11 sm:h-9"
               >
                 Zrušiť
               </Button>
@@ -302,7 +301,6 @@ export function AreaRow({ area, onOptimisticRemove, onError }: AreaRowProps) {
                 variant="danger"
                 onClick={remove}
                 disabled={isPending}
-                className="h-11 sm:h-9"
               >
                 {isPending ? (
                   <LoaderCircle aria-hidden="true" size={15} className="animate-spin" />
