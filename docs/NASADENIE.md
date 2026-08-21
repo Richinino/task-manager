@@ -81,7 +81,7 @@ $env:DATABASE_URL="<connection-string>"; npm run db:seed
 | `AUTH_SECRET` | výstup príkazu `npx auth secret` |
 | `AUTH_GOOGLE_ID` | Client ID z Googlu |
 | `AUTH_GOOGLE_SECRET` | Client secret z Googlu |
-| `ALLOWED_EMAIL` | `richard.pastyr@gmail.com` |
+| `ALLOWED_EMAILS` | `richard.pastyr@gmail.com` — viac ľudí oddeľ čiarkou |
 | `AUTH_URL` | `https://TVOJA-ADRESA.vercel.app` — bez lomítka na konci |
 
 > `AUTH_DEV_BYPASS` na Vercel **nepridávaj**. Aj keby si ho pridal, v produkcii je vypnutý natvrdo v kóde — ale nech tam nie je ani omylom.
@@ -153,7 +153,21 @@ npm run build && npm run start
 
 ## Bezpečnostná poznámka
 
-Systém je jednopoužívateľský a `ALLOWED_EMAIL` je jediná zábrana — prihlásiť sa smie iba tento e-mail, ostatných Google účtov sa `signIn` callback zbaví. **Ak ju v produkcii nenastavíš, dostane sa dnu ktokoľvek s Google účtom.**
+`ALLOWED_EMAILS` je jediná zábrana pri vstupe — prihlásiť sa smú iba e-maily z tohto zoznamu (oddeľujú sa čiarkou), ostatných Google účtov sa `signIn` callback zbaví.
+
+**Ak ju v produkcii nenastavíš, neprihlási sa nikto.** Je to zámerne: dovtedy platil opak a zabudnutá premenná ticho otvorila appku každému, kto má Google účet. Zamknuté dvere sú menšie zlo než dokorán otvorené — keď sa nevieš prihlásiť, prvé, čo skontroluj, je práve táto premenná.
+
+Lokálne (mimo produkcie) sa zoznam nevyžaduje, aby sa dal vývoj rozbehnúť bez `.env`.
+
+Starý názov `ALLOWED_EMAIL` s jednou hodnotou stále funguje ako záloha, takže sa nasadenie nerozbije skôr, než premennú na Verceli premenuješ.
+
+### Pridanie ďalšieho človeka
+
+1. V Google Cloud Console → **OAuth consent screen → Test users** pridaj jeho gmail. Kým je appka v režime *Testing*, dnu sa dostane len ten, kto je v tomto zozname (max 100 ľudí).
+2. Doplň jeho e-mail do `ALLOWED_EMAILS` na Verceli a nasaď.
+3. Účet mu vznikne **až pri prvom prihlásení** — dostane vlastné id, vlastné nastavenia a päticu predvolených oblastí. Dáta sú oddelené: navzájom sa nevidíte.
+
+> Sedemdňové vypršanie súhlasu v režime *Testing* sa týka **Google refresh tokenu**, teda kalendára — nie prihlásenia do appky. Kto kalendár nepoužíva, nič nespozoruje.
 
 Service worker odkladá do cache aj HTML s tvojimi úlohami, aby fungoval offline. Na tvojom telefóne je to v poriadku; na cudzom zariadení sa neprihlasuj.
 

@@ -148,7 +148,11 @@ export async function saveRitualStep(
       await db
         .update(reviews)
         .set({ payload: payloadParsed.data })
-        .where(eq(reviews.id, row.id));
+        // `row.id` pochádza z dotazu filtrovaného na používateľa, takže by
+        // stačilo id samotné. Podmienka je tu kvôli konzistencii — o pár
+        // riadkov nižšie sa `completedAt` zapisuje s ňou a jeden súbor by
+        // nemal robiť tú istú vec dvoma spôsobmi.
+        .where(and(eq(reviews.id, row.id), eq(reviews.userId, user.id)));
       return { ok: true, data: { id: row.id } };
     }
 
@@ -238,7 +242,7 @@ export async function saveJournalEntry(
           mood,
           updatedAt: new Date(),
         })
-        .where(eq(journal.id, row.id));
+        .where(and(eq(journal.id, row.id), eq(journal.userId, user.id)));
     } else {
       await db.insert(journal).values({
         id: uuidv7(),

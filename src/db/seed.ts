@@ -8,22 +8,21 @@
 import { and, eq, isNull } from "drizzle-orm";
 
 import { getDb } from "./client";
+import { DEFAULT_AREAS } from "./default-areas";
 import { areas, tasks, users } from "./schema";
 import { addDays, todayIn } from "../lib/dates";
 import { uuidv7 } from "../lib/id";
 import { DEFAULT_SETTINGS, parseSettings } from "../lib/settings";
 
-const AREAS = [
-  { name: "Práca", color: "indigo", icon: "briefcase" },
-  { name: "Zdravie", color: "emerald", icon: "heart-pulse" },
-  { name: "Financie", color: "amber", icon: "wallet" },
-  { name: "Domov", color: "rose", icon: "house" },
-  { name: "Učenie", color: "violet", icon: "graduation-cap" },
-] as const;
-
 async function main() {
   const db = await getDb();
-  const email = (process.env.ALLOWED_EMAIL ?? "dev@localhost").toLowerCase();
+  /*
+    Seed pracuje s jedným človekom — s tým prvým zo zoznamu povolených.
+    `ALLOWED_EMAILS` je od pridania druhého používateľa zoznam, takže sa
+    berie jeho prvá položka; starý jednohodnotový názov ostáva ako záloha.
+  */
+  const allowList = process.env.ALLOWED_EMAILS ?? process.env.ALLOWED_EMAIL ?? "";
+  const email = (allowList.split(",")[0]?.trim() || "dev@localhost").toLowerCase();
 
   let user = await db.query.users.findFirst({ where: eq(users.email, email) });
   if (!user) {
@@ -58,7 +57,7 @@ async function main() {
   const areaIds = new Map<string, string>();
   for (const a of existingAreas) areaIds.set(a.name, a.id);
 
-  for (const [i, a] of AREAS.entries()) {
+  for (const [i, a] of DEFAULT_AREAS.entries()) {
     if (areaIds.has(a.name)) continue;
     const id = uuidv7();
     await db.insert(areas).values({
