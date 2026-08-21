@@ -31,9 +31,6 @@ import {
    zdroje pravdy o tej istej veci.
    ═══════════════════════════════════════════════════════════════════════════ */
 
-/** Ovládacie prvky: palec pod `sm`, hustota od `sm`. */
-const controlClass = "h-11 text-base sm:h-9 sm:text-sm";
-
 /**
  * Strop z `MAX_TEMPLATE_TASKS`. Väčší predpis už nie je rutina, ale projekt.
  *
@@ -187,7 +184,7 @@ export function TemplateEditor({ template, onCancel, onSaved }: TemplateEditorPr
             setName(event.target.value);
             if (error !== null) setError(null);
           }}
-          className={controlClass}
+         
         />
       </div>
 

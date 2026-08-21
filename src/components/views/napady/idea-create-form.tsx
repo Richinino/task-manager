@@ -38,10 +38,6 @@ const NONE = "__none__";
 /** Predvolená iskra: stred stupnice, nie nadšenie ani nezáujem. */
 const DEFAULT_SPARK = 3;
 
-/** Ovládacie prvky: palec pod `sm`, hustota od `sm`. */
-const controlClass = "h-11 text-base sm:h-9 sm:text-sm";
-const selectContentClass = "[&_[role=option]]:h-11 sm:[&_[role=option]]:h-8";
-
 export interface IdeaCreateFormProps {
   /** Aktívne oblasti do výberu. */
   areas: Area[];
@@ -127,7 +123,7 @@ export function IdeaCreateForm({ areas, onOptimisticAdd }: IdeaCreateFormProps) 
             setTitle(event.target.value);
             if (error !== null) setError(null);
           }}
-          className={controlClass}
+         
         />
       </div>
 
@@ -146,10 +142,10 @@ export function IdeaCreateForm({ areas, onOptimisticAdd }: IdeaCreateFormProps) 
             value={areaId ?? NONE}
             onValueChange={(value) => setAreaId(value === NONE ? null : value)}
           >
-            <SelectTrigger aria-label="Oblasť nápadu" className={controlClass}>
+            <SelectTrigger aria-label="Oblasť nápadu">
               <SelectValue placeholder="Bez oblasti" />
             </SelectTrigger>
-            <SelectContent className={selectContentClass}>
+            <SelectContent>
               <SelectItem value={NONE}>Bez oblasti</SelectItem>
               {areas.length > 0 ? <SelectSeparator /> : null}
               {areas.map((area) => (
@@ -179,7 +175,7 @@ export function IdeaCreateForm({ areas, onOptimisticAdd }: IdeaCreateFormProps) 
           autoComplete="off"
           placeholder="Najmenšia vec, ktorou sa to dá pohnúť"
           onChange={(event) => setNextStep(event.target.value)}
-          className={controlClass}
+         
         />
         <p className="text-[11px] leading-relaxed text-fg-subtle">
           Nepovinné, ale pri povýšení práve z neho vznikne prvá úloha projektu.

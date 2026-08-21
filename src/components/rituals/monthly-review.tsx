@@ -464,7 +464,6 @@ export function MonthlyReview({
             placeholder="Napr. dotiahnem nasadenie a nezačnem nič nové"
             maxLength={280}
             aria-label="Zámer na ďalší mesiac"
-            className="h-11 text-base sm:h-9 sm:text-sm"
           />
           <p className="text-[13px] leading-relaxed text-fg-subtle">
             O mesiac ju uvidíš hore v tejto istej revízii.

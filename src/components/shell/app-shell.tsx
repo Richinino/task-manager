@@ -43,7 +43,6 @@ export function AppShell({ user, counts, signOutAction, children }: AppShellProp
                 variant="ghost"
                 size="icon"
                 aria-label="Odhlásiť sa"
-                className="size-11 md:size-8"
               >
                 <LogOut className="size-[18px] md:size-4" />
               </Button>

@@ -37,12 +37,6 @@ import type { HabitAreaOption } from "./habit-types";
 /** Radix Select neberie prázdny reťazec ako hodnotu — „nič" má vlastný kľúč. */
 const NONE = "__none__";
 
-/** Ovládacie prvky: palec pod `sm`, hustota od `sm`. */
-const controlClass = "h-11 text-base sm:h-9 sm:text-sm";
-
-/** Položky rozbaleného výberu musia byť na dotyk rovnako veľké ako spúšťač. */
-const selectContentClass = "[&_[role=option]]:h-11 sm:[&_[role=option]]:h-8";
-
 /** Cieľ je 1–7, presne ako ho pripúšťa `targetSchema` v akcii. */
 const TARGET_CHOICES: readonly number[] = [1, 2, 3, 4, 5, 6, 7];
 
@@ -148,7 +142,7 @@ export function HabitCreateForm({
             setTitle(event.target.value);
             if (error !== null) setError(null);
           }}
-          className={cn("min-w-0 flex-1", controlClass)}
+          className={cn("min-w-0 flex-1")}
         />
       </div>
 
@@ -160,10 +154,10 @@ export function HabitCreateForm({
             value={String(targetPerWeek)}
             onValueChange={(value) => setTargetPerWeek(Number(value))}
           >
-            <SelectTrigger aria-label="Koľkokrát do týždňa" className={controlClass}>
+            <SelectTrigger aria-label="Koľkokrát do týždňa">
               <SelectValue />
             </SelectTrigger>
-            <SelectContent className={selectContentClass}>
+            <SelectContent>
               {TARGET_CHOICES.map((times) => (
                 <SelectItem key={times} value={String(times)}>
                   {targetLabel(times)}
@@ -179,10 +173,10 @@ export function HabitCreateForm({
             value={areaId ?? NONE}
             onValueChange={(value) => setAreaId(value === NONE ? null : value)}
           >
-            <SelectTrigger aria-label="Oblasť návyku" className={controlClass}>
+            <SelectTrigger aria-label="Oblasť návyku">
               <SelectValue placeholder="Bez oblasti" />
             </SelectTrigger>
-            <SelectContent className={selectContentClass}>
+            <SelectContent>
               <SelectItem value={NONE}>Bez oblasti</SelectItem>
               {areas.length > 0 ? <SelectSeparator /> : null}
               {areas.map((area) => (

@@ -32,9 +32,6 @@ import { savePlaces, updateSettings } from "@/server/actions/settings";
 /** Rovnaký tvar ako `ActionResult<Settings>`, len bez väzby na „use server". */
 type SaveResult = { ok: true; data: Settings } | { ok: false; error: string };
 
-const controlClass = "h-11 text-base sm:h-9 sm:text-sm";
-const selectContentClass = "[&_[role=option]]:h-11 sm:[&_[role=option]]:h-8";
-
 /**
  * Pásma, ktoré dávajú zmysel ponúknuť. Zoznam je krátky zámerne — appka má
  * jediného používateľa a úplný výber z vyše štyristo pásiem by bol na výber
@@ -232,7 +229,7 @@ export function SettingsForm({ settings }: SettingsFormProps) {
         inputMode="numeric"
         min={min}
         max={max}
-        className={cn(controlClass, "w-28")}
+        className={"w-28"}
         value={String(draft[key])}
         onChange={(event) => {
           const raw = event.target.value;
@@ -252,10 +249,10 @@ export function SettingsForm({ settings }: SettingsFormProps) {
         value={String(draft[key])}
         onValueChange={(value) => commit({ [key]: Number.parseInt(value, 10) })}
       >
-        <SelectTrigger id={fieldId(key)} className={cn(controlClass, "w-28")}>
+        <SelectTrigger id={fieldId(key)} className={"w-28"}>
           <SelectValue />
         </SelectTrigger>
-        <SelectContent className={selectContentClass}>
+        <SelectContent>
           {HOURS.map((hour) => (
             <SelectItem key={hour} value={String(hour)}>
               {hourLabel(hour)}
@@ -316,10 +313,10 @@ export function SettingsForm({ settings }: SettingsFormProps) {
             value={String(draft.weekStartsOn)}
             onValueChange={(value) => commit({ weekStartsOn: Number.parseInt(value, 10) })}
           >
-            <SelectTrigger id={fieldId("weekStartsOn")} className={cn(controlClass, "w-40")}>
+            <SelectTrigger id={fieldId("weekStartsOn")} className={"w-40"}>
               <SelectValue />
             </SelectTrigger>
-            <SelectContent className={selectContentClass}>
+            <SelectContent>
               {WEEK_DAYS.map((day) => (
                 <SelectItem key={day.value} value={String(day.value)}>
                   {day.label}
@@ -461,10 +458,10 @@ export function SettingsForm({ settings }: SettingsFormProps) {
             value={draft.timezone}
             onValueChange={(value) => commit({ timezone: value })}
           >
-            <SelectTrigger id={fieldId("timezone")} className={cn(controlClass, "w-56")}>
+            <SelectTrigger id={fieldId("timezone")} className={"w-56"}>
               <SelectValue />
             </SelectTrigger>
-            <SelectContent className={selectContentClass}>
+            <SelectContent>
               {/*
                 Uložené pásmo nemusí byť v zozname (dá sa nastaviť aj mimo neho).
                 Bez doplnenia by výber ukázal prázdno a prvá zmena čohokoľvek

@@ -42,9 +42,6 @@ type SaveResult = { ok: true } | { ok: false; error: string };
 /** Radix Select neberie prázdny reťazec ako hodnotu — „nič" má vlastný kľúč. */
 const NONE = "__none__";
 
-const controlClass = "h-11 text-base sm:h-9 sm:text-sm";
-const selectContentClass = "[&_[role=option]]:h-11 sm:[&_[role=option]]:h-8";
-
 const textareaClass = cn(
   "w-full resize-y rounded border border-border bg-surface px-2.5 py-2",
   "text-base leading-relaxed text-fg placeholder:text-fg-subtle sm:text-sm",
@@ -377,10 +374,10 @@ export function ProjectDetail({ project, areas, todayIso }: ProjectDetailProps) 
               );
             }}
           >
-            <SelectTrigger aria-label="Oblasť projektu" className={controlClass}>
+            <SelectTrigger aria-label="Oblasť projektu">
               <SelectValue placeholder="Bez oblasti" />
             </SelectTrigger>
-            <SelectContent className={selectContentClass}>
+            <SelectContent>
               <SelectItem value={NONE}>Bez oblasti</SelectItem>
               {areaOptions.length > 0 ? <SelectSeparator /> : null}
               {areaOptions.map((area) => (
@@ -422,8 +419,7 @@ export function ProjectDetail({ project, areas, todayIso }: ProjectDetailProps) 
               commitDeadline(isCompleteDate(value) ? value : null);
             }}
             className={cn(
-              controlClass,
-              "dark:[color-scheme:dark]",
+                            "dark:[color-scheme:dark]",
               deadlineOverdue && "border-danger",
             )}
           />
