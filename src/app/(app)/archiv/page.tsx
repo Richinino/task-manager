@@ -171,7 +171,7 @@ export default async function ArchivPage({ searchParams }: ArchivPageProps) {
           >
             Archív
           </h2>
-          <p className="mt-1 text-[13px] leading-relaxed text-fg-muted">
+          <p className="mt-1 text-body leading-relaxed text-fg-muted">
             Nič sa tu nemaže natvrdo. Zmazané veci tu ležia dovtedy, kým ich nevrátiš
             späť — a keď ich nevrátiš, nikomu neprekážajú.
           </p>

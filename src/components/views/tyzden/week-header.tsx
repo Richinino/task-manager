@@ -86,7 +86,7 @@ export function WeekHeader({
             {range}
           </h1>
           {isCurrentWeek ? (
-            <span className="shrink-0 rounded bg-accent-soft px-1.5 py-0.5 text-[11px] font-medium text-accent">
+            <span className="shrink-0 rounded bg-accent-soft px-1.5 py-0.5 text-mini font-medium text-accent">
               tento týždeň
             </span>
           ) : null}
@@ -116,7 +116,7 @@ export function WeekHeader({
 
         <Link
           href="/tyzden"
-          className={cn(navLink, "h-11 px-3 text-[13px] sm:h-8 sm:px-2.5")}
+          className={cn(navLink, "h-11 px-3 text-body sm:h-8 sm:px-2.5")}
         >
           Tento týždeň
         </Link>

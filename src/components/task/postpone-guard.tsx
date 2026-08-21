@@ -223,7 +223,7 @@ export function PostponeGuardProvider({ children }: { children: ReactNode }) {
                   <span className="block text-sm font-medium text-fg">
                     Rozdeliť alebo zmenšiť
                   </span>
-                  <span className="block text-[13px] leading-relaxed text-fg-muted">
+                  <span className="block text-body leading-relaxed text-fg-muted">
                     Otvorí úlohu. Úloha, ktorá sa štyri razy neurobila, je
                     obyčajne priveľká — rozpadni ju na kroky alebo zmenši, čo
                     od nej čakáš.
@@ -246,7 +246,7 @@ export function PostponeGuardProvider({ children }: { children: ReactNode }) {
               <Trash2 aria-hidden="true" size={16} className="mt-0.5 shrink-0 text-fg-muted" />
               <span className="min-w-0">
                 <span className="block text-sm font-medium text-fg">Zahodiť</span>
-                <span className="block text-[13px] leading-relaxed text-fg-muted">
+                <span className="block text-body leading-relaxed text-fg-muted">
                   Keď sa štyrikrát neurobila, možno ju netreba. Zahodenie sa dá
                   vrátiť.
                 </span>
@@ -260,7 +260,7 @@ export function PostponeGuardProvider({ children }: { children: ReactNode }) {
               >
                 Alebo odlož — ale povedz prečo
               </label>
-              <p className="text-[13px] leading-relaxed text-fg-muted">
+              <p className="text-body leading-relaxed text-fg-muted">
                 Dôvod sa uloží k úlohe. Pri mesačnej revízii uvidíš, čo ťa
                 naozaj brzdí.
               </p>
@@ -284,7 +284,7 @@ export function PostponeGuardProvider({ children }: { children: ReactNode }) {
 
             <div aria-live="polite" className="min-h-5">
               {error ? (
-                <p className="text-[13px] leading-relaxed text-danger">{error}</p>
+                <p className="text-body leading-relaxed text-danger">{error}</p>
               ) : null}
             </div>
           </div>

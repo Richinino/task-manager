@@ -231,13 +231,13 @@ export function WeeklyReview({
       render: () => (
         <div className="flex min-w-0 flex-col gap-3">
           {inbox.length === 0 ? (
-            <p className="text-[13px] leading-relaxed text-success">
+            <p className="text-body leading-relaxed text-success">
               Inbox je prázdny. Presne o toto tu ide — nič nečaká na rozhodnutie
               a týždeň začínaš s čistou hlavou.
             </p>
           ) : (
             <>
-              <p className="text-[13px] leading-relaxed text-fg-muted">
+              <p className="text-body leading-relaxed text-fg-muted">
                 Čaká {taskCountLabel(inbox.length)}. Triedi sa v inboxe, nie tu —
                 revízia len pripomína, že sa to má stať dnes.
               </p>
@@ -261,7 +261,7 @@ export function WeeklyReview({
           />
 
           {someday.length > 0 ? (
-            <p className="text-[13px] leading-relaxed text-fg-muted">
+            <p className="text-body leading-relaxed text-fg-muted">
               Bokom v „Niekedy“ leží {taskCountLabel(someday.length)}. Netreba ich
               riešiť — stačí sa pozrieť, či niektorá už nedozrela na tento týždeň.{" "}
               <Link
@@ -286,7 +286,7 @@ export function WeeklyReview({
       render: () => (
         <div className="flex min-w-0 flex-col gap-2">
           {waiting.length === 0 ? (
-            <p className="text-[13px] leading-relaxed text-success">
+            <p className="text-body leading-relaxed text-success">
               Nečakáš na nikoho. Všetko, čo beží, máš vo vlastných rukách.
             </p>
           ) : (
@@ -307,7 +307,7 @@ export function WeeklyReview({
                       {task.title}
                     </p>
                     {task.note ? (
-                      <p className="min-w-0 text-[12px] leading-relaxed break-words text-fg-muted">
+                      <p className="min-w-0 text-meta leading-relaxed break-words text-fg-muted">
                         {task.note}
                       </p>
                     ) : null}
@@ -315,7 +315,7 @@ export function WeeklyReview({
 
                   {mark === undefined ? (
                     <>
-                      <p className="text-[12px] leading-relaxed text-fg-muted">
+                      <p className="text-meta leading-relaxed text-fg-muted">
                         Pohlo sa už niečo?
                       </p>
                       <div className="flex min-w-0 flex-wrap gap-1.5">
@@ -345,7 +345,7 @@ export function WeeklyReview({
                   ) : (
                     <p
                       className={cn(
-                        "text-[12px] leading-relaxed",
+                        "text-meta leading-relaxed",
                         mark === "released" ? "text-success" : "text-fg-subtle",
                       )}
                     >
@@ -360,7 +360,7 @@ export function WeeklyReview({
           )}
 
           {rowError ? (
-            <p className="text-[13px] leading-relaxed text-danger">{rowError}</p>
+            <p className="text-body leading-relaxed text-danger">{rowError}</p>
           ) : null}
         </div>
       ),
@@ -380,7 +380,7 @@ export function WeeklyReview({
         return (
           <div className="flex min-w-0 flex-col gap-2">
             {activeProjects.length === 0 ? (
-              <p className="text-[13px] leading-relaxed text-fg-muted">
+              <p className="text-body leading-relaxed text-fg-muted">
                 Žiadne aktívne projekty. Prázdny zoznam projektov nie je chyba —
                 úloha bez projektu je stále úloha.
               </p>
@@ -401,7 +401,7 @@ export function WeeklyReview({
                         <p className="min-w-0 text-sm leading-snug break-words text-fg">
                           {project.name}
                         </p>
-                        <p className="min-w-0 text-[12px] leading-relaxed text-fg-muted">
+                        <p className="min-w-0 text-meta leading-relaxed text-fg-muted">
                           {openTaskLabel(project.openTaskCount)}
                           {project.nextDueDate
                             ? ` · najbližší termín ${dueLabel(project.nextDueDate, todayIso)}`
@@ -442,7 +442,7 @@ export function WeeklyReview({
                 })}
 
                 {stuckCount > 0 ? (
-                  <p className="text-[13px] leading-relaxed text-fg-muted">
+                  <p className="text-body leading-relaxed text-fg-muted">
                     Stojí {stuckCount} z {activeProjects.length}. Projekt, ktorý
                     stojí druhý týždeň, potrebuje najbližší krok — alebo koniec.
                   </p>
@@ -464,7 +464,7 @@ export function WeeklyReview({
       render: () => (
         <div className="flex min-w-0 flex-col gap-2">
           {incubatorIdeas.length === 0 ? (
-            <p className="text-[13px] leading-relaxed text-fg-muted">
+            <p className="text-body leading-relaxed text-fg-muted">
               Inkubátor je prázdny — nič nečaká dosť dlho na to, aby sa ozvalo.
             </p>
           ) : (
@@ -485,7 +485,7 @@ export function WeeklyReview({
                     <p className="min-w-0 text-sm leading-snug break-words text-fg">
                       {title}
                     </p>
-                    <p className="min-w-0 text-[12px] leading-relaxed text-fg-muted">
+                    <p className="min-w-0 text-meta leading-relaxed text-fg-muted">
                       Napadlo ťa to {agoLabel(ageDays)} · {touchAgeLabel(idea.staleDays)}
                     </p>
                   </div>
@@ -522,7 +522,7 @@ export function WeeklyReview({
                   ) : (
                     <p
                       className={cn(
-                        "text-[12px] leading-relaxed",
+                        "text-meta leading-relaxed",
                         mark === "rejected" ? "text-danger" : "text-fg-subtle",
                       )}
                     >
@@ -537,7 +537,7 @@ export function WeeklyReview({
           )}
 
           {rowError ? (
-            <p className="text-[13px] leading-relaxed text-danger">{rowError}</p>
+            <p className="text-body leading-relaxed text-danger">{rowError}</p>
           ) : null}
         </div>
       ),
@@ -571,7 +571,7 @@ export function WeeklyReview({
               "transition-colors duration-100 ease-out hover:border-border-strong",
             )}
           />
-          <p className="text-[12px] leading-relaxed text-fg-subtle">
+          <p className="text-meta leading-relaxed text-fg-subtle">
             Nikam sa to neposiela. O mesiac to bude jediný doklad o tom, že sa
             niečo naozaj podarilo.
           </p>
@@ -599,7 +599,7 @@ export function WeeklyReview({
               nulu je výčitka — v prázdnom týždni preto ostáva len veta, nie
               skóre.
             */
-            <p className="text-[13px] leading-relaxed text-fg-muted">
+            <p className="text-body leading-relaxed text-fg-muted">
               Tento týždeň tu nesvieti nič — a nie je to výčitka. Do zoznamu sa
               dostane len to, čo v ňom aj začalo, a väčšina toho, čo deň zoberie,
               sa doň nikdy nezapíše. Prázdny týždeň občas znamená len to, že sa
@@ -611,7 +611,7 @@ export function WeeklyReview({
                 <p className="text-3xl font-semibold leading-none tabular-nums text-accent">
                   {completed.length}
                 </p>
-                <p className="pt-1.5 text-[13px] leading-relaxed text-fg-muted">
+                <p className="pt-1.5 text-body leading-relaxed text-fg-muted">
                   {doneTaskLabel(completed.length)} za tento týždeň
                 </p>
               </div>
@@ -629,10 +629,10 @@ export function WeeklyReview({
                       color={group.area.color}
                       name={group.area.name}
                       size="sm"
-                      className="text-[12px] font-medium text-fg"
+                      className="text-meta font-medium text-fg"
                     />
                   ) : hasNamedAreas ? (
-                    <p className="text-[12px] font-medium text-fg-subtle">
+                    <p className="text-meta font-medium text-fg-subtle">
                       Bez oblasti
                     </p>
                   ) : null}
@@ -858,7 +858,7 @@ function ChoiceButton({
       {...(active === undefined ? {} : { "aria-pressed": active })}
       className={cn(
         "inline-flex min-h-11 min-w-0 items-center gap-1.5 rounded border bg-surface px-2.5",
-        "text-[13px] transition-colors duration-100 ease-out sm:min-h-8",
+        "text-body transition-colors duration-100 ease-out sm:min-h-8",
         active ? classes.active : classes.idle,
       )}
     >
@@ -891,7 +891,7 @@ function RitualLink({
       {...(title ? { title } : {})}
       className={cn(
         "inline-flex min-h-11 w-fit min-w-0 items-center gap-1.5 rounded border border-border",
-        "bg-surface px-2.5 text-[13px] font-medium text-fg",
+        "bg-surface px-2.5 text-body font-medium text-fg",
         "transition-colors duration-100 ease-out hover:border-border-strong hover:bg-surface-2",
         "sm:min-h-8",
       )}

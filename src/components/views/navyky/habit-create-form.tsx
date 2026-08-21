@@ -149,7 +149,7 @@ export function HabitCreateForm({
       {/* Na 375 px idú cieľ a oblasť pod seba; od `sm` vedľa seba. */}
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <div className="flex min-w-0 flex-col gap-1.5">
-          <span className="text-[12px] font-medium text-fg-muted">Cieľ</span>
+          <span className="text-meta font-medium text-fg-muted">Cieľ</span>
           <Select
             value={String(targetPerWeek)}
             onValueChange={(value) => setTargetPerWeek(Number(value))}
@@ -168,7 +168,7 @@ export function HabitCreateForm({
         </div>
 
         <div className="flex min-w-0 flex-col gap-1.5">
-          <span className="text-[12px] font-medium text-fg-muted">Oblasť</span>
+          <span className="text-meta font-medium text-fg-muted">Oblasť</span>
           <Select
             value={areaId ?? NONE}
             onValueChange={(value) => setAreaId(value === NONE ? null : value)}
@@ -209,7 +209,7 @@ export function HabitCreateForm({
 
         <div role="status" aria-live="polite" className="min-w-0">
           {error !== null ? (
-            <p className="text-[13px] font-medium text-danger">{error}</p>
+            <p className="text-body font-medium text-danger">{error}</p>
           ) : null}
         </div>
       </div>

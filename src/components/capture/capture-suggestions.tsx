@@ -89,7 +89,7 @@ export function CaptureSuggestions({
                 {item.name}
               </span>
               {item.count !== null && item.count > 0 ? (
-                <span className="shrink-0 text-[12px] tabular-nums text-fg-subtle">
+                <span className="shrink-0 text-meta tabular-nums text-fg-subtle">
                   {item.count}
                 </span>
               ) : null}

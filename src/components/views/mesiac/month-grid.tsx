@@ -47,7 +47,7 @@ export interface MonthGridProps {
  */
 function GridLegendWide() {
   return (
-    <p className="hidden flex-wrap items-center gap-x-4 gap-y-1.5 pt-1 text-[11px] text-fg-muted md:flex">
+    <p className="hidden flex-wrap items-center gap-x-4 gap-y-1.5 pt-1 text-mini text-fg-muted md:flex">
       <span className="inline-flex items-center gap-1.5">
         <span
           aria-hidden="true"
@@ -80,7 +80,7 @@ function GridLegendWide() {
  */
 function GridLegendPhone() {
   return (
-    <div className="flex flex-col gap-1 pt-1 text-[11px] text-fg-muted md:hidden">
+    <div className="flex flex-col gap-1 pt-1 text-mini text-fg-muted md:hidden">
       <p className="flex flex-wrap items-center gap-x-4 gap-y-1">
         <span className="inline-flex items-center gap-1.5">
           <span aria-hidden="true" className="inline-flex items-center">
@@ -218,7 +218,7 @@ export function MonthDayPanel({
     >
       <div className="flex items-center gap-1">
         {/* `min-w-0` + `truncate`: dlhý dátum nesmie vytlačiť tlačidlá z riadku. */}
-        <h2 className="min-w-0 flex-1 truncate text-[13px] font-semibold text-fg">{dayLabel}</h2>
+        <h2 className="min-w-0 flex-1 truncate text-body font-semibold text-fg">{dayLabel}</h2>
 
         {/* Tu má „+" plnú 44 px plochu — v bunke mesiaca by ju nemalo kde vziať. */}
         <AddTaskPopover date={iso} size="md" className="size-11" />
@@ -266,7 +266,7 @@ export function MonthDayPanel({
         href={weekHref}
         className={cn(
           "inline-flex h-11 items-center justify-center gap-1.5 rounded",
-          "border border-border bg-surface-2 text-[13px] font-medium text-fg",
+          "border border-border bg-surface-2 text-body font-medium text-fg",
           "transition-colors duration-100 ease-out hover:border-border-strong",
         )}
       >

@@ -229,7 +229,7 @@ export function SubtaskList({
       {/* Postup nad zoznamom. Keď kroky nie sú, nie je čo merať. */}
       {total > 0 ? (
         <div className="flex min-w-0 items-center gap-2">
-          <span className="shrink-0 text-[12px] font-medium text-fg-muted">
+          <span className="shrink-0 text-meta font-medium text-fg-muted">
             {done} z {total}
           </span>
           <span
@@ -365,7 +365,7 @@ export function SubtaskList({
       </div>
 
       {error !== null ? (
-        <p role="alert" className="text-[11px] font-medium text-danger">
+        <p role="alert" className="text-mini font-medium text-danger">
           {error}
         </p>
       ) : null}

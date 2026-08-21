@@ -75,7 +75,7 @@ export function ColorPicker({
 
       {open ? (
         <PopoverContent className="w-auto p-2">
-          <p className="px-1 pb-1.5 text-[11px] font-medium text-fg-subtle">Farba</p>
+          <p className="px-1 pb-1.5 text-mini font-medium text-fg-subtle">Farba</p>
           <div
             role="group"
             aria-label={`Farba — ${label}`}

@@ -209,7 +209,7 @@ export function AreaRow({ area, onOptimisticRemove, onError }: AreaRowProps) {
             )}
           />
 
-          <p className="min-w-0 truncate px-1.5 text-[11px] text-fg-subtle">
+          <p className="min-w-0 truncate px-1.5 text-mini text-fg-subtle">
             {taskCountLabel(area.openTaskCount)} · {projectCountLabel(area.projectCount)}
             {archived ? " · archivovaná" : ""}
           </p>
@@ -264,7 +264,7 @@ export function AreaRow({ area, onOptimisticRemove, onError }: AreaRowProps) {
       </div>
 
       {error !== null ? (
-        <p role="alert" className="mt-1 px-1.5 text-[12px] font-medium text-danger">
+        <p role="alert" className="mt-1 px-1.5 text-meta font-medium text-danger">
           {error}
         </p>
       ) : null}

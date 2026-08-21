@@ -97,11 +97,11 @@ function Field({
 }) {
   return (
     <div className="flex flex-col gap-1.5">
-      <label htmlFor={id} className="text-[13px] font-medium text-fg">
+      <label htmlFor={id} className="text-body font-medium text-fg">
         {label}
       </label>
       {children}
-      {hint ? <p className="text-[12px] leading-relaxed text-fg-subtle">{hint}</p> : null}
+      {hint ? <p className="text-meta leading-relaxed text-fg-subtle">{hint}</p> : null}
     </div>
   );
 }
@@ -271,12 +271,12 @@ export function SettingsForm({ settings }: SettingsFormProps) {
       */}
       <div aria-live="polite" className="min-h-5">
         {error ? (
-          <p className="flex items-start gap-2 text-[13px] leading-relaxed text-danger">
+          <p className="flex items-start gap-2 text-body leading-relaxed text-danger">
             <TriangleAlert aria-hidden="true" size={16} className="mt-px shrink-0" />
             <span className="min-w-0">{error}</span>
           </p>
         ) : isPending ? (
-          <p className="flex items-center gap-1.5 text-[13px] text-fg-subtle">
+          <p className="flex items-center gap-1.5 text-body text-fg-subtle">
             <LoaderCircle aria-hidden="true" size={14} className="animate-spin" />
             Ukladám…
           </p>
@@ -394,7 +394,7 @@ export function SettingsForm({ settings }: SettingsFormProps) {
           />
 
           {placesBusy ? (
-            <p role="status" className="flex items-center gap-1.5 text-[12px] text-fg-muted">
+            <p role="status" className="flex items-center gap-1.5 text-meta text-fg-muted">
               <LoaderCircle aria-hidden="true" size={13} className="animate-spin" />
               Prekladám adresy na súradnice…
             </p>
@@ -403,7 +403,7 @@ export function SettingsForm({ settings }: SettingsFormProps) {
           {/* Nenájdená adresa sa neuloží — bez súradníc by sa nikdy
               nezhodovala a miesto by ticho nefungovalo. */}
           {!placesBusy && unresolved.length > 0 ? (
-            <p role="status" className="flex items-start gap-1.5 text-[12px] text-danger">
+            <p role="status" className="flex items-start gap-1.5 text-meta text-danger">
               <TriangleAlert aria-hidden="true" size={13} className="mt-0.5 shrink-0" />
               <span>
                 Tieto adresy sa nepodarilo nájsť a neuložili sa:{" "}

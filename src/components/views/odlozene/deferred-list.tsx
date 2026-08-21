@@ -227,7 +227,7 @@ export function DeferredList({
           role="status"
           className={cn(
             "mb-3 rounded border border-danger bg-surface px-3 py-2",
-            "text-[13px] font-medium text-danger",
+            "text-body font-medium text-danger",
           )}
         >
           {error}
@@ -241,7 +241,7 @@ export function DeferredList({
           <div
             className={cn(
               "mb-3 flex flex-wrap items-center gap-x-3 gap-y-1.5 rounded border border-border",
-              "bg-surface-2 px-3 py-2 text-[13px] text-fg-muted",
+              "bg-surface-2 px-3 py-2 text-body text-fg-muted",
             )}
           >
             <span className="min-w-0">{flash.message}</span>

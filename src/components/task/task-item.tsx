@@ -110,7 +110,7 @@ function DateChip({ iso, kind, now, overdue = false, size = "md" }: DateChipProp
       className={cn(
         "inline-flex shrink-0 items-center gap-1 whitespace-nowrap",
         overdue ? "font-medium text-danger" : "text-fg-muted",
-        size === "sm" ? "text-[11px]" : "text-xs",
+        size === "sm" ? "text-mini" : "text-xs",
         DONE_CALM,
       )}
     >
@@ -359,7 +359,7 @@ export function TaskItem({
                 stĺpci týždňa by sa dlhý odhad s dlhým počítadlom inak
                 vykreslili von z kartičky namiesto toho, aby sa orezali.
               */
-              className="flex min-w-0 items-center gap-1.5 overflow-hidden pl-3 text-[11px] text-fg-muted"
+              className="flex min-w-0 items-center gap-1.5 overflow-hidden pl-3 text-mini text-fg-muted"
             >
               {task.estimateMin !== null ? (
                 <EstimateChip minutes={task.estimateMin} size="sm" />

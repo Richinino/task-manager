@@ -89,7 +89,7 @@ export function AreaList({ active, archived }: AreaListProps) {
                 <span className="block min-w-0 truncate text-sm font-medium text-fg">
                   {name}
                 </span>
-                <span className="text-[11px] text-fg-subtle">zakladá sa…</span>
+                <span className="text-mini text-fg-subtle">zakladá sa…</span>
               </li>
             ))}
 
@@ -120,7 +120,7 @@ export function AreaList({ active, archived }: AreaListProps) {
             aria-controls="archivovane-oblasti"
             className={cn(
               "inline-flex h-11 w-full items-center gap-2 rounded px-1 text-left sm:h-8",
-              "text-[13px] font-medium text-fg-muted",
+              "text-body font-medium text-fg-muted",
               "transition-colors duration-100 ease-out hover:bg-surface-2 hover:text-fg",
             )}
           >
@@ -146,7 +146,7 @@ export function AreaList({ active, archived }: AreaListProps) {
               />
               ))}
             </ul>
-            <p className="px-1 text-[11px] leading-relaxed text-fg-subtle">
+            <p className="px-1 text-mini leading-relaxed text-fg-subtle">
               Archivovaná oblasť sa neponúka vo výberoch, ale úlohy aj projekty
               pod ňou ostávajú tam, kde boli. Vrátiť ju späť sa dá jedným ťuknutím.
             </p>

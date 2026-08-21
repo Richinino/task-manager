@@ -78,10 +78,10 @@ export function AreasToday({ tasks }: AreasTodayProps) {
 
       <ul className="flex flex-col gap-1.5">
         {areas.map((area) => (
-          <li key={area.id} className="flex items-center gap-2 text-[13px]">
+          <li key={area.id} className="flex items-center gap-2 text-body">
             <AreaDot color={area.color} name={area.name} size="sm" />
             <span className="min-w-0 flex-1 truncate text-fg">{area.name}</span>
-            <span className="shrink-0 font-mono text-[11px] tabular-nums text-fg-muted">
+            <span className="shrink-0 font-mono text-mini tabular-nums text-fg-muted">
               {area.count} ·{" "}
               {area.minutes === 0 && area.withoutEstimate > 0
                 ? "—"
@@ -97,10 +97,10 @@ export function AreasToday({ tasks }: AreasTodayProps) {
           kde sa stratili.
         */}
         {unassigned > 0 ? (
-          <li className="flex items-center gap-2 text-[13px] text-fg-subtle">
+          <li className="flex items-center gap-2 text-body text-fg-subtle">
             <span aria-hidden="true" className="size-2 shrink-0 rounded-full border border-border-strong" />
             <span className="min-w-0 flex-1 truncate">bez oblasti</span>
-            <span className="shrink-0 font-mono text-[11px] tabular-nums">{unassigned}</span>
+            <span className="shrink-0 font-mono text-mini tabular-nums">{unassigned}</span>
           </li>
         ) : null}
       </ul>

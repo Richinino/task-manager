@@ -28,7 +28,7 @@ export function TriageProgress({ position, total }: TriageProgressProps) {
 
       <p
         aria-hidden="true"
-        className="hidden items-center gap-2 text-[11px] text-fg-subtle sm:flex"
+        className="hidden items-center gap-2 text-mini text-fg-subtle sm:flex"
       >
         <span className="inline-flex items-center gap-1">
           <Kbd>1</Kbd>–<Kbd>4</Kbd> zaradiť

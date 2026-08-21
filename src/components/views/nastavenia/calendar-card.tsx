@@ -20,7 +20,7 @@ export function CalendarCard({ connected }: { connected: boolean }) {
       <Card className="flex flex-col gap-3">
         <div className="flex flex-col gap-1">
           <h2 className="text-sm font-medium text-fg">Google Kalendár</h2>
-          <p className="text-[13px] leading-relaxed text-fg-muted">
+          <p className="text-body leading-relaxed text-fg-muted">
             Keď ho prepojíš, na obrazovke „Dnes“ uvidíš svoje porady a ich čas
             sa odráta z rozpočtu dňa. Prístup je{" "}
             <strong className="font-medium">len na čítanie</strong> — appka ti do
@@ -30,7 +30,7 @@ export function CalendarCard({ connected }: { connected: boolean }) {
 
         {connected ? (
           <div className="flex flex-wrap items-center gap-3">
-            <p className="flex items-center gap-1.5 text-[13px] text-success">
+            <p className="flex items-center gap-1.5 text-body text-success">
               <CalendarCheck aria-hidden="true" size={15} className="shrink-0" />
               Kalendár je prepojený.
             </p>
@@ -48,7 +48,7 @@ export function CalendarCard({ connected }: { connected: boolean }) {
                 Prepojiť kalendár
               </Button>
             </form>
-            <p className="text-[12px] leading-relaxed text-fg-subtle">
+            <p className="text-meta leading-relaxed text-fg-subtle">
               Google sa ťa spýta na povolenie. Bez neho appka funguje úplne
               rovnako, len bez porád v dni.
             </p>

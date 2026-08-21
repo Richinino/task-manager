@@ -113,7 +113,7 @@ export function ProjectCreateForm({ areas, onOptimisticAdd }: ProjectCreateFormP
       </h2>
 
       <div className="flex flex-col gap-1.5">
-        <label htmlFor={fieldId("name")} className="text-[12px] font-medium text-fg-muted">
+        <label htmlFor={fieldId("name")} className="text-meta font-medium text-fg-muted">
           Názov
         </label>
         <Input
@@ -134,7 +134,7 @@ export function ProjectCreateForm({ areas, onOptimisticAdd }: ProjectCreateFormP
       {/* Na 375 px idú oblasť a termín pod seba; od `sm` vedľa seba. */}
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <div className="flex min-w-0 flex-col gap-1.5">
-          <span className="text-[12px] font-medium text-fg-muted">Oblasť</span>
+          <span className="text-meta font-medium text-fg-muted">Oblasť</span>
           <Select
             value={areaId ?? NONE}
             onValueChange={(value) => setAreaId(value === NONE ? null : value)}
@@ -160,7 +160,7 @@ export function ProjectCreateForm({ areas, onOptimisticAdd }: ProjectCreateFormP
         <div className="flex min-w-0 flex-col gap-1.5">
           <label
             htmlFor={fieldId("deadline")}
-            className="text-[12px] font-medium text-fg-muted"
+            className="text-meta font-medium text-fg-muted"
           >
             Termín projektu
           </label>
@@ -177,7 +177,7 @@ export function ProjectCreateForm({ areas, onOptimisticAdd }: ProjectCreateFormP
       <div className="flex flex-col gap-1.5">
         <label
           htmlFor={fieldId("dod")}
-          className="text-[12px] font-medium text-fg-muted"
+          className="text-meta font-medium text-fg-muted"
         >
           Definícia hotovo
         </label>
@@ -194,7 +194,7 @@ export function ProjectCreateForm({ areas, onOptimisticAdd }: ProjectCreateFormP
             "transition-colors duration-100 ease-out hover:border-border-strong",
           )}
         />
-        <p className="text-[11px] leading-relaxed text-fg-subtle">
+        <p className="text-mini leading-relaxed text-fg-subtle">
           Bez nej sa projekt nikdy nezavrie — vždy sa nájde ešte jedna úloha.
           Dá sa doplniť aj neskôr v detaile.
         </p>
@@ -217,9 +217,9 @@ export function ProjectCreateForm({ areas, onOptimisticAdd }: ProjectCreateFormP
 
         <div role="status" aria-live="polite" className="min-w-0">
           {error !== null ? (
-            <p className="text-[13px] font-medium text-danger">{error}</p>
+            <p className="text-body font-medium text-danger">{error}</p>
           ) : created !== null ? (
-            <p className="text-[13px] text-fg-muted">
+            <p className="text-body text-fg-muted">
               <span className="text-success">Založené.</span>{" "}
               <Link
                 href={`/projekty/${created.id}`}

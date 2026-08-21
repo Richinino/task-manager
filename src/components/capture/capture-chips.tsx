@@ -69,8 +69,8 @@ export interface CaptureChipsProps {
 const CHIP_BASE = [
   "inline-flex select-none items-center justify-center gap-1 whitespace-nowrap",
   "rounded border font-medium leading-none",
-  "h-11 min-w-11 px-3 text-[13px]",
-  "sm:h-7 sm:min-w-0 sm:px-2 sm:text-[12px]",
+  "h-11 min-w-11 px-3 text-body",
+  "sm:h-7 sm:min-w-0 sm:px-2 sm:text-meta",
   "transition-[background-color,border-color,color] duration-100 ease-out",
 ].join(" ");
 
@@ -146,7 +146,7 @@ function ChipGroup({ label, children }: { label: string; children: ReactNode }) 
       {/* Popis skupiny počuje čítačka z `aria-label`; nahlas by znel dvakrát. */}
       <span
         aria-hidden="true"
-        className="pr-0.5 text-[11px] leading-none text-fg-subtle"
+        className="pr-0.5 text-mini leading-none text-fg-subtle"
       >
         {label}
       </span>

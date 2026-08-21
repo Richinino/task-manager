@@ -242,7 +242,7 @@ export function DayColumn({
           z úzkej hlavičky.
         */}
         {isToday ? (
-          <span className="label shrink-0 rounded bg-accent-soft px-1.5 py-0.5 text-[10px] text-accent md:hidden">
+          <span className="label shrink-0 rounded bg-accent-soft px-1.5 py-0.5 text-micro text-accent md:hidden">
             dnes
           </span>
         ) : null}
@@ -260,7 +260,7 @@ export function DayColumn({
                 : `Odhad ${loadLabel}`
             }
             className={cn(
-              "text-[11px] tabular-nums md:hidden",
+              "text-mini tabular-nums md:hidden",
               overloaded ? "font-medium text-warn" : "text-fg-subtle",
             )}
           >
@@ -292,7 +292,7 @@ export function DayColumn({
             : `Odhad ${loadLabel}`
         }
         className={cn(
-          "hidden px-2 pb-1 text-[11px] tabular-nums md:block",
+          "hidden px-2 pb-1 text-mini tabular-nums md:block",
           overloaded ? "font-medium text-warn" : "text-fg-subtle",
         )}
       >
@@ -329,7 +329,7 @@ export function DayColumn({
                 <span className={handleClass}>
                   <GripVertical size={14} />
                 </span>
-                <span className="min-w-0 flex-1 truncate py-1 text-[13px] text-fg-muted">
+                <span className="min-w-0 flex-1 truncate py-1 text-body text-fg-muted">
                   {title}
                 </span>
               </li>
@@ -347,7 +347,7 @@ export function DayColumn({
         ) : null}
 
         {tasks.length === 0 && pending.length === 0 && !adding ? (
-          <p className="rounded border border-dashed border-border px-2 py-3 text-center text-[11px] text-fg-subtle">
+          <p className="rounded border border-dashed border-border px-2 py-3 text-center text-mini text-fg-subtle">
             Voľno
           </p>
         ) : null}

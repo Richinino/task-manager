@@ -220,7 +220,7 @@ export function MonthlyReview({
         return (
           <div className="flex flex-col gap-2">
             {mostPostponed.length === 0 ? (
-              <p className="text-[13px] leading-relaxed text-fg-muted">
+              <p className="text-body leading-relaxed text-fg-muted">
                 Tento mesiac si nič nevozil pred sebou. To je vzácne.
               </p>
             ) : (
@@ -250,7 +250,7 @@ export function MonthlyReview({
                     </div>
 
                     {entry.task.project ? (
-                      <p className="min-w-0 text-[12px] text-fg-subtle">
+                      <p className="min-w-0 text-meta text-fg-subtle">
                         {entry.task.project.name}
                       </p>
                     ) : null}
@@ -264,7 +264,7 @@ export function MonthlyReview({
                       („nemal som čas") sú v takomto zozname úplne bežné.
                     */}
                     {entry.reasons.length === 0 ? (
-                      <p className="text-[13px] leading-relaxed text-fg-subtle">
+                      <p className="text-body leading-relaxed text-fg-subtle">
                         Bez zapísaného dôvodu.
                       </p>
                     ) : (
@@ -272,7 +272,7 @@ export function MonthlyReview({
                         {entry.reasons.map((reason, index) => (
                           <li
                             key={`${entry.task.id}:${index}`}
-                            className="min-w-0 whitespace-pre-wrap break-words text-[13px] leading-relaxed text-fg-muted"
+                            className="min-w-0 whitespace-pre-wrap break-words text-body leading-relaxed text-fg-muted"
                           >
                             {reason}
                           </li>
@@ -297,7 +297,7 @@ export function MonthlyReview({
                     ) : (
                       <p
                         className={cn(
-                          "text-[13px] leading-relaxed",
+                          "text-body leading-relaxed",
                           decision === "dropped" ? "text-danger" : "text-fg-muted",
                         )}
                       >
@@ -311,7 +311,7 @@ export function MonthlyReview({
 
             <div aria-live="polite">
               {rowError ? (
-                <p className="text-[13px] leading-relaxed text-danger">{rowError}</p>
+                <p className="text-body leading-relaxed text-danger">{rowError}</p>
               ) : null}
             </div>
           </div>
@@ -329,7 +329,7 @@ export function MonthlyReview({
         return (
           <div className="flex flex-col gap-2">
             {staleProjects.length === 0 ? (
-              <p className="text-[13px] leading-relaxed text-fg-muted">
+              <p className="text-body leading-relaxed text-fg-muted">
                 Každý projekt sa tento mesiac aspoň raz pohol.
               </p>
             ) : (
@@ -351,14 +351,14 @@ export function MonthlyReview({
                       <p className="min-w-0 flex-1 text-sm leading-snug text-fg">
                         {entry.project.name}
                       </p>
-                      <span className="shrink-0 text-[12px] text-warn">
+                      <span className="shrink-0 text-meta text-warn">
                         {days === null
                           ? "zatiaľ bez pohybu"
                           : `${days} ${pluralSk(days, "deň", "dni", "dní")} bez pohybu`}
                       </span>
                     </div>
 
-                    <p className="text-[12px] text-fg-subtle">
+                    <p className="text-meta text-fg-subtle">
                       {entry.project.openTaskCount}{" "}
                       {pluralSk(
                         entry.project.openTaskCount,
@@ -411,7 +411,7 @@ export function MonthlyReview({
             <p className="text-2xl font-semibold leading-none tabular-nums text-accent">
               {completedCount}
             </p>
-            <p className="pt-1.5 text-[13px] leading-relaxed text-fg-muted">
+            <p className="pt-1.5 text-body leading-relaxed text-fg-muted">
               {pluralSk(
                 completedCount,
                 "dokončená úloha",
@@ -423,7 +423,7 @@ export function MonthlyReview({
           </div>
 
           {written.length === 0 ? (
-            <p className="text-[13px] leading-relaxed text-fg-muted">
+            <p className="text-body leading-relaxed text-fg-muted">
               Denník je tento mesiac prázdny. Napĺňa ho večerný rituál, po jednej vete.
             </p>
           ) : (
@@ -434,7 +434,7 @@ export function MonthlyReview({
                   className={cn(ritualRowClass, "flex-col gap-1")}
                 >
                   <div className="flex w-full items-baseline justify-between gap-2">
-                    <span className="shrink-0 text-[12px] tabular-nums text-fg-subtle">
+                    <span className="shrink-0 text-meta tabular-nums text-fg-subtle">
                       {formatDayMonthSk(entry.date)}
                     </span>
                     {entry.mood === null ? null : <MoodDots value={entry.mood} />}
@@ -465,7 +465,7 @@ export function MonthlyReview({
             maxLength={280}
             aria-label="Zámer na ďalší mesiac"
           />
-          <p className="text-[13px] leading-relaxed text-fg-subtle">
+          <p className="text-body leading-relaxed text-fg-subtle">
             O mesiac ju uvidíš hore v tejto istej revízii.
           </p>
         </div>
@@ -532,7 +532,7 @@ function RowButton({
       onClick={onClick}
       className={cn(
         "inline-flex min-h-11 items-center gap-1.5 rounded border border-border bg-surface px-2.5",
-        "text-[13px] text-fg transition-colors duration-100 ease-out sm:min-h-8",
+        "text-body text-fg transition-colors duration-100 ease-out sm:min-h-8",
         danger
           ? "hover:border-danger hover:text-danger"
           : "hover:border-border-strong hover:bg-surface-2",
@@ -560,7 +560,7 @@ function ChoiceButton({
       aria-pressed={active}
       onClick={onClick}
       className={cn(
-        "inline-flex min-h-11 items-center rounded border px-3 text-[13px] sm:min-h-8",
+        "inline-flex min-h-11 items-center rounded border px-3 text-body sm:min-h-8",
         "transition-colors duration-100 ease-out",
         active
           ? "border-accent bg-accent-soft font-medium text-accent"

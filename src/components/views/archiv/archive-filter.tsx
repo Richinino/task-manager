@@ -37,7 +37,7 @@ export function ArchiveFilter({ active, query, counts }: ArchiveFilterProps) {
             aria-current={current ? "page" : undefined}
             className={cn(
               "inline-flex min-h-11 min-w-0 items-center gap-1.5 rounded border px-3 sm:min-h-8 sm:px-2.5",
-              "text-[13px] transition-colors duration-100 ease-out",
+              "text-body transition-colors duration-100 ease-out",
               current
                 ? "border-transparent bg-accent-soft font-medium text-accent"
                 : "border-border bg-surface text-fg-muted hover:border-border-strong hover:bg-surface-2 hover:text-fg",
@@ -49,7 +49,7 @@ export function ArchiveFilter({ active, query, counts }: ArchiveFilterProps) {
             <span
               aria-hidden="true"
               className={cn(
-                "shrink-0 text-[11px] tabular-nums",
+                "shrink-0 text-mini tabular-nums",
                 current ? "text-accent" : "text-fg-subtle",
               )}
             >

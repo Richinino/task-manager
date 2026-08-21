@@ -24,7 +24,7 @@ export default async function NastaveniaPage() {
     <div className="mx-auto flex w-full max-w-[720px] flex-col gap-5 px-4 py-5 md:px-6 md:py-7">
       <header className="flex flex-col gap-1">
         <h1 className="text-lg font-semibold text-fg">Nastavenia</h1>
-        <p className="text-[13px] leading-relaxed text-fg-muted">
+        <p className="text-body leading-relaxed text-fg-muted">
           Čísla, podľa ktorých sa appka správa. Ukladajú sa samy — tlačidlo
           „Uložiť“ tu nie je.
         </p>

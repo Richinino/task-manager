@@ -372,7 +372,7 @@ export function TriageRow({
           <Select value={projectValue} onValueChange={assignProject}>
             <SelectTrigger
               aria-label={`Projekt úlohy ${task.title}`}
-              className="h-11 w-full min-w-0 px-2 text-[13px] sm:h-7 sm:w-auto sm:min-w-32 sm:max-w-44"
+              className="h-11 w-full min-w-0 px-2 text-body sm:h-7 sm:w-auto sm:min-w-32 sm:max-w-44"
             >
               <SelectValue placeholder="Projekt" />
             </SelectTrigger>
@@ -390,7 +390,7 @@ export function TriageRow({
           <Select value={areaValue} onValueChange={assignArea}>
             <SelectTrigger
               aria-label={`Oblasť úlohy ${task.title}`}
-              className="h-11 w-full min-w-0 px-2 text-[13px] sm:h-7 sm:w-auto sm:min-w-32 sm:max-w-44"
+              className="h-11 w-full min-w-0 px-2 text-body sm:h-7 sm:w-auto sm:min-w-32 sm:max-w-44"
             >
               <SelectValue placeholder="Oblasť" />
             </SelectTrigger>

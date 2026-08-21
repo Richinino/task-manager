@@ -196,7 +196,7 @@ export function ArchiveList({ entries, filter }: ArchiveListProps) {
       {error === null ? null : (
         <p
           role="status"
-          className="rounded border border-danger bg-surface px-3 py-2 text-[13px] font-medium break-words text-danger"
+          className="rounded border border-danger bg-surface px-3 py-2 text-body font-medium break-words text-danger"
         >
           {error}
         </p>
@@ -206,7 +206,7 @@ export function ArchiveList({ entries, filter }: ArchiveListProps) {
           keď sa jej obsah zmení. */}
       <div role="status" aria-live="polite">
         {flash === null ? null : (
-          <p className="rounded border border-border bg-surface-2 px-3 py-2 text-[13px] break-words text-fg-muted">
+          <p className="rounded border border-border bg-surface-2 px-3 py-2 text-body break-words text-fg-muted">
             {flash}
           </p>
         )}
@@ -268,17 +268,17 @@ function ArchiveRow({ entry, onRestore }: ArchiveRowProps) {
             všetko by znamenalo stlmiť celú obrazovku — a práve toto je jediné
             miesto, kde sa archív číta zámerne.
           */}
-          <p className="min-w-0 text-[13px] leading-snug font-medium break-words text-fg">
+          <p className="min-w-0 text-body leading-snug font-medium break-words text-fg">
             {entry.title}
           </p>
 
           {entry.excerpt === null ? null : (
-            <p className="min-w-0 text-[12px] leading-snug break-words text-fg-subtle">
+            <p className="min-w-0 text-meta leading-snug break-words text-fg-subtle">
               {entry.excerpt}
             </p>
           )}
 
-          <p className="mt-0.5 flex min-w-0 flex-wrap items-center gap-x-2 gap-y-0.5 text-[11px] text-fg-subtle">
+          <p className="mt-0.5 flex min-w-0 flex-wrap items-center gap-x-2 gap-y-0.5 text-mini text-fg-subtle">
             <span className={cn("inline-flex shrink-0 items-center gap-1", reason.tone)}>
               <ReasonIcon aria-hidden="true" size={12} className="shrink-0" />
               {reason.label}

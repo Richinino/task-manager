@@ -91,7 +91,7 @@ export function ProjectList({ active, archived, areas, todayIso }: ProjectListPr
             aria-controls="archivovane-projekty"
             className={cn(
               "inline-flex h-11 w-full items-center gap-2 rounded px-1 text-left sm:h-8",
-              "text-[13px] font-medium text-fg-muted",
+              "text-body font-medium text-fg-muted",
               "transition-colors duration-100 ease-out hover:bg-surface-2 hover:text-fg",
             )}
           >
@@ -114,7 +114,7 @@ export function ProjectList({ active, archived, areas, todayIso }: ProjectListPr
             {archived.map((project) => (
               <ProjectCard key={project.id} project={project} todayIso={todayIso} />
             ))}
-            <p className="px-1 text-[11px] leading-relaxed text-fg-subtle">
+            <p className="px-1 text-mini leading-relaxed text-fg-subtle">
               Archivovaný projekt sa neponúka vo výberoch, ale jeho úlohy aj
               história ostávajú. Z detailu sa dá kedykoľvek vrátiť späť.
             </p>

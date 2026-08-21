@@ -347,7 +347,7 @@ export function IdeaBoard({
       {error !== null ? (
         <p
           role="status"
-          className="rounded border border-danger bg-surface px-3 py-2 text-[13px] font-medium break-words text-danger"
+          className="rounded border border-danger bg-surface px-3 py-2 text-body font-medium break-words text-danger"
         >
           {error}
         </p>
@@ -357,7 +357,7 @@ export function IdeaBoard({
           bola, keď sa jej obsah zmení. */}
       <div role="status" aria-live="polite">
         {flash !== null ? (
-          <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 rounded border border-border bg-surface-2 px-3 py-2 text-[13px] text-fg-muted">
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 rounded border border-border bg-surface-2 px-3 py-2 text-body text-fg-muted">
             <span className="min-w-0 break-words">{flash.message}</span>
             {flash.undoIdeaId !== undefined ? (
               <Button
@@ -447,7 +447,7 @@ export function IdeaBoard({
               )}
               <span
                 id="vybavene-napady"
-                className="min-w-0 truncate text-[11px] font-semibold tracking-wide uppercase text-fg-subtle"
+                className="min-w-0 truncate text-mini font-semibold tracking-wide uppercase text-fg-subtle"
               >
                 Vybavené
               </span>
@@ -456,7 +456,7 @@ export function IdeaBoard({
 
             <div id="vybavene-napady-zoznam" hidden={!settledOpen}>
               {settled.length === 0 ? (
-                <p className="rounded border border-dashed border-border px-3 py-4 text-[12px] leading-relaxed text-fg-subtle">
+                <p className="rounded border border-dashed border-border px-3 py-4 text-meta leading-relaxed text-fg-subtle">
                   Nič povýšené ani zamietnuté.
                 </p>
               ) : (
@@ -465,7 +465,7 @@ export function IdeaBoard({
             </div>
 
             {settledOpen ? null : (
-              <p className="px-1 text-[11px] leading-relaxed text-fg-subtle">
+              <p className="px-1 text-mini leading-relaxed text-fg-subtle">
                 {settled.length === 0
                   ? "Zatiaľ nič."
                   : `${ideaCountLabel(settled.length)} povýšených alebo zamietnutých.`}
@@ -521,17 +521,17 @@ function Column({ title, hint, count, emptyText, children }: ColumnProps) {
         <div className="flex min-w-0 items-center gap-1.5">
           <h2
             id={headingId}
-            className="min-w-0 truncate text-[11px] font-semibold tracking-wide uppercase text-fg-subtle"
+            className="min-w-0 truncate text-mini font-semibold tracking-wide uppercase text-fg-subtle"
           >
             {title}
           </h2>
           <CountBadge count={count} />
         </div>
-        <p className="mt-0.5 text-[11px] leading-snug text-fg-subtle">{hint}</p>
+        <p className="mt-0.5 text-mini leading-snug text-fg-subtle">{hint}</p>
       </div>
 
       {empty ? (
-        <p className="rounded border border-dashed border-border px-3 py-4 text-[12px] text-fg-subtle">
+        <p className="rounded border border-dashed border-border px-3 py-4 text-meta text-fg-subtle">
           {emptyText}
         </p>
       ) : (

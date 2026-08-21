@@ -68,7 +68,7 @@ export function IncubatorStrip({
             Vráť sa k týmto
           </h2>
         </div>
-        <p className="mt-1 text-[12px] leading-relaxed text-fg-muted">
+        <p className="mt-1 text-meta leading-relaxed text-fg-muted">
           Nikto sa ich nedotkol aspoň {afterDays} dní. Nepýtame sa, či si na ne
           nezabudol — pýtame sa, čo s nimi. Každý z nich odtiaľto odíde jedným
           z troch rozhodnutí.
@@ -89,12 +89,12 @@ export function IncubatorStrip({
                 {title}
               </p>
 
-              <p className="text-[12px] leading-relaxed text-fg-muted">
+              <p className="text-meta leading-relaxed text-fg-muted">
                 Toto ťa napadlo {agoLabel(ageDays)}.{" "}
                 <span className="font-medium text-fg">Stále aktuálne?</span>
               </p>
 
-              <div className="flex min-w-0 flex-wrap items-center gap-x-2.5 gap-y-1 text-[11px] text-fg-muted">
+              <div className="flex min-w-0 flex-wrap items-center gap-x-2.5 gap-y-1 text-mini text-fg-muted">
                 <SparkMeter value={idea.spark} />
                 {idea.area ? (
                   <AreaDot

@@ -118,7 +118,7 @@ export function DayHeader({
         <div className="flex min-w-0 flex-wrap items-center justify-end gap-2">
           <p
             className={cn(
-              "text-[13px] tabular-nums sm:text-sm",
+              "text-body tabular-nums sm:text-sm",
               allDone ? "font-medium text-success" : "text-fg-muted",
             )}
           >

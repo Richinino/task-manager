@@ -248,7 +248,7 @@ export function MorningPlan({
       render: () => (
         <div className="flex flex-col gap-2">
           {burning.length === 0 ? (
-            <p className="text-[13px] leading-relaxed text-fg-muted">
+            <p className="text-body leading-relaxed text-fg-muted">
               {overdue.length === 0
                 ? "Z minulosti nič nevisí. Začínaš s čistým stolom."
                 : "Hotovo — z minulosti už nič nevisí."}
@@ -299,11 +299,11 @@ export function MorningPlan({
           {/* Riadky miznú hneď po kliknutí. Bez počítadla by to vyzeralo, akoby
               sa úlohy strácali samy od seba — takto je vidieť odrobené. */}
           {handledCount > 0 ? (
-            <p className="text-[13px] text-fg-subtle">Vybavené: {handledCount}.</p>
+            <p className="text-body text-fg-subtle">Vybavené: {handledCount}.</p>
           ) : null}
 
           {overdueError ? (
-            <p role="alert" className="text-[13px] leading-relaxed text-danger">
+            <p role="alert" className="text-body leading-relaxed text-danger">
               {overdueError}
             </p>
           ) : null}
@@ -317,7 +317,7 @@ export function MorningPlan({
       render: () => (
         <div className="flex flex-col gap-2">
           {candidates.length === 0 ? (
-            <p className="text-[13px] leading-relaxed text-fg-muted">
+            <p className="text-body leading-relaxed text-fg-muted">
               Na dnes zatiaľ nič nemáš. Prioritu si vyberieš, keď do dňa pribudne prvá
               úloha.
             </p>
@@ -367,13 +367,13 @@ export function MorningPlan({
           )}
 
           {frogId !== null ? (
-            <p className="text-[13px] leading-relaxed text-fg-muted">
+            <p className="text-body leading-relaxed text-fg-muted">
               Toto je tá jedna vec. Nech sa dnes stane čokoľvek, spravíš ju.
             </p>
           ) : null}
 
           {frogError ? (
-            <p role="alert" className="text-[13px] leading-relaxed text-danger">
+            <p role="alert" className="text-body leading-relaxed text-danger">
               {frogError}
             </p>
           ) : null}
@@ -401,7 +401,7 @@ export function MorningPlan({
 
           {/* Rozsudok je zámerne jedna veta. Že súčet nepozná úlohy bez odhadu,
               hovorí `TimeBudget` — dvakrát to isté by znelo ako výhovorka. */}
-          <p className={cn("text-[13px] leading-relaxed", verdict.tone)}>{verdict.text}</p>
+          <p className={cn("text-body leading-relaxed", verdict.tone)}>{verdict.text}</p>
         </div>
       ),
     },
@@ -524,7 +524,7 @@ function ChoiceButton({
       aria-label={ariaLabel}
       className={cn(
         "inline-flex min-h-11 items-center gap-1.5 rounded border border-border bg-surface px-2.5",
-        "text-[13px] text-fg transition-colors duration-100 ease-out sm:min-h-8",
+        "text-body text-fg transition-colors duration-100 ease-out sm:min-h-8",
         danger
           ? "hover:border-danger hover:text-danger"
           : "hover:border-border-strong hover:bg-surface-2",

@@ -61,7 +61,7 @@ function BarBadge({ item, counts }: { item: NavItem; counts: NavCounts }) {
       aria-label={badge.label}
       className={cn(
         "absolute -right-2.5 -top-1.5 inline-flex h-4 min-w-4 items-center justify-center",
-        "rounded-full px-1 font-mono text-[10px] font-medium tabular-nums text-accent-fg",
+        "rounded-full px-1 font-mono text-micro font-medium tabular-nums text-accent-fg",
         badge.tone === "danger" ? "bg-danger" : "bg-accent",
       )}
     >
@@ -72,7 +72,7 @@ function BarBadge({ item, counts }: { item: NavItem; counts: NavCounts }) {
 
 /** Spoločný tvar tlačidla aj odkazu v lište — 56 px na výšku, celý stĺpec. */
 const BAR_ITEM = cn(
-  "flex h-14 w-full flex-col items-center justify-center gap-1 px-1 text-[11px]",
+  "flex h-14 w-full flex-col items-center justify-center gap-1 px-1 text-mini",
   "transition-colors duration-100 ease-out",
 );
 

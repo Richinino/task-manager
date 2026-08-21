@@ -26,12 +26,12 @@ export default function OfflinePage() {
           <h1 className="text-base font-semibold tracking-tight text-fg">
             Zariadenie je bez pripojenia
           </h1>
-          <p className="mt-1.5 text-[13px] leading-relaxed text-fg-muted">
+          <p className="mt-1.5 text-body leading-relaxed text-fg-muted">
             Túto obrazovku sa nepodarilo načítať zo servera. Appka to skúsi sama,
             len čo bude signál — nemusíš nič strážiť.
           </p>
 
-          <p className="mt-3 rounded bg-accent-soft px-3 py-2.5 text-[13px] leading-relaxed text-fg">
+          <p className="mt-3 rounded bg-accent-soft px-3 py-2.5 text-body leading-relaxed text-fg">
             Novú úlohu môžeš zachytiť aj teraz. Uloží sa priamo v telefóne a
             odošle sa sama, keď sa pripojenie vráti.
           </p>
@@ -51,14 +51,14 @@ export default function OfflinePage() {
 
             <Link
               href="/dnes"
-              className="rounded px-3 py-1.5 text-center text-[13px] text-fg-muted transition-colors duration-100 hover:text-fg"
+              className="rounded px-3 py-1.5 text-center text-body text-fg-muted transition-colors duration-100 hover:text-fg"
             >
               Späť na dnešný deň
             </Link>
           </div>
         </div>
 
-        <p className="mt-4 text-center text-[12px] leading-relaxed text-fg-subtle">
+        <p className="mt-4 text-center text-meta leading-relaxed text-fg-subtle">
           Naposledy načítané obrazovky fungujú aj bez signálu. Úpravy a mazanie
           počkajú na pripojenie.
         </p>

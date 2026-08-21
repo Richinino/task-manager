@@ -174,7 +174,7 @@ function DayEntryChip({ entry }: { entry: DayEntry }) {
     <span
       title={`${kindLabel}: ${entry.title}`}
       className={cn(
-        "flex min-w-0 items-center gap-1 rounded px-1 py-px text-[11px] leading-tight",
+        "flex min-w-0 items-center gap-1 rounded px-1 py-px text-mini leading-tight",
         isDue
           ? "border-l-2 border-danger bg-danger/10 font-semibold text-fg"
           : "bg-surface-2 font-normal text-fg-muted",
@@ -258,14 +258,14 @@ export function DayCell({
             className={cn(
               "tabular-nums",
               isToday
-                ? "inline-flex size-5 items-center justify-center rounded-full bg-accent text-[11px] font-semibold text-accent-fg"
-                : cn("text-[12px] font-semibold", inMonth ? "text-fg" : "text-fg-subtle"),
+                ? "inline-flex size-5 items-center justify-center rounded-full bg-accent text-mini font-semibold text-accent-fg"
+                : cn("text-meta font-semibold", inMonth ? "text-fg" : "text-fg-subtle"),
             )}
           >
             {dayNumber}
           </span>
           {monthHint ? (
-            <span className="truncate text-[10px] text-fg-subtle">{monthHint}</span>
+            <span className="truncate text-micro text-fg-subtle">{monthHint}</span>
           ) : null}
         </span>
 
@@ -285,7 +285,7 @@ export function DayCell({
                 {summary.dueCount > 1 ? (
                   <span
                     className={cn(
-                      "text-[10px] font-semibold leading-none tabular-nums",
+                      "text-micro font-semibold leading-none tabular-nums",
                       summary.dueOpen === 0 ? "text-fg-subtle" : "text-danger",
                     )}
                   >
@@ -303,7 +303,7 @@ export function DayCell({
                   className={summary.plannedOpen === 0 ? "opacity-40" : undefined}
                 />
                 {summary.plannedCount > 1 ? (
-                  <span className="text-[10px] leading-none tabular-nums text-fg-muted">
+                  <span className="text-micro leading-none tabular-nums text-fg-muted">
                     {summary.plannedCount}
                   </span>
                 ) : null}
@@ -319,7 +319,7 @@ export function DayCell({
               <DayEntryChip key={entry.key} entry={entry} />
             ))}
             {hiddenCount > 0 ? (
-              <span className="px-1 text-[10px] font-medium leading-tight text-fg-subtle">
+              <span className="px-1 text-micro font-medium leading-tight text-fg-subtle">
                 {moreLabel(hiddenCount)}
               </span>
             ) : null}

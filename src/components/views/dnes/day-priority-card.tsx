@@ -110,7 +110,7 @@ export function DayPriorityCard({
         />
 
         {/* Na telefóne je 12 px na dve-tri vety primalo — od `sm:` sa vracia. */}
-        <p className="mt-1.5 px-2 text-[13px] leading-relaxed text-fg-muted sm:text-xs">
+        <p className="mt-1.5 px-2 text-body leading-relaxed text-fg-muted sm:text-xs">
           Toto je tá jedna vec, ktorú máš dnes spraviť ako prvú — aj keby už nič
           iné z dnešného dňa nevyšlo.
         </p>
@@ -127,7 +127,7 @@ export function DayPriorityCard({
       className="rounded border border-dashed border-frog bg-surface p-3"
     >
       {heading}
-      <p className="mt-1 text-[13px] leading-relaxed text-fg-muted sm:text-xs">
+      <p className="mt-1 text-body leading-relaxed text-fg-muted sm:text-xs">
         Vyber jednu úlohu, ktorú dnes spravíš ako prvú — aj keby už nič iné
         nevyšlo, deň bude dobrý. Najlepšie tú, ktorú najviac odkladáš.
       </p>

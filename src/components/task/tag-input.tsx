@@ -163,7 +163,7 @@ export function TagInput({ taskId, tags, setTags, suggestions }: TagInputProps) 
               <span
                 className={cn(
                   "inline-flex h-9 max-w-full min-w-0 items-center gap-1 rounded border border-border",
-                  "bg-surface-2 pl-2 pr-1 text-[13px] text-fg md:h-7",
+                  "bg-surface-2 pl-2 pr-1 text-body text-fg md:h-7",
                   isTemp(tag.id) && "opacity-60",
                 )}
               >
@@ -236,7 +236,7 @@ export function TagInput({ taskId, tags, setTags, suggestions }: TagInputProps) 
       {/* Návrhy z už použitých štítkov — druhýkrát sa to isté nepíše ručne. */}
       {offered.length > 0 ? (
         <div className="flex min-w-0 flex-wrap items-center gap-1.5">
-          <span className="shrink-0 text-[11px] text-fg-subtle">Použité:</span>
+          <span className="shrink-0 text-mini text-fg-subtle">Použité:</span>
           {offered.map((tag) => (
             <button
               key={tag.id}
@@ -245,7 +245,7 @@ export function TagInput({ taskId, tags, setTags, suggestions }: TagInputProps) 
               aria-label={`Pridať štítok #${tag.name}`}
               className={cn(
                 "inline-flex h-8 max-w-40 min-w-0 items-center rounded border border-dashed border-border",
-                "px-2 text-[12px] text-fg-muted transition-colors duration-100 ease-out",
+                "px-2 text-meta text-fg-muted transition-colors duration-100 ease-out",
                 "hover:border-accent hover:text-fg md:h-6",
               )}
             >
@@ -256,7 +256,7 @@ export function TagInput({ taskId, tags, setTags, suggestions }: TagInputProps) 
       ) : null}
 
       {error !== null ? (
-        <p role="alert" className="text-[11px] font-medium text-danger">
+        <p role="alert" className="text-mini font-medium text-danger">
           {error}
         </p>
       ) : null}

@@ -161,6 +161,23 @@
   --radius-lg: 10px;
   --radius-xl: 16px;
 
+  /*
+    Typografická škála. Doteraz ich bolo 332 zapísaných ako `text-[13px]`
+    priamo v komponentoch — nebol to chaos, bola to škála bez mien, a preto
+    sa nedala zmeniť naraz.
+
+    Mená sú NOVÉ, nie prepis tailwindových `text-xs`/`text-sm`. Prepísať tie
+    by ticho zmenilo veľkosť všade, kde sa používajú dnes; takto sa nič
+    existujúce nepohne a obe škály vedľa seba fungujú.
+
+    `body` je 13 px zámerne — appka je hustý nástroj a 14 px by na týždennej
+    doske ubralo jeden riadok na stĺpec.
+  */
+  --text-micro: 10px;
+  --text-mini: 11px;
+  --text-meta: 12px;
+  --text-body: 13px;
+
   --shadow-sm: var(--sh-sm);
   --shadow-lg: var(--sh-lg);
   --shadow-accent: var(--sh-accent);
@@ -236,13 +253,13 @@
       utilitami nerozhoduje poradie v atribúte, ale poradie v hotovom CSS.
       Farbu preto dopĺňa každé použitie.
     */
-    @apply font-mono text-[11px] uppercase tracking-[0.14em];
+    @apply font-mono text-mini uppercase tracking-[0.14em];
   }
 
   /* Klávesová skratka v texte */
   .kbd {
     @apply inline-flex h-5 min-w-5 items-center justify-center rounded border border-border
-           bg-surface-2 px-1.5 font-mono text-[10px] font-medium text-fg-muted;
+           bg-surface-2 px-1.5 font-mono text-micro font-medium text-fg-muted;
   }
 
   /* Odstráni „poskočenie" pri drag & drop v týždennom pohľade */

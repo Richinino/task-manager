@@ -213,7 +213,7 @@ export function WhatNow({ tasks, todayIso, contexts, places }: WhatNowProps) {
 
         <div className="flex flex-col gap-4">
           <fieldset className="flex flex-col gap-2">
-            <legend className="pb-1.5 text-[13px] font-medium text-fg">
+            <legend className="pb-1.5 text-body font-medium text-fg">
               Koľko máš sily?
             </legend>
             <div className="flex flex-wrap gap-2">
@@ -239,7 +239,7 @@ export function WhatNow({ tasks, todayIso, contexts, places }: WhatNowProps) {
                   >
                     <Icon aria-hidden="true" size={16} className="shrink-0" />
                     <span>{choice.label}</span>
-                    <span className="text-[12px] text-fg-subtle">{choice.hint}</span>
+                    <span className="text-meta text-fg-subtle">{choice.hint}</span>
                   </button>
                 );
               })}
@@ -247,7 +247,7 @@ export function WhatNow({ tasks, todayIso, contexts, places }: WhatNowProps) {
           </fieldset>
 
           <fieldset className="flex flex-col gap-2">
-            <legend className="pb-1.5 text-[13px] font-medium text-fg">
+            <legend className="pb-1.5 text-body font-medium text-fg">
               Koľko máš času?
             </legend>
             <div className="flex flex-wrap gap-2">
@@ -284,7 +284,7 @@ export function WhatNow({ tasks, todayIso, contexts, places }: WhatNowProps) {
           */}
           {(contexts ?? []).length > 0 ? (
             <fieldset className="flex flex-col gap-2">
-              <legend className="pb-1.5 text-[13px] font-medium text-fg">
+              <legend className="pb-1.5 text-body font-medium text-fg">
                 Kde si?
               </legend>
               <div className="flex flex-wrap gap-2">
@@ -355,7 +355,7 @@ export function WhatNow({ tasks, todayIso, contexts, places }: WhatNowProps) {
               </div>
 
               {locationNote !== null ? (
-                <p aria-live="polite" className="text-[13px] leading-relaxed text-fg-muted">
+                <p aria-live="polite" className="text-body leading-relaxed text-fg-muted">
                   {locationNote}
                 </p>
               ) : null}
@@ -370,7 +370,7 @@ export function WhatNow({ tasks, todayIso, contexts, places }: WhatNowProps) {
               className="rounded border border-border bg-surface-2 p-3"
             >
               {picked === null ? (
-                <p className="text-[13px] leading-relaxed text-fg-muted">
+                <p className="text-body leading-relaxed text-fg-muted">
                   Nezostalo nič, čo by sa dalo robiť teraz. To je dobrá správa —
                   zavri to a choď preč od obrazovky.
                 </p>
@@ -380,7 +380,7 @@ export function WhatNow({ tasks, todayIso, contexts, places }: WhatNowProps) {
                     {picked.title}
                   </p>
 
-                  <p className="text-[13px] leading-relaxed text-fg-muted">
+                  <p className="text-body leading-relaxed text-fg-muted">
                     {pick ? REASON_LABEL[pick.reason] : null}
                     {picked.estimateMin !== null ? (
                       <>
@@ -399,7 +399,7 @@ export function WhatNow({ tasks, todayIso, contexts, places }: WhatNowProps) {
                     že appka nerozumie zadaniu. Radšej úprimne než ticho.
                   */}
                   {pick?.stretch ? (
-                    <p className="text-[13px] leading-relaxed text-warn">
+                    <p className="text-body leading-relaxed text-warn">
                       Do zadanej sily ani času sa to nezmestí — nič menšie ale
                       nemáš.
                     </p>
@@ -432,7 +432,7 @@ export function WhatNow({ tasks, todayIso, contexts, places }: WhatNowProps) {
                   </div>
 
                   {skipped > 0 ? (
-                    <p className="text-[12px] text-fg-subtle">
+                    <p className="text-meta text-fg-subtle">
                       Preskočené: {skipped}. Keď preskakuješ všetko, problém
                       nie je vo výbere.
                     </p>

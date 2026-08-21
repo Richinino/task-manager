@@ -68,7 +68,7 @@ export interface MonthHeaderProps {
 const controlBase = cn(
   "inline-flex shrink-0 select-none items-center justify-center gap-1.5",
   "whitespace-nowrap rounded border border-border bg-surface font-medium leading-none",
-  "text-[13px] text-fg transition-colors duration-100 ease-out",
+  "text-body text-fg transition-colors duration-100 ease-out",
   "hover:border-border-strong hover:bg-surface-2",
 );
 

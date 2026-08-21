@@ -168,7 +168,7 @@ export function TemplateEditor({ template, onCancel, onSaved }: TemplateEditorPr
       <div className="flex min-w-0 flex-col gap-1.5">
         <label
           htmlFor={fieldId("name")}
-          className="text-[12px] font-medium text-fg-muted"
+          className="text-meta font-medium text-fg-muted"
         >
           Názov
         </label>
@@ -191,7 +191,7 @@ export function TemplateEditor({ template, onCancel, onSaved }: TemplateEditorPr
       <div className="flex min-w-0 flex-col gap-1.5">
         <label
           htmlFor={fieldId("description")}
-          className="text-[12px] font-medium text-fg-muted"
+          className="text-meta font-medium text-fg-muted"
         >
           Popis
         </label>
@@ -210,7 +210,7 @@ export function TemplateEditor({ template, onCancel, onSaved }: TemplateEditorPr
             "disabled:pointer-events-none disabled:opacity-45",
           )}
         />
-        <p className="text-[11px] leading-relaxed text-fg-subtle">
+        <p className="text-mini leading-relaxed text-fg-subtle">
           Nepovinné. O pol roka to bude jediné, podľa čoho spoznáš, načo si
           šablónu robil.
         </p>
@@ -218,8 +218,8 @@ export function TemplateEditor({ template, onCancel, onSaved }: TemplateEditorPr
 
       <div className="flex min-w-0 flex-col gap-2">
         <div className="flex min-w-0 flex-wrap items-baseline gap-x-2 gap-y-1">
-          <h3 className="text-[12px] font-medium text-fg-muted">Úlohy</h3>
-          <p className="min-w-0 text-[11px] leading-relaxed text-fg-subtle">
+          <h3 className="text-meta font-medium text-fg-muted">Úlohy</h3>
+          <p className="min-w-0 text-mini leading-relaxed text-fg-subtle">
             Deň je relatívny — počíta sa až od dňa, v ktorý šablónu použiješ.
           </p>
         </div>
@@ -250,7 +250,7 @@ export function TemplateEditor({ template, onCancel, onSaved }: TemplateEditorPr
         </Button>
 
         {rows.length >= MAX_ROWS ? (
-          <p className="text-[11px] leading-relaxed text-fg-subtle">
+          <p className="text-mini leading-relaxed text-fg-subtle">
             Viac než {MAX_ROWS} krokov už nie je rutina, ale projekt — a na ten
             sú projekty.
           </p>
@@ -259,7 +259,7 @@ export function TemplateEditor({ template, onCancel, onSaved }: TemplateEditorPr
 
       <div role="alert" aria-live="polite" className="min-w-0">
         {error !== null ? (
-          <p className="text-[13px] font-medium break-words text-danger">{error}</p>
+          <p className="text-body font-medium break-words text-danger">{error}</p>
         ) : null}
       </div>
 
@@ -288,7 +288,7 @@ export function TemplateEditor({ template, onCancel, onSaved }: TemplateEditorPr
           Zrušiť
         </Button>
 
-        <p className="min-w-0 text-[11px] leading-relaxed text-fg-subtle">
+        <p className="min-w-0 text-mini leading-relaxed text-fg-subtle">
           Uloží sa {taskCountLabel(ready.length)}.
         </p>
       </div>

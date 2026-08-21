@@ -110,7 +110,7 @@ export function AreaCreateForm({ usedColors, onOptimisticAdd }: AreaCreateFormPr
 
       <div role="status" aria-live="polite" className="min-w-0">
         {error !== null ? (
-          <p className="px-1 text-[12px] font-medium text-danger">{error}</p>
+          <p className="px-1 text-meta font-medium text-danger">{error}</p>
         ) : null}
       </div>
     </form>

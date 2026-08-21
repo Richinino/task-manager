@@ -220,7 +220,7 @@ export function TaskDetailProvider({
           <div
             className={cn(
               "pointer-events-auto flex flex-wrap items-center gap-x-3 gap-y-1.5 rounded",
-              "border border-border bg-surface px-3 py-2 text-[13px] text-fg-muted shadow-md",
+              "border border-border bg-surface px-3 py-2 text-body text-fg-muted shadow-md",
             )}
           >
             <span className="min-w-0 truncate">Úloha „{flash.title}" je zahodená.</span>
@@ -250,7 +250,7 @@ export function TaskDetailProvider({
           <p
             className={cn(
               "pointer-events-auto mt-2 rounded border border-danger bg-surface px-3 py-2",
-              "text-[13px] font-medium text-danger shadow-md",
+              "text-body font-medium text-danger shadow-md",
             )}
           >
             {error}
