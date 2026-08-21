@@ -408,7 +408,7 @@ export function MonthlyReview({
       render: () => (
         <div className="flex flex-col gap-3">
           <div className="rounded border border-border bg-accent-soft px-3 py-3">
-            <p className="text-2xl font-semibold leading-none tabular-nums text-accent">
+            <p className="text-2xl font-semibold leading-none font-mono tabular-nums text-accent">
               {completedCount}
             </p>
             <p className="pt-1.5 text-body leading-relaxed text-fg-muted">
@@ -434,7 +434,7 @@ export function MonthlyReview({
                   className={cn(ritualRowClass, "flex-col gap-1")}
                 >
                   <div className="flex w-full items-baseline justify-between gap-2">
-                    <span className="shrink-0 text-meta tabular-nums text-fg-subtle">
+                    <span className="shrink-0 text-meta font-mono tabular-nums text-fg-subtle">
                       {formatDayMonthSk(entry.date)}
                     </span>
                     {entry.mood === null ? null : <MoodDots value={entry.mood} />}

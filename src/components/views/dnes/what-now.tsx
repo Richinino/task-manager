@@ -263,7 +263,7 @@ export function WhatNow({ tasks, todayIso, contexts, places }: WhatNowProps) {
                       setSkipped(0);
                     }}
                     className={cn(
-                      "inline-flex min-h-11 items-center rounded border px-3 text-sm tabular-nums",
+                      "inline-flex min-h-11 items-center rounded border px-3 text-sm font-mono tabular-nums",
                       "transition-colors duration-100 ease-out sm:min-h-9",
                       active
                         ? "border-accent bg-accent-soft font-medium text-accent"
@@ -386,7 +386,7 @@ export function WhatNow({ tasks, todayIso, contexts, places }: WhatNowProps) {
                       <>
                         {" "}
                         Odhad{" "}
-                        <span className="tabular-nums">
+                        <span className="font-mono tabular-nums">
                           {formatDuration(picked.estimateMin)}
                         </span>
                         .

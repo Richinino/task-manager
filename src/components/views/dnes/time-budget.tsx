@@ -70,13 +70,13 @@ export function TimeBudget({
       <div className="flex flex-col gap-1">
         <p className="text-body leading-relaxed text-fg-muted sm:text-xs">
           Naplánovaných{" "}
-          <span className="tabular-nums">{formatDuration(plannedMin)}</span>.{" "}
+          <span className="font-mono tabular-nums">{formatDuration(plannedMin)}</span>.{" "}
           {availableMin <= 0 ? (
             "Rozpočet času sa nedá spočítať — hodiny dňa v nastaveniach nedávajú žiadny čas."
           ) : (
             <>
               Na prácu neostáva nič — celý deň zaberajú porady (
-              <span className="tabular-nums">{formatDuration(meetings)}</span>).
+              <span className="font-mono tabular-nums">{formatDuration(meetings)}</span>).
             </>
           )}
         </p>
@@ -143,14 +143,14 @@ export function TimeBudget({
           over ? "text-danger" : "text-fg-muted",
         )}
       >
-        <span className="tabular-nums">{formatDuration(plannedMin)}</span>{" "}
+        <span className="font-mono tabular-nums">{formatDuration(plannedMin)}</span>{" "}
         <span className="hidden sm:inline">naplánovaných </span>z{" "}
-        <span className="tabular-nums">{formatDuration(workMin)}</span>
+        <span className="font-mono tabular-nums">{formatDuration(workMin)}</span>
         {over ? (
           <>
             {" — "}
             <span className="hidden sm:inline">naplánoval si </span>o{" "}
-            <span className="tabular-nums">{formatDuration(overBy)}</span> viac, než
+            <span className="font-mono tabular-nums">{formatDuration(overBy)}</span> viac, než
             máš.
           </>
         ) : (
@@ -160,7 +160,7 @@ export function TimeBudget({
           <>
             {" "}
             Porady ubrali <span className="hidden sm:inline">z dňa </span>
-            <span className="tabular-nums">{formatDuration(meetings)}</span>.
+            <span className="font-mono tabular-nums">{formatDuration(meetings)}</span>.
           </>
         ) : null}
       </p>

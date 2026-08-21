@@ -260,7 +260,7 @@ export function DayColumn({
                 : `Odhad ${loadLabel}`
             }
             className={cn(
-              "text-mini tabular-nums md:hidden",
+              "text-mini font-mono tabular-nums md:hidden",
               overloaded ? "font-medium text-warn" : "text-fg-subtle",
             )}
           >
@@ -292,7 +292,7 @@ export function DayColumn({
             : `Odhad ${loadLabel}`
         }
         className={cn(
-          "hidden px-2 pb-1 text-mini tabular-nums md:block",
+          "hidden px-2 pb-1 text-mini font-mono tabular-nums md:block",
           overloaded ? "font-medium text-warn" : "text-fg-subtle",
         )}
       >

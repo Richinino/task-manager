@@ -607,7 +607,7 @@ export function WeeklyReview({
           ) : (
             <>
               <div className="min-w-0 rounded border border-border bg-accent-soft px-3 py-3">
-                <p className="text-3xl font-semibold leading-none tabular-nums text-accent">
+                <p className="text-3xl font-semibold leading-none font-mono tabular-nums text-accent">
                   {completed.length}
                 </p>
                 <p className="pt-1.5 text-body leading-relaxed text-fg-muted">

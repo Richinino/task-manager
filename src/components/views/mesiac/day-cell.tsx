@@ -256,7 +256,7 @@ export function DayCell({
         <span className="flex items-baseline justify-between gap-1 md:pr-5">
           <span
             className={cn(
-              "tabular-nums",
+              "font-mono tabular-nums",
               isToday
                 ? "inline-flex size-5 items-center justify-center rounded-full bg-accent text-mini font-semibold text-accent-fg"
                 : cn("text-meta font-semibold", inMonth ? "text-fg" : "text-fg-subtle"),
@@ -285,7 +285,7 @@ export function DayCell({
                 {summary.dueCount > 1 ? (
                   <span
                     className={cn(
-                      "text-micro font-semibold leading-none tabular-nums",
+                      "text-micro font-semibold leading-none font-mono tabular-nums",
                       summary.dueOpen === 0 ? "text-fg-subtle" : "text-danger",
                     )}
                   >
@@ -303,7 +303,7 @@ export function DayCell({
                   className={summary.plannedOpen === 0 ? "opacity-40" : undefined}
                 />
                 {summary.plannedCount > 1 ? (
-                  <span className="text-micro leading-none tabular-nums text-fg-muted">
+                  <span className="text-micro leading-none font-mono tabular-nums text-fg-muted">
                     {summary.plannedCount}
                   </span>
                 ) : null}

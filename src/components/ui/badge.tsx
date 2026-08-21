@@ -7,7 +7,7 @@ type BadgeTone = "accent" | "neutral" | "danger" | "frog";
 /**
  * Malý odznak — spravidla počet (inbox, po termíne) alebo krátky stav.
  *
- * Číslice sú v mono a `tabular-nums`: v proporcionálnom písme je jednotka
+ * Číslice sú v mono a `font-mono tabular-nums`: v proporcionálnom písme je jednotka
  * užšia než osmička, takže odznak pri každej zmene počtu poskočí. V zozname,
  * kde sa čísla menia priebežne, je to vidieť.
  *

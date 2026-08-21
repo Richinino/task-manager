@@ -166,7 +166,7 @@ export function TemplateTaskRow({
       <div className="flex min-w-0 items-center gap-1.5">
         <span
           aria-hidden="true"
-          className="w-5 shrink-0 text-right text-meta font-semibold tabular-nums text-fg-subtle"
+          className="w-5 shrink-0 text-right text-meta font-semibold font-mono tabular-nums text-fg-subtle"
         >
           {step}.
         </span>
