@@ -218,7 +218,7 @@ export function DayColumn({
       <header className="flex items-center gap-1.5 px-2 pt-1.5 md:gap-0.5">
         <span
           className={cn(
-            "min-w-0 truncate text-[11px] font-medium uppercase tracking-wide",
+            "label min-w-0 truncate",
             isToday ? "text-accent" : "text-fg-muted",
           )}
         >
@@ -227,7 +227,7 @@ export function DayColumn({
 
         <span
           className={cn(
-            "shrink-0 text-sm font-semibold tabular-nums",
+            "shrink-0 font-mono text-sm font-semibold tabular-nums",
             isToday ? "text-accent" : "text-fg",
           )}
         >
@@ -242,7 +242,7 @@ export function DayColumn({
           z úzkej hlavičky.
         */}
         {isToday ? (
-          <span className="shrink-0 rounded bg-accent-soft px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-accent md:hidden">
+          <span className="label shrink-0 rounded bg-accent-soft px-1.5 py-0.5 text-[10px] text-accent md:hidden">
             dnes
           </span>
         ) : null}

@@ -229,7 +229,14 @@
     tak nech je na jednom mieste a nie rozpísaný v každom view.
   */
   .label {
-    @apply font-mono text-[11px] uppercase tracking-[0.14em] text-fg-subtle;
+    /*
+      Zámerne BEZ farby. Štítok sa podľa stavu prefarbuje („Po termíne" je
+      červený, deň týždňa v dnešnom stĺpci akcentový) a keby si farbu niesol
+      sám, musela by sa prebíjať — a v Tailwinde o víťazovi medzi dvoma
+      utilitami nerozhoduje poradie v atribúte, ale poradie v hotovom CSS.
+      Farbu preto dopĺňa každé použitie.
+    */
+    @apply font-mono text-[11px] uppercase tracking-[0.14em];
   }
 
   /* Klávesová skratka v texte */
