@@ -9,7 +9,10 @@ export default defineConfig({
   },
   test: {
     environment: "node",
-    // Testujeme čisté funkcie v src/lib — bez databázy a bez DOM.
-    include: ["src/lib/**/*.test.ts"],
+    // Testujeme čisté funkcie — bez databázy a bez DOM. Rozsah nie je
+    // obmedzený na `src/lib`, lebo niektoré čisté moduly (napr. tvar
+    // odpovede serverových akcií) žijú inde. Načíta sa aj tak len to, čo si
+    // test naozaj naimportuje.
+    include: ["src/**/*.test.ts"],
   },
 });
