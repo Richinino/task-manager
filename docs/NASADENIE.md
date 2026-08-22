@@ -83,6 +83,8 @@ $env:DATABASE_URL="<connection-string>"; npm run db:seed
 | `AUTH_GOOGLE_SECRET` | Client secret z Googlu |
 | `ALLOWED_EMAILS` | `richard.pastyr@gmail.com` — viac ľudí oddeľ čiarkou |
 | `AUTH_URL` | `https://TVOJA-ADRESA.vercel.app` — bez lomítka na konci |
+| `ANDROID_PACKAGE_NAME` | *(nepovinné)* len pre `.apk` — napr. `com.richinino.taskmanazer` |
+| `ANDROID_CERT_FINGERPRINTS` | *(nepovinné)* len pre `.apk` — odtlačok SHA-256, viac oddeľ čiarkou |
 
 > `AUTH_DEV_BYPASS` na Vercel **nepridávaj**. Aj keby si ho pridal, v produkcii je vypnutý natvrdo v kóde — ale nech tam nie je ani omylom.
 
@@ -120,6 +122,45 @@ PWA sa dá nainštalovať **iba z HTTPS adresy** — z localhostu to nejde. Pret
 Po inštalácii sa appka spustí vo vlastnom okne bez adresného riadku, s vlastnou ikonou v zozname aplikácií a vlastným záznamom v prepínači úloh. **Podržaním ikony** sa dostaneš rovno na **Dnes** alebo **Inbox**.
 
 > Android má plnú podporu manifestu vrátane skratiek. Súbor `src/app/apple-icon.tsx` v projekte ostáva pre prípad, že by si niekedy appku otvoril na iPade alebo Macu — má 41 riadkov a nič nestojí. Pokojne ho zmaž, ak ti prekáža.
+
+### Vlastné `.apk` (TWA)
+
+Nainštalovaná PWA z kroku vyššie stačí na bežné používanie. `.apk` sa hodí,
+ak chceš appku rozposlať alebo ju mať v zozname aplikácií ako každú inú.
+
+Vo vnútri `.apk` beží skutočný Chrome, ktorý zobrazuje túto stránku —
+**jeden kód, jedno nasadenie**. Zmena na Verceli je v appke hneď a netreba
+nič preinštalovať.
+
+Aby appka nemala navrchu adresný riadok, musí Android overiť, že stránka
+a appka patria k sebe. Slúži na to `/.well-known/assetlinks.json`, ktorý
+appka **už vie vydať** — chýbajú mu len dve premenné:
+
+1. Postav `.apk` (napr. cez [Bubblewrap](https://github.com/GoogleChromeLabs/bubblewrap)
+   alebo [PWABuilder](https://www.pwabuilder.com/)) a nechaj si vytvoriť
+   podpisový kľúč. **Kľúč si odlož** — bez neho sa appka nedá aktualizovať.
+2. Zisti odtlačok:
+
+   ```
+   keytool -list -v -keystore android.keystore -alias android
+   ```
+
+   Z výpisu potrebuješ riadok `SHA256:` — 32 dvojíc oddelených dvojbodkou.
+3. Na Verceli nastav `ANDROID_PACKAGE_NAME` a `ANDROID_CERT_FINGERPRINTS`
+   a **redeployni** (premenné sa vkladajú pri vzniku nasadenia).
+4. Skontroluj, že `https://TVOJA-ADRESA/.well-known/assetlinks.json` vracia
+   JSON. **Kým premenné nie sú nastavené, vracia 404** — a je to tak
+   správne: prázdny súbor by Android stiahol, nenašiel by v ňom svoj kľúč
+   a overenie by SKONČILO neúspechom namiesto toho, aby sa naň dalo počkať.
+5. Nainštaluj `.apk`. Ak adresný riadok zmizol, odtlačok sedí.
+
+> **Ak appku niekedy dáš do Google Play,** Play si ju podpíše vlastným
+> kľúčom a odtlačok sa zmení. Vtedy do premennej patria **oba** — svoj aj
+> ten z Play Console (oddelené čiarkou). Appka ich unesie viac naraz.
+
+> **Prihlásenie cez Google v TWA funguje**, lebo vnútri beží skutočný
+> Chrome. Neplatí to pre natívny obal (Capacitor a spol.): tam Google
+> prihlásenie vo vnorenom prehliadači blokuje.
 
 ### Čo funguje bez signálu
 
