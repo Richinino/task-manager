@@ -12,6 +12,7 @@ import {
 import { PartyPopper, Undo2 } from "lucide-react";
 
 import type { Area, Project } from "@/db/schema";
+import { isTypingTarget, normalizeKey } from "@/lib/keyboard";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Kbd } from "@/components/ui/kbd";
@@ -40,30 +41,12 @@ import {
 /** Odvodené z jediného zoznamu akcií — klávesa a tlačidlo nikdy nerozídu. */
 const KEY_TO_ACTION: Record<string, TriageAction> = Object.fromEntries(
   TRIAGE_ORDER.map((action): [string, TriageAction] => [
-    TRIAGE_ACTIONS[action].shortcut,
+    // Cez rovnaku normalizaciu ako udalost, inak by sa „Backspace" z popisku
+    // nikdy nestretol s „backspace" z klavesnice.
+    normalizeKey(TRIAGE_ACTIONS[action].shortcut),
     action,
   ]),
 );
-
-/**
- * Prvky, ktoré si klávesy riešia samy: textové polia a otvorené prekrytia
- * (Radix Select má na spúšťači `combobox`, na zozname `listbox`).
- */
-const OWN_KEYS_SELECTOR =
-  '[role="combobox"], [role="listbox"], [role="dialog"], [role="menu"]';
-
-function isTypingTarget(target: EventTarget | null): boolean {
-  if (!(target instanceof HTMLElement)) return false;
-  if (target.isContentEditable) return true;
-  const tag = target.tagName;
-  if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return true;
-  return target.closest(OWN_KEYS_SELECTOR) !== null;
-}
-
-/** `KeyboardEvent.key` je pri písmenách citlivý na Shift, pri Backspace nie. */
-function normalizeKey(key: string): string {
-  return key.length === 1 ? key.toLowerCase() : key;
-}
 
 /* ═══════════════════════════════════════════════════════════════════════════
    ZOZNAM
@@ -210,8 +193,8 @@ export function InboxList({
       if (event.ctrlKey || event.metaKey || event.altKey) return;
       if (visible.length === 0) return;
 
-      if (key === "j" || key === "ArrowDown" || key === "k" || key === "ArrowUp") {
-        const delta = key === "j" || key === "ArrowDown" ? 1 : -1;
+      if (key === "j" || key === "arrowdown" || key === "k" || key === "arrowup") {
+        const delta = key === "j" || key === "arrowdown" ? 1 : -1;
         event.preventDefault();
         setActiveIndex((current) => {
           const from = Math.min(current, lastIndex);
