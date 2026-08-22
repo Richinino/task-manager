@@ -95,7 +95,7 @@ export function TagInput({ taskId, tags, setTags, suggestions }: TagInputProps) 
       return;
     }
     if (attached.has(name.toLocaleLowerCase("sk"))) {
-      setError(`Štítok „${name}" už na úlohe je.`);
+      setError(`Štítok „${name}“ už na úlohe je.`);
       setValue("");
       return;
     }

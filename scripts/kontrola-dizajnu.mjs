@@ -51,6 +51,14 @@ const PRAVIDLA = [
     preco: "Použi utilitu .label a farbu dopíš zvlášť.",
   },
   {
+    nazov: "slovenská úvodzovka zatvorená strojopisne",
+    // Otváracia, potom dosadená hodnota, potom ASCII " — teda reťazec,
+    // ktorý appka naozaj zobrazí alebo nahlási čítačke. Komentár takto
+    // nevyzerá, preto sa do nálezov nedostane.
+    vzor: /\u201E[^"`\r\n]*\$\{[^}\r\n]*\}[^"`\r\n]*"/g,
+    preco: "Slovenská dvojica je „…“. ESLint chytí len text v JSX, nie reťazce.",
+  },
+  {
     nazov: "tabular-nums bez font-mono",
     vzor: /"[^"]*\btabular-nums\b[^"]*"/g,
     preco: "Rovnaká šírka číslic platí len v rámci jedného písma.",

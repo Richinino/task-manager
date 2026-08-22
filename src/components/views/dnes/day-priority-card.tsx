@@ -144,7 +144,7 @@ export function DayPriorityCard({
                 type="button"
                 disabled={pending}
                 onClick={() => choose(task.id, true)}
-                aria-label={`Vybrať úlohu „${task.title}" ako prioritu dňa`}
+                aria-label={`Vybrať úlohu „${task.title}“ ako prioritu dňa`}
                 className={cn(
                   // `min-h-11` = dotykový cieľ 44 px na telefóne; od `sm:`
                   // rozhoduje pôvodné `py-1.5`, aby zoznam ostal hustý.

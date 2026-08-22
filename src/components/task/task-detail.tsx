@@ -226,8 +226,21 @@ export function TaskDetail({
   /** Entity, ktoré odkazujú sem. */
   const [backlinks, setBacklinks] = useState<BacklinkView[]>([]);
 
-  /** Projekty zo servera aj tie, ktoré vznikli v tomto paneli. */
-  const allProjects = [...projects, ...createdProjects];
+  /*
+    Projekty zo servera aj tie, ktoré vznikli v tomto paneli.
+
+    Zlúčenie musí zahadzovať duplikáty. `createProject` totiž revaliduje
+    cestu, takže novo založený projekt čoskoro dorazí aj v prope `projects` —
+    a dovtedy je v oboch zoznamoch. Bez tohto by sa vo výbere zobrazil
+    dvakrát a React by hlásil dva rovnaké kľúče.
+
+    Prednosť má riadok zo servera: nesie meno tak, ako sa naozaj uložilo.
+  */
+  const zoServera = new Set(projects.map((project) => project.id));
+  const allProjects = [
+    ...projects,
+    ...createdProjects.filter((project) => !zoServera.has(project.id)),
+  ];
   const [isPending, startTransition] = useTransition();
   const titleRef = useRef<HTMLTextAreaElement>(null);
 

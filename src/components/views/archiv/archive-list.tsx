@@ -179,7 +179,7 @@ export function ArchiveList({ entries, filter }: ArchiveListProps) {
             return;
           }
 
-          setFlash(`${noun} „${name}" je späť medzi živými.`);
+          setFlash(`${noun} „${name}“ je späť medzi živými.`);
           router.refresh();
         } catch {
           setHidden((current) => current.filter((id) => id !== entry.id));

@@ -314,7 +314,7 @@ export function TaskItem({
       }}
       onPointerDown={(event) => event.stopPropagation()}
       onMouseDown={(event) => event.stopPropagation()}
-      title={openDetail ? `Otvoriť detail úlohy „${task.title}"` : undefined}
+      title={openDetail ? `Otvoriť detail úlohy „${task.title}“` : undefined}
       className={cn(titleClass, "cursor-pointer rounded hover:text-accent")}
     >
       {task.title}

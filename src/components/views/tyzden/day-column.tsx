@@ -115,7 +115,7 @@ function SortableTaskRow({
         ref={setActivatorNodeRef}
         {...attributes}
         {...listeners}
-        aria-label={`Presunúť úlohu „${task.title}" na iný deň alebo na iné miesto v dni`}
+        aria-label={`Presunúť úlohu „${task.title}“ na iný deň alebo na iné miesto v dni`}
         title="Presunúť na iný deň alebo preusporiadať"
         // touch-none je nutné, inak si prehliadač na dotyk vezme gesto ako posun stránky.
         className={cn(handleClass, "cursor-grab touch-none active:cursor-grabbing")}

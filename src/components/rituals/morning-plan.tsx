@@ -281,13 +281,13 @@ export function MorningPlan({
                       onClick={() => decideOverdue(task, "today")}
                       Icon={CalendarArrowUp}
                       label="Na dnes"
-                      ariaLabel={`Presunúť úlohu „${task.title}" na dnes`}
+                      ariaLabel={`Presunúť úlohu „${task.title}“ na dnes`}
                     />
                     <ChoiceButton
                       onClick={() => decideOverdue(task, "dropped")}
                       Icon={Trash2}
                       label="Zahodiť"
-                      ariaLabel={`Zahodiť úlohu „${task.title}"`}
+                      ariaLabel={`Zahodiť úlohu „${task.title}“`}
                       danger
                     />
                   </div>
@@ -334,7 +334,7 @@ export function MorningPlan({
                      ktorú človek vidí zvýraznenú. Zámok trvá jednu odpoveď. */
                   disabled={frogPending}
                   onClick={() => chooseFrog(task)}
-                  aria-label={`Vybrať úlohu „${task.title}" ako prioritu dňa`}
+                  aria-label={`Vybrať úlohu „${task.title}“ ako prioritu dňa`}
                   className={cn(
                     ritualRowClass,
                     // 44 px je dotykový cieľ na telefóne; od `sm:` sa zoznam
