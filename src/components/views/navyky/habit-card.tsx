@@ -18,6 +18,7 @@ import { cn } from "@/lib/utils";
 import { archiveHabit, deleteHabit, toggleHabitEntry } from "@/server/actions/habits";
 import type { HabitWithStats } from "@/server/queries/habits";
 
+import { HabitEdit } from "./habit-edit";
 import { HabitGrid, HabitGridCaption } from "./habit-grid";
 import type { HabitAreaOption } from "./habit-types";
 
@@ -100,6 +101,19 @@ export function HabitCard({
     (_current, next: boolean) => next,
   );
 
+  /*
+    Názov a cieľ z tých istých dôvodov ako fajka vyššie: pri zlyhaní sa
+    hodnota sama vráti k tomu, čo tvrdí server, a pri úspechu ju vystrieda
+    revalidovaný prop.
+  */
+  const [shown, applyEdit] = useOptimistic(
+    { title: habit.title, targetPerWeek: habit.targetPerWeek },
+    (current, next: { title?: string; targetPerWeek?: number }) => ({
+      ...current,
+      ...next,
+    }),
+  );
+
   const [error, setError] = useState<string | null>(null);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
@@ -136,7 +150,7 @@ export function HabitCard({
   const best = longestStreak(stats);
   /* Prebiehajúci týždeň je posledný v okne, lebo `toIso` je dnešok. */
   const weekDone = stats.find((week) => week.inProgress)?.done ?? 0;
-  const target = habit.targetPerWeek;
+  const target = shown.targetPerWeek;
   const targetMet = weekDone >= target;
 
   const area = areas.find((item) => item.id === habit.areaId);
@@ -201,7 +215,7 @@ export function HabitCard({
         />
 
         <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-          <h3 className="min-w-0 truncate text-sm font-medium text-fg">{habit.title}</h3>
+          <h3 className="min-w-0 truncate text-sm font-medium text-fg">{shown.title}</h3>
 
           {/*
             Séria je prvá, plnenie týždňa druhé — v tomto poradí to má aj váhu.
@@ -292,6 +306,19 @@ export function HabitCard({
               className="size-3.5 shrink-0 animate-spin text-fg-subtle"
             />
           ) : null}
+
+          {/*
+            Archivovaný návyk sa neupravuje — je odložený, nie rozpracovaný.
+            Najprv ho treba vrátiť z archívu.
+          */}
+          {archived ? null : (
+            <HabitEdit
+              habitId={habit.id}
+              title={shown.title}
+              targetPerWeek={shown.targetPerWeek}
+              onOptimistic={(patch) => startTransition(() => applyEdit(patch))}
+            />
+          )}
 
           <Button
             type="button"
