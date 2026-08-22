@@ -47,6 +47,24 @@ Vedomá výnimka sa označuje komentárom nad riadkom:
 // bez-filtra: <dôvod, prečo je to v poriadku>
 ```
 
+### Prístupnosť v linte
+
+Zapnutá je celá odporúčaná sada `jsx-a11y`, nie iba šesť pravidiel, ktoré
+dáva `eslint-config-next`. Plugin registruje `eslint-config-next`, takže sa
+v `eslint.config.mjs` preberajú **len pravidlá** — vyhlásiť ho znova sa nedá.
+
+Dve výnimky, ktoré sú v tejto appke zámerné:
+
+- **`autoFocus`** smie byť iba v niečom, čo sa objaví **po výslovnom kroku
+  človeka** (dialóg, pole otvorené tlačidlom). Pravidlo mieri na zaostrenie
+  pri načítaní stránky, ktoré človeka odhodí z miesta, kde bol.
+- **Poslucháč na neinteraktívnom prvku** je v poriadku, keď len POZORUJE, čo
+  sa deje v prvkoch vnútri (napr. riadok inboxu si takto značí, kam mieria
+  skratky). Pasca „klikom to ide, klávesnicou nie" tým nevzniká.
+
+Obe sú v kóde označené `eslint-disable-next-line` s dôvodom, nie vypnuté
+globálne — pravidlo tak ďalej stráži nový kód.
+
 ### Úvodzovky
 
 Slovenská dvojica je **`„…“`** — dole otváracia, hore zatváracia. Strojopisné

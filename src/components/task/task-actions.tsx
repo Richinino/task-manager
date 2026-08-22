@@ -648,6 +648,10 @@ export function TaskActions({
             role="menu"
             aria-label={menuLabel}
             aria-orientation="vertical"
+            // Fokus behá po položkách, nie po menu — ale samotné menu musí byť
+            // zaostriteľné aspoň programovo, inak je to podľa ARIA neúplný
+            // widget. `-1` ho drží mimo poradia klávesy Tab.
+            tabIndex={-1}
             onKeyDown={handleMenuKeyDown}
           >
             {detail ? (

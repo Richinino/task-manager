@@ -329,6 +329,9 @@ export function AddTaskInline({
 
       <Input
         ref={inputRef}
+        // Preverená výnimka: pravidlo mieri na zaostrenie pri načítaní stránky,
+        // ktoré človeka odhodí z miesta, kde bol. Tu je to naopak — pole vzniká až po stlačení „+“ na konkrétnom dni.
+        // eslint-disable-next-line jsx-a11y/no-autofocus
         autoFocus
         value={value}
         onChange={(event) => {

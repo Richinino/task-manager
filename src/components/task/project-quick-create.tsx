@@ -70,6 +70,9 @@ export function ProjectQuickCreate({ onCreated }: ProjectQuickCreateProps) {
     <div className="flex flex-col gap-1.5">
       <div className="flex items-center gap-2">
         <Input
+          // Preverená výnimka: pravidlo mieri na zaostrenie pri načítaní stránky,
+          // ktoré človeka odhodí z miesta, kde bol. Tu je to naopak — pole vzniká až po kliknutí na „Nový projekt“.
+          // eslint-disable-next-line jsx-a11y/no-autofocus
           autoFocus
           value={name}
           maxLength={120}

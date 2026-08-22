@@ -293,6 +293,10 @@ export function TriageRow({
   }
 
   return (
+    // Preverená výnimka: oba poslucháče nižšie len POZORUJÚ, čo sa deje
+    // v prvkoch vnútri — riadok sám nič nespúšťa. Nevzniká teda pasca
+    // „klikom to ide, klávesnicou nie“, pred ktorou pravidlo chráni.
+    // eslint-disable-next-line jsx-a11y/no-noninteractive-element-interactions
     <li
       data-active={active ? "true" : undefined}
       // Tab do ľubovoľného prvku riadku posunie aj klávesovú pozíciu,
