@@ -24,6 +24,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { useTaskDetail } from "@/components/task/task-detail-provider";
+import { isPostponeBlocked } from "@/server/action-result";
 import { deleteTask, rescheduleTask } from "@/server/actions/tasks";
 import type { TaskWithRelations } from "@/server/queries/tasks";
 
@@ -108,7 +109,8 @@ export function PostponeGuardProvider({ children }: { children: ReactNode }) {
     async (input: PostponeInput): Promise<PostponeResult> => {
       const result = await rescheduleTask(input.taskId, input.plannedDate);
 
-      if (result.ok || result.code !== "postpone_blocked") return result;
+      // Zúženie žije v `action-result.ts` — tvar odpovede pozná server, nie dialóg.
+      if (!isPostponeBlocked(result)) return result;
 
       // Zastavené — ďalej rozhoduje človek. Prísľub visí, kým sa nerozhodne.
       return new Promise<PostponeResult>((resolve) => {
@@ -117,7 +119,7 @@ export function PostponeGuardProvider({ children }: { children: ReactNode }) {
         setError(null);
         setPending({
           input,
-          postponeCount: result.detail?.postponeCount ?? 0,
+          postponeCount: result.detail.postponeCount,
           resolve,
         });
       });

@@ -38,9 +38,24 @@ export interface PostponeBlockedDetail {
   postponeBlockAt: number;
 }
 
-/** Zúženie pre klienta: je to zastavený odklad? */
+/**
+ * Zúženie pre klienta: je to zastavený odklad AJ so sprievodnými údajmi?
+ *
+ * `detail` sa overuje naozaj, nielen sľubuje. Sľúbiť ho a nekontrolovať by
+ * znamenalo, že volajúci dostane `undefined` tam, kde mu typ hovorí `number` —
+ * a keďže tá hodnota ide rovno do vety „Túto úlohu si už odložil N×",
+ * prejavilo by sa to až prázdnym miestom v dialógu.
+ */
 export function isPostponeBlocked(
   result: { ok: boolean; code?: string; detail?: unknown },
 ): result is ActionFailure & { detail: PostponeBlockedDetail } {
-  return result.ok === false && result.code === "postpone_blocked";
+  if (result.ok !== false || result.code !== "postpone_blocked") return false;
+
+  const detail = result.detail;
+  return (
+    typeof detail === "object" &&
+    detail !== null &&
+    typeof (detail as PostponeBlockedDetail).postponeCount === "number" &&
+    typeof (detail as PostponeBlockedDetail).postponeBlockAt === "number"
+  );
 }
