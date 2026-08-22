@@ -88,7 +88,7 @@ export function TemplateList({ templates, todayIso }: TemplateListProps) {
           setError(result.error);
           return;
         }
-        setFlash(`Šablóna „${template.name}" je zmazaná.`);
+        setFlash(`Šablóna „${template.name}“ je zmazaná.`);
       } catch {
         setError("Šablónu sa nepodarilo zmazať. Skús to znova.");
       } finally {
@@ -186,8 +186,8 @@ export function TemplateList({ templates, todayIso }: TemplateListProps) {
           setApplying(null);
           announce(
             created === 0
-              ? `Zo šablóny „${templateName}" nevznikla ani jedna úloha.`
-              : `Zo šablóny „${templateName}" ${tasksAppeared(created)}.`,
+              ? `Zo šablóny „${templateName}“ nevznikla ani jedna úloha.`
+              : `Zo šablóny „${templateName}“ ${tasksAppeared(created)}.`,
           );
         }}
       />

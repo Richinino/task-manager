@@ -74,8 +74,8 @@ export function TaskCheckbox({
   }
 
   const checkboxLabel = optimisticDone
-    ? `Označiť úlohu „${title}" ako nedokončenú`
-    : `Označiť úlohu „${title}" ako hotovú`;
+    ? `Označiť úlohu „${title}“ ako nedokončenú`
+    : `Označiť úlohu „${title}“ ako hotovú`;
 
   return (
     <div

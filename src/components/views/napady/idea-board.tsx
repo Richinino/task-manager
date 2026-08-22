@@ -203,10 +203,10 @@ export function IdeaBoard({
       const name = idea.title.trim();
       const message =
         stage === "incubating"
-          ? `„${name}" necháva zrieť.`
+          ? `„${name}“ necháva zrieť.`
           : stage === "rejected"
-            ? `„${name}" je zamietnutý — v zázname ostáva.`
-            : `„${name}" je späť medzi čerstvými.`;
+            ? `„${name}“ je zamietnutý — v zázname ostáva.`
+            : `„${name}“ je späť medzi čerstvými.`;
       mutate(
         { kind: "stage", id: idea.id, stage },
         () => setIdeaStage(idea.id, stage),
@@ -223,7 +223,7 @@ export function IdeaBoard({
         { kind: "touch", id: idea.id },
         () => touchIdea(idea.id),
         "Nápad sa nepodarilo osviežiť. Skús to znova.",
-        { message: `„${idea.title.trim()}" je znova čerstvo dotknutý.` },
+        { message: `„${idea.title.trim()}“ je znova čerstvo dotknutý.` },
       );
     },
     [mutate],
@@ -247,7 +247,7 @@ export function IdeaBoard({
         { kind: "remove", id: idea.id },
         () => deleteIdea(idea.id),
         "Nápad sa nepodarilo zmazať. Skús to znova.",
-        { message: `„${name}" je zmazaný.`, undoIdeaId: idea.id, undoTitle: name },
+        { message: `„${name}“ je zmazaný.`, undoIdeaId: idea.id, undoTitle: name },
       );
     },
     [mutate],
@@ -285,7 +285,7 @@ export function IdeaBoard({
         { kind: "touch", id: idea.id },
         () => touchIdea(idea.id),
         "Nápad sa nepodarilo osviežiť. Skús to znova.",
-        { message: `„${idea.title.trim()}" zreje ďalej — hodiny sú vynulované.` },
+        { message: `„${idea.title.trim()}“ zreje ďalej — hodiny sú vynulované.` },
         () => undecide(idea.id),
       );
     },
@@ -299,7 +299,7 @@ export function IdeaBoard({
         { kind: "stage", id: idea.id, stage: "rejected" },
         () => setIdeaStage(idea.id, "rejected"),
         "Nápad sa nepodarilo zahodiť. Skús to znova.",
-        { message: `„${idea.title.trim()}" je zahodený — nájdeš ho vo vybavených.` },
+        { message: `„${idea.title.trim()}“ je zahodený — nájdeš ho vo vybavených.` },
         () => undecide(idea.id),
       );
     },
@@ -481,7 +481,7 @@ export function IdeaBoard({
         onPromoted={(title) => {
           // Nápad sa presunie medzi vybavené — nech je hneď vidieť, kam.
           setSettledOpen(true);
-          setFlash({ message: `Z nápadu „${title}" je projekt.` });
+          setFlash({ message: `Z nápadu „${title}“ je projekt.` });
         }}
       />
     </div>

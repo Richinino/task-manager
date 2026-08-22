@@ -11,6 +11,35 @@ Next.js 16.3 (App Router, Turbopack) · React 19.2 · TypeScript 6 (`strict`, `n
 - Súbory: `kebab-case.tsx`. Komponenty: `PascalCase`. Funkcie: `camelCase`.
 - `noUncheckedIndexedAccess` je zapnuté — indexovanie poľa vracia `T | undefined`. Používaj `arr[i]!` len tam, kde je to preukázateľne bezpečné.
 
+### Overovanie
+
+```
+npm run overit
+```
+
+Spustí preklad, testy, lint a kontrolu dizajnu v tomto poradí a zastaví sa na
+prvom neúspechu. **Používaj tento príkaz, nie jednotlivé kroky v rúre** —
+`npx tsc --noEmit | tail -3 && …` vracia návratový kód `tail`, nie `tsc`,
+takže chyba prekladu prejde tichom. Presne tak sa raz do repozitára dostal
+commit, ktorý sa nepreložil.
+
+Vizuálnu regresiu nechytí ani jeden z týchto krokov. Po nich vždy nasleduje
+**naozajstné klikanie v prehliadači** — syntetické `.click()` tu opakovane
+tíško zlyhalo.
+
+### Úvodzovky
+
+Slovenská dvojica je **`„…“`** — dole otváracia, hore zatváracia. Strojopisné
+`"` v texte appky nepatria.
+
+Chytajú sa dve rôzne siete, lebo ani jedna nevidí celok:
+
+- `react/no-unescaped-entities` v ESLinte vidí **text v JSX**,
+- pravidlo v `npm run kontrola:dizajn` vidí **reťazce s dosadenou hodnotou**
+  (`aria-label`, hlášky, chybové vety).
+
+Komentáre sa nekontrolujú a nemusia sa opravovať — nikto ich nevykresľuje.
+
 ## Štruktúra
 
 ```

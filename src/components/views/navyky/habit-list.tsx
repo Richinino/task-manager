@@ -116,7 +116,7 @@ export function HabitList({
           title="Zatiaľ žiadny návyk"
           description={
             "Návyk je vec, ktorú chceš robiť opakovane — nie úloha, ktorú raz dokončíš. " +
-            "Preto sa neobjavuje v „Dnes\" a nezaberá miesto v dni: má týždenný cieľ a sériu, " +
+            "Preto sa neobjavuje v „Dnes“ a nezaberá miesto v dni: má týždenný cieľ a sériu, " +
             "nie termín. Začni jedným a daj mu cieľ, ktorý sa dá splniť aj v zlom týždni."
           }
           className="text-left sm:text-center"

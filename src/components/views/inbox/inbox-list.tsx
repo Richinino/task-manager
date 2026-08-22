@@ -118,7 +118,7 @@ export function InboxList({
     (action: TriageAction, taskId: string) => {
       const meta = TRIAGE_ACTIONS[action];
       const found = tasks.find((task) => task.id === taskId)?.title;
-      const named = found ? `Úloha „${found}"` : "Úloha";
+      const named = found ? `Úloha „${found}“` : "Úloha";
 
       startTransition(async () => {
         // „Niekedy" úlohu v inboxe vedome necháva — skryť ju optimisticky by

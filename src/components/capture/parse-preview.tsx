@@ -186,7 +186,7 @@ function buildClampNotes(
     !projectExists(parsed.projectName, projectNames)
   ) {
     notes.push(
-      `Projekt „${parsed.projectName.trim()}" neexistuje — úloha sa uloží bez projektu.`,
+      `Projekt „${parsed.projectName.trim()}“ neexistuje — úloha sa uloží bez projektu.`,
     );
   }
 
@@ -205,7 +205,7 @@ function buildDroppedNote(parsed: ParsedCapture): string {
   const head = "Nápad nemá dátumy, prioritu ani odhad — rozpoznané značky sa neuložia.";
   return title === ""
     ? `${head} Ostal by prázdny názov.`
-    : `${head} Uloží sa len názov „${title}".`;
+    : `${head} Uloží sa len názov „${title}“.`;
 }
 
 /**

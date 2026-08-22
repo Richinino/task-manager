@@ -135,7 +135,7 @@ export function DeferredList({
   const act = useCallback(
     (action: DeferredAction, taskId: string) => {
       const title = tasks.find((task) => task.id === taskId)?.title;
-      const named = title ? `Úloha „${title}"` : "Úloha";
+      const named = title ? `Úloha „${title}“` : "Úloha";
 
       setError(null);
       setFlash(null);

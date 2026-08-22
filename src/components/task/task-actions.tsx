@@ -207,7 +207,7 @@ export function DiscardedRow({
         size="sm"
         variant="secondary"
         onClick={onUndo}
-        aria-label={`Vrátiť späť zahodenú úlohu „${title}"`}
+        aria-label={`Vrátiť späť zahodenú úlohu „${title}“`}
         className={compact ? "ml-auto" : "ml-auto shrink-0"}
       >
         <Undo2 aria-hidden="true" size={13} />
@@ -590,7 +590,7 @@ export function TaskActions({
 
   /* ── menu ────────────────────────────────────────────────────────────── */
 
-  const menuLabel = `Akcie úlohy „${task.title}"`;
+  const menuLabel = `Akcie úlohy „${task.title}“`;
   const nextWeek = addDays(startOfWeek(todayIso), 7);
 
   return (

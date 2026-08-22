@@ -144,8 +144,8 @@ export function TemplateEditor({ template, onCancel, onSaved }: TemplateEditorPr
 
         onSaved(
           isNew
-            ? `Šablóna „${trimmedName}" je založená — ${taskCountLabel(ready.length)}.`
-            : `Šablóna „${trimmedName}" je uložená — ${taskCountLabel(ready.length)}.`,
+            ? `Šablóna „${trimmedName}“ je založená — ${taskCountLabel(ready.length)}.`
+            : `Šablóna „${trimmedName}“ je uložená — ${taskCountLabel(ready.length)}.`,
         );
       } catch {
         setError("Šablónu sa nepodarilo uložiť. Skús to znova.");

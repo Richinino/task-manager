@@ -386,7 +386,7 @@ export async function promoteIdeaToProject(
     if (clash[0]) {
       return {
         ok: false,
-        error: `Projekt „${nameParsed.data}" už existuje — premenuj nápad pred povýšením.`,
+        error: `Projekt „${nameParsed.data}“ už existuje — premenuj nápad pred povýšením.`,
       };
     }
 

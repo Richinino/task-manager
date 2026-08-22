@@ -174,7 +174,7 @@ export async function createProject(
     if (areaError) return { ok: false, error: areaError };
 
     if (await nameTaken(db, projects, user.id, data.name)) {
-      return { ok: false, error: `Projekt „${data.name}" už existuje.` };
+      return { ok: false, error: `Projekt „${data.name}“ už existuje.` };
     }
 
     const id = uuidv7();
@@ -229,7 +229,7 @@ export async function updateProject(
     }
 
     if (data.name !== undefined && (await nameTaken(db, projects, user.id, data.name, id))) {
-      return { ok: false, error: `Projekt „${data.name}" už existuje.` };
+      return { ok: false, error: `Projekt „${data.name}“ už existuje.` };
     }
 
     await db
@@ -358,7 +358,7 @@ export async function createArea(
     const db = await getDb();
 
     if (await nameTaken(db, areas, user.id, data.name)) {
-      return { ok: false, error: `Oblasť „${data.name}" už existuje.` };
+      return { ok: false, error: `Oblasť „${data.name}“ už existuje.` };
     }
 
     const sortRows = await db
@@ -408,7 +408,7 @@ export async function updateArea(
     if (!existing[0]) return { ok: false, error: "Oblasť sa nenašla." };
 
     if (data.name !== undefined && (await nameTaken(db, areas, user.id, data.name, id))) {
-      return { ok: false, error: `Oblasť „${data.name}" už existuje.` };
+      return { ok: false, error: `Oblasť „${data.name}“ už existuje.` };
     }
 
     await db
