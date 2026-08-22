@@ -17,8 +17,8 @@ Next.js 16.3 (App Router, Turbopack) · React 19.2 · TypeScript 6 (`strict`, `n
 npm run overit
 ```
 
-Spustí preklad, testy, lint a kontrolu dizajnu v tomto poradí a zastaví sa na
-prvom neúspechu. **Používaj tento príkaz, nie jednotlivé kroky v rúre** —
+Spustí preklad, testy, lint, kontrolu dopytov a kontrolu dizajnu v tomto
+poradí a zastaví sa na prvom neúspechu. **Používaj tento príkaz, nie jednotlivé kroky v rúre** —
 `npx tsc --noEmit | tail -3 && …` vracia návratový kód `tail`, nie `tsc`,
 takže chyba prekladu prejde tichom. Presne tak sa raz do repozitára dostal
 commit, ktorý sa nepreložil.
@@ -26,6 +26,26 @@ commit, ktorý sa nepreložil.
 Vizuálnu regresiu nechytí ani jeden z týchto krokov. Po nich vždy nasleduje
 **naozajstné klikanie v prehliadači** — syntetické `.click()` tu opakovane
 tíško zlyhalo.
+
+### Oddelenie používateľov
+
+`npm run kontrola:dopyty` je **brána**, nie prehľad: pri náleze vracia
+nenulový kód a `npm run overit` na ňom zastane. Kontroluje jediný invariant,
+na ktorom stojí to, že appku môžu používať dvaja ľudia — každý dopyt nad
+tabuľkou, ktorá patrí človeku, musí mať vo svojom príkaze `.where(`.
+
+Preklad to nechytí (`db.select().from(tasks)` je typovo v poriadku, len vráti
+aj cudzie riadky) a testy tiež nie (sú na čisté funkcie, bez databázy).
+
+Tabuľky bez vlastného `userId` — `habitEntries`, `taggables`, `subtasks` —
+sa filtrujú cez `innerJoin` na vlastniacu tabuľku. Aj to je `.where(`, takže
+pravidlo platí rovnako.
+
+Vedomá výnimka sa označuje komentárom nad riadkom:
+
+```ts
+// bez-filtra: <dôvod, prečo je to v poriadku>
+```
 
 ### Úvodzovky
 
