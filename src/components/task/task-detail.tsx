@@ -28,7 +28,9 @@ import { PostponeBadge } from "@/components/task/postpone-badge";
 import { PriorityDot } from "@/components/task/priority-dot";
 import { RecurrencePicker } from "@/components/task/recurrence-picker";
 import { SubtaskList } from "@/components/task/subtask-list";
+import { Backlinks } from "@/components/task/backlinks";
 import { ProjectQuickCreate } from "@/components/task/project-quick-create";
+import type { BacklinkView } from "@/components/task/task-detail-data";
 import { WikiLinkText, type WikiLinkTarget } from "@/components/task/wikilink-text";
 import { TagInput } from "@/components/task/tag-input";
 import {
@@ -221,6 +223,8 @@ export function TaskDetail({
 
   /** Entity, na ktoré odkazuje poznámka cez `[[…]]`. */
   const [linkTargets, setLinkTargets] = useState<WikiLinkTarget[]>([]);
+  /** Entity, ktoré odkazujú sem. */
+  const [backlinks, setBacklinks] = useState<BacklinkView[]>([]);
 
   /** Projekty zo servera aj tie, ktoré vznikli v tomto paneli. */
   const allProjects = [...projects, ...createdProjects];
@@ -268,6 +272,7 @@ export function TaskDetail({
         setTags(result.data.tags);
         setTagSuggestions(result.data.suggestions);
         setLinkTargets(result.data.linkTargets);
+        setBacklinks(result.data.backlinks);
       })
       .catch(() => {
         if (cancelled) return;
@@ -358,7 +363,10 @@ export function TaskDetail({
       // nie písanie, takže sa nedeje pri každom písmene.
       .then(() => loadTaskExtras(task.id, next))
       .then((result) => {
-        if (result.ok) setLinkTargets(result.data.linkTargets);
+        if (result.ok) {
+          setLinkTargets(result.data.linkTargets);
+          setBacklinks(result.data.backlinks);
+        }
       })
       .catch((chyba: unknown) => {
         console.error("[task-detail] odkazy sa nepodarilo prepočítať", chyba);
@@ -1061,6 +1069,8 @@ export function TaskDetail({
               )}
             </Field>
           </section>
+
+          <Backlinks items={backlinks} />
 
           {/* Klávesová nápoveda dáva zmysel len tam, kde je klávesnica. */}
           <p
