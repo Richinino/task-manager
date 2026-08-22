@@ -450,6 +450,86 @@ export const templates = pgTable(
 );
 
 /* ═══════════════════════════════════════════════════════════════════════════
+   PRIPOMIENKY
+
+   Dve tabuľky, ktoré spolu tvoria Web Push: KAM sa posiela a ČO sa posiela.
+
+   Sú tu skôr, než ich niekto začne používať. Pridanie tabuľky je bezpečné
+   (nič existujúce sa nemení), takže migrácia môže dobehnúť samostatne —
+   a kým nie sú nastavené kľúče VAPID, appka sa ich ani nespýta.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/**
+ * Kam posielať — jeden riadok na jeden prehliadač, nie na jedného človeka.
+ *
+ * Kľúčom je `endpoint`, lebo presne ten prehliadač vydá a presne on
+ * identifikuje cieľ. Ten istý človek má bežne tri: telefón, notebook, prácu.
+ *
+ * `p256dh` a `auth` sú šifrovacie kľúče prehliadača. Bez nich sa správa
+ * nedá zašifrovať a push službe je odovzdaná len ako prázdne „zobuď sa".
+ * Ukladajú sa v podobe, v akej ich vydá `PushSubscription.toJSON()`.
+ *
+ * **Prihlásenie sa zruší aj bez nás.** Keď človek odinštaluje appku alebo
+ * zmaže dáta stránky, endpoint prestane platiť a push služba odpovie 404
+ * alebo 410. Vtedy riadok patrí von — inak by sa doň tlačilo donekonečna.
+ */
+export const pushSubscriptions = pgTable(
+  "push_subscriptions",
+  {
+    endpoint: text("endpoint").primaryKey(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    p256dh: text("p256dh").notNull(),
+    auth: text("auth").notNull(),
+    /** Aby sa v nastaveniach dalo rozoznať, ktoré zariadenie je ktoré. */
+    userAgent: text("user_agent"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    /** Posledné úspešné doručenie — podľa toho sa poznajú mŕtve zariadenia. */
+    lastSeenAt: timestamp("last_seen_at", { withTimezone: true }),
+  },
+  (t) => [index("push_subscriptions_user_idx").on(t.userId)],
+);
+
+/**
+ * Čo poslať a kedy.
+ *
+ * `sentAt` je jediná ochrana pred dvojitým odoslaním: plánovač beží
+ * opakovane a bez nej by tú istú pripomienku poslal pri každom behu.
+ *
+ * `at` je okamih, nie deň — pripomienka bez hodiny nemá zmysel. Ukladá sa
+ * s pásmom, takže presun do iného časového pásma nič neposunie.
+ *
+ * **Prečo vlastná tabuľka a nie výpočet z úlohy:** úloha sa dá presunúť aj
+ * po odoslaní pripomienky. Keby sa čas počítal z nej, appka by nemala kde
+ * zapísať, že už raz zazvonila, a po presune by zazvonila znova.
+ */
+export const reminders = pgTable(
+  "reminders",
+  {
+    id: text("id").primaryKey(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    taskId: text("task_id")
+      .notNull()
+      .references(() => tasks.id, { onDelete: "cascade" }),
+    at: timestamp("at", { withTimezone: true }).notNull(),
+    sentAt: timestamp("sent_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    index("reminders_user_idx").on(t.userId),
+    /* Dopyt plánovača znie „neodoslané, ktoré už dozreli" — presne v tomto
+       poradí, takže index musí začínať `sentAt`. */
+    index("reminders_due_idx").on(t.sentAt, t.at),
+    /* Jedna pripomienka na úlohu a okamih. Dvojklik na „pripomeň mi" tak
+       nevytvorí dve. */
+    uniqueIndex("reminders_task_at_idx").on(t.taskId, t.at),
+  ],
+);
+
+/* ═══════════════════════════════════════════════════════════════════════════
    RELÁCIE
    ═══════════════════════════════════════════════════════════════════════════ */
 

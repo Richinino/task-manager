@@ -15,6 +15,13 @@
       "when": 1786308506292,
       "tag": "0001_task_event_note",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1787371509250,
+      "tag": "0002_pripomienky",
+      "breakpoints": true
     }
   ]
 }
