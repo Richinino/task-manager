@@ -17,6 +17,7 @@ import {
   today,
   todayIn,
   weekDays,
+  zonedInstant,
 } from "@/lib/dates";
 
 /** Streda 5. augusta 2026 — pevný bod pre všetky relatívne testy. */
@@ -232,5 +233,84 @@ describe("formátovanie po slovensky", () => {
     expect(formatDuration(245)).toBe("4 h 5 min");
     expect(formatDuration(-10)).toBe("0 min");
     expect(formatDuration(Number.NaN)).toBe("0 min");
+  });
+});
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   MIESTNY ČAS → OKAMIH
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+describe("zonedInstant", () => {
+  const BA = "Europe/Bratislava";
+  const iso = (d: Date | null): string | null => (d === null ? null : d.toISOString());
+
+  it("letný čas: deviata v Bratislave je siedma v UTC", () => {
+    expect(iso(zonedInstant("2026-08-22", "09:30", BA))).toBe("2026-08-22T07:30:00.000Z");
+  });
+
+  it("zimný čas: tá istá deviata je ôsma v UTC", () => {
+    expect(iso(zonedInstant("2026-01-15", "09:30", BA))).toBe("2026-01-15T08:30:00.000Z");
+  });
+
+  it("UTC je sám sebe posunom", () => {
+    expect(iso(zonedInstant("2026-08-22", "09:30", "UTC"))).toBe("2026-08-22T09:30:00.000Z");
+  });
+
+  it("pásmo za dátumovou hranicou", () => {
+    // Tokio je UTC+9 celý rok.
+    expect(iso(zonedInstant("2026-08-22", "09:30", "Asia/Tokyo"))).toBe(
+      "2026-08-22T00:30:00.000Z",
+    );
+    // Ôsma ráno v Tokiu 1. januára je ešte 31. decembra v UTC — pásmo
+    // posunie deň dozadu všade, kde je miestna hodina nižšia než posun.
+    expect(iso(zonedInstant("2026-01-01", "08:00", "Asia/Tokyo"))).toBe(
+      "2025-12-31T23:00:00.000Z",
+    );
+  });
+
+  /*
+    Hranica letného času je jediné miesto, kde jednoduchý výpočet zlyhá.
+    V noci na 29. 3. 2026 sa u nás preskočí hodina 02:00–03:00.
+  */
+  it("hodinu pred jarným posunom ešte platí zimný čas", () => {
+    expect(iso(zonedInstant("2026-03-29", "01:30", BA))).toBe("2026-03-29T00:30:00.000Z");
+  });
+
+  it("hodinu po jarnom posune už platí letný", () => {
+    expect(iso(zonedInstant("2026-03-29", "03:30", BA))).toBe("2026-03-29T01:30:00.000Z");
+  });
+
+  it("neexistujúca hodina sa nezhodí a spadne do letného času", () => {
+    // 02:30 v tú noc neexistuje; výsledok musí byť platný okamih.
+    const d = zonedInstant("2026-03-29", "02:30", BA);
+    expect(d).not.toBeNull();
+    expect(Number.isNaN(d!.getTime())).toBe(false);
+  });
+
+  it("jesenný posun: hodinu pred aj po", () => {
+    // 25. 10. 2026 sa 03:00 vracia na 02:00.
+    expect(iso(zonedInstant("2026-10-25", "01:30", BA))).toBe("2026-10-24T23:30:00.000Z");
+    expect(iso(zonedInstant("2026-10-25", "04:30", BA))).toBe("2026-10-25T03:30:00.000Z");
+  });
+
+  it("sekundy sú nepovinné", () => {
+    expect(iso(zonedInstant("2026-08-22", "09:30:45", BA))).toBe(
+      "2026-08-22T07:30:45.000Z",
+    );
+  });
+
+  it("nezmyselný vstup vráti null, nie výnimku", () => {
+    expect(zonedInstant("", "09:30", BA)).toBeNull();
+    expect(zonedInstant("22.8.2026", "09:30", BA)).toBeNull();
+    expect(zonedInstant("2026-08-22", "", BA)).toBeNull();
+    expect(zonedInstant("2026-08-22", "9:30", BA)).toBeNull();
+    expect(zonedInstant("2026-08-22", "24:00", BA)).toBeNull();
+    expect(zonedInstant("2026-08-22", "09:60", BA)).toBeNull();
+    expect(zonedInstant("2026-08-22", "09:30", "Nikde/Nikde")).toBeNull();
+  });
+
+  it("polnoc a posledná minúta dňa", () => {
+    expect(iso(zonedInstant("2026-08-22", "00:00", BA))).toBe("2026-08-21T22:00:00.000Z");
+    expect(iso(zonedInstant("2026-08-22", "23:59", BA))).toBe("2026-08-22T21:59:00.000Z");
   });
 });

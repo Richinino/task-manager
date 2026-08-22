@@ -269,3 +269,95 @@ export function formatDuration(minutes: number): string {
   if (m === 0) return `${h} h`;
   return `${h} h ${m} min`;
 }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   MIESTNY ČAS → OKAMIH
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/** „09:30" alebo „09:30:00". Sekundy sú nepovinné, hodina musí byť 0–23. */
+const CAS_RE = /^([01]\d|2[0-3]):([0-5]\d)(?::([0-5]\d))?$/;
+
+/**
+ * O koľko je dané pásmo posunuté voči UTC v danom okamihu (v ms, na východ
+ * kladne). Počíta sa z toho, čo v tom pásme ukazujú hodiny — inak by sa
+ * letný čas musel držať v tabuľke.
+ */
+function offsetPasma(okamih: number, timeZone: string): number | null {
+  let casti: Intl.DateTimeFormatPart[];
+  try {
+    casti = new Intl.DateTimeFormat("en-CA", {
+      timeZone,
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+      hourCycle: "h23",
+    }).formatToParts(new Date(okamih));
+  } catch {
+    return null;
+  }
+
+  const kus = (typ: Intl.DateTimeFormatPartTypes): number => {
+    const najdene = casti.find((c) => c.type === typ);
+    return najdene === undefined ? Number.NaN : Number.parseInt(najdene.value, 10);
+  };
+
+  const akoUtc = Date.UTC(
+    kus("year"),
+    kus("month") - 1,
+    kus("day"),
+    kus("hour"),
+    kus("minute"),
+    kus("second"),
+  );
+  return Number.isNaN(akoUtc) ? null : akoUtc - okamih;
+}
+
+/**
+ * Miestny dátum a hodina v danom pásme → okamih.
+ *
+ * `zonedInstant("2026-08-22", "09:30", "Europe/Bratislava")` vráti 07:30 UTC,
+ * lebo v auguste je u nás letný čas. Ten istý zápis v januári vráti 08:30 UTC.
+ *
+ * **Prečo sa to nedá spraviť jedným `new Date("...")`:** taký zápis sa číta
+ * v pásme, kde beží proces. Na Verceli je to UTC, takže pripomienka
+ * naplánovaná na deviatu ráno by prišla o dve hodiny neskôr. Rovnaká pasca,
+ * kvôli ktorej existuje `todayIn`.
+ *
+ * Posun sa hľadá na dvakrát. Prvý odhad vychádza z okamihu, ktorý ešte
+ * nepozná správny posun; keď sa druhý pokus líši, znamená to, že sa medzitým
+ * prekročila hranica letného času, a platí ten druhý. Bez toho by hodina tesne
+ * po zmene času vyšla o hodinu vedľa dvakrát do roka.
+ *
+ * Vráti `null` pri nezmyselnom vstupe — volajúci má na výber, čo s tým, a
+ * plánovač pripomienok nemá padať na preklepe.
+ */
+export function zonedInstant(
+  dateIso: string,
+  time: string,
+  timeZone: string,
+): Date | null {
+  if (!ISO_RE.test(dateIso)) return null;
+  const zhoda = CAS_RE.exec(time);
+  if (zhoda === null) return null;
+
+  const [rok, mesiac, den] = dateIso.split("-").map(Number) as [number, number, number];
+  const hodina = Number(zhoda[1]);
+  const minuta = Number(zhoda[2]);
+  const sekunda = zhoda[3] === undefined ? 0 : Number(zhoda[3]);
+
+  const naive = Date.UTC(rok, mesiac - 1, den, hodina, minuta, sekunda);
+  if (Number.isNaN(naive)) return null;
+
+  const prvy = offsetPasma(naive, timeZone);
+  if (prvy === null) return null;
+
+  const odhad = naive - prvy;
+  const druhy = offsetPasma(odhad, timeZone);
+  const okamih = druhy === null || druhy === prvy ? odhad : naive - druhy;
+
+  const vysledok = new Date(okamih);
+  return isValidDate(vysledok) ? vysledok : null;
+}
