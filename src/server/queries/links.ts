@@ -6,7 +6,6 @@ import type { AnyPgColumn } from "drizzle-orm/pg-core";
 import { getDb } from "@/db";
 import { areas, ideas, journal, links, projects, tasks } from "@/db/schema";
 import { FOLD_FROM, FOLD_TO, fold } from "@/lib/fold";
-import { parseWikiLinks } from "@/lib/wikilink";
 
 /* ═══════════════════════════════════════════════════════════════════════════
    ODKAZY [[…]] — ČÍTACIA VRSTVA
@@ -31,14 +30,6 @@ export interface LinkTarget {
   id: string;
   /** SKUTOČNÝ názov entity, nie to, čo je napísané v `[[…]]`. */
   name: string;
-}
-
-/** Odkaz z textu spolu s tým, či sa preň entita našla. */
-export interface ResolvedWikiLink {
-  /** Názov tak, ako je napísaný v texte. */
-  label: string;
-  /** `null`, keď entita s takým názvom (zatiaľ) neexistuje. */
-  target: LinkTarget | null;
 }
 
 export interface Backlink {
@@ -149,33 +140,6 @@ export async function resolveLinkTargets(
   claim("task", taskRows);
 
   return found;
-}
-
-/**
- * Rozoberie text a rovno k odkazom dohľadá ciele — presne to, čo potrebuje
- * vykreslenie textu s odkazmi.
- *
- * Vracia aj nenájdené (`target: null`), aby rozhranie vedelo rozlíšiť odkaz,
- * ktorý niekam vedie, od odkazu, ktorý zatiaľ len čaká na svoju entitu.
- * Rovnaký názov napísaný dvakrát sa vráti dvakrát — mapovanie na text je vec
- * vykreslenia, nie tohto dotazu.
- */
-export async function resolveWikiLinks(
-  userId: string,
-  text: string,
-): Promise<ResolvedWikiLink[]> {
-  const parsed = parseWikiLinks(text);
-  if (parsed.length === 0) return [];
-
-  const targets = await resolveLinkTargets(
-    userId,
-    parsed.map((link) => link.label),
-  );
-
-  return parsed.map((link) => ({
-    label: link.label,
-    target: targets.get(fold(link.label)) ?? null,
-  }));
 }
 
 /**
