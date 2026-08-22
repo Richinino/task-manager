@@ -2,7 +2,7 @@
 
 import { parseWikiLinks } from "@/lib/wikilink";
 import { requireUser } from "@/server/auth-guard";
-import { resolveLinkTargets } from "@/server/queries/links";
+import { getBacklinks, resolveLinkTargets } from "@/server/queries/links";
 import { getSubtasks, getTaskTags, listTags } from "@/server/queries/structure";
 
 /* ═══════════════════════════════════════════════════════════════════════════
@@ -42,6 +42,13 @@ export interface LinkTargetView {
   name: string;
 }
 
+/** Entita, ktorá odkazuje na túto úlohu. */
+export interface BacklinkView {
+  kind: "task" | "idea" | "project" | "area" | "journal";
+  id: string;
+  title: string;
+}
+
 export interface TaskExtras {
   subtasks: SubtaskView[];
   /** Štítky priradené tejto úlohe. */
@@ -53,6 +60,11 @@ export interface TaskExtras {
    * ostanú obyčajným textom, presne ako v `WikiLinkText`.
    */
   linkTargets: LinkTargetView[];
+  /**
+   * Kto odkazuje SEM. Druhá polovica odkazov `[[…]]` — bez nej vedú len
+   * jedným smerom a nedá sa zistiť, čo od tejto úlohy závisí.
+   */
+  backlinks: BacklinkView[];
 }
 
 export type TaskExtrasResult =
@@ -75,13 +87,14 @@ export async function loadTaskExtras(
     // Prázdna poznámka sa na server vôbec nepýta — bez odkazov nie je čo hľadať.
     const labels = note === null ? [] : parseWikiLinks(note).map((link) => link.label);
 
-    const [subtasks, tags, all, targets] = await Promise.all([
+    const [subtasks, tags, all, targets, backlinks] = await Promise.all([
       getSubtasks(user.id, taskId),
       getTaskTags(user.id, taskId),
       listTags(user.id),
       labels.length > 0
         ? resolveLinkTargets(user.id, labels)
         : Promise.resolve(new Map()),
+      getBacklinks(user.id, "task", taskId),
     ]);
 
     return {
@@ -102,6 +115,7 @@ export async function loadTaskExtras(
           )
           .map((tag) => ({ id: tag.id, name: tag.name })),
         linkTargets: [...targets.values()],
+        backlinks,
       },
     };
   } catch (error) {
