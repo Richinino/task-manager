@@ -1,6 +1,7 @@
 import { defineConfig, globalIgnores } from "eslint/config";
 import nextVitals from "eslint-config-next/core-web-vitals";
 import nextTypescript from "eslint-config-next/typescript";
+import jsxA11y from "eslint-plugin-jsx-a11y";
 
 /**
  * Konfigurácia ESLintu.
@@ -18,6 +19,21 @@ import nextTypescript from "eslint-config-next/typescript";
 const eslintConfig = defineConfig([
   ...nextVitals,
   ...nextTypescript,
+
+  /*
+    Prístupnosť naplno.
+
+    `eslint-config-next` zapína z `jsx-a11y` len šesť pravidiel. Táto appka je
+    ale keyboard-first a `docs/CONVENTIONS.md` má na prístupnosť vlastnú
+    sekciu, takže tu dáva zmysel celá odporúčaná sada — o tridsať pravidiel
+    viac, ktoré strážia veci ako klikateľný `<div>` bez roly a klávesnice,
+    obrázok bez alternatívy alebo popis, ktorý neukazuje na svoje pole.
+  */
+  {
+    // Plugin registruje `eslint-config-next`, preto sa preberajú LEN pravidlá.
+    // Znovu ho vyhlásiť sa nedá: „Cannot redefine plugin".
+    rules: { ...jsxA11y.flatConfigs.recommended.rules },
+  },
 
   // Prepisuje predvolené ignorovanie z eslint-config-next.
   globalIgnores([

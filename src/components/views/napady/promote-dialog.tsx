@@ -224,6 +224,10 @@ function PromoteBody({ idea, onClose, onPromoted }: PromoteBodyProps) {
           value={nextStep}
           maxLength={500}
           autoComplete="off"
+          // Preverená výnimka: pravidlo mieri na zaostrenie pri načítaní stránky,
+          // ktoré človeka odhodí z miesta, kde bol. Tu je to naopak — zaostrí sa iba chýbajúci prvý krok, a to
+          // v dialógu otvorenom na požiadanie.
+          // eslint-disable-next-line jsx-a11y/no-autofocus
           autoFocus={missingStep}
           placeholder="Najmenšia vec, ktorou sa to dá pohnúť"
           onChange={(event) => {

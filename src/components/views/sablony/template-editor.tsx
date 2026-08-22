@@ -177,6 +177,9 @@ export function TemplateEditor({ template, onCancel, onSaved }: TemplateEditorPr
           value={name}
           maxLength={200}
           autoComplete="off"
+          // Preverená výnimka: pravidlo mieri na zaostrenie pri načítaní stránky,
+          // ktoré človeka odhodí z miesta, kde bol. Tu je to naopak — zaostrí sa iba pri zakladaní novej šablóny.
+          // eslint-disable-next-line jsx-a11y/no-autofocus
           autoFocus={isNew}
           disabled={isPending}
           placeholder="Napríklad: ranná rutina, príprava na dovolenku"

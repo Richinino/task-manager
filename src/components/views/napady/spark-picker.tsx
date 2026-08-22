@@ -77,6 +77,9 @@ export function SparkPicker({
     <div
       role="radiogroup"
       aria-label={`Iskra — ${label}`}
+      // Fokus nesie vybraté tlačidlo, skupina je len jeho obal — programovo
+      // zaostriteľná byť ale musí. `-1` ju drží mimo poradia klávesy Tab.
+      tabIndex={-1}
       onKeyDown={handleKeyDown}
       className={cn("flex min-w-0 shrink-0 items-center", className)}
     >

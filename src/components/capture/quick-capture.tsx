@@ -539,6 +539,10 @@ export function QuickCapture({
             />
             <Input
               ref={inputRef}
+              // Preverená výnimka: pravidlo mieri na zaostrenie pri načítaní stránky,
+              // ktoré človeka odhodí z miesta, kde bol. Tu je to naopak — okno rýchleho zachytenia sa otvára klávesou alebo klikom a jediné,
+              // čo sa v ňom robí, je písanie.
+              // eslint-disable-next-line jsx-a11y/no-autofocus
               autoFocus
               value={value}
               onChange={(event) => {
