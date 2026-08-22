@@ -5,7 +5,6 @@ import { useId, useRef, useState, useTransition } from "react";
 import { LoaderCircle, Plus } from "lucide-react";
 
 import type { Area } from "@/db/schema";
-import { cn } from "@/lib/utils";
 import { AreaDot } from "@/components/task/area-dot";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -219,7 +218,7 @@ export function ProjectCreateForm({ areas, onOptimisticAdd }: ProjectCreateFormP
                 href={`/projekty/${created.id}`}
                 className="font-medium text-accent underline-offset-2 hover:underline"
               >
-                Otvoriť „{created.name}"
+                Otvoriť „{created.name}“
               </Link>
             </p>
           ) : null}

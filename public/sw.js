@@ -105,7 +105,7 @@ self.addEventListener("activate", (event) => {
       if (self.registration.navigationPreload) {
         try {
           await self.registration.navigationPreload.disable();
-        } catch (error) {
+        } catch {
           // Prehliadač to nepodporuje — potom sa preload ani nezapol.
         }
       }
@@ -153,7 +153,7 @@ self.addEventListener("fetch", (event) => {
   let url;
   try {
     url = new URL(request.url);
-  } catch (error) {
+  } catch {
     return;
   }
 
@@ -197,7 +197,7 @@ async function cacheFirst(request) {
     cache = await caches.open(STATIC_CACHE);
     const hit = await cache.match(request, { ignoreVary: true });
     if (hit) return hit;
-  } catch (error) {
+  } catch {
     // Súkromné okno bez úložiska. Skúsime aspoň sieť.
   }
 
@@ -207,7 +207,7 @@ async function cacheFirst(request) {
       cache.put(request, response.clone()).catch(() => {});
     }
     return response;
-  } catch (error) {
+  } catch {
     if (cache) {
       const stale = await cache.match(request, { ignoreVary: true });
       if (stale) return stale;
@@ -245,7 +245,7 @@ async function handleNavigation(event, url) {
       event.waitUntil(putPage(key, response.clone()));
     }
     return response;
-  } catch (error) {
+  } catch {
     const cached = await matchPage(key);
     if (cached) return cached;
 
@@ -285,7 +285,7 @@ async function putPage(key, response) {
     const cache = await caches.open(PAGES_CACHE);
     await cache.put(key, response);
     await trimPages(cache);
-  } catch (error) {
+  } catch {
     // Plné alebo vypnuté úložisko. Offline režim proste nebude — appka beží.
   }
 }
@@ -294,7 +294,7 @@ async function matchPage(key) {
   try {
     const cache = await caches.open(PAGES_CACHE);
     return await cache.match(key, { ignoreVary: true });
-  } catch (error) {
+  } catch {
     return undefined;
   }
 }
@@ -303,7 +303,7 @@ async function deletePage(key) {
   try {
     const cache = await caches.open(PAGES_CACHE);
     await cache.delete(key, { ignoreVary: true });
-  } catch (error) {
+  } catch {
     // Nič sa nedeje, cache neexistuje.
   }
 }
@@ -316,7 +316,7 @@ async function trimPages(cache) {
       const key = keys[i];
       if (key) await cache.delete(key);
     }
-  } catch (error) {
+  } catch {
     // Orezanie je iba upratovanie, jeho zlyhanie nikoho nebolí.
   }
 }
@@ -326,7 +326,7 @@ async function cacheOfflinePage() {
     const cache = await caches.open(STATIC_CACHE);
     // `cache: "reload"` obíde HTTP cache, nech máme naozaj čerstvú verziu.
     await cache.add(new Request(OFFLINE_URL, { cache: "reload" }));
-  } catch (error) {
+  } catch {
     // Bez predpripravenej stránky máme vstavanú náhradu FALLBACK_HTML.
   }
 }
@@ -334,7 +334,7 @@ async function cacheOfflinePage() {
 async function matchOfflinePage() {
   try {
     return await caches.match(OFFLINE_URL, { ignoreVary: true, ignoreSearch: true });
-  } catch (error) {
+  } catch {
     return undefined;
   }
 }
@@ -345,7 +345,7 @@ async function deleteForeignCaches() {
     await Promise.all(
       names.map((name) => (OWN_CACHES.indexOf(name) === -1 ? caches.delete(name) : null)),
     );
-  } catch (error) {
+  } catch {
     // Nevadí, staré verzie zmizneme nabudúce.
   }
 }
@@ -354,7 +354,7 @@ function replyTo(event, message) {
   try {
     const port = event.ports && event.ports[0];
     if (port) port.postMessage(message);
-  } catch (error) {
+  } catch {
     // Volajúci si odpoveď nevypýtal.
   }
 }

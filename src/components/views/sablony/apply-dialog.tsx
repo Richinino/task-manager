@@ -156,10 +156,10 @@ function ApplyBody({ template, todayIso, onClose, onApplied }: ApplyBodyProps) {
     <>
       <DialogHeader>
         <DialogTitle className="min-w-0 break-words">
-          Použiť šablónu „{template.name}"
+          Použiť šablónu „{template.name}“
         </DialogTitle>
         <DialogDescription>
-          Zo šablóny {tasksWillAppear(count)} v stave „urobiť". Deň sa počíta
+          Zo šablóny {tasksWillAppear(count)} v stave „urobiť“. Deň sa počíta
           od toho, ktorý vyberieš — v šablóne sú posuny, nie dátumy.
         </DialogDescription>
       </DialogHeader>

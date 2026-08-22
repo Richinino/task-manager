@@ -427,7 +427,7 @@ export function ProjectDetail({ project, areas, todayIso }: ProjectDetailProps) 
       </div>
 
       <p className="text-mini leading-relaxed text-fg-subtle">
-        Tlačidlo „Uložiť" tu nie je — každá zmena sa ukladá sama. Texty pri
+        Tlačidlo „Uložiť“ tu nie je — každá zmena sa ukladá sama. Texty pri
         opustení poľa alebo klávesmi Ctrl a Enter.
       </p>
     </div>

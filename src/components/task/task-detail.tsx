@@ -285,6 +285,11 @@ export function TaskDetail({
     return () => {
       cancelled = true;
     };
+    // `task.note` je zámerne mimo zoznamu: dočítanie beží raz na otvorenie
+    // panela a poznámka doň vstupuje len ako jej vtedajšia podoba. Po úprave
+    // poznámky sa odkazy obnovujú cez `syncLinks`, nie znovunačítaním —
+    // s poznámkou v zozname by sa celé dočítanie spustilo pri každom písmene.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [task.id]);
 
   /* ── ukladanie ─────────────────────────────────────────────────────────── */
@@ -700,7 +705,7 @@ export function TaskDetail({
           <section className="flex flex-col gap-3">
             <SectionTitle>Kedy</SectionTitle>
             <p className="text-meta leading-relaxed text-fg-muted">
-              „Naplánované na" je deň, keď to ideš robiť; „termín" je deň, dokedy
+              „Naplánované na“ je deň, keď to ideš robiť; „termín“ je deň, dokedy
               to musí byť hotové.
             </p>
 
@@ -1127,7 +1132,7 @@ export function TaskDetail({
             type="button"
             variant="ghost"
             onClick={drop}
-            aria-label={`Zahodiť úlohu ${savedRef.current.title}`}
+            aria-label={`Zahodiť úlohu ${draft.title}`}
             className="h-11 text-danger hover:bg-danger/10 hover:text-danger md:h-9"
           >
             <Trash2 size={15} aria-hidden="true" />

@@ -11,6 +11,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "kontrola:dizajn": "node scripts/kontrola-dizajnu.mjs",
+    "overit": "npm run typecheck && npm run test && npm run lint && npm run kontrola:dizajn",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
     "db:studio": "drizzle-kit studio",

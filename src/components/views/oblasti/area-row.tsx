@@ -272,7 +272,7 @@ export function AreaRow({ area, onOptimisticRemove, onError }: AreaRowProps) {
         {confirmOpen ? (
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>Zmazať oblasť „{savedName}"?</DialogTitle>
+              <DialogTitle>Zmazať oblasť „{savedName}“?</DialogTitle>
               <DialogDescription>
                 {detaches
                   ? `Oblasť sa zahodí. ${taskCountLabel(area.openTaskCount)} a ${projectCountLabel(area.projectCount)} sa od nej odpojí — nič sa nezmaže, len stratia príslušnosť. Späť sa to vrátiť nedá.`

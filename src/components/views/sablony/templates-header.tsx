@@ -41,8 +41,8 @@ export function TemplatesHeader({ templateCount }: TemplatesHeaderProps) {
         Šablóna je{" "}
         <span className="font-medium text-fg">predpis, nie kópia úloh</span> —
         samostatný zoznam definícií, ktorý sa nerozbije tým, že niektorú
-        z pôvodných úloh zmažeš. Dni sú v nej relatívne, takže „Ranná rutina" aj
-        „Príprava na dovolenku" sa dajú použiť kedykoľvek: deň si vyberieš pri
+        z pôvodných úloh zmažeš. Dni sú v nej relatívne, takže „Ranná rutina“ aj
+        „Príprava na dovolenku“ sa dajú použiť kedykoľvek: deň si vyberieš pri
         použití a zvyšok sa dopočíta od neho.
       </p>
     </header>

@@ -28,7 +28,7 @@ export function RecurringList({ tasks, todayIso }: RecurringListProps) {
       <Card className="flex flex-col gap-2">
         <p className="text-sm font-medium text-fg">Nič sa neopakuje.</p>
         <p className="text-body leading-relaxed text-fg-muted">
-          Opakovanie nastavíš v detaile úlohy v sekcii „Kedy". Hodí sa na veci
+          Opakovanie nastavíš v detaile úlohy v sekcii „Kedy“. Hodí sa na veci
           s pevným rytmom — faktúru, zálohu, týždenné plánovanie.
         </p>
       </Card>

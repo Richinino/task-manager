@@ -4,7 +4,7 @@ import type { Route } from "next";
 import Link from "next/link";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 
-import { addDays, diffDays, formatLongSk, WEEKDAYS_SK } from "@/lib/dates";
+import { addDays, diffDays, formatLongSk } from "@/lib/dates";
 import { cn } from "@/lib/utils";
 
 export interface DayHeaderProps {

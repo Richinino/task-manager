@@ -291,6 +291,10 @@ export function QuickCapture({
     by doplnil niečo úplne iné, než človek vidí navrchu.
   */
   useEffect(() => {
+    // Preverená výnimka: vynulovanie stavu pri zmene vstupu. React na to má
+    // aj úpravu počas renderu, ktorá ušetrí jeden prekreslovací krok —
+    // prepis je ale samostatná práca, ktorú treba overiť v prehliadači.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setHighlight(0);
   }, [trigger?.kind, trigger?.query]);
 
@@ -314,6 +318,10 @@ export function QuickCapture({
   */
   useEffect(() => {
     if (!open) return;
+    // Preverená výnimka: stav sa nastavuje pri otvorení dialógu, teda raz za
+    // otvorenie, nie pri každom prekreslení. Čisté riešenie je `key` na
+    // obsahu dialógu — samostatná práca.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setValue(defaultText ?? "");
     setError(null);
     setSaved(null);
@@ -684,7 +692,7 @@ export function QuickCapture({
                   <LoaderCircle aria-hidden="true" size={13} className="animate-spin" />
                 ) : null}
                 <span className="min-w-0">
-                  Založiť projekt „{parsed.projectName.trim()}"
+                  Založiť projekt „{parsed.projectName.trim()}“
                 </span>
               </button>
             </div>

@@ -369,7 +369,7 @@ export function HabitCard({
         {confirmOpen ? (
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>Zmazať návyk „{habit.title}"?</DialogTitle>
+              <DialogTitle>Zmazať návyk „{habit.title}“?</DialogTitle>
               <DialogDescription>
                 Zmaže sa návyk{" "}
                 <span className="font-medium text-fg">aj celá jeho história</span> —

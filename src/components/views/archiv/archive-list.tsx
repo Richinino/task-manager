@@ -136,6 +136,8 @@ export function ArchiveList({ entries, filter }: ArchiveListProps) {
     zoznam identifikátorov a vyzeralo by to, akoby sa vrátenie nepodarilo.
   */
   useEffect(() => {
+    // Preverená výnimka: beží pri novej dávke dát zo servera, nie v slučke.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setHidden(NOTHING_HIDDEN);
   }, [entries]);
 
