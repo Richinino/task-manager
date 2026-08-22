@@ -47,7 +47,7 @@ export interface PostponeBlockedDetail {
  * prejavilo by sa to až prázdnym miestom v dialógu.
  */
 export function isPostponeBlocked(
-  result: { ok: boolean; code?: string; detail?: unknown },
+  result: { ok: boolean; error?: string; code?: string; detail?: unknown },
 ): result is ActionFailure & { detail: PostponeBlockedDetail } {
   if (result.ok !== false || result.code !== "postpone_blocked") return false;
 
