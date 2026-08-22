@@ -122,20 +122,20 @@ function PromoteBody({ idea, onClose, onPromoted }: PromoteBodyProps) {
         <DialogHeader>
           <DialogTitle className="flex min-w-0 items-center gap-2">
             <CircleCheck aria-hidden="true" size={16} className="shrink-0 text-success" />
-            <span className="min-w-0 break-words">Vznikol projekt „{name}"</span>
+            <span className="min-w-0 break-words">Vznikol projekt „{name}“</span>
           </DialogTitle>
           <DialogDescription>Toto sa práve založilo:</DialogDescription>
         </DialogHeader>
 
         <ul className="flex flex-col gap-1.5 text-body leading-relaxed text-fg-muted">
           <li className="min-w-0 break-words">
-            <span className="font-medium text-fg">Projekt „{name}"</span>
+            <span className="font-medium text-fg">Projekt „{name}“</span>
             {goal !== "" ? " — s cieľom prevzatým z popisu nápadu." : " — zatiaľ bez cieľa."}
           </li>
           <li className="min-w-0 break-words">
             {created.firstTask !== "" ? (
               <>
-                <span className="font-medium text-fg">Prvá úloha: „{created.firstTask}"</span>{" "}
+                <span className="font-medium text-fg">Prvá úloha: „{created.firstTask}“</span>{" "}
                 — čaká v horizonte týždeň, bez konkrétneho dňa.
               </>
             ) : (
@@ -173,7 +173,7 @@ function PromoteBody({ idea, onClose, onPromoted }: PromoteBodyProps) {
     <>
       <DialogHeader>
         <DialogTitle className="min-w-0 break-words">
-          Povýšiť „{name}" na projekt?
+          Povýšiť „{name}“ na projekt?
         </DialogTitle>
         <DialogDescription>
           Nápad je možnosť, projekt je záväzok. Povýšením sa rozhoduješ, že to
@@ -183,7 +183,7 @@ function PromoteBody({ idea, onClose, onPromoted }: PromoteBodyProps) {
 
       <ul className="flex flex-col gap-1.5 text-body leading-relaxed text-fg-muted">
         <li className="min-w-0 break-words">
-          Vznikne projekt <span className="font-medium text-fg">„{name}"</span> —
+          Vznikne projekt <span className="font-medium text-fg">„{name}“</span> —
           názov sa berie z nápadu. Ak už taký projekt máš, povýšenie sa zastaví
           a nápad bude treba premenovať.
         </li>
@@ -235,7 +235,7 @@ function PromoteBody({ idea, onClose, onPromoted }: PromoteBodyProps) {
         />
         <p className="text-mini leading-relaxed text-fg-subtle">
           Uloží sa k nápadu a hneď z neho vznikne prvá úloha projektu — stav
-          „urobiť", horizont týždeň.
+          „urobiť“, horizont týždeň.
         </p>
       </div>
 

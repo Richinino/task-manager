@@ -10,7 +10,9 @@
  * `@/server/actions/*` ostali platné.
  */
 export type ActionResult<T = void> =
-  | ({ ok: true } & (T extends void ? {} : { data: T }))
+  // `unknown` v priesečníku znamená „nepridávaj nič" — `A & unknown` je `A`.
+  // `{}` by robilo to isté, ale zároveň by povoľovalo aj `0` alebo `""`.
+  | ({ ok: true } & (T extends void ? unknown : { data: T }))
   | ActionFailure;
 
 /**

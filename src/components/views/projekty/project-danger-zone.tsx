@@ -158,7 +158,7 @@ export function ProjectDangerZone({
         {confirmOpen ? (
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>Zmazať projekt „{projectName}"?</DialogTitle>
+              <DialogTitle>Zmazať projekt „{projectName}“?</DialogTitle>
               <DialogDescription>
                 {taskCount === 0
                   ? "Projekt sa zahodí, jeho úlohy nie — tie sa od neho len odpoja. Späť sa to vrátiť nedá."

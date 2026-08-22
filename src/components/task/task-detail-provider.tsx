@@ -223,7 +223,7 @@ export function TaskDetailProvider({
               "border border-border bg-surface px-3 py-2 text-body text-fg-muted shadow-md",
             )}
           >
-            <span className="min-w-0 truncate">Úloha „{flash.title}" je zahodená.</span>
+            <span className="min-w-0 truncate">Úloha „{flash.title}“ je zahodená.</span>
             <Button
               ref={undoRef}
               type="button"

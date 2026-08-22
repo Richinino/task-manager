@@ -92,7 +92,7 @@ export function TemplateCard({
         {count === 0 ? (
           <p className="rounded border border-dashed border-border px-3 py-3 text-meta leading-relaxed text-fg-subtle">
             Šablóna nemá ani jednu úlohu — pri použití by nevzniklo nič. Doplň
-            jej kroky cez „Upraviť".
+            jej kroky cez „Upraviť“.
           </p>
         ) : (
           <ol className="flex flex-col gap-1.5">
@@ -133,7 +133,7 @@ export function TemplateCard({
       {confirming ? (
         <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-2 rounded border border-danger bg-surface-2 px-2.5 py-2">
           <p className="min-w-0 flex-1 break-words text-body text-fg-muted">
-            Zmazať šablónu „{template.name}"? Úlohy, ktoré z nej už vznikli,
+            Zmazať šablónu „{template.name}“? Úlohy, ktoré z nej už vznikli,
             ostanú — mizne len predpis.
           </p>
           <Button

@@ -43,9 +43,6 @@ import {
    zmeniť tri z nich a posledné riadky zoznamu skončili pod lištou.
    ═══════════════════════════════════════════════════════════════════════════ */
 
-/** Výška lišty aj s výrezom telefónu. Jediný zdroj je `--bar-inset`. */
-const BAR_HEIGHT = "var(--bar-inset)";
-
 /** Poradie skupín v hárku „Viac" — rovnaké ako v bočnom paneli. */
 const SHEET_GROUPS = [
   { key: "day", label: PRIMARY_NAV_LABEL },
@@ -90,6 +87,10 @@ export function MobileNav({ counts }: { counts: NavCounts }) {
 
   /* Prechod na inú obrazovku hárok zavrie — inak by ostal visieť nad novým obsahom. */
   useEffect(() => {
+    // Preverená výnimka: hárok sa zatvára pri zmene adresy. Zatvorenie v
+    // `onClick` odkazu by minulo navigáciu klávesovou skratkou aj tlačidlom
+    // späť — práve tie prípady, kvôli ktorým efekt vznikol.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setOpen(false);
   }, [pathname]);
 

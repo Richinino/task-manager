@@ -6,7 +6,6 @@ import { LoaderCircle, TriangleAlert } from "lucide-react";
 import type { Settings } from "@/lib/settings";
 import { rulesToText, textToRules } from "@/lib/auto-tag";
 import { placesToText } from "@/lib/places";
-import { cn } from "@/lib/utils";
 import { Card, CardHeader } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import {

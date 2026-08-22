@@ -10,7 +10,7 @@ import { OverdueSection } from "@/components/views/dnes/overdue-section";
 import { TimeBudget } from "@/components/views/dnes/time-budget";
 import { WhatNow } from "@/components/views/dnes/what-now";
 import { RitualHost } from "@/components/rituals/ritual-host";
-import { addDays, parseIsoDate, todayIn, toIsoDate } from "@/lib/dates";
+import { parseIsoDate, todayIn, toIsoDate } from "@/lib/dates";
 import { ritualPeriod } from "@/lib/rituals";
 import { requireUser } from "@/server/auth-guard";
 import {

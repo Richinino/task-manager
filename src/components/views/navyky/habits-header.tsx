@@ -37,8 +37,8 @@ export function HabitsHeader({ activeCount }: HabitsHeaderProps) {
       <p className="mt-1 text-sm text-fg-muted">
         Návyk je vec, ktorú chceš robiť opakovane — a preto{" "}
         <span className="font-medium text-fg">nezapĺňa deň</span>. Nemá termín,
-        má týždenný cieľ: „štyrikrát do týždňa" prežije jeden pokazený deň,
-        „dnes o šiestej" nie. Séria sa počíta na týždne, takže sa neláme
+        má týždenný cieľ: „štyrikrát do týždňa“ prežije jeden pokazený deň,
+        „dnes o šiestej“ nie. Séria sa počíta na týždne, takže sa neláme
         v stredu, keď zaprší.
       </p>
     </header>

@@ -135,7 +135,7 @@ export function IdeaCard({
           >
             <FolderKanban aria-hidden="true" size={13} className="shrink-0" />
             <span className="min-w-0 truncate">
-              Projekt „{idea.promotedProject.name}"
+              Projekt „{idea.promotedProject.name}“
             </span>
           </Link>
         ) : (

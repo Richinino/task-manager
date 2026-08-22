@@ -8,6 +8,7 @@ import {
   useMemo,
   useRef,
   useState,
+  useSyncExternalStore,
   type ReactNode,
 } from "react";
 import { useRouter } from "next/navigation";
@@ -75,14 +76,36 @@ function readOnline(): boolean {
   return navigator.onLine !== false;
 }
 
+/**
+ * Prihlásenie na zmeny pripojenia.
+ *
+ * Žije mimo komponentu zámerne: `useSyncExternalStore` sa pri zmene funkcie
+ * odhlási a prihlási znova, takže funkcia vytvorená pri každom renderi by
+ * poslucháčov zbytočne prepínala.
+ */
+function subscribeOnline(onChange: () => void): () => void {
+  window.addEventListener("online", onChange);
+  window.addEventListener("offline", onChange);
+  return () => {
+    window.removeEventListener("online", onChange);
+    window.removeEventListener("offline", onChange);
+  };
+}
+
 export function OutboxProvider({ children }: { children: ReactNode }) {
   const router = useRouter();
 
   /*
-    Server vykreslí „online" a prvý klientský render musí dať to isté, inak
-    by React hlásil nesúlad hydratácie. Skutočný stav sa doplní hneď v efekte.
+    Pripojenie je stav prehliadača, nie React. Preto sa neKOPÍRUJE do
+    `useState`, ale číta cez `useSyncExternalStore`: ten sa sám prihlási na
+    `online`/`offline` a pri renderi vráti aktuálnu hodnotu.
+
+    Tretí argument je snímka pre server. Vykreslí sa „online", takže prvý
+    klientský render dá to isté a hydratácia sedí; skutočnú hodnotu si React
+    vypýta hneď potom sám. Predtým to robil efekt cez `setOnline`, čo je o
+    jeden render navyše a o jednu kópiu pravdy viac.
   */
-  const [online, setOnline] = useState(true);
+  const online = useSyncExternalStore(subscribeOnline, readOnline, () => true);
   const [pending, setPending] = useState(0);
 
   /** Odosiela sa práve teraz — druhý beh by položky posielal dvakrát. */
@@ -147,23 +170,16 @@ export function OutboxProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     mountedRef.current = true;
-    setOnline(readOnline());
-    void flush();
-
-    const handleOnline = (): void => {
-      setOnline(true);
-      void flush();
-    };
-    const handleOffline = (): void => setOnline(false);
-
-    window.addEventListener("online", handleOnline);
-    window.addEventListener("offline", handleOffline);
     return () => {
       mountedRef.current = false;
-      window.removeEventListener("online", handleOnline);
-      window.removeEventListener("offline", handleOffline);
     };
-  }, [flush]);
+  }, []);
+
+  /* Pri štarte a po návrate signálu — vtedy má fronta zmysel skúsiť. */
+  useEffect(() => {
+    if (!online) return;
+    void flush();
+  }, [online, flush]);
 
   /*
     Udalosť `online` je len polovica pravdy: prehliadač ju hlási podľa

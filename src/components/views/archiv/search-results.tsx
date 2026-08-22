@@ -58,7 +58,7 @@ export function SearchResults({ query, hits }: SearchResultsProps) {
       <Note>
         <span className="inline-flex items-center gap-1.5 font-medium text-fg">
           <SearchX aria-hidden="true" size={15} className="shrink-0" />
-          Na „{trimmed}" nič.
+          Na „{trimmed}“ nič.
         </span>{" "}
         Hľadá sa v názvoch aj v textoch — skús kratší kus slova, celé slovo sa
         nemusí trafiť do toho, ako si to vtedy zapísal.

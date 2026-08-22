@@ -150,7 +150,7 @@ export function MonthSidebar({
             {monthHorizonCount}
           </p>
           <p className="text-xs text-fg-muted">
-            {openTasksPhrase(monthHorizonCount)} s horizontom „mesiac"
+            {openTasksPhrase(monthHorizonCount)} s horizontom „mesiac“
           </p>
         </div>
       </section>

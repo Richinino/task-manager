@@ -175,6 +175,10 @@ export function CommandPalette({
 
   // Zatvorená paleta si nepamätá, čo sa v nej hľadalo.
   useEffect(() => {
+    // Preverená výnimka: beží len pri zatvorení, teda raz. Zavrieť sa dá aj
+    // zvonku (skratkou, po navigácii), takže vynulovanie v `onOpenChange`
+    // by časť prípadov minulo.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (!open) setSearch("");
   }, [open]);
 
