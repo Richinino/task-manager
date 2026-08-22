@@ -1,0 +1,73 @@
+# Kontrola pri každom pushnutí.
+#
+# Vznikla neskoro a z konkrétneho dôvodu: do repozitára sa raz dostal commit,
+# ktorý sa nepreložil. Overovací príkaz bol vtedy napísaný ako
+# `npx tsc --noEmit | tail -3 && …`, a `&&` číta návratový kód `tail`, nie
+# `tsc` — chyba teda prešla tichom. Tu sa to stať nemôže: každý krok beží
+# samostatne a job padne na prvom neúspechu.
+#
+# Beží to isté, čo `npm run overit` lokálne, plus produkčný build. Ten je tu
+# navyše, lebo chytá veci, ktoré ostatné kroky nevidia — najmä overenie ciest
+# pri zapnutom `typedRoutes`.
+
+name: Kontrola
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  # Nech sa dá spustiť aj ručne, keď treba niečo preveriť bez commitu.
+  workflow_dispatch:
+
+# Nový push zruší rozbehnutú kontrolu tej istej vetvy — starý výsledok
+# aj tak nikoho nezaujíma.
+concurrency:
+  group: kontrola-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  kontrola:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    env:
+      # Build nesiaha na databázu (všetky obrazovky sú dynamické), ale Next
+      # aj Auth.js chcú premenné vidieť. Náhradné hodnoty stačia — overené
+      # tým, že build s nimi lokálne prejde.
+      DATABASE_URL: postgresql://localhost:5432/ci
+      AUTH_SECRET: ci-placeholder-nie-je-tajomstvo
+      # Prázdny zoznam znamená v produkcii „nikto" (fail-closed). Tu na tom
+      # nezáleží, lebo sa nikto neprihlasuje, ale nech je to výslovné.
+      ALLOWED_EMAILS: ""
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          # Rovnaká hlavná verzia, na akej sa vyvíja.
+          node-version: 24
+          cache: npm
+
+      - name: Inštalácia
+        run: npm ci
+
+      - name: Preklad
+        run: npm run typecheck
+
+      - name: Testy
+        run: npm test
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Dopyty neprezrádzajú cez používateľov
+        run: npm run kontrola:dopyty
+
+      # Zámerne bez `continue-on-error`: skript sám vracia nulu, lebo je to
+      # prehľad, nie brána. Výstup má byť vidieť v zázname behu.
+      - name: Dizajnový systém
+        run: npm run kontrola:dizajn
+
+      - name: Produkčný build
+        run: npm run build
