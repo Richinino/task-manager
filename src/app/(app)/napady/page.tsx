@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 
 import { IdeaBoard } from "@/components/views/napady/idea-board";
 import type { IncubatorItem } from "@/components/views/napady/incubator-strip";
+import { IdeasHeader } from "@/components/views/napady/ideas-header";
 import { daysSinceTouch } from "@/lib/ideas";
 import { requireUser } from "@/server/auth-guard";
 import { getIncubatorIdeas, listIdeas } from "@/server/queries/ideas";
@@ -38,8 +39,18 @@ export default async function NapadyPage() {
     ageDays: daysSinceTouch(idea.createdAt, now),
   }));
 
+  /*
+    Do počítadla idú len nápady, ktoré ešte niekam smerujú. Vybavené sa
+    nerátajú: pásmo „Vybavené" je pamäť, nie zoznam na prácu, a číslo pri
+    nadpise má povedať, koľko vecí ešte leží nerozhodnutých.
+  */
+  const activeCount = ideas.filter(
+    (idea) => idea.effectiveStage !== "promoted" && idea.effectiveStage !== "rejected",
+  ).length;
+
   return (
     <div className="mx-auto flex w-full max-w-[1500px] flex-col gap-5 px-4 py-5 md:px-6 md:py-7">
+      <IdeasHeader activeCount={activeCount} />
       <IdeaBoard
         ideas={ideas}
         incubator={incubator}

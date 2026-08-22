@@ -290,6 +290,14 @@ export function WeekBoard({
 
   return (
     <DndContext
+      /*
+        Bez pevného `id` si dnd-kit číslo pre `aria-describedby` berie
+        z počítadla v module — na serveri začne od nuly, v prehliadači od
+        iného čísla, a React potom hlási nesúlad hydratácie. Atribút sa
+        podľa hlášky „nedá zaplátať", takže ten popis pre čítačku ukazuje
+        na prvok, ktorý na stránke nie je.
+      */
+      id="tyzden"
       sensors={sensors}
       collisionDetection={closestCorners}
       accessibility={{ announcements, screenReaderInstructions }}
