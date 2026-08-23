@@ -32,7 +32,19 @@ tíško zlyhalo.
 `npm run kontrola:dopyty` je **brána**, nie prehľad: pri náleze vracia
 nenulový kód a `npm run overit` na ňom zastane. Kontroluje jediný invariant,
 na ktorom stojí to, že appku môžu používať dvaja ľudia — každý dopyt nad
-tabuľkou, ktorá patrí človeku, musí mať vo svojom príkaze `.where(`.
+tabuľkou, ktorá patrí človeku, musí mať vo svojom príkaze filter.
+
+**Drizzle sa dá pýtať dvoma spôsobmi a každý ho píše inak:**
+
+```ts
+db.select().from(tasks).where(eq(tasks.userId, id))   // staviteľ → .where(
+db.query.tasks.findMany({ where: eq(tasks.userId, id) })  // relačné API → where:
+```
+
+Kontrola pozná oba. Keby poznala len prvý — a chvíľu ho poznala len ten —
+strážila by menej, než tvrdí, a to je horšie než keby nebola: dáva falošnú
+istotu. Do zoznamu patrí aj samotná tabuľka `users`; `.from(users)` bez
+filtra vypíše všetkých.
 
 Preklad to nechytí (`db.select().from(tasks)` je typovo v poriadku, len vráti
 aj cudzie riadky) a testy tiež nie (sú na čisté funkcie, bez databázy).
