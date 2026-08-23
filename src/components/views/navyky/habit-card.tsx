@@ -316,7 +316,16 @@ export function HabitCard({
               habitId={habit.id}
               title={shown.title}
               targetPerWeek={shown.targetPerWeek}
-              onOptimistic={(patch) => startTransition(() => applyEdit(patch))}
+              /*
+                Priamo setter, bez vlastnej `startTransition`.
+
+                `HabitEdit` ho volá vnútri tranzície, ktorá čaká na server,
+                a React na ňu hodnotu priviaže. Vlastná synchrónna tranzícia
+                tu bola chyba: skončila by okamžite a karta by sa vrátila na
+                pôvodný názov skôr, než by server odpovedal. Je to to isté
+                pravidlo, aké je popísané pri fajke vyššie.
+              */
+              onOptimistic={applyEdit}
             />
           )}
 
