@@ -120,12 +120,12 @@ export default async function DnesPage({ searchParams }: DnesPageProps) {
   // `dayTasks`/`openTasks`. Zo zoznamu ju vyberáme len vtedy, keď je karta
   // naozaj vykreslená, aby nemohla vypadnúť z oboch miest naraz.
   /*
-    Prázdna lišta by aj tak zabrala svojich 248 px a hlavný stĺpec by
-    zbytočne stlačila — vykreslí sa až vtedy, keď má čo ukázať. Obe jej
-    sekcie sa pri prázdne skrývajú samy, takže bez tejto podmienky by ostal
-    stĺpec bez obsahu a bez výšky.
+    Lišta sa kreslí VŽDY (od `lg`), lebo rozpočet času aj rituály platia
+    každý deň. Bola tu podmienka `events.length > 0 || …area !== null` —
+    z čias, keď v lište boli len porady a oblasti a prázdna by zabrala
+    svojich 280 px nadarmo. Odkedy do nej pribudol rozpočet a rituály,
+    tá podmienka lištu skrývala aj vtedy, keď mala čo ukázať.
   */
-  const showRail = events.length > 0 || dayTasks.some((task) => task.area !== null);
 
   const frogInCard = showFrogCard && frog !== null;
   const listTasks = frogInCard
@@ -269,8 +269,7 @@ export default async function DnesPage({ searchParams }: DnesPageProps) {
         />
       </div>
 
-      {showRail ? (
-        <div className="hidden lg:block">
+      <div className="hidden lg:block">
           <DayRail
             budget={
               <BudgetPanel
@@ -293,9 +292,8 @@ export default async function DnesPage({ searchParams }: DnesPageProps) {
             }
             meetings={events.length > 0 ? <DayMeetings events={events} flush /> : null}
             areas={<AreasToday tasks={dayTasks} />}
-          />
-        </div>
-      ) : null}
+        />
+      </div>
     </div>
   );
 }
