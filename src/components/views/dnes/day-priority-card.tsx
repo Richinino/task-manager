@@ -5,7 +5,6 @@ import { Star } from "lucide-react";
 
 import { EstimateChip } from "@/components/task/estimate-chip";
 import { TaskItem } from "@/components/task/task-item";
-import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { setFrog } from "@/server/actions/tasks";
 import type { TaskWithRelations } from "@/server/queries/tasks";
@@ -69,37 +68,30 @@ export function DayPriorityCard({
     </p>
   ) : null;
 
-  /* ── priorita dňa je vybraná ──────────────────────────────────────────── */
+  /* ── priorita dňa je vybraná ──────────────────────────────────────────
+
+     Návrh má pruh cez celú šírku so spodnou linkou a v ňom kartu — nie
+     orámovanú kartičku s medzerami okolo. Nad kartou je štítok a vedľa neho
+     tichá pripomienka pravidla „max 1 na deň"; tá nahradila odsek, ktorý tu
+     bol predtým, aj tlačidlo „Zrušiť prioritu dňa" (ruší ju hviezdička).
+  */
   if (frog) {
     return (
       <section
         aria-labelledby={headingId}
-        className="rounded border border-frog bg-frog-soft p-3"
+        className="border-b border-border px-4 pb-3 pt-3.5 sm:px-5"
       >
-        <div className="mb-1.5 flex items-center justify-between gap-2">
-          {heading}
-          {/*
-            Na telefóne sa celý popis „Zrušiť prioritu dňa" vedľa nadpisu
-            nezmestí — text sa skracuje, `aria-label` nesie plné znenie.
-            Výška 44 px je dotykový cieľ, od `sm:` sa vracia hustota nástroja.
-          */}
-          <Button
-            variant="ghost"
-            size="sm"
-            disabled={pending}
-            onClick={() => choose(frog.id, false)}
-            aria-label="Zrušiť prioritu dňa"
-            className="h-11 shrink-0 px-3 sm:h-7 sm:px-2"
-          >
-            <span className="sm:hidden">Zrušiť</span>
-            <span className="hidden sm:inline">Zrušiť prioritu dňa</span>
-          </Button>
+        <div className="mb-2.5 flex items-center gap-2">
+          <h2 id={headingId} className="label shrink-0 font-medium text-frog">
+            Priorita dňa
+          </h2>
+          <span className="font-mono text-micro text-fg-subtle">max 1 na deň</span>
         </div>
 
         <TaskItem
           task={frog}
           todayIso={todayIso}
-          density="full"
+          density="hero"
           // Priorita dňa je v zozname dnešných úloh vynechaná, takže jej termín
           // má poslednú šancu byť vidieť práve tu — vrátane červeného
           // „po termíne".
@@ -108,12 +100,6 @@ export function DayPriorityCard({
           postponeWarnAt={postponeWarnAt}
           postponeBlockAt={postponeBlockAt}
         />
-
-        {/* Na telefóne je 12 px na dve-tri vety primalo — od `sm:` sa vracia. */}
-        <p className="mt-1.5 px-2 text-body leading-relaxed text-fg-muted sm:text-xs">
-          Toto je tá jedna vec, ktorú máš dnes spraviť ako prvú — aj keby už nič
-          iné z dnešného dňa nevyšlo.
-        </p>
 
         {errorNote}
       </section>

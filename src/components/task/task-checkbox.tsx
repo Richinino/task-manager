@@ -27,7 +27,7 @@ export interface TaskCheckboxProps {
   done: boolean;
   /** Názov úlohy — ide do aria-label políčka. */
   title: string;
-  size?: "sm" | "md";
+  size?: "sm" | "md" | "lg";
   /** Triedy obalu riadku (layout si určuje TaskItem). */
   className?: string;
   /** Rola obalu riadku, napr. „group". */
@@ -108,7 +108,10 @@ export function TaskCheckbox({
           // Telefón 24 px / radius 5, od `sm:` hustejších 18 px / radius 4.
           size === "sm"
             ? "mt-px size-4 rounded-sm"
-            : "size-6 rounded-[5px] sm:size-[18px] sm:rounded-sm",
+            : size === "lg"
+              // Karta priority dňa — v návrhu 20 px, väčšie než v riadku.
+              ? "size-6 rounded-[5px] sm:size-5 sm:rounded-sm"
+              : "size-6 rounded-[5px] sm:size-[18px] sm:rounded-sm",
           // Vizuálne koliesko ostáva 16, resp. 18 px — hustota riadku sa nemení.
           // Klikaciu plochu rozšíri neviditeľný pseudoprvok, ktorý nič nezaberá
           // v rozložení, takže riadok sa od neho nerozšíri.
@@ -123,7 +126,7 @@ export function TaskCheckbox({
             : "before:-inset-[10px] sm:before:-inset-1",
         )}
       >
-        <Check aria-hidden="true" size={size === "sm" ? 10 : 12} strokeWidth={3} />
+        <Check aria-hidden="true" size={size === "sm" ? 10 : size === "lg" ? 13 : 12} strokeWidth={3} />
       </button>
 
       {children}

@@ -50,8 +50,11 @@ export interface TaskItemProps {
    * preblikol a čítačka by prečítala iný termín, než je nakoniec v DOM.
    */
   todayIso: string;
-  /** compact = riadok v týždennom stĺpci, full = obrazovka Dnes/Inbox */
-  density?: "compact" | "full";
+  /**
+   * compact = riadok v týždennom stĺpci, full = obrazovka Dnes/Inbox,
+   * hero = karta priority dňa (návrh má pre ňu vlastný, väčší tvar).
+   */
+  density?: "compact" | "full" | "hero";
   showDate?: boolean;
   /**
    * Zvýrazniť prioritu dňa (v rozhraní „priorita dňa", v dátach `isFrog`).
@@ -163,6 +166,7 @@ export function TaskItem({
   tags,
 }: TaskItemProps) {
   const compact = density === "compact";
+  const hero = density === "hero";
 
   /*
     Štítky prichádzajú priamo v úlohe. Prop ich vie prebiť, ale nikto to
@@ -272,19 +276,26 @@ export function TaskItem({
     uprostred znaku.
   */
   const titleClass = cn(
-    // `basis-24` nie je kozmetika: s `flex-1` (základ 0) by pri nedostatku
-    // miesta zmizol názov úplne a odznaky by si šírku udržali. So základom
-    // 96 px sa o tesno delia obaja a názov ostáva čitateľný.
-    "min-w-0 shrink grow basis-24 text-left",
+    "min-w-0 text-left",
     compact ? "line-clamp-2 break-words text-xs leading-snug" : "truncate",
     /*
+      V karte priority dňa je názov 16 px polotučne a nesmie rásť do výšky:
+      stojí v stĺpci nad riadkom s údajmi, takže `grow` by kartu roztiahlo.
+    */
+    hero && "text-base font-semibold tracking-tight",
+    /*
+      V riadku naopak `basis-24` nie je kozmetika: s `flex-1` (základ 0) by
+      pri nedostatku miesta zmizol názov úplne a stĺpce by si šírku udržali.
+      So základom 96 px sa o tesno delia obaja a názov ostáva čitateľný.
+
       Veľkosť z návrhu: na telefóne 15 px polotučne (názov je tam takmer
       jediné, čo v riadku je), od `sm:` 14 px normálne — vtedy má riadok
       vedľa seba päť ďalších stĺpcov a názov v nich nemá kričať.
       Vybraný riadok si polotučné písmo drží aj na počítači.
     */
-    !compact && "text-row font-medium sm:text-sm sm:font-normal",
-    !compact && selected && "sm:font-medium",
+    !hero && "shrink grow basis-24",
+    !compact && !hero && "text-row font-medium sm:text-sm sm:font-normal",
+    !compact && !hero && selected && "sm:font-medium",
     DONE_TEXT,
   );
 
@@ -321,7 +332,7 @@ export function TaskItem({
     <TaskActions
       task={shown}
       todayIso={todayIso}
-      density={density}
+      density={compact ? "compact" : "full"}
       onOptimistic={applyPatch}
       onDiscard={discard.discard}
     />
@@ -349,6 +360,90 @@ export function TaskItem({
   ) : isFrog ? (
     <Star aria-hidden="true" size={14} className="shrink-0 fill-current text-frog" />
   ) : null;
+
+  /* ── hero: karta priority dňa ──────────────────────────────────────────
+
+     V návrhu to nie je riadok so zvýrazneným pozadím, ale samostatná karta:
+     väčšie políčko (20), hviezdička v jantárovom štvorci (28), názov 16/600
+     a pod ním údaje v jednom strojopisnom riadku. Vpravo bodka priority,
+     hlavná akcia a menu.
+
+     Delí sa o `TaskCheckbox` a `TaskActions` so zvyškom, takže odškrtnutie
+     aj menu sa správajú rovnako ako v zozname — mení sa len tvar.
+  */
+  if (hero) {
+    return (
+      <TaskCheckbox
+        taskId={task.id}
+        done={isDone}
+        title={task.title}
+        size="lg"
+        rowRole="group"
+        rowLabel={summary}
+        className={cn(
+          "flex items-center gap-3 rounded-md border border-frog bg-frog-soft px-3.5 py-3",
+        )}
+      >
+        <span className="flex size-7 shrink-0 items-center justify-center rounded-sm bg-frog-tint text-frog">
+          {frogMark ?? <Star aria-hidden="true" size={16} className="fill-current" />}
+        </span>
+
+        <div className="flex min-w-0 flex-1 flex-col">
+          {titleNode}
+
+          <span
+            aria-hidden="true"
+            className="mt-1 flex min-w-0 items-center gap-2.5 truncate font-mono text-meta text-fg-muted"
+          >
+            {task.area ? (
+              <AreaDot
+                color={task.area.color}
+                name={task.area.name}
+                className="min-w-0 shrink font-sans"
+                nameClassName="truncate"
+              />
+            ) : null}
+            {task.context ? <span className="shrink-0">{normalizeContext(task.context)}</span> : null}
+            {task.estimateMin !== null ? (
+              <span className="shrink-0">{formatDuration(task.estimateMin)}</span>
+            ) : null}
+            {task.energy !== null ? (
+              <span className="hidden shrink-0 sm:inline">{energyText(task.energy)}</span>
+            ) : null}
+          </span>
+        </div>
+
+        <PriorityDot priority={shown.priority} />
+
+        {/*
+          „Začať" otvára detail — tam sú poznámka, podúlohy a rozdelenie,
+          teda všetko, čím sa na úlohe naozaj začne. Vlastný stav „robím to"
+          appka nemá, takže by tlačidlo nemalo čo prepnúť.
+        */}
+        {openDetail ? (
+          <button
+            type="button"
+            onClick={(event) => {
+              event.stopPropagation();
+              openDetail();
+            }}
+            onPointerDown={(event) => event.stopPropagation()}
+            onMouseDown={(event) => event.stopPropagation()}
+            className={cn(
+              "hidden h-11 shrink-0 cursor-pointer items-center rounded-sm px-3.5 text-sm font-medium sm:h-[30px]",
+              "bg-fg text-bg transition-opacity duration-100 ease-out hover:opacity-90 sm:flex",
+            )}
+          >
+            Začať
+          </button>
+        ) : null}
+
+        {actions}
+
+        {discard.error ? <RowError message={discard.error} /> : null}
+      </TaskCheckbox>
+    );
+  }
 
   /* ── compact: dvojriadková kartička do ~150 px širokého stĺpca ────────── */
   if (compact) {
