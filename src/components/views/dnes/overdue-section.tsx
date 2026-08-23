@@ -37,7 +37,12 @@ export function OverdueSection({
   if (tasks.length === 0) return null;
 
   return (
-    <section className="rounded border border-danger/40 bg-surface">
+    /*
+      V návrhu to nie je karta s rámikom, ale pruh cez celú šírku: hlavička
+      na podklade `danger-tint` a pod ňou obyčajné riadky, ktoré si červenú
+      nesú 3 px tieňom vľavo. Zoznam tak ostáva jednou súvislou tabuľkou.
+    */
+    <section className="flex flex-col">
       <h2>
         <button
           type="button"
@@ -47,7 +52,7 @@ export function OverdueSection({
           className={cn(
             // Zbalenie sekcie je na telefóne jediná cesta, ako prepadnuté
             // úlohy odložiť z očí — musí mať plný dotykový cieľ 44 px.
-            "flex min-h-11 w-full cursor-pointer items-center gap-2 rounded px-3 py-2 text-left sm:min-h-0",
+            "flex min-h-11 w-full cursor-pointer items-center gap-2 border-b border-border bg-danger-tint px-4 py-[9px] text-left sm:min-h-0 sm:px-5",
             "transition-colors duration-100 ease-out hover:bg-surface-2",
           )}
         >
@@ -70,7 +75,7 @@ export function OverdueSection({
 
       <ul
         id={listId}
-        className={cn("flex-col gap-0.5 px-1.5 pb-1.5", open ? "flex" : "hidden")}
+        className={cn("flex-col", open ? "flex" : "hidden")}
       >
         {tasks.map((task) => (
           <li key={task.id}>

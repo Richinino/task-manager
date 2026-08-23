@@ -1,6 +1,7 @@
 import { CalendarPlus, CircleCheck, TriangleAlert } from "lucide-react";
 
 import { TaskEmpty } from "@/components/task/task-empty";
+import { ListHeader } from "@/components/views/dnes/list-header";
 import { TaskItem } from "@/components/task/task-item";
 import type { TaskWithRelations } from "@/server/queries/tasks";
 
@@ -64,13 +65,25 @@ export function DayList({
   }
 
   return (
-    <section aria-labelledby="dnes-zoznam" className="flex flex-col gap-2">
+    <section aria-labelledby="dnes-zoznam" className="flex flex-col">
       <h2 id="dnes-zoznam" className="sr-only">
         Dnešné úlohy
       </h2>
 
+      {/*
+        Limit dňa je podľa návrhu vidieť STÁLE ako čiarky, nie až ako
+        hlásenie po prekročení. Vysvetľujúca veta ostáva, ale len vtedy,
+        keď je limit naozaj prekročený — dovtedy stačia čiarky.
+      */}
+      <ListHeader
+        label="Naplánované na dnes"
+        count={openCount}
+        limit={wipLimit}
+        hint="j k pohyb · x označiť · a pridať"
+      />
+
       {openCount > wipLimit ? (
-        <p className="flex items-start gap-2 rounded border border-border bg-surface-2 px-3 py-2 text-body leading-relaxed text-fg-muted sm:text-xs">
+        <p className="flex items-start gap-2 border-b border-border bg-surface-2 px-4 py-2 text-body leading-relaxed text-fg-muted sm:px-5 sm:text-xs">
           <TriangleAlert aria-hidden="true" size={16} className="mt-px shrink-0 text-warn" />
           <span className="min-w-0">
             Na dnes máš {taskCountSk(openCount)}, tvoj limit je{" "}
@@ -80,7 +93,7 @@ export function DayList({
         </p>
       ) : null}
 
-      <ul className="flex flex-col gap-0.5">
+      <ul className="flex flex-col">
         {tasks.map((task) => (
           <li key={task.id}>
             <TaskItem

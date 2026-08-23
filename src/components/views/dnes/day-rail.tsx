@@ -18,7 +18,7 @@ import type { ReactNode } from "react";
  */
 export function DayRail({ meetings, areas }: { meetings: ReactNode; areas: ReactNode }) {
   return (
-    <aside aria-label="Prehľad dňa" className="flex w-[248px] shrink-0 flex-col gap-5">
+    <aside aria-label="Prehľad dňa" className="flex w-[280px] shrink-0 flex-col gap-5">
       {meetings}
       {areas}
     </aside>
