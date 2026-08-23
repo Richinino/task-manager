@@ -31,7 +31,15 @@ export interface HabitEditProps {
   habitId: string;
   title: string;
   targetPerWeek: number;
-  /** Prekreslí kartu skôr, než odpovie server. */
+  /**
+   * Prekreslí kartu skôr, než odpovie server.
+   *
+   * Musí to byť **priamo optimistický setter** z `useOptimistic`, nie funkcia,
+   * ktorá si ho obalí do vlastnej `startTransition`. Volá sa totiž vnútri
+   * tranzície, ktorá čaká na server, a React na ňu hodnotu priviaže — až kým
+   * nedobehne. Vlastná synchrónna tranzícia by skončila okamžite a hodnota by
+   * sa vrátila skôr, než by server vôbec odpovedal.
+   */
   onOptimistic: (patch: { title?: string; targetPerWeek?: number }) => void;
 }
 
@@ -65,19 +73,19 @@ export function HabitEdit({
 
     setError(null);
     startTransition(async () => {
+      // Pred prvý `await` — inak nemá React tranzíciu, ku ktorej hodnotu
+      // priviazať. Späť ju vráti sám, keď tranzícia dobehne.
       onOptimistic({ title: next });
       try {
         const result = await updateHabit(habitId, { title: next });
         if (!result.ok) {
           setError(result.error);
-          onOptimistic({ title });
           setDraftTitle(title);
           return;
         }
         setOpen(false);
       } catch {
         setError("Návyk sa nepodarilo uložiť. Skús to znova.");
-        onOptimistic({ title });
         setDraftTitle(title);
       }
     });
@@ -88,16 +96,13 @@ export function HabitEdit({
 
     setError(null);
     startTransition(async () => {
+      // Pred prvý `await`, rovnako ako pri názve vyššie.
       onOptimistic({ targetPerWeek: hodnota });
       try {
         const result = await updateHabit(habitId, { targetPerWeek: hodnota });
-        if (!result.ok) {
-          setError(result.error);
-          onOptimistic({ targetPerWeek });
-        }
+        if (!result.ok) setError(result.error);
       } catch {
         setError("Cieľ sa nepodarilo uložiť. Skús to znova.");
-        onOptimistic({ targetPerWeek });
       }
     });
   }
