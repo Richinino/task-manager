@@ -556,10 +556,11 @@ export function TaskDetail({
         className={cn(
           "flex h-dvh max-h-dvh w-full max-w-none flex-col overflow-hidden rounded-none border-0 p-0",
           // Na širokej obrazovke je to bočný panel pri pravom okraji.
-          "md:ml-auto md:mr-0 md:w-[28rem] md:border-l md:border-border",
+          // Návrh má panel 520 px, nie 448.
+          "md:ml-auto md:mr-0 md:w-[520px] md:border-l md:border-border",
         )}
       >
-        <div className="flex shrink-0 items-center gap-2 border-b border-border px-2 py-2 md:px-4 md:py-3">
+        <div className="flex shrink-0 items-center gap-2 border-b border-border px-2 py-2 md:h-12 md:px-4 md:py-0">
           <DialogClose
             aria-label="Zavrieť detail úlohy"
             className={cn(
@@ -571,14 +572,28 @@ export function TaskDetail({
             <ArrowLeft aria-hidden="true" className="size-5" />
           </DialogClose>
 
-          <DialogTitle className="min-w-0 truncate">Detail úlohy</DialogTitle>
+          {/* V návrhu je to tichý štítok v strojopise, nie nadpis obrazovky. */}
+          <DialogTitle className="label min-w-0 truncate text-fg-subtle">
+            Detail úlohy
+          </DialogTitle>
           {isPending ? (
             <LoaderCircle
               aria-hidden="true"
               className="size-3.5 shrink-0 animate-spin text-fg-subtle"
             />
           ) : null}
-          <span className="ml-auto shrink-0">
+          {/*
+            Pripomienka, že panel zavrie Escape — v návrhu stojí hneď vedľa
+            krížika. Na telefóne klávesnica nie je, takže sa nekreslí.
+          */}
+          <span
+            aria-hidden="true"
+            className="ml-auto hidden shrink-0 font-mono text-mini text-fg-subtle md:inline"
+          >
+            esc zavrieť
+          </span>
+
+          <span className="ml-auto shrink-0 md:ml-0">
             <PostponeBadge
               count={draft.postponeCount}
               warnAt={postponeWarnAt}
