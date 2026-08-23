@@ -85,8 +85,15 @@ Slovenská dvojica je **`„…“`** — dole otváracia, hore zatváracia. Str
 Chytajú sa dve rôzne siete, lebo ani jedna nevidí celok:
 
 - `react/no-unescaped-entities` v ESLinte vidí **text v JSX**,
-- pravidlo v `npm run kontrola:dizajn` vidí **reťazce s dosadenou hodnotou**
-  (`aria-label`, hlášky, chybové vety).
+- pravidlo v `npm run kontrola:dizajn` vidí **všetky reťazce** — `"…"`,
+  `'…'`, `` `…` ``, šablónu s dosadenou hodnotou aj holý text v JSX.
+
+To druhé nie je regulárny výraz. Rozlíšiť reťazec od komentára sa ním
+nedá a šablóna sa navyše trhá: v zápise `` `Projekt „${meno}" neexistuje.` ``
+leží otváracia úvodzovka v jednom uzle a zatváracia v druhom. Súbor sa
+preto rozoberie parserom TypeScriptu a hľadá sa v plátne, kde je vidieť
+len obsah reťazcov — komentáre zmiznú, ale obe úvodzovky ostanú na svojich
+miestach.
 
 Komentáre sa nekontrolujú a nemusia sa opravovať — nikto ich nevykresľuje.
 
