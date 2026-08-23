@@ -27,7 +27,9 @@ export default async function InboxPage() {
   );
 
   return (
-    <div className="mx-auto w-full max-w-3xl px-4 py-5 md:px-6 md:py-7">
+    /* Návrh nemá `max-w` ani odsadenie: triedička ide od kraja po kraj
+       a fronta stojí pri pravom okraji okna. */
+    <div className="w-full">
       <InboxList
         tasks={tasks}
         areas={areas}

@@ -21,14 +21,14 @@ import { restoreTask } from "@/server/actions/tasks";
 import type { TaskWithRelations } from "@/server/queries/tasks";
 
 import { InboxHeader } from "./inbox-header";
-import { TriageProgress } from "./triage-progress";
+import { TriagePanel } from "./triage-panel";
+import { TriageQueue } from "./triage-queue";
 import {
   TRIAGE_ACTIONS,
   TRIAGE_ORDER,
-  TriageRow,
   runTriage,
   type TriageAction,
-} from "./triage-row";
+} from "./triage-actions";
 
 /* ═══════════════════════════════════════════════════════════════════════════
    KLÁVESNICA
@@ -91,8 +91,6 @@ export function InboxList({
   areas,
   projects,
   todayIso,
-  postponeWarnAt,
-  postponeBlockAt,
 }: InboxListProps) {
   // Zatriedená vec zmizne hneď; keď akcia dobehne, React sa vráti k dátam
   // zo servera — pri úspechu tam už nie je, pri chybe sa vráti aj s hláškou.
@@ -318,25 +316,27 @@ export function InboxList({
         />
       ) : (
         <>
-          <TriageProgress position={cursor + 1} total={visible.length} />
-
-          <ul ref={listRef} className="flex flex-col gap-2">
-            {visible.map((task, index) => (
-              <TriageRow
-                key={task.id}
-                task={task}
+          {/*
+            Návrh z inboxu spravil triedičku: jedna vec naraz vľavo, fronta
+            vpravo. Zoznam riadkov, ktorý tu bol predtým, nútil rozhodovať sa
+            dvakrát — najprv ktorý riadok, až potom čo s ním.
+          */}
+          <div className="flex min-h-[60vh] items-stretch">
+            {activeTask ? (
+              <TriagePanel
+                task={activeTask}
+                position={cursor + 1}
+                total={visible.length}
                 areas={areas}
                 projects={projects}
-                active={index === cursor}
-                onActivate={() => setActiveIndex(index)}
-                onTriage={(action) => triage(action, task.id)}
+                onTriage={(action) => triage(action, activeTask.id)}
                 onError={setError}
                 todayIso={todayIso}
-                postponeWarnAt={postponeWarnAt}
-                postponeBlockAt={postponeBlockAt}
               />
-            ))}
-          </ul>
+            ) : null}
+
+            <TriageQueue items={visible} activeIndex={cursor} />
+          </div>
 
           <ShortcutLegend />
 
