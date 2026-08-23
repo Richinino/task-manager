@@ -27,21 +27,28 @@ function normalizePriority(priority: number): 1 | 2 | 3 {
 const TONE: Record<1 | 2 | 3, string> = {
   1: "text-p1",
   2: "text-p2",
-  // Priorita 3 je „ticho" — farba aj krytie idú dole.
-  3: "text-p3 opacity-45",
+  // Priorita 3 je „ticho" — stíši ju samotný odtieň `--p3`, krytie netreba.
+  3: "text-p3",
 };
 
-/** Tvar a veľkosť pre kompaktný riadok (sm) a pre plný riadok (md). */
+/**
+ * Tvar a veľkosť pre kompaktný riadok (sm) a pre plný riadok (md).
+ *
+ * `md` je z návrhu doslova: **všetky tri bodky sú 8 px a plné**, líšia sa
+ * len odtieňom (`--p1/--p2/--p3`). Bola tu predtým aj odlišná veľkosť
+ * a prstenec pre prioritu 2, aby sa dali rozoznať bez farby — návrh to
+ * nemá a používateľ ho chcel presne tak, ako ho navrhol. Pre čítačku sa
+ * nemení nič: bodka je `role="img"` s popisom „priorita N".
+ *
+ * `sm` (úzky stĺpec týždňa) v návrhu nie je, takže si rozlíšenie tvarom
+ * ponecháva — tam sa bodky kreslia vedľa seba v 150 px stĺpci.
+ */
 const SHAPE: Record<1 | 2 | 3, Record<"sm" | "md", string>> = {
-  // Plný krúžok, najväčší z trojice — jediný, ktorý má „hmotnosť".
-  1: { sm: "size-2 bg-current", md: "size-2.5 bg-current" },
-  // Prstenec: rovnaký priemer ako p1, ale prázdny stred. Rozdiel je vidieť
-  // aj v čiernobielom, aj keď sú obe bodky vedľa seba.
+  1: { sm: "size-2 bg-current", md: "size-2 bg-current" },
   2: {
     sm: "size-2 border-[1.5px] border-current",
-    md: "size-2.5 border-2 border-current",
+    md: "size-2 bg-current",
   },
-  // Najmenšia plná bodka — default, ktorý nemá kričať.
   3: { sm: "size-1.5 bg-current", md: "size-2 bg-current" },
 };
 

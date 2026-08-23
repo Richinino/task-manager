@@ -95,23 +95,32 @@ export function TaskCheckbox({
         title={failed ? "Nepodarilo sa uložiť. Skús to znova." : checkboxLabel}
         onClick={handleToggle}
         className={cn(
-          "relative flex shrink-0 items-center justify-center rounded-full border transition-colors",
+          /*
+            Zaoblený štvorec s rámom 1,5 px, nie kruh — tak to má návrh
+            („Anatómia riadku": 18 px, `1.5px solid --borderS`, radius 4).
+            Hotová úloha je ZELENÁ (`--succ`), nie akcentová: akcent v tomto
+            návrhu znamená „tu si", nie „hotovo".
+          */
+          "relative flex shrink-0 items-center justify-center border-[1.5px] transition-colors",
           "cursor-pointer border-border-strong text-transparent hover:border-accent",
-          optimisticDone && "border-accent bg-accent text-accent-fg hover:border-accent",
+          optimisticDone && "border-success bg-success text-white hover:border-success",
           failed && "border-danger",
-          size === "sm" ? "mt-px size-4" : "size-[18px]",
+          // Telefón 24 px / radius 5, od `sm:` hustejších 18 px / radius 4.
+          size === "sm"
+            ? "mt-px size-4 rounded-sm"
+            : "size-6 rounded-[5px] sm:size-[18px] sm:rounded-sm",
           // Vizuálne koliesko ostáva 16, resp. 18 px — hustota riadku sa nemení.
           // Klikaciu plochu rozšíri neviditeľný pseudoprvok, ktorý nič nezaberá
           // v rozložení, takže riadok sa od neho nerozšíri.
           "before:absolute before:content-['']",
-          // md (Dnes, Inbox): na telefóne 18 + 2×13 = 44×44 px pre palec,
+          // md (Dnes, Inbox): na telefóne 24 + 2×10 = 44×44 px pre palec,
           // od `sm:` späť na hustejších 26×26 px pre myš.
           // sm (týždenný stĺpec, mesačný panel): ostáva 24×24 px — to je
           // minimum podľa WCAG 2.2 SC 2.5.8 a širší presah by prekryl rúčku
           // na ťahanie, ktorá je hneď naľavo od riadku.
           size === "sm"
             ? "before:-inset-1"
-            : "before:-inset-[13px] sm:before:-inset-1",
+            : "before:-inset-[10px] sm:before:-inset-1",
         )}
       >
         <Check aria-hidden="true" size={size === "sm" ? 10 : 12} strokeWidth={3} />

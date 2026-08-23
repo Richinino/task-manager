@@ -22,6 +22,17 @@ export function energyLabel(energy: Energy): string {
   return `energia ${ENERGY[energy].text}`;
 }
 
+/**
+ * Samotné slovo — „nízka" / „stredná" / „vysoká".
+ *
+ * Riadok úlohy kreslí silu podľa návrhu ako holý strojopisný text v stĺpci
+ * pevnej šírky, bez ikony a bez farby. Odznak s ikonou ostáva pre miesta,
+ * kde stojí sám a farba mu pomáha (detail, „Čo teraz?").
+ */
+export function energyText(energy: Energy): string {
+  return ENERGY[energy].text;
+}
+
 export function EnergyBadge({
   energy,
   size = "md",

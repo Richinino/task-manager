@@ -14,22 +14,23 @@
    a červená pre „po termíne" (`danger`) — akcent sa im nesmie priblížiť,
    inak prestane byť rozoznateľné, čo je dôležité a čo je len tlačidlo.
 
-   ŠTYRI HODNOTY SÚ OPROTI NÁVRHU POSUNUTÉ, lebo nedosahovali kontrast 4,5:1:
-     svetlá  --fg-muted   #7b7a83 → #595861   (4,03 → 6,67 na plátne)
-     svetlá  --fg-subtle  #a3a1a9 → #74727a   (2,43 → 4,50 na plátne)
-     tmavá   --fg-subtle  #787d8e → #9095a6   (3,34 → 4,58 na karte)
-     tmavá   --accent     #8b86ee → #8d88f0   (4,39 → 4,50 na karte)
-     svetlá  --danger/p1  #db4133 → #d2382a   (4,14 → 4,60 na plátne)
-     tmavá   --p3         #8d919f → #9195a3   (4,35 → 4,58 na karte)
+   VŠETKY HODNOTY SÚ Z NÁVRHU, aj tých šesť, ktoré nedosahujú kontrast
+   4,5:1. Chvíľu tu boli stmavené a používateľ to výslovne vrátil späť —
+   chcel návrh presne tak, ako ho navrhol. Je to jeho appka a jeho voľba;
+   zapísané je to tu, aby to niekto o pol roka nezačal „opravovať" znova.
 
-   Prečo sa posunul aj `fg-muted`, hoci sám by stačil na 4,51: keby sa
-   dvíhal len `fg-subtle`, obe stlmené úrovne by skončili na tej istej
-   hodnote a z troch úrovní dôrazu by ostali dve. Medzi `fg` (15,9) a
-   `fg-muted` bola veľká medzera, tak sa rozložili do nej — tri úrovne
-   ostávajú rozlíšiteľné (6,7 / 4,5) a všetky prejdú.
+   Čo to stojí (namerané na skutočnom vykreslenom texte, nie na tokenoch):
+     svetlá  --fg-muted   #7b7a83   4,03 : 1
+     svetlá  --fg-subtle  #a3a1a9   2,43 : 1
+     tmavá   --fg-subtle  #787d8e   3,34 : 1
+     tmavá   --accent     #8b86ee   4,39 : 1
+     svetlá  --danger/p1  #db4133   4,14 : 1
+     tmavá   --p3         #8d919f   4,35 : 1
 
    Najtichšia úroveň nesie v appke aj skutočnú informáciu (nápovedy pod
-   poľami, nadpisy sekcií), takže „stačí to na veľký text" tu neplatí.
+   poľami, nadpisy sekcií). Kto ju bude chcieť raz zdvihnúť, nech zdvihne
+   `fg-muted` spolu s ňou — inak obe stlmené úrovne splynú a z troch úrovní
+   dôrazu ostanú dve.
    ═══════════════════════════════════════════════════════════════════════════ */
 
 :root {
@@ -40,8 +41,8 @@
   --border-strong: #cfccc6;
 
   --fg: #2b2b31;
-  --fg-muted: #595861;
-  --fg-subtle: #74727a;
+  --fg-muted: #7b7a83;
+  --fg-subtle: #a3a1a9;
 
   --accent: #5b52d6;
   --accent-fg: #ffffff;
@@ -49,7 +50,7 @@
   /** Podklad odznaku s počtom — priesvitný, aby sadol na surface aj na bg. */
   --accent-badge: rgba(91, 82, 214, 0.14);
 
-  --p1: #d2382a;
+  --p1: #db4133;
   --p2: #c88431;
   --p3: #9a99a1;
 
@@ -59,8 +60,8 @@
   --frog-tint: rgba(201, 143, 32, 0.14);
 
   --success: #3f8f5f;
-  --danger: #d2382a;
-  --danger-tint: rgba(210, 56, 42, 0.10);
+  --danger: #db4133;
+  --danger-tint: rgba(219, 65, 51, 0.10);
 
   /*
     `warn` a energie v návrhu nie sú — sú dopočítané tak, aby sedeli do jeho
@@ -89,7 +90,7 @@
     `capture-provider`, `offline-indicator`) — stačilo zmeniť tri z nich
     a posledné riadky zoznamu skončili pod plávajúcim tlačidlom.
   */
-  --bar-height: 3.5rem;
+  --bar-height: 4rem;
   --bar-inset: calc(var(--bar-height) + env(safe-area-inset-bottom));
 }
 
@@ -102,16 +103,16 @@
 
   --fg: #eceef3;
   --fg-muted: #9ea3b3;
-  --fg-subtle: #9095a6;
+  --fg-subtle: #787d8e;
 
-  --accent: #8d88f0;
+  --accent: #8b86ee;
   --accent-fg: #1b1d26;
   --accent-soft: #3a3660;
   --accent-badge: rgba(139, 134, 238, 0.22);
 
   --p1: #f08272;
   --p2: #e5b072;
-  --p3: #9195a3;
+  --p3: #8d919f;
 
   --frog: #e6b95f;
   --frog-soft: #3d331c;
@@ -194,6 +195,13 @@
   --text-mini: 11px;
   --text-meta: 12px;
   --text-body: 13px;
+  /*
+    15 px je z návrhu: názov úlohy v riadku na telefóne a dátum v hlavičke
+    dňa. Medzi 14 (`text-sm`) a 16 (`text-base`) nič nie je, a práve tam
+    tie dva prvky sedia — sú o stupeň dôraznejšie než okolie, ale ešte to
+    nie je nadpis.
+  */
+  --text-row: 15px;
 
   --shadow-sm: var(--sh-sm);
   --shadow-lg: var(--sh-lg);
