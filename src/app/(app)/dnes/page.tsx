@@ -4,7 +4,9 @@ import { DayHeader } from "@/components/views/dnes/day-header";
 import { DayList } from "@/components/views/dnes/day-list";
 import { AreasToday } from "@/components/views/dnes/areas-today";
 import { DayMeetings } from "@/components/views/dnes/day-meetings";
+import { BudgetPanel } from "@/components/views/dnes/budget-panel";
 import { DayRail } from "@/components/views/dnes/day-rail";
+import { DayRituals } from "@/components/views/dnes/day-rituals";
 import { DayPriorityCard } from "@/components/views/dnes/day-priority-card";
 import { OverdueSection } from "@/components/views/dnes/overdue-section";
 import { TimeBudget } from "@/components/views/dnes/time-budget";
@@ -130,12 +132,22 @@ export default async function DnesPage({ searchParams }: DnesPageProps) {
     : dayTasks;
 
   return (
-    <div className="mx-auto flex w-full max-w-5xl flex-col gap-5 px-4 py-5 md:px-6 md:py-7">
+    /*
+      Návrh nemá vonkajšie odsadenie ani `max-w`: stĺpec ide od kraja po kraj
+      a sekcie sa oddeľujú vlastnými linkami, nie medzerami. Pravá lišta stojí
+      vedľa hlavného stĺpca a siaha cez celú výšku okna.
+    */
+    <div className="flex w-full items-stretch">
+      <div className="flex min-w-0 flex-1 flex-col">
       <DayHeader
         date={date}
         todayIso={todayIso}
         doneCount={doneCount}
         totalCount={dayTasks.length}
+        /*
+          Rozpočet je v návrhu na telefóne v hlavičke a na počítači v pravej
+          lište. Od `lg:` sa tu preto skrýva — kreslí sa raz na každej šírke.
+        */
         budget={
           <TimeBudget
             plannedMin={plannedMin}
@@ -205,12 +217,11 @@ export default async function DnesPage({ searchParams }: DnesPageProps) {
       />
 
       {/*
-        Dva stĺpce od `lg`. Hlavný nesie to, čo sa odškrtáva; pravá lišta to,
-        na čo sa pri rozhodovaní pozeráš. Pod `lg` je z toho jeden stĺpec
-        a lišta sa nekreslí vôbec — podrobnosti v `DayRail`.
+        Hlavný stĺpec nesie to, čo sa odškrtáva; pravá lišta to, na čo sa pri
+        rozhodovaní pozeráš. Pod `lg` sa lišta nekreslí vôbec — podrobnosti
+        v `DayRail`.
       */}
-      <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:gap-8">
-        <div className="flex min-w-0 flex-1 flex-col gap-5">
+      <div className="flex flex-col">
           {/*
             Porady sedia nad prioritou dňa: najprv čím je deň obsadený, až
             potom čo s tým zvyškom. Od `lg` ich prevezme pravá lišta, preto sú
@@ -248,16 +259,35 @@ export default async function DnesPage({ searchParams }: DnesPageProps) {
             postponeBlockAt={user.settings.postponeBlockAt}
           />
         </div>
-
-        {showRail ? (
-          <div className="hidden lg:block">
-            <DayRail
-              meetings={<DayMeetings events={events} />}
-              areas={<AreasToday tasks={dayTasks} />}
-            />
-          </div>
-        ) : null}
       </div>
+
+      {showRail ? (
+        <div className="hidden lg:block">
+          <DayRail
+            budget={
+              <BudgetPanel
+                tasks={dayTasks}
+                plannedMin={plannedMin}
+                availableMin={availableMin}
+                meetingMin={meetingMin}
+                withoutEstimate={withoutEstimate}
+                dayStartHour={user.settings.dayStartHour}
+                dayEndHour={user.settings.dayEndHour}
+              />
+            }
+            rituals={
+              <DayRituals
+                morningDone={morningState.completed}
+                shutdownDone={shutdown.completed}
+                dayStartHour={user.settings.dayStartHour}
+                dayEndHour={user.settings.dayEndHour}
+              />
+            }
+            meetings={events.length > 0 ? <DayMeetings events={events} flush /> : null}
+            areas={<AreasToday tasks={dayTasks} />}
+          />
+        </div>
+      ) : null}
     </div>
   );
 }
