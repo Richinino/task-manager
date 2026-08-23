@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useTransition } from "react";
-import { Star } from "lucide-react";
+import { useEffect, useState, useTransition } from "react";
+import { Star, TriangleAlert } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import { setFrog } from "@/server/actions/tasks";
@@ -30,9 +30,22 @@ export interface FrogToggleProps {
   onOptimistic: (isFrog: boolean) => void;
 }
 
+/** Čo sa ukáže namiesto hviezdičky, keď zápis zlyhá. */
+const CHYBA_POPIS = "Prioritu dňa sa nepodarilo uložiť. Skús to znova.";
+
 export function FrogToggle({ taskId, isFrog, title, onOptimistic }: FrogToggleProps) {
   const [error, setError] = useState(false);
   const [, startTransition] = useTransition();
+
+  /*
+    Hláška sama zmizne, ako všade inde v aplikácii — bez nej by hviezdička
+    ostala v chybovom stave až do ďalšieho kliknutia, teda možno navždy.
+  */
+  useEffect(() => {
+    if (!error) return;
+    const timer = window.setTimeout(() => setError(false), 4000);
+    return () => window.clearTimeout(timer);
+  }, [error]);
 
   function toggle(): void {
     setError(false);
@@ -51,12 +64,19 @@ export function FrogToggle({ taskId, isFrog, title, onOptimistic }: FrogTogglePr
     <button
       type="button"
       aria-pressed={isFrog}
+      /*
+        Zlyhanie sa NESMIE niesť len farbou — kto ju nerozozná alebo čítačku
+        používa, by sa o ňom nedozvedel vôbec. Popis sa preto mení tiež
+        a ikona sa vymení za výstražnú, takže signál nesie aj tvar.
+      */
       aria-label={
-        isFrog
-          ? `Zrušiť prioritu dňa: ${title}`
-          : `Nastaviť ako prioritu dňa: ${title}`
+        error
+          ? `${CHYBA_POPIS} (${title})`
+          : isFrog
+            ? `Zrušiť prioritu dňa: ${title}`
+            : `Nastaviť ako prioritu dňa: ${title}`
       }
-      title={isFrog ? "Zrušiť prioritu dňa" : "Priorita dňa"}
+      title={error ? CHYBA_POPIS : isFrog ? "Zrušiť prioritu dňa" : "Priorita dňa"}
       onClick={(event) => {
         // Riadok pod hviezdičkou otvára detail a v týždni začína ťah —
         // ani jedno sa nesmie spustiť pri prepínaní priority.
@@ -80,11 +100,16 @@ export function FrogToggle({ taskId, isFrog, title, onOptimistic }: FrogTogglePr
         error && "text-danger",
       )}
     >
-      <Star
-        aria-hidden="true"
-        size={14}
-        className={cn("shrink-0", isFrog && "fill-current")}
-      />
+      {/* Rovnaká veľkosť ako hviezdička, takže sa riadok nepohne ani o pixel. */}
+      {error ? (
+        <TriangleAlert aria-hidden="true" size={14} className="shrink-0" />
+      ) : (
+        <Star
+          aria-hidden="true"
+          size={14}
+          className={cn("shrink-0", isFrog && "fill-current")}
+        />
+      )}
     </button>
   );
 }
