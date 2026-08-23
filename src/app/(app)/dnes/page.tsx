@@ -5,6 +5,7 @@ import { DayList } from "@/components/views/dnes/day-list";
 import { AreasToday } from "@/components/views/dnes/areas-today";
 import { DayMeetings } from "@/components/views/dnes/day-meetings";
 import { BudgetPanel } from "@/components/views/dnes/budget-panel";
+import { DayFooter } from "@/components/views/dnes/day-footer";
 import { DayRail } from "@/components/views/dnes/day-rail";
 import { DayRituals } from "@/components/views/dnes/day-rituals";
 import { DayPriorityCard } from "@/components/views/dnes/day-priority-card";
@@ -259,6 +260,13 @@ export default async function DnesPage({ searchParams }: DnesPageProps) {
             postponeBlockAt={user.settings.postponeBlockAt}
           />
         </div>
+
+        {/* Stavový riadok na spodku stĺpca — v návrhu posledných 34 px. */}
+        <DayFooter
+          openCount={openTasks.length}
+          doneCount={doneCount}
+          overdueCount={overdue.length}
+        />
       </div>
 
       {showRail ? (
