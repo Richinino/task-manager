@@ -128,7 +128,11 @@ export function DayHeader({
         </div>
       </div>
 
-      {budget}
+      {/*
+        Od `lg:` rozpočet preberá pravá lišta — v návrhu je na počítači tam
+        a v hlavičke len na telefóne. Bez tohto by sa kreslil dvakrát.
+      */}
+      {budget ? <div className="lg:hidden">{budget}</div> : null}
     </header>
   );
 }

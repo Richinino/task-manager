@@ -1,8 +1,15 @@
+import { cn } from "@/lib/utils";
 import { CalendarClock } from "lucide-react";
 
 import type { CalendarEvent } from "@/server/queries/calendar";
 
 export interface DayMeetingsProps {
+  /**
+   * Bez vlastnej karty — sekciu vtedy ohraničuje pravá lišta.
+   * V návrhu je PORADY jedna zo štyroch sekcií vnútri jednej plochy,
+   * nie samostatná kartička.
+   */
+  flush?: boolean;
   /** Udalosti dňa z kalendára, zoradené podľa začiatku. */
   events: readonly CalendarEvent[];
 }
@@ -33,7 +40,7 @@ function timeRange(event: CalendarEvent): string | null {
  * Názvy porád sú CUDZIE dáta z Google Calendar. Vykresľujú sa výhradne ako
  * text cez JSX, ktorý ich escapuje — nikdy ako HTML.
  */
-export function DayMeetings({ events }: DayMeetingsProps) {
+export function DayMeetings({ events, flush = false }: DayMeetingsProps) {
   if (events.length === 0) return null;
 
   const timed = events.filter((event) => !event.allDay);
@@ -42,11 +49,14 @@ export function DayMeetings({ events }: DayMeetingsProps) {
   return (
     <section
       aria-labelledby="dnes-porady"
-      className="rounded border border-border bg-surface"
+      className={cn(!flush && "rounded border border-border bg-surface")}
     >
       <h2
         id="dnes-porady"
-        className="label flex min-w-0 items-center gap-2 px-3 pb-1.5 pt-2.5 text-fg-muted"
+        className={cn(
+          "label flex min-w-0 items-center gap-2 text-fg-muted",
+          flush ? "pb-2" : "px-3 pb-1.5 pt-2.5",
+        )}
       >
         <CalendarClock aria-hidden="true" size={13} className="shrink-0" />
         <span className="min-w-0 truncate">Porady</span>

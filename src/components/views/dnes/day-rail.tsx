@@ -9,18 +9,39 @@ import type { ReactNode } from "react";
  * stavy a po odškrtnutí by chvíľu svietili opačne.
  *
  * **Existuje len na počítači.** Na telefóne by z nej bol chvost pod zoznamom,
- * ktorý sa nikdy nedoscrolluje. Porady sa tam preto kreslia priamo v hlavnom
- * stĺpci nad zoznamom a rozpad podľa oblastí sa nekreslí vôbec — je to súhrn
- * pre pohľad zhora, nie niečo, čo na telefóne potrebuješ pri odškrtávaní.
+ * ktorý sa nikdy nedoscrolluje. Rozpočet a porady sa tam preto kreslia
+ * priamo v hlavnom stĺpci a rozpad podľa oblastí sa nekreslí vôbec — je to
+ * súhrn pre pohľad zhora, nie niečo, čo pri odškrtávaní na telefóne treba.
  *
- * Rozpočet času tu nie je zámerne: sedí v hlavičke nad oboma stĺpcami, kde
- * ho vidno na oboch šírkach a nemusí sa kresliť dvakrát.
+ * Tvar je z návrhu doslova: 280 px, ľavá linka, podklad `surface` a **štyri
+ * sekcie oddelené linkami vnútri jednej plochy** — nie karty s medzerami
+ * pod sebou. Posledná sekcia dotiahne zvyšok výšky, aby lišta siahala až
+ * pod spodok zoznamu.
  */
-export function DayRail({ meetings, areas }: { meetings: ReactNode; areas: ReactNode }) {
+export interface DayRailProps {
+  /** Rozpočet času — prvá sekcia. */
+  budget: ReactNode;
+  /** Rituály dňa. */
+  rituals: ReactNode;
+  /** Porady z kalendára. `null`, keď kalendár nič nevrátil. */
+  meetings: ReactNode;
+  /** Rozpad dňa podľa oblastí — dotiahne zvyšok výšky. */
+  areas: ReactNode;
+}
+
+export function DayRail({ budget, rituals, meetings, areas }: DayRailProps) {
   return (
-    <aside aria-label="Prehľad dňa" className="flex w-[280px] shrink-0 flex-col gap-5">
-      {meetings}
-      {areas}
+    <aside
+      aria-label="Prehľad dňa"
+      className="sticky top-0 flex h-dvh w-[280px] shrink-0 flex-col overflow-hidden border-l border-border bg-surface"
+    >
+      <div className="shrink-0 border-b border-border px-4 py-3.5">{budget}</div>
+      <div className="shrink-0 border-b border-border px-4 py-3.5">{rituals}</div>
+      {/* Prázdna sekcia by zabrala 29 px odsadenia a nepovedala nič. */}
+      {meetings ? (
+        <div className="shrink-0 border-b border-border px-4 py-3.5">{meetings}</div>
+      ) : null}
+      <div className="min-h-0 flex-1 px-4 py-3.5">{areas}</div>
     </aside>
   );
 }
