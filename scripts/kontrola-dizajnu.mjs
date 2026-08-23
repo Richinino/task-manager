@@ -11,10 +11,14 @@
  * Nie je to linter s automatickou opravou — je to zoznam miest, kde sa
  * niekto (vrátane mňa) odchýlil od `docs/CONVENTIONS.md`.
  */
+import ts from "typescript";
 import { readFileSync, readdirSync, statSync } from "node:fs";
-import { join, relative } from "node:path";
+import { join, relative, sep } from "node:path";
 
 const KOREN = "src";
+
+/** Názov pravidla, ktoré si namiesto vzoru rieši vlastnú kontrolu nižšie. */
+const UVODZOVKY = "slovenská úvodzovka zatvorená strojopisne";
 
 /** Čo hľadáme a prečo je to problém. */
 const PRAVIDLA = [
@@ -51,12 +55,17 @@ const PRAVIDLA = [
     preco: "Použi utilitu .label a farbu dopíš zvlášť.",
   },
   {
-    nazov: "slovenská úvodzovka zatvorená strojopisne",
-    // Otváracia, potom dosadená hodnota, potom ASCII " — teda reťazec,
-    // ktorý appka naozaj zobrazí alebo nahlási čítačke. Komentár takto
-    // nevyzerá, preto sa do nálezov nedostane.
-    vzor: /\u201E[^"`\r\n]*\$\{[^}\r\n]*\}[^"`\r\n]*"/g,
-    preco: "Slovenská dvojica je „…“. ESLint chytí len text v JSX, nie reťazce.",
+    nazov: UVODZOVKY,
+    /*
+      Bez vzoru zámerne — toto pravidlo si rieši vlastnú kontrolu nižšie.
+
+      Regulárny výraz to tu nezvládne. Rozlíšiť reťazec od komentára sa ním
+      nedá: prvý pokus chytal aj vetu z komentára a druhý zase prepásol
+      reťazec bez dosadenej hodnoty. Preto sa súbor naozaj rozoberie
+      parserom TypeScriptu a hľadá sa len v tom, čo je naozaj reťazec.
+    */
+    vlastnaKontrola: true,
+    preco: 'Slovenská dvojica je „…“, nie „…". ESLint chytí len text v JSX.',
   },
   {
     nazov: "tabular-nums bez font-mono",
@@ -79,23 +88,124 @@ function subory(priecinok) {
 let nalezov = 0;
 const podlaPravidla = new Map();
 
+function pridaj(nazov, riadok) {
+  const zoznam = podlaPravidla.get(nazov) ?? [];
+  zoznam.push(riadok);
+  podlaPravidla.set(nazov, zoznam);
+  nalezov++;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   ÚVODZOVKY
+
+   Slovenská dvojica je „…“ — dole otváracia, hore zatváracia. Strojopisné `"`
+   v texte appky nepatria.
+
+   Hľadá sa len v tom, čo je naozaj reťazec — komentáre nikto nevykresľuje
+   a opravovať ich netreba. Pokrýva všetky tvary naraz: `"…"`, `'…'`,
+   `` `…` ``, šablónu s dosadenou hodnotou aj holý text v JSX.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+const OTVARACIA = "„";
+const ZATVARACIA = "“";
+
+/**
+ * Text súboru, v ktorom je vidieť LEN obsah reťazcov — všetko ostatné sa
+ * nahradí medzerami. Čísla riadkov ostávajú sedieť.
+ *
+ * Prečo takto:
+ *
+ * 1. **Komentáre musia vypadnúť.** Vetu z komentára nikto nevykresľuje,
+ *    takže opravovať ju netreba — a v tomto projekte ich sú stovky.
+ * 2. **Šablóna s dosadenou hodnotou sa nesmie roztrhnúť.** V zápise
+ *    `Projekt „${meno}" neexistuje.` leží otváracia úvodzovka v jednom
+ *    uzle a zatváracia v druhom. Keby sa uzly kontrolovali samostatne,
+ *    dvojica by sa nikdy nestretla — a pritom je to najčastejší tvar.
+ *    Tu ostávajú obe na svojich miestach a zmizne len to medzi nimi.
+ *
+ * Surový skener na to nestačil: bez parsera stráca na JSX synchronizáciu
+ * a z komentárov našiel sotva desatinu.
+ */
+function ibaRetazce(cesta, obsah) {
+  const zdroj = ts.createSourceFile(
+    cesta,
+    obsah,
+    ts.ScriptTarget.Latest,
+    true,
+    ts.ScriptKind.TSX,
+  );
+
+  // Prázdne plátno, do ktorého sa vrátia len reťazce.
+  const znaky = new Array(obsah.length);
+  for (let i = 0; i < obsah.length; i++) {
+    const z = obsah[i];
+    znaky[i] = z === "\n" || z === "\r" ? z : " ";
+  }
+
+  const jeRetazec = (node) =>
+    ts.isStringLiteral(node) ||
+    ts.isNoSubstitutionTemplateLiteral(node) ||
+    ts.isTemplateHead(node) ||
+    ts.isTemplateMiddle(node) ||
+    ts.isTemplateTail(node) ||
+    ts.isJsxText(node);
+
+  const prejdi = (node) => {
+    if (jeRetazec(node)) {
+      const od = node.getStart(zdroj);
+      const po = node.getEnd();
+      for (let i = od; i < po; i++) znaky[i] = obsah[i];
+    }
+    ts.forEachChild(node, prejdi);
+  };
+  prejdi(zdroj);
+
+  return znaky.join("");
+}
+
+function skontrolujUvodzovky(cesta, relativna, obsah) {
+  const text = ibaRetazce(cesta, obsah);
+  let od = 0;
+
+  while (true) {
+    const otvor = text.indexOf(OTVARACIA, od);
+    if (otvor === -1) break;
+
+    const strojopisna = text.indexOf('"', otvor);
+    const spravna = text.indexOf(ZATVARACIA, otvor);
+    // Nález len vtedy, keď je strojopisná bližšie než správna.
+    if (strojopisna !== -1 && (spravna === -1 || strojopisna < spravna)) {
+      const riadok = text.slice(0, otvor).split("\n").length;
+      const ukazka = text.slice(otvor, strojopisna + 1).replace(/\s+/g, " ");
+      pridaj(UVODZOVKY, `${relativna}:${riadok}  ${ukazka.slice(0, 60)}`);
+      od = strojopisna + 1;
+    } else {
+      od = otvor + 1;
+    }
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   BEH
+   ═══════════════════════════════════════════════════════════════════════════ */
+
 for (const cesta of subory(KOREN)) {
-  const relativna = relative(".", cesta).replace(/\\/g, "/");
+  const relativna = relative(".", cesta).split(sep).join("/");
   const obsah = readFileSync(cesta, "utf8");
 
   for (const pravidlo of PRAVIDLA) {
+    if (pravidlo.vlastnaKontrola) continue;
     if (pravidlo.vynimky?.some((v) => v.test(relativna))) continue;
 
     for (const zhoda of obsah.match(pravidlo.vzor) ?? []) {
       if (pravidlo.kontrola && !pravidlo.kontrola(zhoda)) continue;
 
       const riadok = obsah.slice(0, obsah.indexOf(zhoda)).split("\n").length;
-      const zoznam = podlaPravidla.get(pravidlo.nazov) ?? [];
-      zoznam.push(`${relativna}:${riadok}  ${zhoda.slice(0, 70)}`);
-      podlaPravidla.set(pravidlo.nazov, zoznam);
-      nalezov++;
+      pridaj(pravidlo.nazov, `${relativna}:${riadok}  ${zhoda.slice(0, 70)}`);
     }
   }
+
+  if (/\.tsx?$/.test(cesta)) skontrolujUvodzovky(cesta, relativna, obsah);
 }
 
 if (nalezov === 0) {
