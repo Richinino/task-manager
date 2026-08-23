@@ -5,7 +5,7 @@ import { CheckCheck, Sun, Sunrise, Trash2, type LucideIcon } from "lucide-react"
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { TaskItem } from "@/components/task/task-item";
-import { runTriage } from "@/components/views/inbox/triage-row";
+import { runTriage } from "@/components/views/inbox/triage-actions";
 import { setWaiting } from "@/server/actions/tasks";
 import type { TaskWithRelations } from "@/server/queries/tasks";
 

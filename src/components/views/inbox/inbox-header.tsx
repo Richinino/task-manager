@@ -1,6 +1,4 @@
-import { Inbox } from "lucide-react";
 
-import { Badge } from "@/components/ui/badge";
 
 /**
  * Hlavička inboxu. Nesie jedinú metriku, na ktorej tu záleží — koľko vecí
@@ -27,26 +25,22 @@ export function InboxHeader({ count }: InboxHeaderProps) {
   const empty = count === 0;
 
   return (
-    <header className="pb-4">
-      <div className="flex min-w-0 items-center gap-2">
-        <Inbox aria-hidden="true" className="size-[18px] shrink-0 text-fg-subtle" />
-        <h1 className="min-w-0 truncate text-lg font-semibold tracking-tight text-fg">
-          Inbox
-        </h1>
-        {empty ? null : (
-          <Badge aria-hidden="true" tone="neutral" className="shrink-0">
-            {count}
-          </Badge>
-        )}
-      </div>
+    /*
+      V návrhu je hlavička 48 px pásik so spodnou linkou: názov, počet
+      a napravo tichá pripomienka pravidla. Dlhšia veta ostáva len pre
+      prázdny inbox — vtedy je to jediné, čo na obrazovke je.
+    */
+    <header className="flex h-12 items-center gap-3 border-b border-border px-4 sm:px-5">
+      <h1 className="shrink-0 text-row font-semibold tracking-tight text-fg">Inbox</h1>
 
-      <p className="mt-1 text-sm text-fg-muted">
-        <span aria-live="polite" className="font-medium text-fg">
-          {empty ? "Inbox je na nule." : `${countLabel(count)}.`}
-        </span>{" "}
+      <p aria-live="polite" className="min-w-0 truncate font-mono text-meta text-fg-muted">
+        {empty ? "na nule" : `${countLabel(count)}`}
+      </p>
+
+      <p className="ml-auto hidden shrink-0 font-mono text-mini text-fg-subtle lg:block">
         {empty
           ? "Nič nečaká na rozhodnutie — presne tak to má vyzerať."
-          : "Jedna vec naraz — rozhodni a choď ďalej. Cieľ je nula."}
+          : "1 vec naraz — rozhodni a choď ďalej"}
       </p>
     </header>
   );
