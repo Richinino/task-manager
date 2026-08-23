@@ -309,6 +309,45 @@ describe("zonedInstant", () => {
     expect(zonedInstant("2026-08-22", "09:30", "Nikde/Nikde")).toBeNull();
   });
 
+  /*
+    Vlastnosť, ktorú musí spĺňať KAŽDÉ pásmo: keď sa výsledok naformátuje
+    späť v tom istom pásme, musí vyjsť pôvodný deň a hodina.
+
+    Zoznam nie je náhodný. Sú v ňom pásma s polhodinovým aj štvrťhodinovým
+    posunom, obe krajné hodnoty (+14 a −12) a Lord Howe, ktorý posúva letný
+    čas len o pol hodiny — teda presne tie prípady, na ktorých sa výpočet
+    posunu po celých hodinách rozpadne.
+  */
+  it.each([
+    ["Asia/Kolkata", "2026-08-22", "09:30"],
+    ["Asia/Kathmandu", "2026-08-22", "09:30"],
+    ["Pacific/Chatham", "2026-08-22", "09:30"],
+    ["Australia/Lord_Howe", "2026-08-22", "09:30"],
+    ["Australia/Lord_Howe", "2026-01-22", "09:30"],
+    ["America/St_Johns", "2026-08-22", "09:30"],
+    ["Pacific/Kiritimati", "2026-08-22", "09:30"],
+    ["Etc/GMT+12", "2026-08-22", "09:30"],
+    ["Europe/Bratislava", "2026-03-29", "03:30"],
+    ["Europe/Bratislava", "2026-10-25", "01:30"],
+    ["America/Sao_Paulo", "2026-01-15", "09:30"],
+  ])("%s: %s %s sa naformátuje späť na to isté", (tz, den, cas) => {
+    const okamih = zonedInstant(den, cas, tz);
+    expect(okamih).not.toBeNull();
+
+    const spat = new Intl.DateTimeFormat("en-CA", {
+      timeZone: tz,
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+      hourCycle: "h23",
+    }).format(okamih as Date);
+
+    expect(spat).toContain(den);
+    expect(spat).toContain(cas);
+  });
+
   it("polnoc a posledná minúta dňa", () => {
     expect(iso(zonedInstant("2026-08-22", "00:00", BA))).toBe("2026-08-21T22:00:00.000Z");
     expect(iso(zonedInstant("2026-08-22", "23:59", BA))).toBe("2026-08-22T21:59:00.000Z");
