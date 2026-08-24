@@ -358,3 +358,105 @@ function replyTo(event, message) {
     // Volajúci si odpoveď nevypýtal.
   }
 }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   NOTIFIKÁCIE
+
+   Web Push je jediná cesta, ako appka na telefóne upozorní, keď je zavretá.
+   Naplánovať notifikáciu priamo v zariadení by vedelo Notification Triggers
+   API, ale to Google zastavil — ostáva odoslanie zo servera.
+
+   Prehliadač service worker zobudí, odovzdá mu obsah a hneď zase uspí. Preto
+   sa tu nič nedopytuje a nič neukladá: všetko, čo notifikácia potrebuje,
+   príde v správe.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/**
+ * Čo zobraziť, keď sa obsah nedá prečítať.
+ *
+ * Push bez čitateľného obsahu je zriedkavý (skrátená správa, iná verzia
+ * servera), ale prehliadač **vyžaduje**, aby sa po `push` notifikácia
+ * objavila — inak používateľovi ohlási, že appka posiela tiché správy,
+ * a odoberie jej povolenie. Radšej teda všeobecná notifikácia než žiadna.
+ */
+const PUSH_FALLBACK = {
+  title: "Pripomienka",
+  body: "Otvor Task manažér — niečo ti začína.",
+  url: "/dnes",
+  tag: "pripomienka",
+};
+
+function readPush(event) {
+  if (!event.data) return PUSH_FALLBACK;
+  try {
+    const data = event.data.json();
+    if (!data || typeof data.title !== "string" || data.title === "") return PUSH_FALLBACK;
+    return {
+      title: data.title,
+      body: typeof data.body === "string" ? data.body : "",
+      url: typeof data.url === "string" ? data.url : PUSH_FALLBACK.url,
+      tag: typeof data.tag === "string" ? data.tag : PUSH_FALLBACK.tag,
+    };
+  } catch {
+    return PUSH_FALLBACK;
+  }
+}
+
+self.addEventListener("push", (event) => {
+  const data = readPush(event);
+
+  event.waitUntil(
+    self.registration.showNotification(data.title, {
+      body: data.body,
+      // Rovnaká značka nahradí predošlú notifikáciu tej istej úlohy.
+      tag: data.tag,
+      renotify: true,
+      icon: "/icon",
+      badge: "/icon",
+      // Cestu si prevezme `notificationclick` — v udalosti kliknutia už
+      // pôvodná správa nie je.
+      data: { url: data.url },
+      // Bez interakcie zmizne sama; pripomienka nemá blokovať lištu.
+      requireInteraction: false,
+    }),
+  );
+});
+
+/**
+ * Ťuknutie na notifikáciu.
+ *
+ * Keď je appka už otvorená, prepneme sa na ňu namiesto otvárania druhého
+ * okna — inak by po týždni mal človek desať kariet toho istého.
+ */
+self.addEventListener("notificationclick", (event) => {
+  event.notification.close();
+
+  const url = (event.notification.data && event.notification.data.url) || "/dnes";
+
+  event.waitUntil(
+    (async () => {
+      const target = new URL(url, self.location.origin);
+
+      const clients = await self.clients.matchAll({
+        type: "window",
+        includeUncontrolled: true,
+      });
+
+      for (const client of clients) {
+        // Rovnaký pôvod stačí: appka je jednostránková, cestu si dorieši sama.
+        if (new URL(client.url).origin !== target.origin) continue;
+        await client.focus();
+        if ("navigate" in client) {
+          try {
+            await client.navigate(target.href);
+          } catch {
+            // Niektoré prehliadače `navigate` nedovolia — okno je aspoň vpredu.
+          }
+        }
+        return;
+      }
+
+      await self.clients.openWindow(target.href);
+    })(),
+  );
+});
