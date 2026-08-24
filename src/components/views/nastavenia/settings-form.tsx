@@ -110,9 +110,17 @@ function Field({
 
 export interface SettingsFormProps {
   settings: Settings;
+  /**
+   * Prihlásenie prehliadača na notifikácie.
+   *
+   * Prichádza zvonku, lebo potrebuje verejný kľúč VAPID zo servera — a keď
+   * kľúče nie sú nastavené, príde `null` a celá sekcia sa nekreslí. Ponúkať
+   * tlačidlo, ktoré vždy zlyhá, je horšie než ho nemať.
+   */
+  pushSetup?: React.ReactNode;
 }
 
-export function SettingsForm({ settings }: SettingsFormProps) {
+export function SettingsForm({ settings, pushSetup }: SettingsFormProps) {
   const [draft, setDraft] = useState<Settings>(settings);
   const [error, setError] = useState<string | null>(null);
   /*
@@ -218,7 +226,13 @@ export function SettingsForm({ settings }: SettingsFormProps) {
   }
 
   function numberField(
-    key: "wipLimit" | "postponeWarnAt" | "postponeBlockAt" | "incubatorAfterDays" | "fadeAfterDays",
+    key:
+      | "wipLimit"
+      | "postponeWarnAt"
+      | "postponeBlockAt"
+      | "incubatorAfterDays"
+      | "fadeAfterDays"
+      | "reminderLeadMin",
     min: number,
     max: number,
   ) {
@@ -326,6 +340,23 @@ export function SettingsForm({ settings }: SettingsFormProps) {
           </Select>
         </Field>
       </Section>
+
+      {pushSetup ? (
+        <Section
+          title="Pripomienky"
+          description="Notifikácia príde pred úlohou, ktorá má hodinu. Bez hodiny sa nepripomína nič — polnoc nie je čas na vyrušenie."
+        >
+          <Field
+            id={fieldId("reminderLeadMin")}
+            label="Predstih"
+            hint="O koľko minút skôr má notifikácia prísť. Nula znamená presne vtedy, čo je pri porade neskoro."
+          >
+            {numberField("reminderLeadMin", 0, 120)}
+          </Field>
+
+          {pushSetup}
+        </Section>
+      ) : null}
 
       <Section
         title="Odkladanie"

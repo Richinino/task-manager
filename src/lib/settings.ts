@@ -89,6 +89,21 @@ export const settingsSchema = z.object({
    */
   ritualAutoOpen: z.boolean().default(true),
 
+  /**
+   * O koľko minút skôr má prísť pripomienka.
+   *
+   * Nula znamená „presne vtedy", čo je pri porade neskoro — kým človek
+   * telefón vytiahne, už začala. Desať minút je dosť na to, aby sa dalo
+   * dôjsť, a málo na to, aby sa na to medzitým zabudlo.
+   *
+   * Strop je dve hodiny: čo treba pripomenúť skôr, nie je pripomienka, ale
+   * úloha na iný deň.
+   *
+   * Nastavenia sú JSONB so zod predvolenými hodnotami, takže pridanie poľa
+   * NEPOTREBUJE migráciu — riadok bez neho dostane predvolenú hodnotu.
+   */
+  reminderLeadMin: z.number().int().min(0).max(120).default(10),
+
   theme: z.enum(["system", "light", "dark"]).default("system"),
 });
 

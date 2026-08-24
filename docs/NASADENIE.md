@@ -235,3 +235,104 @@ a nikdy ho nevyhodia na obrazovku.
 súhlase. Keby si niekedy potreboval vynútiť nový, odober appke prístup
 na [myaccount.google.com/permissions](https://myaccount.google.com/permissions)
 a prihlás sa znova.
+
+---
+
+## 7. Notifikácie (pripomienky)
+
+Kód je nasadený, ale kým nespravíš tieto štyri kroky, appka sa na
+notifikácie ani neopýta — a to je zámer. Bez kľúčov VAPID sa sekcia
+„Pripomienky" v nastaveniach vôbec nevykreslí; ponúkať tlačidlo, ktoré vždy
+zlyhá, je horšie než ho nemať.
+
+### Čo to vlastne robí
+
+Notifikácia sa **nedá naplánovať priamo v telefóne** — API, ktoré by to
+vedelo (Notification Triggers), Google zastavil. Ostáva Web Push, teda
+odoslanie zo servera. Server sa musí niekde budiť: robí to cron v GitHub
+Actions každých 15 minút (Vercel Hobby dovolí jeden beh denne, čo je na
+pripomienky nepoužiteľné).
+
+**Odtiaľ pochádza presnosť ±15 minút.** Plánovač berie len pripomienky,
+ktoré už dozreli — môžu teda meškať do štvrťhodiny, ale nikdy neprídu skôr.
+Kto chce mať náskok, nastaví si v appke predstih.
+
+### 1. Migrácia
+
+Tabuľky `push_subscriptions` a `reminders` pridáva migrácia
+`0002_pripomienky`. Je **čisto pridávacia**, takže môže dobehnúť
+samostatne, aj keď je stará verzia appky ešte nasadená.
+
+```powershell
+$env:DATABASE_URL="<connection-string>"; npm run db:migrate
+```
+
+### 2. Kľúče VAPID
+
+VAPID je podpis, ktorým sa appka predstaví push službe prehliadača. Kľúče si
+vygeneruješ raz a **už nikdy ich nemeň** — po zmene prestanú platiť všetky
+existujúce prihlásenia a každý sa musí prihlásiť znova.
+
+```powershell
+npx web-push generate-vapid-keys
+```
+
+Vypíše dvojicu `Public Key` / `Private Key`.
+
+### 3. Premenné na Verceli
+
+**Settings → Environment Variables**, všetky pre **Production**:
+
+| Premenná | Hodnota |
+|---|---|
+| `VAPID_PUBLIC_KEY` | `Public Key` z predošlého kroku |
+| `VAPID_PRIVATE_KEY` | `Private Key` z predošlého kroku |
+| `VAPID_SUBJECT` | *(nepovinné)* kontakt, napr. `mailto:richard.pastyr@gmail.com`; bez neho sa použije `AUTH_URL` |
+| `CRON_SECRET` | dlhé náhodné tajomstvo, napr. výstup `npx auth secret` |
+
+`CRON_SECRET` je jediné, čo cestu `/api/pripomienky` stráži — nikto pri nej
+nie je prihlásený. **Kým nie je nastavené, cesta vracia 401 každému**, aj
+crony. Je to fail-closed zámerne: otvorená cesta by znamenala, že ktokoľvek
+vie appke povedať, nech rozpošle notifikácie.
+
+Nezabudni na **Redeploy** — premenné sa načítajú až pri novom nasadení
+(viď sekciu 3).
+
+### 4. Tajomstvá na GitHube
+
+**Settings → Secrets and variables → Actions → New repository secret:**
+
+| Secret | Hodnota |
+|---|---|
+| `PRIPOMIENKY_URL` | `https://TVOJA-ADRESA.vercel.app/api/pripomienky` |
+| `CRON_SECRET` | **to isté** tajomstvo, aké je na Verceli |
+
+Kým nie sú nastavené, beh sa preskočí a nič nespadne.
+
+### Overenie
+
+1. **Settings → Actions → Pripomienky → Run workflow.** Vo výpise má byť
+   `kód: 200` a súhrn s počtami. Kód `503` znamená, že chýbajú kľúče VAPID;
+   `401`, že sa tajomstvá na GitHube a Verceli nezhodujú.
+2. V appke **Nastavenia → Pripomienky → Zapnúť pripomienky v tomto
+   prehliadači.** Prehliadač sa spýta na povolenie.
+3. Vytvor úlohu s **hodinou** (nielen dňom) na čas o pár minút dozadu
+   a spusti workflow ručne. Notifikácia má prísť.
+
+**Prihlásenie platí pre jeden prehliadač, nie pre človeka.** Telefón
+a notebook sa prihlasujú zvlášť.
+
+> **Povolenie sa dá odmietnuť len raz.** Keď ho v prehliadači zakážeš, appka
+> sa druhýkrát opýtať NEMÔŽE — musíš ho vrátiť v nastaveniach stránky
+> (ikona vedľa adresy). Appka to v tom stave aj napíše.
+
+### Keď notifikácie nechodia
+
+| Príznak | Príčina |
+|---|---|
+| Sekcia „Pripomienky" v nastaveniach nie je | chýbajú `VAPID_*` na Verceli, alebo nebol Redeploy |
+| Workflow hlási `503` | to isté |
+| Workflow hlási `401` | `CRON_SECRET` na GitHube ≠ na Verceli |
+| `preverenych: 0` | žiadna úloha nemá **hodinu** — bez nej sa nepripomína nič |
+| `odoslanych: 0`, ale `preverenych` > 0 | pripomienka už raz odišla (`reminders` si to pamätá), alebo je staršia než 6 hodín |
+| `zmazanychPrihlaseni` > 0 | prihlásenie zaniklo (odinštalovaná appka, vymazané dáta stránky) — treba sa prihlásiť znova |
