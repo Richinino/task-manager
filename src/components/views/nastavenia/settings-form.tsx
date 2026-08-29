@@ -6,7 +6,6 @@ import { LoaderCircle, TriangleAlert } from "lucide-react";
 import type { Settings } from "@/lib/settings";
 import { rulesToText, textToRules } from "@/lib/auto-tag";
 import { placesToText } from "@/lib/places";
-import { Card, CardHeader } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -17,6 +16,7 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { savePlaces, updateSettings } from "@/server/actions/settings";
+import { sectionId } from "@/components/views/nastavenia/sections";
 
 /* ═══════════════════════════════════════════════════════════════════════════
    NASTAVENIA
@@ -65,6 +65,14 @@ const HOURS = Array.from({ length: 25 }, (_, hour) => hour);
 
 /* ── stavebné kamene ──────────────────────────────────────────────────────── */
 
+/**
+ * Sekcia nastavení.
+ *
+ * Návrh z nej robí pruh so štítkom na podfarbenom podklade a pod ním riadky
+ * oddelené linkami — nie kartičku. Rozdiel je praktický: kartičky sa na
+ * dlhom formulári zlievajú do jedného sivého poľa, kým podfarbený štítok
+ * funguje ako záložka, ktorú oko nájde pri rolovaní.
+ */
 function Section({
   title,
   description,
@@ -75,11 +83,17 @@ function Section({
   children: React.ReactNode;
 }) {
   return (
-    <section>
-      <Card className="flex flex-col gap-3">
-        <CardHeader title={title} description={description} />
-        <div className="flex flex-col gap-4">{children}</div>
-      </Card>
+    <section id={sectionId(title)} aria-label={title} className="scroll-mt-12">
+      <h2 className="label border-b border-border bg-surface-2 px-5 py-[9px] text-fg-muted">
+        {title}
+      </h2>
+
+      <div className="flex flex-col gap-2.5 border-b border-border px-5 py-4">
+        <p className="text-pretty text-body leading-normal text-fg-muted">
+          {description}
+        </p>
+        {children}
+      </div>
     </section>
   );
 }
@@ -96,8 +110,8 @@ function Field({
   children: React.ReactNode;
 }) {
   return (
-    <div className="flex flex-col gap-1.5">
-      <label htmlFor={id} className="text-body font-medium text-fg">
+    <div className="flex flex-col gap-1.5 border-t border-border pt-3 first:border-t-0 first:pt-0">
+      <label htmlFor={id} className="text-sm font-semibold text-fg">
         {label}
       </label>
       {children}
