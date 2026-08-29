@@ -17,7 +17,14 @@ import { cn } from "./utils";
  * to, sa dozvie tu — nie o týždeň na obrazovke.
  */
 describe("cn — veľkosť písma vedľa farby", () => {
-  const VELKOSTI = ["text-micro", "text-mini", "text-meta", "text-body", "text-row"] as const;
+  const VELKOSTI = [
+    "text-micro",
+    "text-mini",
+    "text-meta",
+    "text-body",
+    "text-row",
+    "text-hero",
+  ] as const;
 
   it.each(VELKOSTI)("%s prežije vedľa text-danger", (velkost) => {
     const out = cn(velkost, "text-danger");

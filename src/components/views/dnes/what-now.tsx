@@ -203,7 +203,8 @@ export function WhatNow({ tasks, todayIso, contexts, places }: WhatNowProps) {
         </Button>
       </DialogTrigger>
 
-      <DialogContent className="max-w-lg">
+      {/* Návrh dáva panelu 600 px — na užšom sa 24px názov úlohy láme na tri riadky. */}
+      <DialogContent className="max-w-[600px]">
         <DialogHeader>
           <DialogTitle>Čo teraz?</DialogTitle>
           <DialogDescription>
@@ -213,7 +214,7 @@ export function WhatNow({ tasks, todayIso, contexts, places }: WhatNowProps) {
 
         <div className="flex flex-col gap-4">
           <fieldset className="flex flex-col gap-2">
-            <legend className="pb-1.5 text-body font-medium text-fg">
+            <legend className="label pb-1.5 text-fg-subtle">
               Koľko máš sily?
             </legend>
             <div className="flex flex-wrap gap-2">
@@ -230,11 +231,11 @@ export function WhatNow({ tasks, todayIso, contexts, places }: WhatNowProps) {
                       setSkipped(0);
                     }}
                     className={cn(
-                      "inline-flex min-h-11 items-center gap-2 rounded border px-3 text-sm",
-                      "transition-colors duration-100 ease-out sm:min-h-9",
+                      "inline-flex min-h-11 items-center gap-2 rounded-full border px-3 text-sm",
+                      "transition-colors duration-100 ease-out sm:min-h-7",
                       active
-                        ? "border-accent bg-accent-soft font-medium text-accent"
-                        : "border-border bg-surface text-fg hover:border-border-strong hover:bg-surface-2",
+                        ? "border-transparent bg-accent-soft font-semibold text-accent"
+                        : "border-border bg-surface text-fg-muted hover:border-border-strong hover:bg-surface-2",
                     )}
                   >
                     <Icon aria-hidden="true" size={16} className="shrink-0" />
@@ -247,7 +248,7 @@ export function WhatNow({ tasks, todayIso, contexts, places }: WhatNowProps) {
           </fieldset>
 
           <fieldset className="flex flex-col gap-2">
-            <legend className="pb-1.5 text-body font-medium text-fg">
+            <legend className="label pb-1.5 text-fg-subtle">
               Koľko máš času?
             </legend>
             <div className="flex flex-wrap gap-2">
@@ -284,7 +285,7 @@ export function WhatNow({ tasks, todayIso, contexts, places }: WhatNowProps) {
           */}
           {(contexts ?? []).length > 0 ? (
             <fieldset className="flex flex-col gap-2">
-              <legend className="pb-1.5 text-body font-medium text-fg">
+              <legend className="label pb-1.5 text-fg-subtle">
                 Kde si?
               </legend>
               <div className="flex flex-wrap gap-2">
@@ -367,7 +368,12 @@ export function WhatNow({ tasks, todayIso, contexts, places }: WhatNowProps) {
           {answered ? (
             <div
               aria-live="polite"
-              className="rounded border border-border bg-surface-2 p-3"
+              /*
+                Odpoveď nesie accentový pruh zľava, nie rám dokola — návrh
+                používa ten istý „vybrané" signál ako bočný panel a paleta.
+                Podfarbená kartička by tu súperila s pilulkami nad ňou.
+              */
+              className="-mx-4 px-4 py-3.5 shadow-[inset_3px_0_0_var(--accent)]"
             >
               {picked === null ? (
                 <p className="text-body leading-relaxed text-fg-muted">
@@ -376,7 +382,8 @@ export function WhatNow({ tasks, todayIso, contexts, places }: WhatNowProps) {
                 </p>
               ) : (
                 <div className="flex flex-col gap-2.5">
-                  <p className="text-base font-medium leading-snug text-fg">
+                  {/* 24 px je z návrhu — je to jediná vec, o ktorej sa práve rozhoduješ. */}
+                  <p className="text-2xl font-semibold leading-tight tracking-tight text-pretty text-fg">
                     {picked.title}
                   </p>
 

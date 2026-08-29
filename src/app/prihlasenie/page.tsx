@@ -46,8 +46,53 @@ export default async function PrihlaseniePage({
   const anyMethod = googleEnabled || devBypassEnabled;
 
   return (
-    <main className="flex min-h-dvh items-center justify-center px-4 py-12">
-      <div className="w-full max-w-[22rem]">
+    /*
+      Návrh delí prihlásenie na dva stĺpce: vľavo 420 px s tým, čo tá appka
+      vlastne sľubuje, vpravo samotné prihlásenie. Je to jediná obrazovka,
+      ktorú človek uvidí skôr, než čokoľvek uvidí — a jediné miesto, kde sa
+      dá povedať, prečo to má otvárať.
+
+      Pod `md` ľavý stĺpec zmizne. Na telefóne sa prihlasuje ten, kto už vie,
+      čo appka robí; celá obrazovka textu pred tlačidlom by bola prekážka.
+    */
+    <main className="flex min-h-dvh">
+      <aside className="hidden w-[420px] shrink-0 flex-col border-r border-border bg-surface px-9 py-10 md:flex">
+        <p className="label text-fg-muted">Task manažér</p>
+
+        <div className="flex-1" />
+
+        <div className="flex flex-col gap-3.5">
+          <h2 className="text-pretty text-hero font-semibold leading-tight tracking-tight text-fg">
+            Zoznam, ktorý nedáva pocit, že si pozadu.
+          </h2>
+
+          <ul className="flex flex-col gap-2.5">
+            {[
+              "Vynechaný deň je prázdne políčko, nie červená značka.",
+              "Nič sa nepripomína dvakrát.",
+              "Funguje aj bez signálu — zmeny sa odošlú samy.",
+            ].map((veta) => (
+              <li key={veta} className="flex items-start gap-2.5">
+                <span aria-hidden="true" className="pt-0.5 font-mono text-meta text-accent">
+                  —
+                </span>
+                <span className="text-pretty text-sm leading-relaxed text-fg-muted">
+                  {veta}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </div>
+
+        <div className="flex-1" />
+
+        <p className="font-mono text-mini text-fg-subtle">
+          Prihlásenie je len na to, aby si sa dostal k svojim údajom.
+        </p>
+      </aside>
+
+      <div className="flex min-w-0 flex-1 items-center justify-center px-4 py-12 md:px-10">
+      <div className="w-full max-w-[400px]">
         <div className="mb-6">
           <h1 className="text-lg font-semibold tracking-tight text-fg">Task manažér</h1>
           <p className="mt-1 text-body leading-relaxed text-fg-muted">
@@ -135,6 +180,7 @@ export default async function PrihlaseniePage({
         <p className="mt-4 text-center text-meta text-fg-subtle">
           Prístup majú len povolené účty.
         </p>
+      </div>
       </div>
     </main>
   );

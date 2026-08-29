@@ -510,7 +510,7 @@ export function QuickCapture({
           na to, aby tlačidlo „Uložiť" ostalo nad ňou. Od `sm` je okno tam,
           kde bolo.
         */
-        className="mt-3 max-w-2xl overflow-hidden p-0 sm:mt-[12vh]"
+        className="mt-3 max-w-[660px] overflow-hidden p-0 sm:mt-[132px]"
       >
         <DialogTitle className="sr-only">
           {idea ? "Rýchle zachytenie nápadu" : "Rýchle zachytenie úlohy"}
@@ -525,6 +525,23 @@ export function QuickCapture({
                nápad. Enter uloží, Ctrl a Enter uloží a nechá okno otvorené, Escape zruší.
                Uložiť sa dá aj tlačidlom Uložiť pod poľom.`}
         </DialogDescription>
+
+        {/*
+          Hlavička panela je z návrhu. Nie je to ozdoba: bez nej sa okno na
+          tmavom závoji nedá odlíšiť od palety príkazov, ktorá vyzerá skoro
+          rovnako a otvára sa vedľajšou klávesou.
+        */}
+        <div
+          aria-hidden="true"
+          className="flex items-center gap-2.5 border-b border-border px-4 py-[11px]"
+        >
+          <span className="label text-fg-muted">
+            {idea ? "Zachytenie nápadu" : "Zachytenie"}
+          </span>
+          <span className="ml-auto hidden font-mono text-mini text-fg-subtle sm:block">
+            n odkiaľkoľvek · esc zavrieť
+          </span>
+        </div>
 
         <form
           onSubmit={(event) => {

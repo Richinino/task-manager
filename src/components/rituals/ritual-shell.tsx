@@ -11,7 +11,6 @@ import {
   DialogContent,
   DialogDescription,
   DialogFooter,
-  DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
 import { completeRitual, saveRitualStep } from "@/server/actions/rituals";
@@ -163,55 +162,123 @@ export function RitualShell({
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="max-w-xl">
-        <DialogHeader>
-          <DialogTitle className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
-            <span>{meta.title}</span>
-            <span className="text-body font-normal text-fg-subtle">
-              {meta.minutes} min
-            </span>
-          </DialogTitle>
-          <DialogDescription>{meta.purpose}</DialogDescription>
-        </DialogHeader>
-
-        {/* Postup — tenký pruh a číslo. Rituál má byť vidieť, že má koniec. */}
-        <div className="flex items-center gap-3">
-          <div
+      {/*
+        Návrh z rituálu robí plochu cez celú šírku so zoznamom krokov vľavo —
+        nie úzky dialóg s pásikom postupu. Ostáva to však dialóg: rituál si
+        podľa vlastného sľubu nič nevynúti a `esc` ho musí zavrieť odkiaľkoľvek.
+        Široký panel s vlastným stĺpcom krokov dá to isté rozloženie bez toho,
+        aby sa z neho stala cesta, z ktorej niet cesty späť.
+      */}
+      <DialogContent className="max-w-[1000px] overflow-hidden p-0">
+        <div className="flex h-12 shrink-0 items-center gap-3 border-b border-border px-5">
+          <DialogTitle className="label shrink-0 text-accent">{meta.title}</DialogTitle>
+          <DialogDescription className="min-w-0 truncate text-body text-fg-muted">
+            {meta.purpose}
+          </DialogDescription>
+          <span
             aria-hidden="true"
-            className="h-1 flex-1 overflow-hidden rounded-full bg-surface-2"
+            className="ml-auto hidden shrink-0 font-mono text-mini text-fg-subtle md:block"
           >
-            <div
-              style={{ width: `${((index + 1) / steps.length) * 100}%` }}
-              className="h-full rounded-full bg-accent transition-[width] duration-200 ease-out"
-            />
-          </div>
-          <span className="shrink-0 text-meta font-mono tabular-nums text-fg-subtle">
-            {index + 1}/{steps.length}
+            esc preskočiť · rituál si nič nevynúti
           </span>
         </div>
 
-        {step ? (
-          <div className="flex min-h-0 flex-col gap-3">
-            <div className="flex flex-col gap-1">
-              <h3 className="text-sm font-medium text-fg">{step.title}</h3>
-              {step.hint ? (
-                <p className="text-body leading-relaxed text-fg-muted">{step.hint}</p>
-              ) : null}
+        <div className="flex min-h-0 flex-1 flex-col md:flex-row">
+          {/* Zoznam krokov — v návrhu 280 px. Rituál má byť vidieť, že má koniec. */}
+          <nav
+            aria-label="Kroky rituálu"
+            className="hidden w-[280px] shrink-0 flex-col overflow-y-auto border-r border-border md:flex"
+          >
+            <p className="label shrink-0 px-5 pb-2.5 pt-4 text-fg-subtle">Kroky</p>
+
+            <ol className="shrink-0">
+              {steps.map((item, poradie) => {
+                const hotovy = poradie < index;
+                const teraz = poradie === index;
+                return (
+                  <li
+                    key={item.title}
+                    aria-current={teraz ? "step" : undefined}
+                    className={cn(
+                      "flex items-start gap-2.5 px-5 py-2.5",
+                      teraz && "bg-accent-soft shadow-[inset_3px_0_0_var(--accent)]",
+                    )}
+                  >
+                    <span
+                      aria-hidden="true"
+                      className={cn(
+                        "mt-px flex size-[18px] shrink-0 items-center justify-center rounded-full font-mono text-micro font-semibold tabular-nums",
+                        teraz
+                          ? "bg-accent text-accent-fg"
+                          : hotovy
+                            ? "bg-success/15 text-success"
+                            : "bg-surface-2 text-fg-subtle",
+                      )}
+                    >
+                      {hotovy ? "✓" : poradie + 1}
+                    </span>
+                    <span
+                      className={cn(
+                        "min-w-0 flex-1 text-body",
+                        teraz ? "font-medium text-accent" : "text-fg-muted",
+                      )}
+                    >
+                      {item.title}
+                    </span>
+                  </li>
+                );
+              })}
+            </ol>
+
+            <div className="flex-1" />
+
+            <p className="shrink-0 border-t border-border px-5 py-3.5 font-mono text-mini text-fg-subtle">
+              {meta.minutes} min · krok {index + 1} z {steps.length}
+            </p>
+          </nav>
+
+          <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+            {/*
+              Pásik postupu ostáva len na telefóne — tam sa stĺpec krokov
+              nekreslí a bez neho by nebolo vidieť, koľko rituálu ešte je.
+            */}
+            <div className="flex shrink-0 items-center gap-3 border-b border-border px-5 py-2.5 md:hidden">
+              <div
+                aria-hidden="true"
+                className="h-1 flex-1 overflow-hidden rounded-full bg-surface-2"
+              >
+                <div
+                  style={{ width: `${((index + 1) / steps.length) * 100}%` }}
+                  className="h-full rounded-full bg-accent transition-[width] duration-200 ease-out"
+                />
+              </div>
+              <span className="shrink-0 font-mono text-meta tabular-nums text-fg-subtle">
+                {index + 1}/{steps.length}
+              </span>
             </div>
 
-            <div className="max-h-[45dvh] min-h-0 overflow-y-auto">
-              {step.render(context)}
-            </div>
+            {step ? (
+              <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto px-5 py-4">
+                <div className="flex flex-col gap-1">
+                  <h3 className="text-sm font-semibold text-fg">{step.title}</h3>
+                  {step.hint ? (
+                    <p className="text-body leading-relaxed text-fg-muted">{step.hint}</p>
+                  ) : null}
+                </div>
+
+                <div className="min-h-0">{step.render(context)}</div>
+              </div>
+            ) : null}
           </div>
-        ) : null}
+        </div>
 
-        <div aria-live="polite" className="min-h-5">
+        <div aria-live="polite" className="min-h-5 px-5">
           {error ? (
             <p className="text-body leading-relaxed text-danger">{error}</p>
           ) : null}
         </div>
 
-        <DialogFooter className="items-center">
+        <DialogFooter className="items-center border-t border-border px-5 pb-4 pt-3">
           {index > 0 ? (
             <Button type="button" variant="ghost" onClick={goBack} disabled={isPending}>
               Späť

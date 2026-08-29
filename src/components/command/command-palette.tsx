@@ -153,10 +153,17 @@ const ITEM_CLASS = cn(
 );
 
 const HEADING_CLASS = cn(
-  "[&_[cmdk-group-heading]]:px-2 [&_[cmdk-group-heading]]:pb-1 [&_[cmdk-group-heading]]:pt-2",
-  "[&_[cmdk-group-heading]]:text-micro [&_[cmdk-group-heading]]:font-semibold",
-  "[&_[cmdk-group-heading]]:uppercase [&_[cmdk-group-heading]]:tracking-wider",
-  "[&_[cmdk-group-heading]]:text-fg-subtle",
+  /*
+    Návrh dáva štítku skupiny vlastný podfarbený pruh cez celú šírku, nie
+    drobný text nad položkami. V dlhom zozname je to jediné, čo oddelí
+    „Prejsť na" od „Spraviť" bez toho, aby sa medzi ne vkladala medzera.
+  */
+  "[&_[cmdk-group-heading]]:-mx-1.5 [&_[cmdk-group-heading]]:bg-surface-2",
+  "[&_[cmdk-group-heading]]:border-y [&_[cmdk-group-heading]]:border-border",
+  "[&_[cmdk-group-heading]]:px-[18px] [&_[cmdk-group-heading]]:py-[9px]",
+  "[&_[cmdk-group-heading]]:font-mono [&_[cmdk-group-heading]]:text-micro",
+  "[&_[cmdk-group-heading]]:font-medium [&_[cmdk-group-heading]]:uppercase",
+  "[&_[cmdk-group-heading]]:tracking-[0.14em] [&_[cmdk-group-heading]]:text-fg-muted",
 );
 
 /* ═══════════════════════════════════════════════════════════════════════════
@@ -219,7 +226,7 @@ export function CommandPalette({
       */}
       <DialogContent
         showClose={false}
-        className="mt-3 max-w-xl overflow-hidden p-0 sm:mt-[12vh]"
+        className="mt-3 max-w-[640px] overflow-hidden p-0 sm:mt-[104px]"
       >
         <DialogTitle className="sr-only">Paleta príkazov</DialogTitle>
         <DialogDescription className="sr-only">

@@ -4,6 +4,7 @@ import { CloudOff, RefreshCw } from "lucide-react";
 
 import { useOutbox } from "@/components/pwa/outbox-provider";
 import { cn } from "@/lib/utils";
+import { countSk } from "@/lib/sk";
 
 /**
  * Tichý odznak o stave pripojenia.
@@ -17,16 +18,6 @@ import { cn } from "@/lib/utils";
  * oblasti, ale novo vloženú oblasť často preskočia.
  */
 
-/**
- * Slovenské množné číslo: 1 úloha · 2–4 úlohy · 5+ úloh.
- * Bez toho by tam stálo „2 úloh", čo z odznaku spraví amatérčinu.
- */
-function tasksSk(count: number): string {
-  if (count === 1) return "1 úloha";
-  if (count >= 2 && count <= 4) return `${count} úlohy`;
-  return `${count} úloh`;
-}
-
 export function OfflineIndicator() {
   const outbox = useOutbox();
 
@@ -37,52 +28,59 @@ export function OfflineIndicator() {
   let message: string | null = null;
   if (visible) {
     if (!online && pending > 0) {
-      message = `Bez pripojenia — ${tasksSk(pending)} sa ${
+      message = `Bez pripojenia — ${countSk(pending, "úloha", "úlohy", "úloh")} sa ${
         pending === 1 ? "odošle" : "odošlú"
       } neskôr`;
     } else if (!online) {
       message = "Bez pripojenia — zobrazujú sa naposledy načítané údaje";
     } else {
-      message = `Odosielam — ${tasksSk(pending)} čaká`;
+      message = `Odosielam — ${countSk(pending, "úloha", "úlohy", "úloh")} čaká`;
     }
   }
 
   return (
-    <div
-      role="status"
-      aria-live="polite"
-      aria-atomic="true"
-      className={cn(
-        "pointer-events-none fixed inset-x-0 z-40 flex justify-center",
-        // Vpravo dole sedí na telefóne plávajúce tlačidlo zachytenia — necháme
-        // mu miesto, nech sa odznak nikdy nedostane pod palec.
-        "pl-3 pr-[4.5rem] md:pr-3",
-        /*
-          Nad spodnú lištu. Jej výšku aj s výrezom drží `--bar-inset`.
-          Na desktope lišta nie je, takže stačí odsadenie od spodného okraja.
-        */
-        "[bottom:calc(var(--bar-inset)_+_0.5rem)]",
-        "md:[bottom:calc(env(safe-area-inset-bottom)_+_1rem)]",
-      )}
-    >
+    /*
+      Návrh z toho robí pruh navrchu obrazovky nad hlavičkou, nie bublinu
+      dole. Je to správne: stav pripojenia nie je oznam, ktorý preletí, ale
+      podmienka, v ktorej sa práve pracuje — a keď človek nevie, že je
+      offline, nechápe, prečo sa niečo neuložilo.
+
+      Živá oblasť je v DOM **stále**, aj keď je prázdna. Čítačky spoľahlivo
+      ohlásia zmenu obsahu existujúcej oblasti, ale novo vloženú často
+      preskočia.
+    */
+    <div role="status" aria-live="polite" aria-atomic="true">
       {message !== null ? (
-        <p
+        <div
           className={cn(
-            "animate-in-fast inline-flex max-w-full items-center gap-1.5 rounded",
-            "border border-border-strong bg-surface px-2.5 py-1.5 shadow-md",
-            "text-meta font-medium text-fg-muted",
+            "animate-in-fast flex items-center gap-2.5 border-b border-border px-5 py-[9px]",
+            "shadow-[inset_3px_0_0_var(--warn)]",
+            // Podklad je vlastný odtieň varovania — pruh musí byť vidieť aj
+            // periférne, ale nesmie kričať ako chyba. Nič sa nestratilo.
+            "bg-warn/10",
           )}
         >
           {online ? (
             <RefreshCw
               aria-hidden="true"
-              className="size-3.5 shrink-0 animate-spin text-accent"
+              className="size-3.5 shrink-0 animate-spin text-warn"
             />
           ) : (
             <CloudOff aria-hidden="true" className="size-3.5 shrink-0 text-warn" />
           )}
-          <span className="truncate">{message}</span>
-        </p>
+
+          <span className="shrink-0 font-mono text-mini font-semibold uppercase tracking-[0.1em] text-warn">
+            {online ? "Odosielam" : "Offline"}
+          </span>
+
+          <span className="min-w-0 flex-1 truncate text-body text-fg">{message}</span>
+
+          {pending > 0 ? (
+            <span className="hidden shrink-0 font-mono text-mini tabular-nums text-fg-muted sm:block">
+              {countSk(pending, "zmena vo fronte", "zmeny vo fronte", "zmien vo fronte")}
+            </span>
+          ) : null}
+        </div>
       ) : null}
     </div>
   );
