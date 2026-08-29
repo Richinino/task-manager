@@ -120,15 +120,16 @@ export function MonthGrid({ days }: MonthGridProps) {
   const firstWeek = days.slice(0, 7);
 
   return (
-    <section aria-label="Kalendár mesiaca" className="flex min-w-0 flex-col gap-1">
-      <div aria-hidden="true" className="grid grid-cols-7 gap-1">
+    <section aria-label="Kalendár mesiaca" className="flex min-h-0 min-w-0 flex-1 flex-col">
+      {/* Pásik dní: v návrhu 7px 8px, strojopis 10 px s riedkym prestrkom. */}
+      <div aria-hidden="true" className="grid shrink-0 grid-cols-7 border-b border-border">
         {firstWeek.map((day) => {
           const weekday = parseIsoDate(day.iso).getDay();
           return (
             <div
               key={day.iso}
               title={WEEKDAYS_SK[weekday] ?? ""}
-              className="label truncate px-1 pb-0.5 text-fg-subtle"
+              className="truncate px-2 py-[7px] font-mono text-micro uppercase tracking-[0.14em] text-fg-subtle"
             >
               {WEEKDAYS_SHORT_SK[weekday] ?? ""}
             </div>
@@ -144,7 +145,12 @@ export function MonthGrid({ days }: MonthGridProps) {
         vysvetlivka pod mriežkou hovorí, čo ktorá značka znamená, a ťuknutie
         na deň vypíše jeho úlohy do panela pod mriežkou.
       */}
-      <div className="grid grid-cols-7 gap-1">
+      {/*
+        Šesť riadkov, ktoré si rozdelia zvyšok výšky — mriežka tak vždy končí
+        na spodku obrazovky a nezáleží na tom, či má mesiac 4 alebo 6 týždňov.
+        Na telefóne si riadky určujú výšku samy, inak by bunky boli 40 px.
+      */}
+      <div className="grid min-h-0 flex-1 grid-cols-7 md:grid-rows-6">
         {days.map((day) => (
           <DayCell
             key={day.iso}

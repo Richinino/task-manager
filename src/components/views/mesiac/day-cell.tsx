@@ -174,16 +174,16 @@ function DayEntryChip({ entry }: { entry: DayEntry }) {
     <span
       title={`${kindLabel}: ${entry.title}`}
       className={cn(
-        "flex min-w-0 items-center gap-1 rounded px-1 py-px text-mini leading-tight",
+        "flex min-w-0 items-center gap-1 rounded-[2px] px-1 py-px text-micro leading-tight",
         isDue
-          ? "border-l-2 border-danger bg-danger/10 font-semibold text-fg"
+          ? "border-l-2 border-danger bg-danger-tint font-semibold text-fg"
           : "bg-surface-2 font-normal text-fg-muted",
         isDue && entry.overdue && "text-danger",
         entry.done && "font-normal text-fg-subtle line-through",
       )}
     >
       {isDue ? (
-        <CalendarClock size={11} className="shrink-0 text-danger" />
+        <CalendarClock size={9} className="shrink-0 text-danger" />
       ) : (
         <PriorityDot priority={entry.priority} size="sm" />
       )}
@@ -227,14 +227,18 @@ export function DayCell({
   return (
     <div
       className={cn(
-        "relative min-w-0 rounded border bg-surface",
+        /*
+          Návrh („Mesiac") kreslí súvislú mriežku — bunky oddeľujú linky, nie
+          medzery a rámy. Kartička si berie rám aj polomer, takže do bunky
+          150 × 100 px sa zmestia dva čipy namiesto štyroch.
+        */
+        "relative min-w-0 border-b border-r border-border bg-surface",
         "transition-colors duration-100 ease-out",
-        inMonth
-          ? "border-border hover:border-border-strong hover:bg-surface-2"
-          : "border-border/60 opacity-50 hover:opacity-90",
-        isToday && "border-accent bg-accent-soft/40 hover:border-accent",
+        inMonth ? "hover:bg-surface-2" : "opacity-50 hover:opacity-90",
+        isToday && "bg-accent-soft hover:bg-accent-soft",
         // Rozbalený deň je vyznačený prstencom — na `md` panel neexistuje, teda ani prstenec.
-        isSelected && "border-accent ring-2 ring-accent md:ring-0",
+        // `ring-inset`, lebo bunka už nemá rám, o ktorý by sa prstenec oprel.
+        isSelected && "ring-2 ring-inset ring-accent md:ring-0",
       )}
     >
       {/*
@@ -249,7 +253,9 @@ export function DayCell({
         aria-hidden="true"
         className={cn(
           "flex h-full min-h-14 min-w-0 flex-col gap-1 overflow-hidden p-1",
-          "md:min-h-24 md:p-1.5",
+          // 5 × 6 px je z návrhu — v mriežke šiestich riadkov je každý ušetrený
+          // pixel jeden riadok textu navyše.
+          "md:min-h-0 md:gap-[3px] md:p-[5px_6px]",
         )}
       >
         {/* `md:pr-5` drží číslo mimo rohu, kde od `md` sedí „+". */}
@@ -257,9 +263,16 @@ export function DayCell({
           <span
             className={cn(
               "font-mono tabular-nums",
+              /*
+                Dnešok označuje podfarbená bunka, nie koliesko okolo čísla —
+                tak to má návrh. Koliesko si navyše bralo 20 px z bunky,
+                v ktorej ide o každý riadok.
+              */
               isToday
-                ? "inline-flex size-5 items-center justify-center rounded-full bg-accent text-mini font-semibold text-accent-fg"
-                : cn("text-meta font-semibold", inMonth ? "text-fg" : "text-fg-subtle"),
+                ? "text-meta font-semibold text-accent"
+                : inMonth
+                  ? "text-meta font-semibold text-fg"
+                  : "text-mini text-fg-subtle",
             )}
           >
             {dayNumber}

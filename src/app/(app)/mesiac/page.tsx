@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 
+import { ScreenFooter } from "@/components/shell/screen-chrome";
 import type { DayEntry } from "@/components/views/mesiac/day-cell";
 import {
   MONTH_DAY_PANEL_ID,
@@ -270,12 +271,33 @@ export default async function MesiacPage({ searchParams }: MesiacPageProps) {
         row.lastActivityDate === null || row.lastActivityDate < monthlyPeriod.start,
     );
 
+  /*
+    Návrh má v hlavičke „9 termínov · 24 naplánovaných". Sú to dve rôzne veci
+    a v mriežke ich rozlišuje tvar, nie farba — v hlavičke teda musia byť
+    pomenované slovom.
+  */
+  const dueTotal = days.reduce(
+    (sum, day) => sum + day.entries.filter((entry) => entry.kind === "due").length,
+    0,
+  );
+  const plannedTotal = days.reduce(
+    (sum, day) => sum + day.entries.filter((entry) => entry.kind !== "due").length,
+    0,
+  );
+  const headerMeta = `${dueTotal} ${dueTotal === 1 ? "termín" : dueTotal >= 2 && dueTotal <= 4 ? "termíny" : "termínov"} · ${plannedTotal} naplánovaných`;
+
   return (
-    <div className="mx-auto flex w-full max-w-[1500px] flex-col gap-4 p-3 md:p-5">
+    /*
+      Na počítači je obrazovka presne vysoká ako okno — mriežka si rozdelí
+      zvyšok výšky na šesť riadkov a nikdy sa neroluje. Na telefóne sa naopak
+      roluje normálne celá stránka.
+    */
+    <div className="flex w-full flex-col md:h-dvh">
       <MonthHeader
         year={year}
         month={month}
         isCurrent={isCurrent}
+        meta={headerMeta}
         action={
           <MonthlyReviewLauncher
             period={monthlyPeriod}
@@ -297,8 +319,8 @@ export default async function MesiacPage({ searchParams }: MesiacPageProps) {
         }
       />
 
-      <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:gap-5">
-        <div className="flex min-w-0 flex-1 flex-col gap-3">
+      <div className="flex min-h-0 flex-1 flex-col lg:flex-row">
+        <div className="flex min-h-0 min-w-0 flex-1 flex-col">
           <MonthGrid days={days} />
 
           {selectedIso !== null ? (
@@ -326,6 +348,8 @@ export default async function MesiacPage({ searchParams }: MesiacPageProps) {
           postponeBlockAt={user.settings.postponeBlockAt}
         />
       </div>
+
+      <ScreenFooter summary={headerMeta} />
     </div>
   );
 }
