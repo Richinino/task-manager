@@ -51,6 +51,15 @@ interface Suhrn {
   odoslanych: number;
   zlyhani: number;
   zmazanychPrihlaseni: number;
+  /**
+   * Koľko pripomienok už bolo pristarých na odoslanie.
+   *
+   * Nie je to detail do štatistiky — je to jediná stopa po notifikácii,
+   * ktorá nikdy nepríde. Bez tohto čísla vyzerá zahodená pripomienka
+   * úplne rovnako ako neexistujúca (`odoslanych: 0`) a nedá sa rozoznať
+   * „nebolo čo poslať" od „plánovač spal a zmeškal to".
+   */
+  zahodenychStarych: number;
 }
 
 function neopravneny(): Response {
@@ -130,6 +139,7 @@ export async function POST(request: Request): Promise<Response> {
     odoslanych: 0,
     zlyhani: 0,
     zmazanychPrihlaseni: 0,
+    zahodenychStarych: 0,
   };
 
   /** Prihlásenia si držíme na používateľa, nie na úlohu. */
@@ -156,6 +166,13 @@ export async function POST(request: Request): Promise<Response> {
 
     // Rovnaké pravidlo ako v `src/lib/reminders.ts` — dozretá a nie stará.
     if (!jeNaOdoslanie({ id: uloha.id, at, sentAt: null }, teraz, MAX_MESKANIE_MIN)) {
+      /*
+        Rozlíšime dva dôvody, ktoré vyzerajú rovnako, ale znamenajú niečo
+        úplne iné: pripomienka, ktorá ešte nedozrela, príde nabudúce —
+        pristará už nepríde nikdy. To druhé je porucha plánovača a musí
+        byť v súhrne vidno.
+      */
+      if (at.getTime() <= teraz.getTime()) suhrn.zahodenychStarych += 1;
       continue;
     }
 
