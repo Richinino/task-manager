@@ -18,6 +18,7 @@ import {
 import { deleteTask } from "@/server/actions/tasks";
 import type { ProjectWithCounts } from "@/server/queries/structure";
 import type { TaskWithRelations } from "@/server/queries/tasks";
+import { pluralSk } from "@/lib/sk";
 
 /* ═══════════════════════════════════════════════════════════════════════════
    MESAČNÁ REVÍZIA — 30 minút
@@ -102,13 +103,6 @@ export interface MonthlyReviewProps {
    * Prah patrí používateľovi, komponent si ho zo session neťahá sám.
    */
   postponeDangerAt?: number;
-}
-
-/** Slovenské skloňovanie: 1 · 2–4 · 0 a 5+. */
-function pluralSk(count: number, one: string, few: string, many: string): string {
-  if (count === 1) return one;
-  if (count >= 2 && count <= 4) return few;
-  return many;
 }
 
 /**

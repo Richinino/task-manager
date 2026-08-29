@@ -21,6 +21,7 @@ import { restoreTask } from "@/server/actions/tasks";
 import type { ArchiveKind } from "@/server/queries/archive";
 
 import type { ArchiveFilterValue } from "./archive-filters";
+import { pluralSk } from "@/lib/sk";
 
 /* ═══════════════════════════════════════════════════════════════════════════
    ZOZNAM ARCHÍVU
@@ -93,13 +94,6 @@ const EMPTY: Record<ArchiveFilterValue, { title: string; description: string }> 
       "Nemáš čo vracať, a to je dobrá správa. Zmazané veci sa tu držia práve preto, aby sa dali vrátiť — kým sem nič nepribudne, netreba nič riešiť.",
   },
 };
-
-/** Slovenské skloňovanie: 1 · 2–4 · 0 a 5+. */
-function pluralSk(count: number, one: string, few: string, many: string): string {
-  if (count === 1) return one;
-  if (count >= 2 && count <= 4) return few;
-  return many;
-}
 
 /** Stabilná referencia, aby sa zoznam skrytých vrátil na prázdno bez prekreslenia. */
 const NOTHING_HIDDEN: readonly string[] = [];

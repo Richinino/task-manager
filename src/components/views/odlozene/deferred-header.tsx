@@ -1,5 +1,6 @@
 import { ScreenHeader } from "@/components/shell/screen-chrome";
 import { Archive, Hourglass } from "lucide-react";
+import { pluralSk } from "@/lib/sk";
 
 /**
  * Hlavička odkladiska. Nesie jedinú metriku, na ktorej tu záleží — koľko vecí
@@ -14,13 +15,6 @@ export type DeferredKind = "someday" | "waiting";
 export interface DeferredHeaderProps {
   kind: DeferredKind;
   count: number;
-}
-
-/** Slovenské skloňovanie: 1 · 2–4 · 0 a 5+. */
-function pluralSk(count: number, one: string, few: string, many: string): string {
-  if (count === 1) return one;
-  if (count >= 2 && count <= 4) return few;
-  return many;
 }
 
 interface Copy {

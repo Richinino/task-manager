@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
 
 import { TemplateList } from "@/components/views/sablony/template-list";
-import { TemplatesHeader } from "@/components/views/sablony/templates-header";
+import { TemplatesHeader, TemplatesIntro } from "@/components/views/sablony/templates-header";
+import { ScreenFooter } from "@/components/shell/screen-chrome";
+import { countSk } from "@/lib/sk";
 import { todayIn } from "@/lib/dates";
 import { requireUser } from "@/server/auth-guard";
 import { listTemplates } from "@/server/queries/templates";
@@ -30,9 +32,17 @@ export default async function SablonyPage() {
   const todayIso = todayIn(user.settings.timezone);
 
   return (
-    <div className="mx-auto flex w-full max-w-3xl flex-col gap-5 px-4 py-5 md:px-6 md:py-7">
+    <div className="flex w-full flex-col md:h-dvh">
       <TemplatesHeader templateCount={templates.length} />
+      <TemplatesIntro />
+
+      <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
       <TemplateList templates={templates} todayIso={todayIso} />
+      </div>
+
+      <ScreenFooter
+        summary={countSk(templates.length, "šablóna", "šablóny", "šablón")}
+      />
     </div>
   );
 }

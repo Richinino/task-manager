@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 
 import { ScreenFooter, ScreenHeader } from "@/components/shell/screen-chrome";
+import { countSk } from "@/lib/sk";
 
 import {
   RecurringList,
@@ -67,7 +68,12 @@ export default async function OpakovanePage() {
       </div>
 
       <ScreenFooter
-        summary={`${tasks.length} ${tasks.length === 1 ? "opakovaná úloha" : tasks.length >= 2 && tasks.length <= 4 ? "opakované úlohy" : "opakovaných úloh"}`}
+        summary={countSk(
+          tasks.length,
+          "opakovaná úloha",
+          "opakované úlohy",
+          "opakovaných úloh",
+        )}
       />
     </div>
   );

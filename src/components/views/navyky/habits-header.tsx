@@ -1,4 +1,4 @@
-import { Sprout } from "lucide-react";
+import { ScreenHeader } from "@/components/shell/screen-chrome";
 
 /**
  * Hlavička obrazovky návykov.
@@ -18,29 +18,31 @@ export interface HabitsHeaderProps {
 
 export function HabitsHeader({ activeCount }: HabitsHeaderProps) {
   return (
-    <header>
-      <div className="flex min-w-0 items-center gap-2">
-        <Sprout aria-hidden="true" className="size-[18px] shrink-0 text-fg-subtle" />
-        <h1 className="min-w-0 truncate text-lg font-semibold tracking-tight text-fg">
-          Návyky
-        </h1>
-        {activeCount > 0 ? (
-          <span
-            aria-hidden="true"
-            className="inline-flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full bg-surface-2 px-1.5 text-mini font-semibold font-mono tabular-nums text-fg-muted"
-          >
-            {activeCount}
-          </span>
-        ) : null}
-      </div>
+    <ScreenHeader title="Návyky">
+      {activeCount > 0 ? (
+        <span
+          aria-hidden="true"
+          className="inline-flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full bg-surface-2 px-1.5 font-mono text-mini font-semibold tabular-nums text-fg-muted"
+        >
+          {activeCount}
+        </span>
+      ) : null}
+    </ScreenHeader>
+  );
+}
 
-      <p className="mt-1 text-sm text-fg-muted">
+/**
+ * Veta pod hlavičkou. V návrhu je to samostatný pruh s vlastnou linkou —
+ * vysvetľuje, čím sa táto obrazovka líši od tých vedľa nej.
+ */
+export function HabitsIntro() {
+  return (
+    <p className="shrink-0 border-b border-border px-5 py-[11px] text-pretty text-body leading-normal text-fg-muted">
         Návyk je vec, ktorú chceš robiť opakovane — a preto{" "}
         <span className="font-medium text-fg">nezapĺňa deň</span>. Nemá termín,
         má týždenný cieľ: „štyrikrát do týždňa“ prežije jeden pokazený deň,
         „dnes o šiestej“ nie. Séria sa počíta na týždne, takže sa neláme
         v stredu, keď zaprší.
-      </p>
-    </header>
+    </p>
   );
 }
