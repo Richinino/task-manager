@@ -1,4 +1,4 @@
-import { LayoutTemplate } from "lucide-react";
+import { ScreenHeader } from "@/components/shell/screen-chrome";
 
 /**
  * Hlavička obrazovky šablón.
@@ -18,33 +18,32 @@ export interface TemplatesHeaderProps {
 
 export function TemplatesHeader({ templateCount }: TemplatesHeaderProps) {
   return (
-    <header>
-      <div className="flex min-w-0 items-center gap-2">
-        <LayoutTemplate
+    <ScreenHeader title="Šablóny">
+      {templateCount > 0 ? (
+        <span
           aria-hidden="true"
-          className="size-[18px] shrink-0 text-fg-subtle"
-        />
-        <h1 className="min-w-0 truncate text-lg font-semibold tracking-tight text-fg">
-          Šablóny
-        </h1>
-        {templateCount > 0 ? (
-          <span
-            aria-hidden="true"
-            className="inline-flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full bg-surface-2 px-1.5 text-mini font-semibold font-mono tabular-nums text-fg-muted"
-          >
-            {templateCount}
-          </span>
-        ) : null}
-      </div>
+          className="inline-flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full bg-surface-2 px-1.5 font-mono text-mini font-semibold tabular-nums text-fg-muted"
+        >
+          {templateCount}
+        </span>
+      ) : null}
+    </ScreenHeader>
+  );
+}
 
-      <p className="mt-1 text-sm text-fg-muted">
+/**
+ * Veta pod hlavičkou. V návrhu je to samostatný pruh s vlastnou linkou —
+ * vysvetľuje, čím sa táto obrazovka líši od tých vedľa nej.
+ */
+export function TemplatesIntro() {
+  return (
+    <p className="shrink-0 border-b border-border px-5 py-[11px] text-pretty text-body leading-normal text-fg-muted">
         Šablóna je{" "}
         <span className="font-medium text-fg">predpis, nie kópia úloh</span> —
         samostatný zoznam definícií, ktorý sa nerozbije tým, že niektorú
         z pôvodných úloh zmažeš. Dni sú v nej relatívne, takže „Ranná rutina“ aj
         „Príprava na dovolenku“ sa dajú použiť kedykoľvek: deň si vyberieš pri
         použití a zvyšok sa dopočíta od neho.
-      </p>
-    </header>
+    </p>
   );
 }

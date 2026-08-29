@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
 
 import { HabitList } from "@/components/views/navyky/habit-list";
-import { HabitsHeader } from "@/components/views/navyky/habits-header";
+import { HabitsHeader, HabitsIntro } from "@/components/views/navyky/habits-header";
+import { ScreenFooter } from "@/components/shell/screen-chrome";
+import { countSk } from "@/lib/sk";
 import type { HabitAreaOption } from "@/components/views/navyky/habit-types";
 import { addDays, startOfWeek, todayIn } from "@/lib/dates";
 import { requireUser } from "@/server/auth-guard";
@@ -114,9 +116,11 @@ export default async function NavykyPage() {
   const archived = habits.filter((habit) => habit.archivedAt !== null);
 
   return (
-    <div className="mx-auto flex w-full max-w-3xl flex-col gap-5 px-4 py-5 md:px-6 md:py-7">
+    <div className="flex w-full flex-col md:h-dvh">
       <HabitsHeader activeCount={active.length} />
+      <HabitsIntro />
 
+      <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
       <HabitList
         active={active}
         archived={archived}
@@ -126,6 +130,16 @@ export default async function NavykyPage() {
         toIso={toIso}
         todayIso={todayIso}
         weekStartsOn={weekStartsOn}
+      />
+      </div>
+
+      <ScreenFooter
+        summary={countSk(
+          active.length,
+          "aktívny návyk",
+          "aktívne návyky",
+          "aktívnych návykov",
+        )}
       />
     </div>
   );

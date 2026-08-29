@@ -29,6 +29,7 @@ import { cn } from "@/lib/utils";
 import { SignOutForm } from "@/components/shell/sign-out-form";
 
 import { ThemeToggle } from "./theme-toggle";
+import { pluralSk } from "@/lib/sk";
 
 /** Počty pre odznaky v navigácii — presne to, čo vracia `getCounts()`. */
 export interface NavCounts {
@@ -258,13 +259,6 @@ export interface NavBadgeData {
   tone: "neutral" | "danger";
   /** Celá veta pre čítačku — číslo samo o sebe nič nehovorí. */
   label: string;
-}
-
-/** Slovenské skloňovanie: 1 · 2–4 · 0 a 5+. */
-function pluralSk(count: number, one: string, few: string, many: string): string {
-  if (count === 1) return one;
-  if (count >= 2 && count <= 4) return few;
-  return many;
 }
 
 /** Číslo k položke, alebo `null`, keď niet čo hlásiť. Nula sa nezobrazuje nikdy. */
