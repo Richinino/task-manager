@@ -202,6 +202,12 @@
     nie je nadpis.
   */
   --text-row: 15px;
+  /*
+    28 px má v návrhu jediná vec v celej appke — nadpis na prihlasovacej
+    obrazovke. Tailwind medzi 24 (`text-2xl`) a 30 (`text-3xl`) nič nemá
+    a rozdiel dvoch pixelov je na tejto veľkosti vidieť.
+  */
+  --text-hero: 28px;
 
   --shadow-sm: var(--sh-sm);
   --shadow-lg: var(--sh-lg);

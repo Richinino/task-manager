@@ -75,11 +75,22 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
               rozhodnutí („rozdeliť alebo zmenšiť") panel otvára, takže musí
               vidieť jeho kontext.
             */}
-            <PostponeGuardProvider>{children}</PostponeGuardProvider>
+            <PostponeGuardProvider>
+              {/*
+                Pruh o pripojení patrí NAD obsah obrazovky, nie do rohu.
+                Vyššie ho posadiť nevieme — čítať `OutboxProvider` musí a ten
+                je až tu. Kým je pripojenie v poriadku, nekreslí sa vôbec,
+                takže sa obrazovka nikam neposunie; keď zmizne sieť, obsah sa
+                posunie o výšku pruhu a na počítači pribudne rolovanie. Je to
+                lacnejšie než rozobrať poradie kontextov kvôli stavu, ktorý
+                trvá minúty.
+              */}
+              <OfflineIndicator />
+              {children}
+            </PostponeGuardProvider>
           </TaskDetailProvider>
         </CaptureProvider>
 
-        <OfflineIndicator />
       </OutboxProvider>
     </AppShell>
   );
