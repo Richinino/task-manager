@@ -1,4 +1,4 @@
-import { Layers } from "lucide-react";
+import { ScreenHeader } from "@/components/shell/screen-chrome";
 
 /**
  * Hlavička obrazovky oblastí.
@@ -14,29 +14,34 @@ export interface AreasHeaderProps {
 
 export function AreasHeader({ activeCount }: AreasHeaderProps) {
   return (
-    <header>
-      <div className="flex min-w-0 items-center gap-2">
-        <Layers aria-hidden="true" className="size-[18px] shrink-0 text-fg-subtle" />
-        <h1 className="min-w-0 truncate text-lg font-semibold tracking-tight text-fg">
-          Oblasti
-        </h1>
-        {activeCount > 0 ? (
-          <span
-            aria-hidden="true"
-            className="inline-flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full bg-surface-2 px-1.5 text-mini font-semibold font-mono tabular-nums text-fg-muted"
-          >
-            {activeCount}
-          </span>
-        ) : null}
-      </div>
+    <ScreenHeader title="Oblasti">
+      {activeCount > 0 ? (
+        <span
+          aria-hidden="true"
+          className="inline-flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full bg-surface-2 px-1.5 font-mono text-mini font-semibold tabular-nums text-fg-muted"
+        >
+          {activeCount}
+        </span>
+      ) : null}
+    </ScreenHeader>
+  );
+}
 
-      <p className="mt-1 text-sm text-fg-muted">
-        Oblasť je okruh života, ktorý sa len udržiava a{" "}
-        <span className="font-medium text-fg">nikdy nekončí</span> — zdravie,
-        financie, domácnosť, práca. Nemá cieľ ani termín; keby ho mala, je to
-        projekt. Farba oblasti sa objaví ako bodka pri každej úlohe, ktorá do nej
-        patrí.
-      </p>
-    </header>
+/**
+ * Veta o tom, čím sa oblasť líši od projektu.
+ *
+ * V návrhu je to samostatný pruh pod hlavičkou s vlastnou linkou. Patrí sem
+ * z rovnakého dôvodu ako pri projektoch: bez nej vznikajú „oblasti" s
+ * termínom, ktoré sa nikdy nedajú uzavrieť.
+ */
+export function AreasIntro() {
+  return (
+    <p className="shrink-0 border-b border-border px-5 py-[11px] text-pretty text-body leading-normal text-fg-muted">
+      Oblasť je okruh života, ktorý sa len udržiava a{" "}
+      <span className="font-medium text-fg">nikdy nekončí</span> — zdravie,
+      financie, domácnosť, práca. Nemá cieľ ani termín; keby ho mala, je to
+      projekt. Farba oblasti sa objaví ako bodka pri každej úlohe, ktorá do nej
+      patrí.
+    </p>
   );
 }

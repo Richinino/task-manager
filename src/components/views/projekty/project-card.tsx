@@ -67,8 +67,13 @@ export function ProjectCard({ project, todayIso, className }: ProjectCardProps) 
       href={`/projekty/${project.id}`}
       aria-label={summary}
       className={cn(
-        "flex min-w-0 flex-col gap-2 rounded border border-border bg-surface px-3 py-2.5",
-        "transition-colors duration-100 ease-out hover:border-border-strong hover:bg-surface-2",
+        /*
+          Návrh („Projekty") kreslí pruh cez celú šírku so spodnou linkou, nie
+          kartičku. Zoznam projektov je tak jedna súvislá plocha a meno
+          projektu má celú šírku okna namiesto šírky karty.
+        */
+        "flex min-w-0 flex-col gap-[7px] border-b border-border bg-surface px-5 pb-[13px] pt-3",
+        "transition-colors duration-100 ease-out hover:bg-surface-2",
         archived && "opacity-70",
         className,
       )}
@@ -77,7 +82,7 @@ export function ProjectCard({ project, todayIso, className }: ProjectCardProps) 
         {archived ? (
           <Archive aria-hidden="true" size={14} className="shrink-0 text-fg-subtle" />
         ) : null}
-        <span className="min-w-0 flex-1 truncate text-sm font-medium text-fg">
+        <span className="min-w-0 flex-1 truncate text-sm font-semibold text-fg">
           {project.name}
         </span>
         {/* Počet nevybavených je to jediné číslo, ktoré musí byť vidieť
@@ -85,10 +90,11 @@ export function ProjectCard({ project, todayIso, className }: ProjectCardProps) 
         <span
           aria-hidden="true"
           className={cn(
-            "shrink-0 rounded-full px-2 py-0.5 text-mini font-semibold font-mono tabular-nums",
+            "inline-flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full px-1.5",
+            "font-mono text-mini font-semibold tabular-nums",
             project.openTaskCount === 0
               ? "bg-surface-2 text-fg-subtle"
-              : "bg-accent-soft text-fg",
+              : "bg-accent-badge text-fg",
           )}
         >
           {project.openTaskCount}
@@ -101,7 +107,7 @@ export function ProjectCard({ project, todayIso, className }: ProjectCardProps) 
       */}
       <div
         aria-hidden="true"
-        className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1 text-xs text-fg-muted"
+        className="flex min-w-0 flex-wrap items-center gap-x-3.5 gap-y-1 font-mono text-mini text-fg-muted"
       >
         {project.area ? (
           <AreaDot
@@ -150,10 +156,10 @@ export function ProjectCard({ project, todayIso, className }: ProjectCardProps) 
       {total > 0 ? (
         <span
           aria-hidden="true"
-          className="block h-1 w-full overflow-hidden rounded-full bg-surface-2"
+          className="block h-[3px] w-full overflow-hidden rounded-[2px] bg-surface-2"
         >
           <span
-            className="block h-full rounded-full bg-accent transition-[width] duration-200 ease-out"
+            className="block h-full bg-accent transition-[width] duration-200 ease-out"
             style={{ width: `${percent}%` }}
           />
         </span>
