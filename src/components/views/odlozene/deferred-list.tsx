@@ -12,7 +12,14 @@ import { TaskEmpty } from "@/components/task/task-empty";
 import { restoreTask } from "@/server/actions/tasks";
 import type { TaskWithRelations } from "@/server/queries/tasks";
 
-import { DeferredHeader, type DeferredKind } from "./deferred-header";
+import { ScreenFooter } from "@/components/shell/screen-chrome";
+
+import {
+  DeferredHeader,
+  DeferredIntro,
+  deferredHeadline,
+  type DeferredKind,
+} from "./deferred-header";
 import { DeferredRow, runDeferred, type DeferredAction } from "./deferred-row";
 
 /* ═══════════════════════════════════════════════════════════════════════════
@@ -219,8 +226,13 @@ export function DeferredList({
   }, [flash]);
 
   return (
-    <div>
+    /*
+      Súvislá plocha oddelená linkami — hlavička aj vysvetľujúca veta majú
+      vlastné pruhy a zoznam sa roluje sám, nie so stránkou.
+    */
+    <div className="flex w-full flex-col md:h-dvh">
       <DeferredHeader kind={kind} count={visible.length} />
+      <DeferredIntro kind={kind} count={visible.length} />
 
       {error ? (
         <p
@@ -286,7 +298,7 @@ export function DeferredList({
           }
         />
       ) : (
-        <ul className="flex flex-col gap-2">
+        <ul className="flex flex-col">
           {visible.map((task) => (
             <DeferredRow
               key={task.id}
@@ -300,6 +312,8 @@ export function DeferredList({
           ))}
         </ul>
       )}
+
+      <ScreenFooter summary={deferredHeadline(kind, visible.length)} />
     </div>
   );
 }

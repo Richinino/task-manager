@@ -34,7 +34,7 @@ export default async function NiekedyPage() {
   );
 
   return (
-    <div className="mx-auto w-full max-w-3xl px-4 py-5 md:px-6 md:py-7">
+    <>
       <DeferredList
         kind="someday"
         tasks={sorted}
@@ -42,6 +42,6 @@ export default async function NiekedyPage() {
         postponeWarnAt={user.settings.postponeWarnAt}
         postponeBlockAt={user.settings.postponeBlockAt}
       />
-    </div>
+    </>
   );
 }

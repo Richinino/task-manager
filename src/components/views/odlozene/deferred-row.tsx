@@ -147,11 +147,17 @@ export function DeferredRow({
   return (
     <li
       className={cn(
-        "rounded border border-border bg-surface transition-colors duration-100 ease-out",
-        "hover:border-border-strong",
+        /*
+          Pruh so spodnou linkou, nie kartička — rovnaká gramatika ako všade
+          inde. Riadok si drží tlačidlá akcií aj napriek tomu, že návrh na
+          počítači ukazuje len klávesové skratky: na telefóne klávesnica nie
+          je a bez tlačidiel by sa odtiaľto nedalo nič spraviť.
+        */
+        "border-b border-border bg-surface transition-colors duration-100 ease-out",
+        "hover:bg-surface-2",
       )}
     >
-      <div className="px-1 pt-1">
+      <div className="px-4 pt-1.5">
         <TaskItem
           task={task}
           density="full"
@@ -169,7 +175,7 @@ export function DeferredRow({
         zmizne z rozloženia a tlačidlá sa stanú priamymi položkami riadku —
         zalamovanie na tablete a počítači tak ostáva rovnaké ako inde.
       */}
-      <div className="flex flex-col gap-1.5 border-t border-border px-2 py-2 sm:flex-row sm:flex-wrap sm:items-center sm:py-1.5">
+      <div className="flex flex-col gap-1.5 px-4 pb-2 pt-1 sm:flex-row sm:flex-wrap sm:items-center">
         <div className={cn("grid gap-1.5 sm:contents", grid)}>
           {actions.map((action) => {
             const meta = DEFERRED_ACTIONS[action];

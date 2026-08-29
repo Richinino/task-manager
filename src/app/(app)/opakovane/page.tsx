@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
-import { Repeat } from "lucide-react";
+
+import { ScreenFooter, ScreenHeader } from "@/components/shell/screen-chrome";
 
 import {
   RecurringList,
@@ -43,23 +44,31 @@ export default async function OpakovanePage() {
   });
 
   return (
-    <div className="mx-auto flex w-full max-w-3xl flex-col gap-4 px-4 py-5 md:px-6 md:py-7">
-      <header className="flex flex-col gap-1">
-        <div className="flex min-w-0 items-center gap-2">
-          <Repeat aria-hidden="true" className="size-[18px] shrink-0 text-fg-subtle" />
-          <h1 className="min-w-0 truncate text-lg font-semibold tracking-tight text-fg">
-            Opakované
-          </h1>
-        </div>
-        <p className="text-body leading-relaxed text-fg-muted">
-          Čo sa ti vracia samo a kedy nabudúce. Dobré miesto na otázku, či to
-          ešte dáva zmysel.
-        </p>
-      </header>
+    <div className="flex w-full flex-col md:h-dvh">
+      <ScreenHeader title="Opakované">
+        {tasks.length > 0 ? (
+          <span
+            aria-hidden="true"
+            className="inline-flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full bg-surface-2 px-1.5 font-mono text-mini font-semibold tabular-nums text-fg-muted"
+          >
+            {tasks.length}
+          </span>
+        ) : null}
+      </ScreenHeader>
 
-      <RecurringList tasks={sorted} todayIso={todayIso} />
+      <p className="shrink-0 border-b border-border px-5 py-[11px] text-pretty text-body leading-normal text-fg-muted">
+        Čo sa ti vracia samo a kedy nabudúce. Dobré miesto na otázku, či to
+        ešte dáva zmysel.
+      </p>
 
-      {tasks.length > 0 ? <RecurringVsHabits /> : null}
+      <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
+        <RecurringList tasks={sorted} todayIso={todayIso} />
+        {tasks.length > 0 ? <RecurringVsHabits /> : null}
+      </div>
+
+      <ScreenFooter
+        summary={`${tasks.length} ${tasks.length === 1 ? "opakovaná úloha" : tasks.length >= 2 && tasks.length <= 4 ? "opakované úlohy" : "opakovaných úloh"}`}
+      />
     </div>
   );
 }
