@@ -3,6 +3,8 @@ import type { UrlObject } from "url";
 import Link from "next/link";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 
+import { ScreenHeader } from "@/components/shell/screen-chrome";
+
 import { addMonths, parseIsoDate, toIsoDate } from "@/lib/dates";
 import { cn } from "@/lib/utils";
 
@@ -57,25 +59,22 @@ export interface MonthHeaderProps {
   month: number;
   /** Zobrazujeme mesiac, v ktorom sme dnes? */
   isCurrent: boolean;
+  /** Strojopisný doplnok v hlavičke — počty termínov a naplánovaného. */
+  meta?: string;
   /** Slot pre akciu vpravo — dnes spúšťač mesačnej revízie. */
   action?: React.ReactNode;
 }
 
 /**
- * Ovládacie prvky vyzerajú ako `Button`, ale sú to odkazy — navigácia beží
- * cez `?rok=&mesiac=`, takže musí fungovať aj v novom okne a v histórii.
+ * Spoločný tvar poľa v prepínači mesiacov. Šípky majú `border-r` a nie vlastný
+ * rám — celok má vyzerať ako jedno ovládanie, nie ako tri tlačidlá.
  */
-const controlBase = cn(
-  "inline-flex shrink-0 select-none items-center justify-center gap-1.5",
-  "whitespace-nowrap rounded border border-border bg-surface font-medium leading-none",
-  "text-body text-fg transition-colors duration-100 ease-out",
-  "hover:border-border-strong hover:bg-surface-2",
+const segment = cn(
+  "inline-flex select-none items-center justify-center whitespace-nowrap",
+  "text-fg-muted transition-colors duration-100 ease-out hover:bg-surface-2 hover:text-fg",
 );
 
-const iconControl = cn(controlBase, "size-8 p-0 text-fg-muted hover:text-fg");
-const textControl = cn(controlBase, "h-8 px-2.5");
-
-export function MonthHeader({ year, month, isCurrent, action }: MonthHeaderProps) {
+export function MonthHeader({ year, month, isCurrent, meta, action }: MonthHeaderProps) {
   const prev = shiftMonth(year, month, -1);
   const next = shiftMonth(year, month, 1);
 
@@ -83,19 +82,21 @@ export function MonthHeader({ year, month, isCurrent, action }: MonthHeaderProps
   const nextTitle = formatMonthTitleSk(next.year, next.month);
 
   return (
-    <header className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
-      <h1 className="min-w-0 truncate text-lg font-semibold tracking-tight text-fg">
-        {formatMonthTitleSk(year, month)}
-      </h1>
-
-      {action}
-
-      <nav aria-label="Navigácia mesiacov" className="flex shrink-0 items-center gap-1">
+    <ScreenHeader title={formatMonthTitleSk(year, month)} {...(meta ? { meta } : {})}>
+      {/*
+        Prepínač mesiacov je jeden zrastený celok — jeden rám, vnútri tri polia
+        oddelené linkami. Tri samostatné tlačidlá vedľa seba by boli tri
+        obdĺžniky, nie prepínač. Na telefóne sa rozpadne na 44 px ciele.
+      */}
+      <nav
+        aria-label="Navigácia mesiacov"
+        className="flex items-center overflow-hidden rounded border border-border"
+      >
         <Link
           href={monthHref(prev.year, prev.month)}
           aria-label={`Predchádzajúci mesiac — ${prevTitle}`}
           title={prevTitle}
-          className={iconControl}
+          className={cn(segment, "size-11 border-r border-border md:size-[26px]")}
         >
           <ChevronLeft aria-hidden="true" className="size-4" />
         </Link>
@@ -104,8 +105,9 @@ export function MonthHeader({ year, month, isCurrent, action }: MonthHeaderProps
           href="/mesiac"
           aria-current={isCurrent ? "page" : undefined}
           className={cn(
-            textControl,
-            isCurrent && "border-accent bg-accent-soft text-accent hover:border-accent",
+            segment,
+            "h-11 border-r border-border px-3 text-sm md:h-[26px] md:px-2.5 md:text-meta",
+            isCurrent ? "bg-accent-soft text-accent" : "text-fg",
           )}
         >
           Tento mesiac
@@ -115,11 +117,13 @@ export function MonthHeader({ year, month, isCurrent, action }: MonthHeaderProps
           href={monthHref(next.year, next.month)}
           aria-label={`Nasledujúci mesiac — ${nextTitle}`}
           title={nextTitle}
-          className={iconControl}
+          className={cn(segment, "size-11 md:size-[26px]")}
         >
           <ChevronRight aria-hidden="true" className="size-4" />
         </Link>
       </nav>
-    </header>
+
+      {action}
+    </ScreenHeader>
   );
 }

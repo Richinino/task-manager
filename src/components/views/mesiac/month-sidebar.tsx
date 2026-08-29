@@ -1,4 +1,4 @@
-import { CalendarClock, CalendarRange } from "lucide-react";
+import { CalendarClock } from "lucide-react";
 
 import { TaskEmpty } from "@/components/task/task-empty";
 import { TaskItem } from "@/components/task/task-item";
@@ -78,9 +78,14 @@ export function MonthSidebar({
   return (
     <aside
       aria-label={`Prehľad mesiaca ${monthTitle}`}
-      className="flex w-full shrink-0 flex-col gap-3 lg:w-[320px]"
+      /*
+        Návrh dáva panelu 300 px a linku zľava — nie kartičky s medzerami.
+        Panel siaha cez celú výšku a roluje sa v ňom obsah, nie stránka.
+        Pod `lg` je z neho normálny blok pod mriežkou.
+      */
+      className="flex w-full shrink-0 flex-col overflow-y-auto border-border bg-surface lg:w-[300px] lg:border-l"
     >
-      <section className="flex flex-col gap-2 rounded border border-border bg-surface p-3">
+      <section className="flex flex-col gap-2 border-b border-border px-4 py-3">
         <h2 className="flex items-center gap-2 text-body font-semibold text-fg">
           <CalendarClock aria-hidden="true" size={16} className="shrink-0 text-danger" />
           <span className="min-w-0 flex-1 truncate">Termíny v tomto mesiaci</span>
@@ -138,18 +143,21 @@ export function MonthSidebar({
         )}
       </section>
 
-      <section className="flex items-center gap-3 rounded border border-border bg-surface p-3">
-        <span
-          aria-hidden="true"
-          className="flex size-9 shrink-0 items-center justify-center rounded bg-surface-2 text-fg-muted"
-        >
-          <CalendarRange size={18} />
-        </span>
-        <div className="min-w-0">
-          <p className="text-lg font-semibold leading-tight font-mono tabular-nums text-fg">
+      {/*
+        Horizont mesiaca. Návrh z čísla robí najväčšiu vec v paneli — 24 px
+        strojopisom — a vetu k nemu dáva vedľa, nie pod. Je to jediný údaj
+        v paneli, ktorý nie je o konkrétnom dni.
+      */}
+      <section className="flex flex-col gap-2.5 px-4 py-3.5">
+        <h2 className="label text-fg-subtle">Horizont mesiaca</h2>
+        <div className="flex items-baseline gap-2">
+          <span
+            aria-hidden="true"
+            className="font-mono text-2xl font-bold tracking-tight tabular-nums text-fg"
+          >
             {monthHorizonCount}
-          </p>
-          <p className="text-xs text-fg-muted">
+          </span>
+          <p className="min-w-0 text-pretty text-meta text-fg-muted">
             {openTasksPhrase(monthHorizonCount)} s horizontom „mesiac“
           </p>
         </div>
