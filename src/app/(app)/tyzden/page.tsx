@@ -1,9 +1,18 @@
 import type { Metadata } from "next";
 
 import { WeekBoard } from "@/components/views/tyzden/week-board";
-import { WeekHeader } from "@/components/views/tyzden/week-header";
+import { ScreenFooter, ScreenToolbar } from "@/components/shell/screen-chrome";
+import { WeekHeader, taskCountLabel } from "@/components/views/tyzden/week-header";
 import { WeeklyReviewLauncher } from "@/components/rituals/review-launcher";
-import { parseIsoDate, startOfWeek, todayIn, toIsoDate, weekDays } from "@/lib/dates";
+import {
+  WEEKDAYS_SK,
+  formatDuration,
+  parseIsoDate,
+  startOfWeek,
+  todayIn,
+  toIsoDate,
+  weekDays,
+} from "@/lib/dates";
 import { ritualPeriod } from "@/lib/rituals";
 import { requireUser } from "@/server/auth-guard";
 import {
@@ -102,8 +111,35 @@ export default async function TyzdenPage({ searchParams }: TyzdenPageProps) {
   const capacityMin =
     Math.max(0, user.settings.dayEndHour - user.settings.dayStartHour) * 60;
 
+  /*
+    Ktoré dni prekračujú strop. Do pätičky ide veta „streda nad strop" — je to
+    jediné miesto, kde sa dá o preplnenom dni dozvedieť bez toho, aby si prešiel
+    všetkých sedem hlavičiek.
+  */
+  const overloadedDays = days.filter((day) => {
+    if (capacityMin <= 0) return false;
+    const load = tasks
+      .filter((task) => task.plannedDate === day)
+      .filter((task) => task.status !== "done" && task.status !== "dropped")
+      .reduce((sum, task) => sum + (task.estimateMin ?? 0), 0);
+    return load > capacityMin;
+  });
+
+  const summary = [
+    taskCountLabel(tasks.length),
+    totalMin > 0 ? formatDuration(totalMin) : null,
+    overloadedDays.length > 0
+      ? `${overloadedDays.map((day) => WEEKDAYS_SK[parseIsoDate(day).getDay()]).join(", ")} nad strop`
+      : null,
+  ].filter((part): part is string => part !== null);
+
   return (
-    <div className="flex flex-col gap-3 px-3 py-3 md:px-4">
+    /*
+      Na počítači je obrazovka presne vysoká ako okno a roluje sa obsah
+      stĺpcov, nie stránka — tak to má návrh (1280 × 800 bez rolovania).
+      Na telefóne sa naopak roluje normálne celá stránka.
+    */
+    <div className="flex w-full flex-col md:h-dvh">
       <WeekHeader
         weekStart={weekStart}
         weekEnd={weekEnd}
@@ -128,14 +164,23 @@ export default async function TyzdenPage({ searchParams }: TyzdenPageProps) {
         }
       />
 
+      <ScreenToolbar
+        label="Tabuľa týždňa"
+        {...(capacityMin > 0
+          ? { note: `strop dňa ${formatDuration(capacityMin)}` }
+          : {})}
+        hint="⠿ ťahaj medzi dňami · klikni na názov pre detail"
+      />
+
       <WeekBoard
         days={days}
         tasks={tasks}
         todayIso={todayIso}
         capacityMin={capacityMin}
         postponeWarnAt={user.settings.postponeWarnAt}
-        postponeBlockAt={user.settings.postponeBlockAt}
       />
+
+      <ScreenFooter summary={summary.join(" · ")} />
     </div>
   );
 }

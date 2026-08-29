@@ -304,13 +304,16 @@ export function navBadge(item: NavItem, counts: NavCounts): NavBadgeData | null 
   }
 }
 
-function NavBadge({ badge }: { badge: NavBadgeData }) {
+function NavBadge({ badge, active }: { badge: NavBadgeData; active?: boolean }) {
+  /*
+    Tri odtiene, presne ako v návrhu: po termíne je vždy červené, na aktívnom
+    riadku sa odznak ladí s ním, inak je tichý. Bez toho by na zvýraznenom
+    riadku svietil sivý odznak na akcentovom podklade.
+  */
+  const tone = badge.tone === "danger" ? "danger" : active ? "accent" : "neutral";
+
   return (
-    <Badge
-      title={badge.label}
-      aria-label={badge.label}
-      tone={badge.tone === "danger" ? "danger" : "neutral"}
-    >
+    <Badge title={badge.label} aria-label={badge.label} tone={tone}>
       {badge.value}
     </Badge>
   );
@@ -355,19 +358,29 @@ function NavList({ items, counts, pathname, label, labelledBy }: NavListProps) {
                   : "text-fg-muted hover:bg-surface-2 hover:text-fg",
               )}
             >
+              {/* 14 px je z návrhu — ikona sedí na výšku písma riadku, nie nad ním. */}
               <Icon
                 className={cn(
-                  "size-[18px] shrink-0",
+                  "size-[14px] shrink-0",
                   active ? "text-accent" : "text-fg-subtle group-hover:text-fg-muted",
                 )}
               />
               <span className="min-w-0 flex-1 truncate">{item.label}</span>
 
-              {badge ? <NavBadge badge={badge} /> : null}
+              {badge ? <NavBadge badge={badge} active={active} /> : null}
 
+              {/*
+                Návrh kreslí klávesu na aktívnom riadku — statický obrázok iný
+                stav ukázať nevie. Necháme ju teda tam A pridáme hover: na
+                obrazovke, kde práve si, je skratka najmenej užitočná.
+              */}
               <span
                 aria-hidden="true"
-                className="kbd opacity-0 transition-opacity duration-100 group-hover:opacity-100"
+                className={cn(
+                  "kbd size-[18px] min-w-0 rounded-[3px] px-0",
+                  "transition-opacity duration-100 group-hover:opacity-100",
+                  active ? "opacity-100" : "opacity-0",
+                )}
               >
                 {item.shortcut}
               </span>
@@ -454,7 +467,7 @@ export function Sidebar({ user, counts, signOutAction }: SidebarProps) {
                     "inline-flex size-8 items-center justify-center rounded",
                     "text-fg-muted transition-colors duration-100 ease-out",
                     "hover:bg-surface-2 hover:text-fg",
-                    pathname === "/nastavenia" && "bg-surface-2 text-fg",
+                    pathname === "/nastavenia" && "bg-accent-soft text-accent",
                   )}
                 >
                   <Settings className="size-4" />

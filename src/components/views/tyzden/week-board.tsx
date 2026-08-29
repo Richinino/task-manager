@@ -44,8 +44,6 @@ export interface WeekBoardProps {
   capacityMin: number;
   /** Od koľkých odkladov po presune upozorniť. */
   postponeWarnAt: number;
-  /** Od koľkých odkladov je to už naliehavé. */
-  postponeBlockAt: number;
 }
 
 /**
@@ -95,7 +93,6 @@ export function WeekBoard({
   todayIso,
   capacityMin,
   postponeWarnAt,
-  postponeBlockAt,
 }: WeekBoardProps) {
   const [optimisticTasks, applyChange] = useOptimistic(
     tasks,
@@ -306,38 +303,31 @@ export function WeekBoard({
       onDragCancel={() => setActiveId(null)}
     >
       {/*
-        Pod `md` je zo stĺpcov zvislý zoznam dní — sedem stĺpcov sa na telefón
-        nezmestí. Od `md` sa doska drží minimálnej šírky a radšej sa vodorovne
-        posúva, než by stĺpce zúžila na nečitateľných pár desiatok pixelov.
+        Sedem stĺpcov oddelených linkami, bez medzier a bez vonkajšieho
+        odsadenia — tak to má návrh. Doska vyplní zvyšok výšky obrazovky
+        a roluje sa v nej obsah stĺpca, nie celá stránka.
+
+        Pod `md` je zo stĺpcov zvislý zoznam dní: sedem stĺpcov sa na telefón
+        nezmestí a zúžiť ich na pár desiatok pixelov znamená, že z názvu úlohy
+        ostane prvé slovo.
       */}
-      <div className="no-drag-select md:overflow-x-auto md:pb-1">
-        <div className="grid grid-cols-1 gap-2 md:min-w-[52rem] md:grid-cols-7">
-          {days.map((day) => (
-            <DayColumn
-              key={day}
-              date={day}
-              tasks={tasksByDay.get(day) ?? []}
-              isToday={day === todayIso}
-              isPastDay={day < todayIso}
-              capacityMin={capacityMin}
-              todayIso={todayIso}
-              postponeWarnAt={postponeWarnAt}
-              postponeBlockAt={postponeBlockAt}
-            />
-          ))}
-        </div>
+      <div className="no-drag-select flex min-h-0 flex-1 flex-col overflow-y-auto md:flex-row md:overflow-x-auto md:overflow-y-hidden">
+        {days.map((day, index) => (
+          <DayColumn
+            key={day}
+            date={day}
+            tasks={tasksByDay.get(day) ?? []}
+            isToday={day === todayIso}
+            isPastDay={day < todayIso}
+            isLast={index === days.length - 1}
+            capacityMin={capacityMin}
+          />
+        ))}
       </div>
 
       {/* Bez doskakovacej animácie — úloha je v novom stĺpci už v momente pustenia. */}
       <DragOverlay dropAnimation={null}>
-        {activeTask ? (
-          <WeekTaskOverlay
-            task={activeTask}
-            todayIso={todayIso}
-            postponeWarnAt={postponeWarnAt}
-            postponeBlockAt={postponeBlockAt}
-          />
-        ) : null}
+        {activeTask ? <WeekTaskOverlay task={activeTask} /> : null}
       </DragOverlay>
 
       {notice ? (

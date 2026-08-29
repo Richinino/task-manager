@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 
+import { ScreenHeader } from "@/components/shell/screen-chrome";
 import {
   MONTHS_GENITIVE_SK,
   addDays,
@@ -32,12 +33,19 @@ export interface WeekHeaderProps {
   action?: React.ReactNode;
 }
 
-/** Spoločný vzhľad odkazov v hlavičke — rovnaké tokeny ako `Button` variant „secondary". */
-const navLink = cn(
-  "inline-flex shrink-0 select-none items-center justify-center gap-1.5",
-  "whitespace-nowrap rounded border border-border bg-surface font-medium leading-none text-fg",
-  "transition-[background-color,border-color,color] duration-100 ease-out",
-  "hover:border-border-strong hover:bg-surface-2",
+/**
+ * Prepínač týždňov ako jeden zrastený celok.
+ *
+ * Návrh z neho robí segmentované ovládanie: jeden rám, vnútri tri polia
+ * oddelené linkami. Preto majú šípky `border-r` a nie vlastné rámy — tri
+ * samostatné tlačidlá vedľa seba by boli tri obdĺžniky, nie jeden prepínač.
+ *
+ * Na telefóne sa rozpadne na plné dotykové ciele: do 26 px šípky sa palcom
+ * netrafí.
+ */
+const segment = cn(
+  "inline-flex select-none items-center justify-center whitespace-nowrap",
+  "text-fg-muted transition-colors duration-100 ease-out hover:bg-surface-2 hover:text-fg",
 );
 
 /**
@@ -60,7 +68,7 @@ function formatWeekRange(from: string, to: string): string {
 }
 
 /** 1 úloha · 2 úlohy · 5 úloh */
-function taskCountLabel(count: number): string {
+export function taskCountLabel(count: number): string {
   if (count === 1) return "1 úloha";
   if (count >= 2 && count <= 4) return `${count} úlohy`;
   return `${count} úloh`;
@@ -78,45 +86,36 @@ export function WeekHeader({
   const previous = addDays(weekStart, -7);
   const next = addDays(weekStart, 7);
 
+  const meta = [
+    taskCountLabel(taskCount),
+    totalMin > 0 ? `odhad ${formatDuration(totalMin)}` : null,
+  ].filter((part): part is string => part !== null);
+
   return (
-    <header className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
-      <div className="min-w-0">
-        <div className="flex min-w-0 items-center gap-2">
-          <h1 className="truncate text-base font-semibold tracking-tight text-fg">
-            {range}
-          </h1>
-          {isCurrentWeek ? (
-            <span className="shrink-0 rounded bg-accent-soft px-1.5 py-0.5 text-mini font-medium text-accent">
-              tento týždeň
-            </span>
-          ) : null}
-        </div>
-        <p className="mt-0.5 text-xs text-fg-muted">
-          {taskCountLabel(taskCount)}
-          {totalMin > 0 ? ` · odhad ${formatDuration(totalMin)}` : null}
-        </p>
-      </div>
-
-      {action}
-
-      {/*
-        Tri odkazy majú pod `sm` plný dotykový cieľ 44 px — palcom sa do 32 px
-        širokej šípky netrafí. Aj v najužšom okne sa zmestia: 44 + 44 + text
-        je pod 220 px.
-      */}
-      <nav aria-label="Navigácia týždňov" className="flex items-center gap-1">
+    <ScreenHeader
+      title={range}
+      {...(isCurrentWeek ? { chip: "tento týždeň" } : {})}
+      meta={meta.join(" · ")}
+    >
+      <nav
+        aria-label="Navigácia týždňov"
+        className="flex items-center overflow-hidden rounded border border-border"
+      >
         <Link
           href={`/tyzden?od=${previous}`}
           aria-label="Predchádzajúci týždeň"
           title="Predchádzajúci týždeň"
-          className={cn(navLink, "size-11 sm:size-8")}
+          className={cn(segment, "size-11 border-r border-border md:size-[26px]")}
         >
           <ChevronLeft aria-hidden="true" className="size-4" />
         </Link>
 
         <Link
           href="/tyzden"
-          className={cn(navLink, "h-11 px-3 text-body sm:h-8 sm:px-2.5")}
+          className={cn(
+            segment,
+            "h-11 border-r border-border px-3 text-sm text-fg md:h-[26px] md:px-2.5 md:text-meta",
+          )}
         >
           Tento týždeň
         </Link>
@@ -125,11 +124,13 @@ export function WeekHeader({
           href={`/tyzden?od=${next}`}
           aria-label="Nasledujúci týždeň"
           title="Nasledujúci týždeň"
-          className={cn(navLink, "size-11 sm:size-8")}
+          className={cn(segment, "size-11 md:size-[26px]")}
         >
           <ChevronRight aria-hidden="true" className="size-4" />
         </Link>
       </nav>
-    </header>
+
+      {action}
+    </ScreenHeader>
   );
 }
