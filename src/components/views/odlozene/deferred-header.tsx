@@ -1,3 +1,4 @@
+import { ScreenHeader } from "@/components/shell/screen-chrome";
 import { Archive, Hourglass } from "lucide-react";
 
 /**
@@ -58,34 +59,46 @@ const COPY: Record<DeferredKind, Copy> = {
   },
 };
 
+/** Veta do stavového riadku — tá istá, akou sa odkladisko predstavuje hore. */
+export function deferredHeadline(kind: DeferredKind, count: number): string {
+  // Bez bodky na konci — v stavovom riadku vedľa skratiek pôsobí ako preklep.
+  return COPY[kind].headline(count).replace(/\.$/, "");
+}
+
 export function DeferredHeader({ kind, count }: DeferredHeaderProps) {
   const copy = COPY[kind];
-  const Icon = copy.Icon;
+
+  return (
+    <ScreenHeader title={copy.title}>
+      {count > 0 ? (
+        <span
+          aria-hidden="true"
+          className="inline-flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full bg-surface-2 px-1.5 font-mono text-mini font-semibold tabular-nums text-fg-muted"
+        >
+          {count}
+        </span>
+      ) : null}
+    </ScreenHeader>
+  );
+}
+
+/**
+ * Veta pod hlavičkou — čo toto odkladisko znamená a čo sa v ňom nedeje.
+ *
+ * V návrhu má vlastný pruh s linkou. Je to jediné miesto, kde sa dá povedať,
+ * že odtiaľto sa nič nepripomína samo — bez toho ľudia očakávajú, že sa im
+ * „Niekedy" raz samo ozve, a prestanú appke veriť, keď sa neozve.
+ */
+export function DeferredIntro({ kind, count }: DeferredHeaderProps) {
+  const copy = COPY[kind];
   const empty = count === 0;
 
   return (
-    <header className="pb-4">
-      <div className="flex min-w-0 items-center gap-2">
-        <Icon aria-hidden="true" className="size-[18px] shrink-0 text-fg-subtle" />
-        <h1 className="min-w-0 truncate text-lg font-semibold tracking-tight text-fg">
-          {copy.title}
-        </h1>
-        {empty ? null : (
-          <span
-            aria-hidden="true"
-            className="inline-flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full bg-surface-2 px-1.5 text-mini font-semibold font-mono tabular-nums text-fg-muted"
-          >
-            {count}
-          </span>
-        )}
-      </div>
-
-      <p className="mt-1 text-sm text-fg-muted">
-        <span aria-live="polite" className="font-medium text-fg">
-          {copy.headline(count)}
-        </span>{" "}
-        {copy.sentence(empty)}
-      </p>
-    </header>
+    <p className="shrink-0 border-b border-border px-5 py-[11px] text-pretty text-body leading-normal text-fg-muted">
+      <span aria-live="polite" className="font-medium text-fg">
+        {copy.headline(count)}
+      </span>{" "}
+      {copy.sentence(empty)}
+    </p>
   );
 }

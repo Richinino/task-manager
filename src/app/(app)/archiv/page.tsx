@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
-import { Search } from "lucide-react";
+
+import { ScreenFooter, ScreenHeader } from "@/components/shell/screen-chrome";
 
 import { ArchiveFilter } from "@/components/views/archiv/archive-filter";
 import {
@@ -145,21 +146,16 @@ export default async function ArchivPage({ searchParams }: ArchivPageProps) {
   const visible = entries.filter((entry) => kinds.includes(entry.reason));
 
   return (
-    <div className="mx-auto flex w-full max-w-3xl min-w-0 flex-col gap-6 px-4 py-5 md:px-6 md:py-7">
-      <header className="min-w-0">
-        <div className="flex min-w-0 items-center gap-2">
-          <Search aria-hidden="true" className="size-[18px] shrink-0 text-fg-subtle" />
-          <h1 className="min-w-0 truncate text-lg font-semibold tracking-tight text-fg">
-            Archív a hľadanie
-          </h1>
-        </div>
-        <p className="mt-1 text-sm text-fg-muted">
-          Miesto, kde sa dá nájsť to, čo už nie je na žiadnej obrazovke. Hľadá naprieč
-          úlohami, nápadmi, projektmi, oblasťami aj denníkom — vrátane uzavretých
-          a zmazaných.
-        </p>
-      </header>
+    <div className="flex w-full flex-col md:h-dvh">
+      <ScreenHeader title="Archív a hľadanie" />
 
+      <p className="shrink-0 border-b border-border px-5 py-[11px] text-pretty text-body leading-normal text-fg-muted">
+        Miesto, kde sa dá nájsť to, čo už nie je na žiadnej obrazovke. Hľadá naprieč
+        úlohami, nápadmi, projektmi, oblasťami aj denníkom — vrátane uzavretých
+        a zmazaných.
+      </p>
+
+      <div className="flex min-h-0 flex-1 flex-col gap-5 overflow-y-auto px-5 py-4">
       <SearchField query={query} filter={filter} />
       <SearchResults query={query} hits={hits} />
 
@@ -182,6 +178,9 @@ export default async function ArchivPage({ searchParams }: ArchivPageProps) {
       </section>
 
       <ExportCard />
+      </div>
+
+      <ScreenFooter />
     </div>
   );
 }
