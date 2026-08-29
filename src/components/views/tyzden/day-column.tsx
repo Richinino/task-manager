@@ -8,12 +8,12 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { GripVertical } from "lucide-react";
+import { GripVertical, Repeat } from "lucide-react";
 
 import { AddTaskButton, AddTaskInline } from "@/components/task/add-task-inline";
-import { TaskItem } from "@/components/task/task-item";
+import { useTaskDetail } from "@/components/task/task-detail-provider";
 import {
-  WEEKDAYS_SK,
+  WEEKDAYS_SHORT_SK,
   formatDuration,
   formatLongSk,
   parseIsoDate,
@@ -22,17 +22,21 @@ import { cn } from "@/lib/utils";
 import type { TaskWithRelations } from "@/server/queries/tasks";
 
 /**
- * Jeden deň týždňa. Celý stĺpec je plocha na pustenie úlohy, aby sa dalo
- * mieriť aj mimo existujúcich riadkov (prázdny deň by inak nemal kam prijať).
+ * Jeden deň týždňa.
  *
- * Úlohy sú `useSortable`, nie `useDraggable` — sortable registruje položku
- * zároveň ako droppable a bez toho by `sortableKeyboardCoordinates` nemal
- * z čoho počítať, teda by presun šípkami vôbec nefungoval.
+ * Návrh („Týždeň") kreslí sedem stĺpcov oddelených linkami — nie sedem
+ * kariet s medzerami. Rozdiel nie je kozmetický: karta si berie rám aj
+ * odsadenie, takže na 1280 px ostane na text dňa okolo 120 px. Bez nich má
+ * stĺpec celú svoju šírku a zmestí sa doň názov úlohy.
  *
- * V hlavičke je „+", ktoré otvorí pole na pridanie úlohy priamo do tohto dňa.
- * Optimistické riadky si drží stĺpec sám (`useOptimistic` nižšie) — doska
- * hore o nich nevie a vedieť nemusí: zmiznú v tej istej chvíli, v ktorej
- * príde prekreslený zoznam zo servera.
+ * Dnešok nesie accentovú linku (navrchu na počítači, zľava na telefóne),
+ * minulé dni sú stlmené, ale ostávajú funkčné — vrátiť úlohu späť sa musí dať.
+ *
+ * Celý stĺpec je plocha na pustenie úlohy, aby sa dalo mieriť aj mimo
+ * existujúcich riadkov (prázdny deň by inak nemal kam prijať). Úlohy sú
+ * `useSortable`, nie `useDraggable` — sortable registruje položku zároveň ako
+ * droppable a bez toho by `sortableKeyboardCoordinates` nemal z čoho počítať,
+ * teda by presun šípkami vôbec nefungoval.
  */
 export interface DayColumnProps {
   /** Deň stĺpca ako RRRR-MM-DD. */
@@ -41,20 +45,10 @@ export interface DayColumnProps {
   isToday: boolean;
   /** Deň už bol — stlmí sa. */
   isPastDay: boolean;
+  /** Posledný stĺpec nekreslí pravú linku — tú už drží okraj obrazovky. */
+  isLast?: boolean;
   /** Koľko minút je v dni k dispozícii; 0 = bez stropu. */
   capacityMin: number;
-  /** Dnešok zo servera pre riadky úloh. */
-  todayIso: string;
-  /** Prahy odkladov z nastavení používateľa. */
-  postponeWarnAt: number;
-  postponeBlockAt: number;
-}
-
-/** Čo riadok úlohy potrebuje zo servera — cestuje aj do ťahaného náhľadu. */
-interface RowContext {
-  todayIso: string;
-  postponeWarnAt: number;
-  postponeBlockAt: number;
 }
 
 /** Stĺpec musí mať vlastné id droppable plochy, aby sa nepomiešalo s id úloh. */
@@ -75,25 +69,71 @@ function openEstimateMin(tasks: TaskWithRelations[]): number {
   }, 0);
 }
 
-/** Spoločný layout riadku — používa ho stĺpec aj ťahaný náhľad. */
-const rowClass = "flex items-start gap-1";
+/** Farba bodky priority. Rovnaké priradenie ako všade, kde sa úloha objaví. */
+const PRIORITY_DOT: Record<number, string> = { 1: "bg-p1", 2: "bg-p2", 3: "bg-p3" };
+
 /**
- * Rúčka je 24×24 px — minimum podľa WCAG 2.2 SC 2.5.8. Ikona ostáva 14 px,
- * takže riadok vyzerá rovnako ako predtým, len sa dá trafiť palcom.
- * `mt-0.5` drží ikonu na tej istej výške ako koliesko vedľa nej.
+ * Riadok úlohy v týždni — rúčka, bodka priority, názov, pod ním odhad.
+ *
+ * Zámerne **bez zaškrtávacieho políčka**; návrh ho tu nemá. Týždeň je
+ * plánovacia plocha: rozhoduje sa v ňom, KEDY sa vec spraví, nie či je
+ * hotová. Odškrtnúť sa dá v „Dnes", v projekte alebo v detaile, ktorý sa
+ * otvorí ťuknutím na názov. Hotová úloha je prečiarknutá, takže stav vidno.
  */
+const rowClass = "flex items-start gap-1.5 px-2 py-[7px]";
+
+/** Rúčka je 24×24 px — minimum podľa WCAG 2.2 SC 2.5.8, ikona ostáva 14 px. */
 const handleClass = cn(
-  "mt-0.5 flex size-6 shrink-0 items-center justify-center rounded",
+  "flex size-6 shrink-0 items-center justify-center rounded md:size-5",
   "text-fg-subtle transition-colors hover:bg-surface-2 hover:text-fg-muted",
 );
 
-function SortableTaskRow({
-  task,
-  row,
-}: {
-  task: TaskWithRelations;
-  row: RowContext;
-}) {
+function TaskLine({ task }: { task: TaskWithRelations }) {
+  const detail = useTaskDetail();
+  const done = task.status === "done" || task.status === "dropped";
+
+  const meta = [
+    task.plannedTime !== null ? task.plannedTime.slice(0, 5) : null,
+    task.estimateMin !== null ? formatDuration(task.estimateMin) : null,
+  ].filter((part): part is string => part !== null);
+
+  return (
+    <div className="min-w-0 flex-1">
+      <button
+        type="button"
+        onClick={() => detail?.open(task)}
+        className="flex w-full min-w-0 items-center gap-[5px] text-left"
+      >
+        <span
+          aria-hidden="true"
+          className={cn(
+            "size-1.5 shrink-0 rounded-full",
+            PRIORITY_DOT[task.priority] ?? "bg-p3",
+          )}
+        />
+        <span
+          className={cn(
+            "min-w-0 truncate text-meta",
+            done && "text-fg-subtle line-through",
+          )}
+        >
+          {task.title}
+        </span>
+        {task.recurrenceRule !== null ? (
+          <Repeat aria-hidden="true" className="size-3 shrink-0 text-fg-subtle" />
+        ) : null}
+      </button>
+
+      {meta.length > 0 ? (
+        <p className="mt-[3px] font-mono text-micro tabular-nums text-fg-muted">
+          {meta.join(" · ")}
+        </p>
+      ) : null}
+    </div>
+  );
+}
+
+function SortableTaskRow({ task }: { task: TaskWithRelations }) {
   const {
     attributes,
     listeners,
@@ -108,14 +148,14 @@ function SortableTaskRow({
     <li
       ref={setNodeRef}
       style={{ transform: CSS.Translate.toString(transform), transition }}
-      className={cn(rowClass, isDragging && "opacity-40")}
+      className={cn(rowClass, "border-b border-border", isDragging && "opacity-40")}
     >
       <button
         type="button"
         ref={setActivatorNodeRef}
         {...attributes}
         {...listeners}
-        aria-label={`Presunúť úlohu „${task.title}“ na iný deň alebo na iné miesto v dni`}
+        aria-label={`Presunúť úlohu ${task.title} na iný deň alebo na iné miesto v dni`}
         title="Presunúť na iný deň alebo preusporiadať"
         // touch-none je nutné, inak si prehliadač na dotyk vezme gesto ako posun stránky.
         className={cn(handleClass, "cursor-grab touch-none active:cursor-grabbing")}
@@ -123,40 +163,19 @@ function SortableTaskRow({
         <GripVertical aria-hidden="true" size={14} />
       </button>
 
-      <div className="min-w-0 flex-1">
-        <TaskItem
-          task={task}
-          todayIso={row.todayIso}
-          density="compact"
-          postponeWarnAt={row.postponeWarnAt}
-          postponeBlockAt={row.postponeBlockAt}
-        />
-      </div>
+      <TaskLine task={task} />
     </li>
   );
 }
 
 /** Náhľad, ktorý sa vezie s kurzorom. Vizuálne to isté ako riadok v stĺpci. */
-export function WeekTaskOverlay({
-  task,
-  todayIso,
-  postponeWarnAt,
-  postponeBlockAt,
-}: { task: TaskWithRelations } & RowContext) {
+export function WeekTaskOverlay({ task }: { task: TaskWithRelations }) {
   return (
     <div className={cn(rowClass, "rounded border border-accent bg-surface shadow-lg")}>
       <span aria-hidden="true" className={handleClass}>
         <GripVertical size={14} />
       </span>
-      <div className="min-w-0 flex-1">
-        <TaskItem
-          task={task}
-          todayIso={todayIso}
-          density="compact"
-          postponeWarnAt={postponeWarnAt}
-          postponeBlockAt={postponeBlockAt}
-        />
-      </div>
+      <TaskLine task={task} />
     </div>
   );
 }
@@ -166,12 +185,9 @@ export function DayColumn({
   tasks,
   isToday,
   isPastDay,
+  isLast = false,
   capacityMin,
-  todayIso,
-  postponeWarnAt,
-  postponeBlockAt,
 }: DayColumnProps) {
-  const row: RowContext = { todayIso, postponeWarnAt, postponeBlockAt };
   const { setNodeRef, isOver } = useDroppable({ id: dayDroppableId(date) });
 
   const [adding, setAdding] = useState(false);
@@ -195,10 +211,15 @@ export function DayColumn({
   }
 
   const day = parseIsoDate(date);
-  const weekdayName = WEEKDAYS_SK[day.getDay()] ?? "";
+  // Návrh má v hlavičke stĺpca dvojpísmenovú skratku veľkými („PO"), nie celé
+  // slovo — na stĺpec široký 150 px sa „pondelok" aj tak nezmestí.
+  const weekdayName = WEEKDAYS_SHORT_SK[day.getDay()] ?? "";
   const totalMin = openEstimateMin(tasks);
   const overloaded = capacityMin > 0 && totalMin > capacityMin;
   const loadLabel = totalMin > 0 ? formatDuration(totalMin) : "—";
+  const loadTitle = overloaded
+    ? `Odhad ${loadLabel} — viac, než je na deň k dispozícii`
+    : `Odhad ${loadLabel}`;
 
   return (
     // Zámerne `div role="group"`, nie `section` — sedem pomenovaných sekcií by
@@ -208,18 +229,25 @@ export function DayColumn({
       role="group"
       aria-label={`${formatLongSk(date)}${isToday ? " — dnes" : ""}`}
       className={cn(
-        "flex min-w-0 flex-col rounded border bg-surface transition-colors duration-100",
-        isToday ? "border-accent ring-1 ring-accent" : "border-border",
-        // Minulé dni sú ticho v pozadí, ale ostávajú funkčné — vrátiť úlohu späť sa musí dať.
-        isPastDay && !isToday && "opacity-65",
-        isOver && "border-accent bg-accent-soft",
+        "flex min-w-0 flex-col border-b border-border transition-colors duration-100",
+        "md:min-h-0 md:flex-1 md:border-b-0",
+        !isLast && "md:border-r md:border-border",
+        /*
+          Dnešok: na počítači linka navrchu stĺpca, na telefóne zľava — v
+          zvislom zozname dní by vodorovná linka splynula s deliacimi čiarami
+          medzi dňami a nebolo by ju vidieť.
+        */
+        isToday &&
+          "bg-surface shadow-[inset_3px_0_0_var(--accent)] md:shadow-[inset_0_2px_0_var(--accent)]",
+        isPastDay && !isToday && "opacity-60",
+        isOver && "bg-accent-soft",
       )}
     >
-      <header className="flex items-center gap-1.5 px-2 pt-1.5 md:gap-0.5">
+      <div className="flex min-h-11 shrink-0 items-center gap-2 border-b border-border px-4 py-1.5 md:h-9 md:min-h-0 md:gap-1.5 md:px-2 md:py-0">
         <span
           className={cn(
-            "label min-w-0 truncate",
-            isToday ? "text-accent" : "text-fg-muted",
+            "shrink-0 font-mono text-mini uppercase tracking-[0.12em] md:text-micro",
+            isToday ? "font-medium text-accent" : "text-fg-muted",
           )}
         >
           {weekdayName}
@@ -227,7 +255,7 @@ export function DayColumn({
 
         <span
           className={cn(
-            "shrink-0 font-mono text-sm font-semibold tabular-nums",
+            "shrink-0 font-mono text-row font-semibold tabular-nums md:text-sm",
             isToday ? "text-accent" : "text-fg",
           )}
         >
@@ -235,123 +263,94 @@ export function DayColumn({
         </span>
 
         {/*
-          Pod `md` sú dni pod sebou, nie sedem stĺpcov vedľa seba — rám okolo
-          jednej karty v dlhom zvislom zozname nemá s čím kontrastovať a dnešok
-          sa v ňom stratí. Preto to tam povie aj slovo. Od `md` je stĺpec
+          Pod `md` sú dni pod sebou a accentová linka zľava sa v dlhom zozname
+          ľahko prehliadne, takže to tam povie aj slovo. Od `md` je stĺpec
           dnešného dňa medzi ostatnými zreteľný sám a odznak by len uberal
           z úzkej hlavičky.
         */}
         {isToday ? (
-          <span className="label shrink-0 rounded bg-accent-soft px-1.5 py-0.5 text-accent md:hidden">
+          <span className="shrink-0 rounded-[3px] bg-accent-soft px-1.5 py-0.5 font-mono text-micro tracking-[0.08em] text-accent md:hidden">
             dnes
           </span>
         ) : null}
 
-        <span className="ml-auto flex shrink-0 items-center gap-1.5">
-          {/*
-            Pod `md` má odhad vlastný riadok zbytočne: v zvislom zozname je
-            v hlavičke miesta dosť a každý ušetrený riadok je o sedem riadkov
-            menej rolovania cez celý týždeň.
-          */}
-          <span
-            title={
-              overloaded
-                ? `Odhad ${loadLabel} — viac, než je na deň k dispozícii`
-                : `Odhad ${loadLabel}`
-            }
-            className={cn(
-              "text-mini font-mono tabular-nums md:hidden",
-              overloaded ? "font-medium text-warn" : "text-fg-subtle",
-            )}
-          >
-            {loadLabel}
-          </span>
-
-          {/*
-            Viditeľné vždy, nie až pri prejdení myšou: na dotyku hover
-            neexistuje a skryté tlačidlo by tam znamenalo žiadne tlačidlo.
-            Pod `md` má plný dotykový cieľ 44 px — ikona ostáva rovnaká.
-          */}
-          <AddTaskButton
-            ref={addButtonRef}
-            date={date}
-            aria-expanded={adding}
-            onClick={() => {
-              if (adding) closeAdding();
-              else setAdding(true);
-            }}
-            className={cn("-mr-1", adding && "bg-surface-2 text-fg")}
-          />
-        </span>
-      </header>
-
-      <p
-        title={
-          overloaded
-            ? `Odhad ${loadLabel} — viac, než je na deň k dispozícii`
-            : `Odhad ${loadLabel}`
-        }
-        className={cn(
-          "hidden px-2 pb-1 text-mini font-mono tabular-nums md:block",
-          overloaded ? "font-medium text-warn" : "text-fg-subtle",
-        )}
-      >
-        {loadLabel}
-      </p>
-
-      {/*
-        Prázdna plocha musí ostať dosť veľká na to, aby sa do nej dalo pustiť —
-        pod `md` však stačí menej: sedem prázdnych dní po 64 px je na telefóne
-        pol obrazovky ničoho.
-      */}
-      <div className="flex min-h-11 flex-1 flex-col gap-1 p-1.5 pt-0 md:min-h-16">
-        <SortableContext
-          items={tasks.map((task) => task.id)}
-          strategy={verticalListSortingStrategy}
+        <span
+          title={loadTitle}
+          className={cn(
+            "ml-auto shrink-0 font-mono text-mini tabular-nums md:text-micro",
+            overloaded ? "font-medium text-warn" : "text-fg-subtle",
+          )}
         >
-          <ul className="flex flex-col gap-1">
-            {tasks.map((task) => (
-              <SortableTaskRow key={task.id} task={task} row={row} />
-            ))}
-          </ul>
-        </SortableContext>
+          {loadLabel}
+        </span>
 
         {/*
-          Práve ukladané úlohy. Kreslia sa ako riadok bez ovládania — kým sa
-          nevrátia zo servera, nemajú id, takže by sa nedali ani odškrtnúť,
-          ani ťahať. Pre čítačku sú skryté; o výsledku hovorí `role="status"`
-          priamo v poli.
+          Viditeľné vždy, nie až pri prejdení myšou: na dotyku hover neexistuje
+          a skryté tlačidlo by tam znamenalo žiadne tlačidlo. Pod `md` má plný
+          dotykový cieľ 44 px, od `md` je z návrhu 20 px.
         */}
-        {pending.length > 0 ? (
-          <ul aria-hidden="true" className="flex flex-col gap-1">
-            {pending.map((title, index) => (
-              <li key={`${index}-${title}`} className={cn(rowClass, "opacity-60")}>
-                <span className={handleClass}>
-                  <GripVertical size={14} />
-                </span>
-                <span className="min-w-0 flex-1 truncate py-1 text-body text-fg-muted">
-                  {title}
-                </span>
-              </li>
-            ))}
-          </ul>
-        ) : null}
-
-        {adding ? (
-          <AddTaskInline
-            date={date}
-            onClose={closeAdding}
-            onOptimisticAdd={addPending}
-            className="pt-0.5"
-          />
-        ) : null}
-
-        {tasks.length === 0 && pending.length === 0 && !adding ? (
-          <p className="rounded border border-dashed border-border px-2 py-3 text-center text-mini text-fg-subtle">
-            Voľno
-          </p>
-        ) : null}
+        <AddTaskButton
+          ref={addButtonRef}
+          date={date}
+          aria-expanded={adding}
+          onClick={() => {
+            if (adding) closeAdding();
+            else setAdding(true);
+          }}
+          className={cn("-mr-2 md:mr-0 md:size-5", adding && "bg-surface-2 text-fg")}
+        />
       </div>
+
+      <SortableContext
+        items={tasks.map((task) => task.id)}
+        strategy={verticalListSortingStrategy}
+      >
+        <ul className="flex flex-col">
+          {tasks.map((task) => (
+            <SortableTaskRow key={task.id} task={task} />
+          ))}
+        </ul>
+      </SortableContext>
+
+      {/*
+        Práve ukladané úlohy. Kreslia sa ako riadok bez ovládania — kým sa
+        nevrátia zo servera, nemajú id, takže by sa nedali ani odškrtnúť, ani
+        ťahať. Pre čítačku sú skryté; o výsledku hovorí `role="status"` priamo
+        v poli.
+      */}
+      {pending.length > 0 ? (
+        <ul aria-hidden="true" className="flex flex-col">
+          {pending.map((title, index) => (
+            <li
+              key={`${index}-${title}`}
+              className={cn(rowClass, "border-b border-border opacity-60")}
+            >
+              <span className={handleClass}>
+                <GripVertical size={14} />
+              </span>
+              <span className="min-w-0 flex-1 truncate text-meta text-fg-muted">
+                {title}
+              </span>
+            </li>
+          ))}
+        </ul>
+      ) : null}
+
+      {adding ? (
+        <AddTaskInline
+          date={date}
+          onClose={closeAdding}
+          onOptimisticAdd={addPending}
+          className="px-2 py-1.5"
+        />
+      ) : null}
+
+      {/*
+        Prázdna plocha stĺpca. Musí ostať dosť veľká na to, aby sa do nej dalo
+        pustiť — na telefóne však stačí menej: sedem prázdnych dní po 64 px je
+        pol obrazovky ničoho.
+      */}
+      <div className="min-h-11 flex-1 md:min-h-0" />
     </div>
   );
 }

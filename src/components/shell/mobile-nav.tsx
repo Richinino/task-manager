@@ -49,27 +49,47 @@ const SHEET_GROUPS = [
   { key: "structure", label: SECONDARY_NAV_LABEL },
 ] as const;
 
-function BarBadge({ item, counts }: { item: NavItem; counts: NavCounts }) {
+/**
+ * Bodka, nie číslo.
+ *
+ * Návrh dáva do lišty 7 px krúžok bez číslice — na päť stĺpcov po 75 px je
+ * číslo aj tak nečitateľné a lišta má povedať „pozri sa sem", nie „koľko".
+ * Presný počet je na obrazovke, kam bodka ukazuje, aj v bočnom paneli.
+ *
+ * Číslo však nezaniká: nesie ho `sr-only` text, takže čítačka povie
+ * „Inbox, 3 nezatriedené" a nie „Inbox, bodka".
+ */
+function BarDot({ item, counts }: { item: NavItem; counts: NavCounts }) {
   const badge = navBadge(item, counts);
   if (!badge) return null;
 
   return (
-    <span
-      aria-label={badge.label}
-      className={cn(
-        "absolute -right-2.5 -top-1.5 inline-flex h-4 min-w-4 items-center justify-center",
-        "rounded-full px-1 font-mono text-micro font-medium tabular-nums text-accent-fg",
-        badge.tone === "danger" ? "bg-danger" : "bg-accent",
-      )}
-    >
-      {badge.value}
-    </span>
+    <>
+      <span
+        aria-hidden="true"
+        className={cn(
+          "absolute right-[22px] top-2 size-[7px] rounded-full",
+          // Farbu pre „po termíne" návrh neukazuje — držíme sa zvyšku appky.
+          badge.tone === "danger" ? "bg-danger" : "bg-accent",
+        )}
+      />
+      <span className="sr-only">{badge.label}</span>
+    </>
   );
 }
 
-/** Spoločný tvar tlačidla aj odkazu v lište — 56 px na výšku, celý stĺpec. */
+/**
+ * Spoločný tvar tlačidla aj odkazu v lište — celý stĺpec, 64 px na výšku.
+ *
+ * Tých 64 px je `--bar-height`. Dovtedy tu bolo `h-14` (56 px), takže obsah
+ * stránky si nechával odsadenie o osem pixelov väčšie, než lišta naozaj
+ * merala — presne ten druh rozdielu, ktorý si oko všimne až na fotke.
+ *
+ * `relative` drží bodku upozornenia: návrh ju umiestňuje voči stĺpcu
+ * (8 px zhora, 22 px sprava), nie voči ikone.
+ */
 const BAR_ITEM = cn(
-  "flex h-14 w-full flex-col items-center justify-center gap-1 px-1 text-mini",
+  "relative flex h-16 w-full flex-col items-center justify-center gap-[3px] px-1 text-mini",
   "transition-colors duration-100 ease-out",
 );
 
@@ -152,14 +172,12 @@ export function MobileNav({ counts }: { counts: NavCounts }) {
                   aria-current={active ? "page" : undefined}
                   className={cn(
                     BAR_ITEM,
-                    active ? "font-medium text-accent" : "text-fg-subtle active:text-fg",
+                    active ? "font-semibold text-accent" : "text-fg-muted active:text-fg",
                   )}
                 >
-                  <span className="relative inline-flex">
-                    <Icon className="size-[18px]" />
-                    <BarBadge item={item} counts={counts} />
-                  </span>
+                  <Icon aria-hidden="true" className="size-[19px]" />
                   <span className="max-w-full truncate">{item.label}</span>
+                  <BarDot item={item} counts={counts} />
                 </Link>
               </li>
             );
@@ -178,13 +196,11 @@ export function MobileNav({ counts }: { counts: NavCounts }) {
                 // Otvorený hárok aj otvorená obrazovka z druhej skupiny musia
                 // byť vidieť: inak človek nevie, kde v aplikácii vlastne je.
                 open || sheetActive
-                  ? "font-medium text-accent"
-                  : "text-fg-subtle active:text-fg",
+                  ? "font-semibold text-accent"
+                  : "text-fg-muted active:text-fg",
               )}
             >
-              <span className="relative inline-flex">
-                <Ellipsis className="size-[18px]" />
-              </span>
+              <Ellipsis aria-hidden="true" className="size-[19px]" />
               <span className="max-w-full truncate">Viac</span>
             </button>
           </li>
