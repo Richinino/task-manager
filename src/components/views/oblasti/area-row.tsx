@@ -168,8 +168,12 @@ export function AreaRow({ area, onOptimisticRemove, onError }: AreaRowProps) {
   const detaches = area.openTaskCount > 0 || area.projectCount > 0;
 
   return (
-    <li className="min-w-0 rounded border border-border bg-surface px-2 py-2">
-      <div className="flex min-w-0 items-start gap-1">
+    /*
+      Návrh („Oblasti") kreslí pruh cez celú šírku so spodnou linkou, nie
+      kartičku — rovnaká gramatika ako projekty a zoznamy úloh.
+    */
+    <li className="min-w-0 border-b border-border bg-surface px-5 py-3">
+      <div className="flex min-w-0 items-start gap-3">
         <ColorPicker value={color} onChange={commitColor} label={savedName} />
 
         <div className="flex min-w-0 flex-1 flex-col gap-0.5 pt-0.5">
@@ -209,7 +213,7 @@ export function AreaRow({ area, onOptimisticRemove, onError }: AreaRowProps) {
             )}
           />
 
-          <p className="min-w-0 truncate px-1.5 text-mini text-fg-subtle">
+          <p className="min-w-0 truncate px-1.5 font-mono text-mini text-fg-muted">
             {taskCountLabel(area.openTaskCount)} · {projectCountLabel(area.projectCount)}
             {archived ? " · archivovaná" : ""}
           </p>

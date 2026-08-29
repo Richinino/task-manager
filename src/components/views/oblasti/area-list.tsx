@@ -57,7 +57,11 @@ export function AreaList({ active, archived }: AreaListProps) {
     visibleActive.length === 0 && visibleArchived.length === 0 && pending.length === 0;
 
   return (
-    <div className="flex flex-col gap-5">
+    /*
+      Súvislá plocha oddelená linkami, bez vonkajších medzier — roluje sa
+      obsah, nie stránka.
+    */
+    <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
       <AreaCreateForm usedColors={usedColors} onOptimisticAdd={addPending} />
 
       {error !== null ? (
@@ -74,12 +78,12 @@ export function AreaList({ active, archived }: AreaListProps) {
           className="text-left sm:text-center"
         />
       ) : (
-        <section aria-labelledby="aktivne-oblasti" className="flex flex-col gap-2">
+        <section aria-labelledby="aktivne-oblasti" className="flex flex-col">
           <h2 id="aktivne-oblasti" className="sr-only">
             Aktívne oblasti
           </h2>
 
-          <ul className="flex flex-col gap-2">
+          <ul className="flex flex-col">
             {pending.map((name) => (
               <li
                 key={`pending-${name}`}
@@ -112,7 +116,7 @@ export function AreaList({ active, archived }: AreaListProps) {
       )}
 
       {visibleArchived.length > 0 ? (
-        <section className="flex flex-col gap-2">
+        <section className="flex flex-col">
           <button
             type="button"
             onClick={() => setArchiveOpen((open) => !open)}
@@ -135,8 +139,8 @@ export function AreaList({ active, archived }: AreaListProps) {
             </span>
           </button>
 
-          <div id="archivovane-oblasti" hidden={!archiveOpen} className="flex flex-col gap-2">
-            <ul className="flex flex-col gap-2">
+          <div id="archivovane-oblasti" hidden={!archiveOpen} className="flex flex-col">
+            <ul className="flex flex-col">
               {visibleArchived.map((area) => (
                 <AreaRow
                 key={area.id}

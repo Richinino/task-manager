@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
 
 import { AreaList } from "@/components/views/oblasti/area-list";
-import { AreasHeader } from "@/components/views/oblasti/areas-header";
+import { AreasHeader, AreasIntro } from "@/components/views/oblasti/areas-header";
+import { ScreenFooter } from "@/components/shell/screen-chrome";
 import { requireUser } from "@/server/auth-guard";
 import { listAreas } from "@/server/queries/structure";
 
@@ -24,9 +25,13 @@ export default async function OblastiPage() {
   const archived = all.filter((area) => area.archivedAt !== null);
 
   return (
-    <div className="mx-auto flex w-full max-w-3xl flex-col gap-5 px-4 py-5 md:px-6 md:py-7">
+    <div className="flex w-full flex-col md:h-dvh">
       <AreasHeader activeCount={active.length} />
+      <AreasIntro />
       <AreaList active={active} archived={archived} />
+      <ScreenFooter
+        summary={`${active.length} aktívnych · ${active.reduce((sum, area) => sum + area.openTaskCount, 0)} nevybavených${archived.length > 0 ? ` · ${archived.length} v archíve` : ""}`}
+      />
     </div>
   );
 }

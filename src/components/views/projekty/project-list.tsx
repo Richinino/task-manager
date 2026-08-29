@@ -50,8 +50,14 @@ export function ProjectList({ active, archived, areas, todayIso }: ProjectListPr
     active.length === 0 && archived.length === 0 && pending.length === 0;
 
   return (
-    <div className="flex flex-col gap-5">
-      <ProjectCreateForm areas={areas} onOptimisticAdd={addPending} />
+    /*
+      Zoznam je jedna súvislá plocha oddelená linkami — bez vonkajších medzier
+      a bez `max-w`. Roluje sa v ňom obsah, nie celá stránka.
+    */
+    <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
+      <div className="shrink-0 border-b border-border px-5 py-3">
+        <ProjectCreateForm areas={areas} onOptimisticAdd={addPending} />
+      </div>
 
       {nothingAtAll ? (
         <TaskEmpty
@@ -61,9 +67,17 @@ export function ProjectList({ active, archived, areas, todayIso }: ProjectListPr
           className="text-left sm:text-center"
         />
       ) : (
-        <section aria-labelledby="aktivne-projekty" className="flex flex-col gap-2">
-          <h2 id="aktivne-projekty" className="sr-only">
-            Aktívne projekty
+        <section aria-labelledby="aktivne-projekty" className="flex flex-col">
+          {/*
+            Štítok sekcie je v návrhu viditeľný pruh, nie skrytý nadpis — v
+            zozname bez medzier je to jediné, čo oddelí živé projekty od
+            archívu.
+          */}
+          <h2
+            id="aktivne-projekty"
+            className="label shrink-0 border-b border-border px-5 py-[9px] text-fg-muted"
+          >
+            Živé projekty
           </h2>
 
           {pending.map((name) => (
@@ -75,7 +89,7 @@ export function ProjectList({ active, archived, areas, todayIso }: ProjectListPr
           ))}
 
           {active.length === 0 && pending.length === 0 ? (
-            <p className="rounded border border-dashed border-border bg-surface px-3 py-4 text-sm text-fg-muted">
+            <p className="border-b border-border px-5 py-4 text-sm text-fg-muted">
               Žiadny živý projekt — všetko, čo tu bolo, je v archíve.
             </p>
           ) : null}
@@ -83,14 +97,14 @@ export function ProjectList({ active, archived, areas, todayIso }: ProjectListPr
       )}
 
       {archived.length > 0 ? (
-        <section className="flex flex-col gap-2">
+        <section className="flex flex-col">
           <button
             type="button"
             onClick={() => setArchiveOpen((open) => !open)}
             aria-expanded={archiveOpen}
             aria-controls="archivovane-projekty"
             className={cn(
-              "inline-flex h-11 w-full items-center gap-2 rounded px-1 text-left sm:h-8",
+              "inline-flex h-11 w-full shrink-0 items-center gap-2 border-b border-border px-5 text-left sm:h-9",
               "text-body font-medium text-fg-muted",
               "transition-colors duration-100 ease-out hover:bg-surface-2 hover:text-fg",
             )}
@@ -109,12 +123,12 @@ export function ProjectList({ active, archived, areas, todayIso }: ProjectListPr
           <div
             id="archivovane-projekty"
             hidden={!archiveOpen}
-            className="flex flex-col gap-2"
+            className="flex flex-col"
           >
             {archived.map((project) => (
               <ProjectCard key={project.id} project={project} todayIso={todayIso} />
             ))}
-            <p className="px-1 text-mini leading-relaxed text-fg-subtle">
+            <p className="border-b border-border px-5 py-3 text-mini leading-relaxed text-fg-subtle">
               Archivovaný projekt sa neponúka vo výberoch, ale jeho úlohy aj
               história ostávajú. Z detailu sa dá kedykoľvek vrátiť späť.
             </p>
@@ -135,7 +149,7 @@ function PendingCard({ name }: { name: string }) {
   return (
     <div
       aria-hidden="true"
-      className="flex min-w-0 flex-col gap-2 rounded border border-dashed border-border bg-surface px-3 py-2.5 opacity-60"
+      className="flex min-w-0 flex-col gap-[7px] border-b border-border bg-surface px-5 py-3 opacity-60"
     >
       <span className="min-w-0 truncate text-sm font-medium text-fg">{name}</span>
       <span className="text-xs text-fg-subtle">zakladá sa…</span>
