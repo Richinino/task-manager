@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import {
   useEffect,
   useId,
@@ -9,7 +8,7 @@ import {
   useTransition,
   type ReactNode,
 } from "react";
-import { Archive, ArrowLeft, LoaderCircle, TriangleAlert } from "lucide-react";
+import { Archive, LoaderCircle, TriangleAlert } from "lucide-react";
 
 import type { Area } from "@/db/schema";
 import { formatRelativeSk, isPast, parseIsoDate } from "@/lib/dates";
@@ -105,8 +104,6 @@ export function ProjectDetail({ project, areas, todayIso }: ProjectDetailProps) 
 
   const now = parseIsoDate(todayIso);
   const archived = project.archivedAt !== null;
-
-  const total = project.openTaskCount + project.doneTaskCount;
   const deadlineOverdue =
     draft.deadline !== null && !archived && isPast(draft.deadline, now);
 
@@ -214,33 +211,18 @@ export function ProjectDetail({ project, areas, todayIso }: ProjectDetailProps) 
   const definitionMissing = draft.definitionOfDone.trim() === "";
 
   return (
-    <div className="flex flex-col gap-4">
-      <div className="flex min-w-0 items-center gap-2">
-        <Link
-          href="/projekty"
-          className={cn(
-            "-ml-1 inline-flex h-11 items-center gap-1.5 rounded px-1.5 sm:h-8",
-            "text-body text-fg-muted transition-colors duration-100 ease-out",
-            "hover:bg-surface-2 hover:text-fg",
-          )}
-        >
-          <ArrowLeft aria-hidden="true" size={15} className="shrink-0" />
-          Projekty
-        </Link>
-
-        {isPending ? (
-          <LoaderCircle
-            aria-hidden="true"
-            className="size-3.5 shrink-0 animate-spin text-fg-subtle"
-          />
-        ) : null}
-
-        <span className="ml-auto shrink-0 text-mini text-fg-subtle">
-          {total === 0
-            ? "zatiaľ bez úloh"
-            : `hotové ${project.doneTaskCount} z ${total}`}
-        </span>
-      </div>
+    /*
+      Ľavý stĺpec detailu. Drobec aj postup sedia v hlavičke obrazovky —
+      tam ich má návrh a tam sú aj pri zozname projektov, takže sa pri
+      prechode medzi obrazovkami nehýbu.
+    */
+    <div className="flex flex-col gap-3.5 px-5 py-4">
+      {isPending ? (
+        <p className="flex items-center gap-1.5 font-mono text-mini text-fg-subtle">
+          <LoaderCircle aria-hidden="true" className="size-3 shrink-0 animate-spin" />
+          ukladám…
+        </p>
+      ) : null}
 
       {error !== null ? (
         <p
@@ -447,7 +429,14 @@ interface FieldProps {
 }
 
 function Field({ label, htmlFor, hint, children }: FieldProps) {
-  const labelClass = "text-meta font-medium text-fg-muted";
+  /*
+    Štítok poľa má v návrhu iný prestrk než štítok sekcie (0,08 em proti
+    0,14 em) — preto tu nie je utilita `.label`, ale vlastná trieda.
+    Sú to dve rôzne úrovne a keby vyzerali rovnako, formulár by splynul
+    so zoznamom.
+  */
+  const labelClass =
+    "font-mono text-mini font-medium uppercase tracking-[0.08em] text-fg-muted";
 
   return (
     <div className="flex min-w-0 flex-col gap-1.5">
