@@ -253,9 +253,25 @@ odoslanie zo servera. Server sa musí niekde budiť: robí to cron v GitHub
 Actions každých 15 minút (Vercel Hobby dovolí jeden beh denne, čo je na
 pripomienky nepoužiteľné).
 
-**Odtiaľ pochádza presnosť ±15 minút.** Plánovač berie len pripomienky,
-ktoré už dozreli — môžu teda meškať do štvrťhodiny, ale nikdy neprídu skôr.
-Kto chce mať náskok, nastaví si v appke predstih.
+Plánovač berie len pripomienky, ktoré už dozreli — môžu teda meškať, ale
+nikdy neprídu skôr. Kto chce mať náskok, nastaví si v appke predstih.
+
+> **Koľko to naozaj mešká (namerané 29. 8. 2026 na 68 behoch za 4 dni):**
+> cron je nastavený na štvrťhodinu, ale GitHub ho toľkokrát nepustí. Medzi
+> dvoma skutočnými behmi bolo v polovici prípadov **39 minút**, v priemere
+> **85 minút** a najdlhšia medzera mala **11,6 hodiny**.
+>
+> Má to jeden tvrdý dôsledok: pripomienka staršia než 6 hodín sa zahadzuje
+> (`MAX_MESKANIE_MIN`), takže v medzerách nad šesť hodín **nedôjde vôbec**.
+> V nameranom období to bolo **18 % času**.
+>
+> Preto je cron nastavený na `7,22,37,52` a nie na `*/15` — celé štvrtiny
+> hodiny sú najvyťaženejšie a GitHub v nich behy odkladá najviac.
+>
+> **Keď to bude málo,** namier na `PRIPOMIENKY_URL` externý cron
+> (cron-job.org a podobné sú zadarmo a spoľahlivé na minútu) a workflow
+> nechaj len ako zálohu. Appka sa nemení — je jedno, kto na tú adresu
+> zavolá, dôležitá je hlavička s tajomstvom.
 
 ### 1. Migrácia
 
@@ -330,9 +346,27 @@ a notebook sa prihlasujú zvlášť.
 
 | Príznak | Príčina |
 |---|---|
+| **Workflow je zelený, ale nič nechodí** | pozri nižšie — najzákernejší prípad |
+| Workflow zlyhá s „Chýba PRIPOMIENKY_URL alebo CRON_SECRET" | tajomstvá nie sú v repozitári (pozor: záložka **Actions**, nie Codespaces ani Dependabot) |
 | Sekcia „Pripomienky" v nastaveniach nie je | chýbajú `VAPID_*` na Verceli, alebo nebol Redeploy |
 | Workflow hlási `503` | to isté |
 | Workflow hlási `401` | `CRON_SECRET` na GitHube ≠ na Verceli |
 | `preverenych: 0` | žiadna úloha nemá **hodinu** — bez nej sa nepripomína nič |
 | `odoslanych: 0`, ale `preverenych` > 0 | pripomienka už raz odišla (`reminders` si to pamätá), alebo je staršia než 6 hodín |
 | `zmazanychPrihlaseni` > 0 | prihlásenie zaniklo (odinštalovaná appka, vymazané dáta stránky) — treba sa prihlásiť znova |
+
+### Zelený beh ešte neznamená, že sa niečo odoslalo
+
+Toto sa naozaj stalo: workflow vyhodnotil 68 behov ako úspešné a pritom
+appku ani raz nekontaktoval — bez tajomstiev sa totiž ticho preskakoval.
+Odvtedy taký beh **zlyhá**, ale keby si niekedy potreboval overiť, či
+volanie naozaj dorazilo, nepozeraj sa na GitHub, ale na **Vercel →
+Logs**. Filtruj `/api/pripomienky`. Čo tam nie je, sa nestalo.
+
+Rovnako sa dá endpoint kedykoľvek vyskúšať ručne:
+
+```bash
+curl -s -X POST "https://TVOJA-ADRESA.vercel.app/api/pripomienky" -H "Authorization: Bearer TAJOMSTVO" -H "Content-Length: 0" -w "
+kod: %{http_code}
+"
+```

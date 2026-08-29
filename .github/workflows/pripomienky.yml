@@ -13,15 +13,19 @@
 #   PRIPOMIENKY_URL   celá adresa, napr. https://tvoja-adresa.vercel.app/api/pripomienky
 #   CRON_SECRET       to isté tajomstvo, aké je v premenných na Verceli
 #
-# Kým nie sú nastavené, beh sa preskočí a nič nespadne.
+# Kým nie sú nastavené, beh ZLYHÁ — nech je na prvý pohľad vidno, že sa
+# pripomienky neodosielajú.
 
 name: Pripomienky
 
 on:
   schedule:
-    # Každých 15 minút. Časy sú v UTC; appka si deň aj hodinu prepočíta
-    # do pásma používateľa sama.
-    - cron: "*/15 * * * *"
+    # Zámerne NIE `*/15` — to padne na :00, :15, :30, :45, teda presne na
+    # minúty, na ktoré si cron nastavia všetci ostatní. GitHub v tej špičke
+    # behy odkladá aj celé hodiny. Nepárne minúty mimo štvrtí sú menej
+    # obsadené. Časy sú v UTC; appka si deň aj hodinu prepočíta do pásma
+    # používateľa sama.
+    - cron: "7,22,37,52 * * * *"
   workflow_dispatch:
 
 # Dva behy naraz by tú istú pripomienku poslali dvakrát. Bráni tomu síce
@@ -41,9 +45,18 @@ jobs:
           URL: ${{ secrets.PRIPOMIENKY_URL }}
           SECRET: ${{ secrets.CRON_SECRET }}
         run: |
+          # Chýbajúce tajomstvo NIE JE dôvod na zelený beh.
+          #
+          # Pôvodne sa tu `exit 0` — a bolo to zle. Beh bez tajomstiev appku
+          # vôbec nekontaktoval, ale v zozname svietil ako úspech. Takto
+          # prešlo 68 behov za štyri dni a vyzeralo to, že pripomienky
+          # fungujú, hoci sa ani raz nespustili.
+          #
+          # Plánovač, ktorý nemá kam zavolať, je pokazený — nech to aj tak
+          # vyzerá. Červený krížik zmizne v momente, keď tajomstvá pribudnú.
           if [ -z "$URL" ] || [ -z "$SECRET" ]; then
-            echo "PRIPOMIENKY_URL alebo CRON_SECRET nie je nastavené — preskakujem."
-            exit 0
+            echo "::error::Chýba PRIPOMIENKY_URL alebo CRON_SECRET medzi tajomstvami repozitára (Settings → Secrets and variables → Actions). Pripomienky sa neodosielajú."
+            exit 1
           fi
 
           # `-sS` mlčí, ale chybu ukáže; telo aj kód potrebujeme oboje.
@@ -61,8 +74,10 @@ jobs:
 
           # 503 = kľúče VAPID zatiaľ nie sú nastavené. Nie je to chyba behu,
           # len ešte nie je čo posielať.
+          # 503 = kľúče VAPID chýbajú. Beh technicky prešiel, ale nič
+          # neodoslal, tak nech to aspoň nie je ticho.
           if [ "$kod" = "503" ]; then
-            echo "Notifikácie ešte nie sú nastavené (chýbajú kľúče VAPID)."
+            echo "::warning::Notifikácie ešte nie sú nastavené — na Verceli chýbajú VAPID_PUBLIC_KEY / VAPID_PRIVATE_KEY."
             exit 0
           fi
 
