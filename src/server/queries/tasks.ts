@@ -319,6 +319,12 @@ export function getOverdueTasks(
     userId,
     and(
       isOpen(),
+      /*
+        Úloha viazaná na svoj deň sa medzi prepadnuté nikdy nedostane.
+        Tréning je buď v utorok, alebo nebol — v „po termíne" patria veci,
+        ktoré sa ešte dajú dobehnúť, a toto medzi ne nepatrí.
+      */
+      eq(tasks.staysOnDay, false),
       or(
         lt(tasks.plannedDate, asOf),
         and(isNull(tasks.plannedDate), lt(tasks.dueDate, asOf)),

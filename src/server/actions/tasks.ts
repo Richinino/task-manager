@@ -107,6 +107,11 @@ const taskFieldsSchema = z.object({
   projectId: idSchema.nullish(),
   areaId: idSchema.nullish(),
   parentTaskId: idSchema.nullish(),
+  /*
+    Úloha patrí svojmu dňu a nepresúva sa. Tréning je buď v utorok, alebo
+    nebol — medzi prepadnuté sa taká úloha nikdy nedostane.
+  */
+  staysOnDay: z.boolean().optional(),
 });
 
 const createTaskSchema = taskFieldsSchema.extend({ title: titleSchema });
@@ -572,6 +577,10 @@ export async function updateTask(
     if (data.horizon !== undefined && data.horizon !== task.horizon) {
       values.horizon = data.horizon;
       changed.push("horizon");
+    }
+    if (data.staysOnDay !== undefined && data.staysOnDay !== task.staysOnDay) {
+      values.staysOnDay = data.staysOnDay;
+      changed.push("staysOnDay");
     }
     if (
       data.estimateMin !== undefined &&
