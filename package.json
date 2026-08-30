@@ -4,7 +4,8 @@
   "description": "",
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "npm run kontrola:migracie && next build",
+    "kontrola:migracie": "node scripts/kontrola-migracii.mjs",
     "start": "next start",
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
