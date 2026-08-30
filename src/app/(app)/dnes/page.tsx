@@ -261,12 +261,23 @@ export default async function DnesPage({ searchParams }: DnesPageProps) {
             />
           ) : null}
 
-          <OverdueSection
-            tasks={overdueOffScreen}
-            todayIso={todayIso}
-            postponeWarnAt={user.settings.postponeWarnAt}
-            postponeBlockAt={user.settings.postponeBlockAt}
-          />
+          {/*
+            Prepadnuté patria LEN k dnešku.
+
+            Merajú sa voči dnešku, takže pri prezeraní zajtrajška by hore
+            v stĺpci ostali visieť dnešné a staršie úlohy — človek prepne deň
+            a vľavo mu naďalej svieti dnešok. Zajtrajšok je navyše plánovacia
+            obrazovka: čo je po termíne, sa tam vybaviť nedá, len to zaberá
+            miesto rozhodnutiu o zajtrajšku.
+          */}
+          {isToday ? (
+            <OverdueSection
+              tasks={overdueOffScreen}
+              todayIso={todayIso}
+              postponeWarnAt={user.settings.postponeWarnAt}
+              postponeBlockAt={user.settings.postponeBlockAt}
+            />
+          ) : null}
 
           <DayList
             tasks={listTasks}
@@ -283,7 +294,7 @@ export default async function DnesPage({ searchParams }: DnesPageProps) {
         <DayFooter
           openCount={openTasks.length}
           doneCount={doneCount}
-          overdueCount={overdueOffScreen.length}
+          overdueCount={isToday ? overdueOffScreen.length : 0}
         />
       </div>
 

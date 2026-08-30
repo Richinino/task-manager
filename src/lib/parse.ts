@@ -296,6 +296,26 @@ const RE_TIME_COLON = /\b(\d{1,2}):(\d{2})\b/gu;
 /** „15.30" — pripúšťame len tam, kde za tým nenasleduje ďalšia bodka (to je dátum). */
 const RE_TIME_DOT = /\b(\d{1,2})\.(\d{2})\b(?!\s*\.)/gu;
 
+/*
+  ROZSAH ČASU — „od 16:00 do 17:45".
+
+  Toto NIE JE termín. Je to blok v kalendári: kedy sa začne a ako dlho
+  potrvá. Preto z neho vzniká `plannedTime` + `estimateMin`, nie `dueTime` —
+  „do 17:45" tu znamená koniec bloku, nie dokedy to musí byť hotové.
+
+  Dva tvary, oba zámerne opatrné, aby sa nezožral obyčajný rozsah čísel:
+
+  - s predložkou (`od 16 do 17:45`) sú minúty nepovinné na oboch stranách,
+    lebo „od…do" samo osebe hovorí, že ide o rozsah;
+  - bez predložky (`16:00-17:45`) musí mať ZAČIATOK minúty, inak by sa
+    „2-3" alebo „strana 10-12" čítali ako čas.
+*/
+const RE_TIME_RANGE_PREP =
+  /(?<![\p{L}\p{N}])od\s+(\d{1,2})(?:[:.](\d{2}))?\s*(?:do|-|–|—)\s*(\d{1,2})(?:[:.](\d{2}))?(?![\p{L}\p{N}])/gu;
+
+const RE_TIME_RANGE_DASH =
+  /(?<![\p{L}\p{N}])(\d{1,2}):(\d{2})\s*(?:do|-|–|—)\s*(\d{1,2})(?::(\d{2}))?(?![\p{L}\p{N}])/gu;
+
 /** „o 9h", „do 15 hod" — hodina s predložkou. Bez predložky ide o odhad. */
 const RE_TIME_HOUR = /(?<![\p{L}\p{N}])(o|do|okolo|od)\s+(\d{1,2})\s*(?:hod|h)(?![\p{L}\p{N}])/gu;
 
@@ -366,6 +386,13 @@ const W_DATE = 3;
 const W_TIME_PREP = 4;
 const W_MARKER = 5;
 const W_TIME_HOUR = 6;
+/*
+  Najvyššia váha v celom parseri. Rozsah musí prebiť obe hodiny vnútri seba
+  aj prípadný odhad — inak by z „od 16:00 do 17:45" ostalo `plannedTime`
+  16:00 a `dueTime` 17:45, teda presne to nedorozumenie, kvôli ktorému
+  pravidlo vzniklo.
+*/
+const W_TIME_RANGE = 7;
 
 /* ═══════════════════════════════════════════════════════════════════════════
    POMOCNÉ FUNKCIE
@@ -635,6 +662,54 @@ function parseInner(
 
   /* ── čas ────────────────────────────────────────────────────────────── */
 
+  /*
+    Rozsahy idú PRED jednotlivé časy. Poradie samo o sebe nerozhoduje —
+    o prekryve rozhoduje váha — ale drží pohromade to, čo spolu súvisí.
+  */
+  const pushRange = (
+    m: RegExpExecArray,
+    hodinaOd: string,
+    minutaOd: string | undefined,
+    hodinaDo: string,
+    minutaDo: string | undefined,
+  ): void => {
+    const h1 = Number(hodinaOd);
+    const m1 = minutaOd === undefined ? 0 : Number(minutaOd);
+    const h2 = Number(hodinaDo);
+    const m2 = minutaDo === undefined ? 0 : Number(minutaDo);
+    if (h1 > 23 || h2 > 23 || m1 > 59 || m2 > 59) return;
+
+    const zaciatok = h1 * 60 + m1;
+    const koniec = h2 * 60 + m2;
+    /*
+      Cez polnoc: „od 23:00 do 00:30" je hodina a pol, nie mínus 22 a pol.
+      Rovnaký čas na oboch stranách je preklep, nie nulový blok — taký
+      rozsah radšej zahodíme a nechá sa naň pravidlo pre jednotlivý čas.
+    */
+    const trvanie = koniec > zaciatok ? koniec - zaciatok : koniec + 24 * 60 - zaciatok;
+    if (trvanie <= 0 || trvanie > 12 * 60) return;
+
+    const hhmm = formatHhMm(h1, m1);
+    candidates.push({
+      kind: "time",
+      start: m.index,
+      end: m.index + m[0].length,
+      weight: W_TIME_RANGE,
+      label: `${hhmm} · ${formatDuration(trvanie)}`,
+      time: hhmm,
+      target: "planned",
+      estimateMin: trvanie,
+    });
+  };
+
+  eachMatch(RE_TIME_RANGE_PREP, folded, (m) => {
+    pushRange(m, m[1]!, m[2], m[3]!, m[4]);
+  });
+
+  eachMatch(RE_TIME_RANGE_DASH, folded, (m) => {
+    pushRange(m, m[1]!, m[2], m[3]!, m[4]);
+  });
+
   eachMatch(RE_TIME_COLON, folded, (m) => {
     const h = Number.parseInt(m[1]!, 10);
     const min = Number.parseInt(m[2]!, 10);
@@ -850,6 +925,13 @@ function parseInner(
     } else {
       if (out.plannedTime !== undefined) continue;
       out.plannedTime = t.time;
+    }
+    /*
+      Rozsah času nesie okrem začiatku aj dĺžku bloku. Odhad napísaný inde
+      v texte má prednosť — kto napíše „od 16:00 do 18:00 45m", vie, čo robí.
+    */
+    if (t.estimateMin !== undefined && out.estimateMin === undefined) {
+      out.estimateMin = t.estimateMin;
     }
     contributing.push(t);
   }
