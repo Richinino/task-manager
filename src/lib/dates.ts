@@ -153,6 +153,48 @@ export function hourIn(timeZone: string, now: Date = new Date()): number {
   }
 }
 
+/**
+ * `"06:30"` → `390`. Neplatný alebo chýbajúci čas dá `null`.
+ *
+ * Vracia `null` a nie nulu zámerne: polnoc je platný čas a „nenastavené"
+ * sa od nej musí dať odlíšiť — inak by sa rituál bez nastaveného času
+ * otváral hneď po polnoci.
+ */
+export function timeToMinutes(time: string | null | undefined): number | null {
+  if (typeof time !== "string") return null;
+  const zhoda = /^([01]\d|2[0-3]):([0-5]\d)$/.exec(time.trim());
+  if (zhoda === null) return null;
+  return Number(zhoda[1]) * 60 + Number(zhoda[2]);
+}
+
+/**
+ * Minúty od polnoci v pásme používateľa.
+ *
+ * Rituály sa dovtedy spúšťali na celé hodiny, takže „ranné plánovanie o 6:30"
+ * sa nedalo nastaviť — buď o šiestej, alebo o siedmej. Minúty to riešia
+ * a hodina je len ich zvláštny prípad.
+ */
+export function minutesIn(timeZone: string, now: Date = new Date()): number {
+  if (!isValidDate(now)) return 0;
+  try {
+    const formatted = new Intl.DateTimeFormat("en-GB", {
+      timeZone,
+      hour: "2-digit",
+      minute: "2-digit",
+      hourCycle: "h23",
+    }).format(now);
+    const casti = formatted.split(":").map((x) => Number.parseInt(x, 10));
+    const h = casti[0];
+    const m = casti[1];
+    if (h === undefined || m === undefined || Number.isNaN(h) || Number.isNaN(m)) {
+      return now.getHours() * 60 + now.getMinutes();
+    }
+    return h * 60 + m;
+  } catch {
+    return now.getHours() * 60 + now.getMinutes();
+  }
+}
+
 /** YYYY-MM-DD ± n dní. */
 export function addDays(iso: string, n: number): string {
   const d = parseIsoDate(iso);

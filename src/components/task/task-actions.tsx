@@ -66,6 +66,7 @@ type Result = { ok: true } | { ok: false; error: string };
 */
 export interface TaskRowPatch {
   staysOnDay?: boolean;
+  allDay?: boolean;
   priority?: number;
   isFrog?: boolean;
   plannedDate?: string | null;
@@ -793,6 +794,22 @@ export function TaskActions({
             {/*
               Len pre úlohu, ktorá deň vôbec má — inak nie je čoho sa držať.
             */}
+            {plannedDate !== null ? (
+              <MenuItem
+                role="menuitemcheckbox"
+                checked={task.allDay}
+                icon={<Sun size={14} />}
+                label={task.allDay ? "Nie je na celý deň" : "Na celý deň"}
+                onSelect={() =>
+                  run(
+                    { allDay: !task.allDay },
+                    () => updateTask(task.id, { allDay: !task.allDay }),
+                    "Nastavenie sa nepodarilo uložiť. Skús to znova.",
+                  )
+                }
+              />
+            ) : null}
+
             {plannedDate !== null ? (
               <MenuItem
                 role="menuitemcheckbox"

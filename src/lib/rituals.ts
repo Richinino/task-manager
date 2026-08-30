@@ -68,10 +68,15 @@ export function ritualTriggerHour(
 
 export interface AutoOpenInput {
   type: RitualType;
-  /** Aktuálna hodina v pásme používateľa, 0–23. */
-  hour: number;
-  /** Hodina z nastavení; `null` znamená, že sa tento rituál sám neotvára. */
-  triggerHour: number | null;
+  /**
+   * Koľko minút ubehlo dnes od polnoci v pásme používateľa.
+   *
+   * Minúty, nie hodiny: recap sa dá nastaviť na 6:30 a celá hodina je len
+   * ich zvláštny prípad.
+   */
+  nowMin: number;
+  /** Čas z nastavení v minútach; `null` znamená, že sa rituál sám neotvára. */
+  triggerMin: number | null;
   /** Je rituál za toto obdobie dokončený? */
   completed: boolean;
   /** Odložil ho človek tlačidlom „Nechať tak"? */
@@ -91,12 +96,12 @@ export interface AutoOpenInput {
  */
 export function shouldAutoOpen(input: AutoOpenInput): boolean {
   if (!input.enabled) return false;
-  if (input.triggerHour === null) return false;
+  if (input.triggerMin === null) return false;
   if (input.completed) return false;
   if (input.snoozed) return false;
   // Rozpísaný text má prednosť pred akýmkoľvek rituálom.
   if (input.busy) return false;
-  return input.hour >= input.triggerHour;
+  return input.nowMin >= input.triggerMin;
 }
 
 /** Kľúč odloženia v `sessionStorage`. Viaže sa na obdobie, nie na deň behu. */

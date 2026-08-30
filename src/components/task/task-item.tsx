@@ -613,6 +613,15 @@ export function TaskItem({
             z návrhu nedotknú. Bez nej by sa nedalo zistiť, prečo sa tá
             úloha neobjavuje medzi prepadnutými.
           */}
+          {task.allDay ? (
+            <span
+              title="Celý deň — zaberá celé okno dňa, nič iné sa naň neplánuje"
+              className="order-4 shrink-0 text-mini text-fg-subtle sm:order-none"
+            >
+              ☀
+            </span>
+          ) : null}
+
           {task.staysOnDay ? (
             <span
               title="Patrí svojmu dňu — nepresúva sa a nikdy nie je po termíne"

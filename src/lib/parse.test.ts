@@ -672,3 +672,37 @@ describe("rozsah času", () => {
     expectAligned(vstup, p(vstup));
   });
 });
+
+describe("celý deň", () => {
+  it("rozpozná základné tvary", () => {
+    expect(p("Sťahovanie celý deň").allDay).toBe(true);
+    expect(p("Výlet na celý deň").allDay).toBe(true);
+    expect(p("Konferencia celodenná").allDay).toBe(true);
+    expect(p("Sťahovanie celý deň").title).toBe("Sťahovanie");
+  });
+
+  /*
+    „celý dom", „celý týždeň", „celé popoludnie" nie sú celý deň. Slovo
+    „celý" je v bežnej vete časté a nesmie na seba brať príznak.
+  */
+  it("nezožerie iné spojenia so slovom „celý“", () => {
+    expect(p("Upratať celý dom").allDay).toBeUndefined();
+    expect(p("Upratať celý dom").title).toBe("Upratať celý dom");
+    expect(p("Čítať celý týždeň").allDay).toBeUndefined();
+  });
+
+  it("nezavadzia rozsahu času ani priorite", () => {
+    const rozsah = p("Porada od 9:00 do 10:30");
+    expect(rozsah.allDay).toBeUndefined();
+    expect(rozsah.estimateMin).toBe(90);
+
+    const priorita = p("Celý deň s otcom !1");
+    expect(priorita.allDay).toBe(true);
+    expect(priorita.priority).toBe(1);
+  });
+
+  it("tokeny sedia na pôvodný text", () => {
+    const vstup = "Sťahovanie celý deň";
+    expectAligned(vstup, p(vstup));
+  });
+});
