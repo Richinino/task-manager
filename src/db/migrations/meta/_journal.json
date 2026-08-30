@@ -22,6 +22,13 @@
       "when": 1787371509250,
       "tag": "0002_pripomienky",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1788098233678,
+      "tag": "0003_neprenasane_ulohy",
+      "breakpoints": true
     }
   ]
 }

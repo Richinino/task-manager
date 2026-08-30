@@ -13,6 +13,7 @@ import {
   CalendarOff,
   CalendarRange,
   Check,
+  Anchor,
   Archive,
   Ellipsis,
   Hourglass,
@@ -64,6 +65,7 @@ type Result = { ok: true } | { ok: false; error: string };
   optimistické kópie jeho stavu.
 */
 export interface TaskRowPatch {
+  staysOnDay?: boolean;
   priority?: number;
   isFrog?: boolean;
   plannedDate?: string | null;
@@ -773,6 +775,25 @@ export function TaskActions({
                 />
               ) : null}
             </MenuGroup>
+
+            {/*
+              Len pre úlohu, ktorá deň vôbec má — inak nie je čoho sa držať.
+            */}
+            {plannedDate !== null ? (
+              <MenuItem
+                role="menuitemcheckbox"
+                checked={task.staysOnDay}
+                icon={<Anchor size={14} />}
+                label={task.staysOnDay ? "Môže sa presunúť" : "Patrí svojmu dňu"}
+                onSelect={() =>
+                  run(
+                    { staysOnDay: !task.staysOnDay },
+                    () => updateTask(task.id, { staysOnDay: !task.staysOnDay }),
+                    "Nastavenie sa nepodarilo uložiť. Skús to znova.",
+                  )
+                }
+              />
+            ) : null}
 
             <MenuSeparator />
 

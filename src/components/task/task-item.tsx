@@ -607,6 +607,21 @@ export function TaskItem({
             </span>
           ) : null}
 
+          {/*
+            Úloha, ktorá patrí svojmu dňu. Značka sedí vedľa opakovania —
+            oba sú doplnky k názvu, nie stĺpce, takže sa šírky riadku
+            z návrhu nedotknú. Bez nej by sa nedalo zistiť, prečo sa tá
+            úloha neobjavuje medzi prepadnutými.
+          */}
+          {task.staysOnDay ? (
+            <span
+              title="Patrí svojmu dňu — nepresúva sa a nikdy nie je po termíne"
+              className="order-4 shrink-0 text-mini text-fg-subtle sm:order-none"
+            >
+              ⚓
+            </span>
+          ) : null}
+
           {task.context ? (
             <span
               title={`kontext ${normalizeContext(task.context)}`}

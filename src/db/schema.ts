@@ -218,6 +218,18 @@ export const tasks = pgTable(
     recurrenceRule: text("recurrence_rule"),
     recurrenceParentId: text("recurrence_parent_id"),
 
+    /**
+     * Úloha patrí svojmu dňu a nikam sa nepresúva.
+     *
+     * Tréning je buď v utorok, alebo nebol. Keď sa nespravil, nemá zmysel,
+     * aby sa ďalší týždeň vliekol v „po termíne" — tam patria veci, ktoré
+     * sa ešte dajú dobehnúť. Takto označená úloha ostáva vo svojom dni
+     * (nájdeš ju, keď sa naň pozrieš), ale prepadnutá nikdy nie je.
+     *
+     * Nemaže sa a nezahadzuje: záznam, že sa vec nestala, je informácia.
+     */
+    staysOnDay: boolean("stays_on_day").notNull().default(false),
+
     /** Koľkokrát bola úloha odložená. Pohon anti-prokrastinácie. */
     postponeCount: integer("postpone_count").notNull().default(0),
 
