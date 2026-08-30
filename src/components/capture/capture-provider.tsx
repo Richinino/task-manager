@@ -9,7 +9,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Plus } from "lucide-react";
 
 import { QuickCapture } from "@/components/capture/quick-capture";
@@ -95,7 +95,21 @@ export interface CaptureProviderProps {
   tags?: readonly { name: string; taskCount: number }[];
   /** Pravidlá automatického prideľovania z nastavení používateľa. */
   autoTagRules?: readonly AutoTagRule[];
+  /**
+   * Dnešok v pásme používateľa.
+   *
+   * Kvôli tomu, aby zachytenie na obrazovke „Dnes" padlo na deň, ktorý máš
+   * otvorený, a nie do inboxu. Klient si ho počítať nesmie — `new Date()`
+   * v prehliadači vie dať iný deň než server a úloha by skončila inde, než
+   * na čo sa človek pozerá.
+   */
+  todayIso?: string;
   children: ReactNode;
+}
+
+/** Deň z `?den=` — čokoľvek iné než platný dátum sa berie ako „nič". */
+function denZAdresy(raw: string | null): string | undefined {
+  return raw !== null && ISO_DATE_RE.test(raw) ? raw : undefined;
 }
 
 export function CaptureProvider({
@@ -105,9 +119,12 @@ export function CaptureProvider({
   contexts,
   tags,
   autoTagRules,
+  todayIso,
   children,
 }: CaptureProviderProps) {
   const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
   const [captureOpen, setCaptureOpen] = useState(false);
   const [paletteOpen, setPaletteOpen] = useState(false);
   /** Predvyplnenia platia vždy len pre jedno otvorenie — pri zatvorení sa mažú. */
@@ -122,14 +139,34 @@ export function CaptureProvider({
       neberú tak, ako prišli, ale až po overení tvaru — z pokazeného vstupu
       vznikne „bez predvyplnenia", nie rozbitý dialóg.
     */
-    const date = options?.defaultDate;
+    /*
+      Keď deň nikto nepovie, vezme sa ten, na ktorý sa práve pozeráš.
+
+      Platí to LEN na obrazovke „Dnes" — tam je otvorený deň jednoznačný
+      a človek od zachytenia čaká, že sa vec objaví pred ním. Na ostatných
+      obrazovkách ostáva pôvodné správanie: úloha ide do inboxu a roztriedi
+      sa neskôr. Inbox je zámer, nie nedostatok — bez neho by sa každá
+      myšlienka musela hneď aj naplánovať.
+
+      Deň napísaný v texte („zajtra", „v piatok") má vždy prednosť; toto je
+      len predvolba, keď v texte nie je nič.
+    */
+    const otvorenyDen =
+      pathname === "/dnes" ? (denZAdresy(searchParams.get("den")) ?? todayIso) : undefined;
+
+    const date = options?.defaultDate ?? otvorenyDen;
     const text = options?.defaultText;
     setCaptureDate(typeof date === "string" && ISO_DATE_RE.test(date) ? date : null);
     setCaptureText(typeof text === "string" && text.trim() !== "" ? text : null);
 
     setPaletteOpen(false);
     setCaptureOpen(true);
-  }, []);
+    /*
+      Závislosti sú tu podstatné, nie kozmetické: bez nich by si `openCapture`
+      pamätalo adresu z prvého vykreslenia a po prekliknutí na iný deň by
+      zachytenie padalo stále na ten pôvodný.
+    */
+  }, [pathname, searchParams, todayIso]);
   const closeCapture = useCallback(() => setCaptureOpen(false), []);
   const openPalette = useCallback(() => {
     setCaptureOpen(false);

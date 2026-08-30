@@ -1,26 +1,19 @@
-import { formatDuration } from "@/lib/dates";
-import { cn } from "@/lib/utils";
+"use client";
 
-/**
- * Slovenské skloňovanie počtu úloh: 1 úloha · 2–4 úlohy · 5+ úloh.
- *
- * Žije tu, lebo rozpočet času je jediné miesto, kde sa počet úloh naozaj
- * vypisuje slovom („3 úlohy bez odhadu"). Zdieľa ho ešte upozornenie na WIP
- * limit — vlastný modul v `src/lib` by pre štyri riadky bol zbytočný.
- */
-export function taskCountSk(count: number): string {
-  const n = Math.abs(Math.trunc(count));
-  if (n === 1) return "1 úloha";
-  if (n >= 2 && n <= 4) return `${n} úlohy`;
-  return `${n} úloh`;
-}
+import { formatDuration } from "@/lib/dates";
+import { taskCountSk } from "@/lib/sk";
+import { cn } from "@/lib/utils";
 
 export interface TimeBudgetProps {
   /** Súčet odhadov dnešných nedokončených úloh, v minútach. */
   plannedMin: number;
   /**
-   * Hrubý čas dňa z nastavení (dayEndHour − dayStartHour), v minútach —
-   * ešte bez porád. Tie si rozpočet odpočíta sám z `meetingMin`.
+   * Koľko minút má deň k dispozícii.
+   *
+   * Komponent si to zámerne nepočíta sám. Ranné plánovanie sem posiela CELÉ
+   * okno dňa (plánuje sa celý deň), obrazovka „Dnes" cez `LiveTimeBudget`
+   * len to, čo z neho ešte zostáva. Sú to dve rôzne otázky a jedno číslo by
+   * na obe odpovedalo zle.
    */
   availableMin: number;
   /** Koľko dnešných nedokončených úloh nemá odhad — číslo je o ne neúplné. */
