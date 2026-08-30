@@ -13,7 +13,9 @@ import {
   CalendarOff,
   CalendarRange,
   Check,
+  Archive,
   Ellipsis,
+  Hourglass,
   Pencil,
   Star,
   Sun,
@@ -22,8 +24,9 @@ import {
   Undo2,
 } from "lucide-react";
 
-import { addDays, formatDayMonthSk, startOfWeek } from "@/lib/dates";
+import { addDays, formatDayMonthSk, formatDuration, startOfWeek } from "@/lib/dates";
 import { cn } from "@/lib/utils";
+import { ESTIMATE_CHOICES } from "@/components/views/sablony/template-labels";
 import { Button } from "@/components/ui/button";
 import {
   Popover,
@@ -64,6 +67,9 @@ export interface TaskRowPatch {
   priority?: number;
   isFrog?: boolean;
   plannedDate?: string | null;
+  estimateMin?: number | null;
+  status?: "waiting";
+  horizon?: "someday";
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
@@ -343,6 +349,55 @@ function MenuSeparator() {
  * všade inde. Zvislé šípky doň vstupujú na práve platnej hodnote, nie na
  * prvej, takže sa fokus nezačína inde, než je zaškrtnutie.
  */
+/**
+ * Odhad na jedno kliknutie priamo z riadku.
+ *
+ * Rozpočet dňa je presne taký dobrý, ako sú odhady — a „Bez odhadu: 4 úlohy"
+ * pod pruhom bolo dovtedy len napomenutie, ktoré sa nedalo poslúchnuť inde
+ * než v detaile. Tu je to jedno kliknutie a šesť hodnôt, ktoré appka používa
+ * všade inde (5 / 15 / 30 / 60 / 120 / 240).
+ *
+ * Opakovaný klik na tú istú hodnotu odhad zruší — inak by sa raz nastavený
+ * odhad nedal z menu odobrať.
+ */
+function MenuEstimateRow({
+  value,
+  onPick,
+}: {
+  value: number | null;
+  onPick: (minutes: number | null) => void;
+}) {
+  return (
+    <div role="group" aria-label="Odhad času" className="flex flex-wrap gap-1 px-2 py-0.5">
+      {ESTIMATE_CHOICES.map((minutes) => {
+        const checked = value === minutes;
+        return (
+          <button
+            key={minutes}
+            type="button"
+            role="menuitemradio"
+            aria-checked={checked}
+            aria-label={`Odhad ${formatDuration(minutes)}`}
+            data-row="estimate"
+            tabIndex={-1}
+            onClick={() => onPick(checked ? null : minutes)}
+            className={cn(
+              "flex min-h-9 min-w-[52px] flex-1 items-center justify-center rounded border",
+              "font-mono text-body tabular-nums transition-colors duration-100 ease-out",
+              checked
+                ? "border-accent bg-accent/10 font-medium text-fg"
+                : "border-border text-fg-muted hover:bg-surface-2 hover:text-fg",
+              "focus-visible:bg-surface-2",
+            )}
+          >
+            {formatDuration(minutes)}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
 function MenuPriorityRow({
   value,
   onPick,
@@ -721,6 +776,21 @@ export function TaskActions({
 
             <MenuSeparator />
 
+            <MenuGroup label="Odhad">
+              <MenuEstimateRow
+                value={task.estimateMin}
+                onPick={(minutes) =>
+                  run(
+                    { estimateMin: minutes },
+                    () => updateTask(task.id, { estimateMin: minutes }),
+                    "Odhad sa nepodarilo uložiť. Skús to znova.",
+                  )
+                }
+              />
+            </MenuGroup>
+
+            <MenuSeparator />
+
             <MenuGroup label="Priorita">
               <MenuPriorityRow
                 value={task.priority}
@@ -755,6 +825,44 @@ export function TaskActions({
                   }
                 />
               ) : null}
+            </MenuGroup>
+
+            <MenuSeparator />
+
+            {/*
+              Odloženie nie je zahodenie a človek to potrebuje oveľa častejšie.
+              Doteraz sa z riadku dalo len zahodiť — takže sa buď zahadzovalo
+              to, čo malo len počkať, alebo úloha visela v dni donekonečna.
+            */}
+            <MenuGroup label="Odložiť">
+              <MenuItem
+                icon={<Archive size={14} />}
+                label="Do Niekedy"
+                onSelect={() =>
+                  run(
+                    /*
+                      „Niekedy" je HORIZONT, nie stav — zásobáreň, nie iná fáza
+                      úlohy. Zároveň sa odoberá z plánu: inak by ostala visieť
+                      v dni, z ktorého ju človek práve odkladá.
+                    */
+                    { horizon: "someday", plannedDate: null },
+                    () =>
+                      updateTask(task.id, { horizon: "someday", plannedDate: null }),
+                    "Úlohu sa nepodarilo odložiť. Skús to znova.",
+                  )
+                }
+              />
+              <MenuItem
+                icon={<Hourglass size={14} />}
+                label="Čaká sa na niekoho"
+                onSelect={() =>
+                  run(
+                    { status: "waiting" },
+                    () => updateTask(task.id, { status: "waiting" }),
+                    "Úlohu sa nepodarilo odložiť. Skús to znova.",
+                  )
+                }
+              />
             </MenuGroup>
 
             <MenuSeparator />

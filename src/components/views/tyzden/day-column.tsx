@@ -8,6 +8,7 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
+import Link from "next/link";
 import { GripVertical, Repeat } from "lucide-react";
 
 import { AddTaskButton, AddTaskInline } from "@/components/task/add-task-inline";
@@ -244,23 +245,39 @@ export function DayColumn({
       )}
     >
       <div className="flex min-h-11 shrink-0 items-center gap-2 border-b border-border px-4 py-1.5 md:h-9 md:min-h-0 md:gap-1.5 md:px-2 md:py-0">
-        <span
-          className={cn(
-            "shrink-0 font-mono text-mini uppercase tracking-[0.12em] md:text-micro",
-            isToday ? "font-medium text-accent" : "text-fg-muted",
-          )}
-        >
-          {weekdayName}
-        </span>
+        {/*
+          Deň v hlavičke je odkaz na svoju vlastnú obrazovku.
 
-        <span
+          Týždeň ukazuje, ČO kedy je; keď sa človek rozhodne jeden deň naozaj
+          odpracovať, chce ho mať celý — s rozpočtom, rituálmi aj prioritou
+          dňa. Doteraz sa tam dalo dostať len cez „Dnes" a šípky.
+        */}
+        <Link
+          href={{ pathname: "/dnes", query: { den: date } }}
+          title={`Otvoriť ${formatLongSk(date)}`}
           className={cn(
-            "shrink-0 font-mono text-row font-semibold tabular-nums md:text-sm",
-            isToday ? "text-accent" : "text-fg",
+            "-mx-1 flex shrink-0 items-center gap-2 rounded px-1 md:gap-1.5",
+            "transition-colors duration-100 ease-out hover:bg-surface-2",
           )}
         >
-          {day.getDate()}
-        </span>
+          <span
+            className={cn(
+              "shrink-0 font-mono text-mini uppercase tracking-[0.12em] md:text-micro",
+              isToday ? "font-medium text-accent" : "text-fg-muted",
+            )}
+          >
+            {weekdayName}
+          </span>
+
+          <span
+            className={cn(
+              "shrink-0 font-mono text-row font-semibold tabular-nums md:text-sm",
+              isToday ? "text-accent" : "text-fg",
+            )}
+          >
+            {day.getDate()}
+          </span>
+        </Link>
 
         {/*
           Pod `md` sú dni pod sebou a accentová linka zľava sa v dlhom zozname
