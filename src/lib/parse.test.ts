@@ -604,3 +604,71 @@ describe("náhodné vstupy (invarianty)", () => {
     }
   });
 });
+
+describe("rozsah času", () => {
+  /*
+    „od 16:00 do 17:45" je blok v kalendári, nie termín. Presne toto sa
+    dovtedy čítalo ako „naplánované na 16:00, hotové musí byť do 17:45",
+    čo je iná veta, než akú človek napísal.
+  */
+  it("z rozsahu robí začiatok a trvanie, nie termín", () => {
+    const r = p("Tréning od 16:00 do 17:45");
+    expect(r.title).toBe("Tréning");
+    expect(r.plannedTime).toBe("16:00");
+    expect(r.estimateMin).toBe(105);
+    expect(r.dueTime).toBeUndefined();
+  });
+
+  it("zvláda pomlčku aj bez predložky", () => {
+    const r = p("Porada 9:00-10:30");
+    expect(r.plannedTime).toBe("09:00");
+    expect(r.estimateMin).toBe(90);
+    expect(r.dueTime).toBeUndefined();
+  });
+
+  it("s predložkou nepotrebuje minúty", () => {
+    const r = p("Kurz od 16 do 17:45");
+    expect(r.plannedTime).toBe("16:00");
+    expect(r.estimateMin).toBe(105);
+  });
+
+  it("znesie prechod cez polnoc", () => {
+    const r = p("Nočná od 23:00 do 00:30");
+    expect(r.plannedTime).toBe("23:00");
+    expect(r.estimateMin).toBe(90);
+  });
+
+  /*
+    Toto je celý dôvod, prečo tvar bez predložky vyžaduje minúty na začiatku.
+    Bez toho by sa každý rozsah čísel v texte stal časom.
+  */
+  it("nezožerie obyčajný rozsah čísel", () => {
+    expect(p("Kúpiť 3-5 jabĺk").plannedTime).toBeUndefined();
+    expect(p("Kúpiť 3-5 jabĺk").title).toBe("Kúpiť 3-5 jabĺk");
+    expect(p("Prečítať strany 10-12").estimateMin).toBeUndefined();
+  });
+
+  it("termín s hodinou ostáva termínom", () => {
+    const r = p("Faktúra do piatku 15:00");
+    expect(r.dueTime).toBe("15:00");
+    expect(r.plannedTime).toBeUndefined();
+    expect(r.estimateMin).toBeUndefined();
+  });
+
+  it("odhad napísaný zvlášť má prednosť pred dĺžkou bloku", () => {
+    const r = p("Blok od 16:00 do 18:00 45m");
+    expect(r.plannedTime).toBe("16:00");
+    expect(r.estimateMin).toBe(45);
+  });
+
+  it("nezmyselný a priveľký rozsah sa ignoruje", () => {
+    expect(p("kód od 25:00 do 26:00").plannedTime).toBeUndefined();
+    // Trinásťhodinový blok je skôr preklep než plán.
+    expect(p("maratón od 06:00 do 20:00").estimateMin).toBeUndefined();
+  });
+
+  it("tokeny sedia na pôvodný text", () => {
+    const vstup = "Tréning od 16:00 do 17:45";
+    expectAligned(vstup, p(vstup));
+  });
+});
