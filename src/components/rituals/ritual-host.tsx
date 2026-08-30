@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { Moon, Sunrise } from "lucide-react";
 
-import { hourIn } from "@/lib/dates";
+import { minutesIn, timeToMinutes } from "@/lib/dates";
 import {
   RITUAL_META,
   shouldAutoOpen,
@@ -56,8 +56,12 @@ export interface RitualHostProps {
     postponeWarnAt: number;
     postponeBlockAt: number;
   };
-  /** `settings.dayStartHour` — ranné plánovanie sa viaže naň. */
+  /** `settings.dayStartHour` — záloha, keď vlastný čas ranného recapu nie je. */
   dayStartHour: number;
+  /** `settings.morningRitualAt` — vlastný čas ranného plánovania (`HH:MM`). */
+  morningRitualAt?: string | null;
+  /** `settings.eveningRitualAt` — vlastný čas večerného shutdownu. */
+  eveningRitualAt?: string | null;
   /** Je večerný shutdown za toto obdobie hotový? */
   completed: boolean;
   /** Rozrobené odpovede, ak sa rituál už začal. */
@@ -77,6 +81,8 @@ export function RitualHost({
   period,
   morning,
   dayStartHour,
+  morningRitualAt = null,
+  eveningRitualAt = null,
   completed,
   initialPayload,
   initialJournal,
@@ -109,8 +115,8 @@ export function RitualHost({
     const timer = window.setTimeout(() => {
       const should = shouldAutoOpen({
         type: "daily_shutdown",
-        hour: hourIn(timeZone),
-        triggerHour: dayEndHour,
+        nowMin: minutesIn(timeZone),
+        triggerMin: timeToMinutes(eveningRitualAt) ?? dayEndHour * 60,
         completed,
         snoozed: false,
         enabled: autoOpen,
@@ -120,7 +126,7 @@ export function RitualHost({
     }, 400);
 
     return () => window.clearTimeout(timer);
-  }, [completed, key, timeZone, dayEndHour, autoOpen]);
+  }, [completed, key, timeZone, dayEndHour, eveningRitualAt, autoOpen]);
 
   /*
     Ranné plánovanie beží rovnako, len s vlastným prahom a vlastným kľúčom
@@ -132,13 +138,14 @@ export function RitualHost({
     if (sessionStorage.getItem(morningKey) === "1") return;
 
     const timer = window.setTimeout(() => {
-      const hour = hourIn(timeZone);
-      if (hour >= dayEndHour) return;
+      const nowMin = minutesIn(timeZone);
+      const koniecDna = timeToMinutes(eveningRitualAt) ?? dayEndHour * 60;
+      if (nowMin >= koniecDna) return;
 
       const should = shouldAutoOpen({
         type: "daily_plan",
-        hour,
-        triggerHour: dayStartHour,
+        nowMin,
+        triggerMin: timeToMinutes(morningRitualAt) ?? dayStartHour * 60,
         completed: morning.completed,
         snoozed: false,
         enabled: autoOpen,
@@ -148,7 +155,16 @@ export function RitualHost({
     }, 400);
 
     return () => window.clearTimeout(timer);
-  }, [morning.completed, morningKey, timeZone, dayStartHour, dayEndHour, autoOpen]);
+  }, [
+    morning.completed,
+    morningKey,
+    timeZone,
+    dayStartHour,
+    dayEndHour,
+    morningRitualAt,
+    eveningRitualAt,
+    autoOpen,
+  ]);
 
   function handleMorningOpenChange(next: boolean): void {
     setMorningOpen(next);

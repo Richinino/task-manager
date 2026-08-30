@@ -271,6 +271,29 @@ export function SettingsForm({ settings, pushSetup }: SettingsFormProps) {
     );
   }
 
+  /**
+   * Čas recapu ako natívne `time` pole.
+   *
+   * Prázdne pole znamená „drž sa hodín dňa" — presne tak sa appka správala
+   * dovtedy. Preto sa neukladá prázdny reťazec, ale `null`: rozdiel medzi
+   * „nenastavené" a „polnoc" musí ostať čitateľný.
+   */
+  function ritualTimeField(key: "morningRitualAt" | "eveningRitualAt", zaloha: string) {
+    return (
+      <Input
+        id={fieldId(key)}
+        type="time"
+        className="w-36"
+        value={draft[key] ?? ""}
+        placeholder={zaloha}
+        onChange={(event) => {
+          const hodnota = event.target.value.trim();
+          commit({ [key]: hodnota === "" ? null : hodnota });
+        }}
+      />
+    );
+  }
+
   function hourField(key: "dayStartHour" | "dayEndHour") {
     return (
       <Select
@@ -325,6 +348,30 @@ export function SettingsForm({ settings, pushSetup }: SettingsFormProps) {
             hint="Musí byť neskôr než začiatok."
           >
             {hourField("dayEndHour")}
+          </Field>
+        </div>
+
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <Field
+            id={fieldId("morningRitualAt")}
+            label="Ranné plánovanie o"
+            hint="Prázdne = podľa začiatku dňa. Hodiny dňa hovoria, odkedy sa ráta rozpočet — nie kedy vstávaš."
+          >
+            {ritualTimeField(
+              "morningRitualAt",
+              `${String(draft.dayStartHour).padStart(2, "0")}:00`,
+            )}
+          </Field>
+
+          <Field
+            id={fieldId("eveningRitualAt")}
+            label="Večerný shutdown o"
+            hint="Prázdne = podľa konca dňa."
+          >
+            {ritualTimeField(
+              "eveningRitualAt",
+              `${String(draft.dayEndHour).padStart(2, "0")}:00`,
+            )}
           </Field>
         </div>
 

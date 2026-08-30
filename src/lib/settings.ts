@@ -4,6 +4,12 @@ import { z } from "zod";
  * Používateľské nastavenia. Uložené ako jsonb v `users.settings`,
  * aby sa dali rozširovať bez migrácie.
  */
+/** `HH:MM` v 24-hodinovom tvare. Prázdny reťazec sa berie ako „nenastavené". */
+const timeSchema = z
+  .string()
+  .trim()
+  .regex(/^([01]\d|2[0-3]):[0-5]\d$/, "Čas musí byť v tvare HH:MM.");
+
 export const settingsSchema = z.object({
   /** Max počet úloh na obrazovke „Dnes". Pridanie ďalšej vyžaduje niečo odobrať. */
   wipLimit: z.number().int().min(1).max(20).default(6),
@@ -88,6 +94,23 @@ export const settingsSchema = z.object({
    * neotvárajú nikdy — na 15–30 minút práce sa treba rozhodnúť vedome.
    */
   ritualAutoOpen: z.boolean().default(true),
+
+  /**
+   * Kedy sa má ranný a večerný recap otvoriť.
+   *
+   * `null` znamená „drž sa hodín dňa" — ranné plánovanie na `dayStartHour`,
+   * večerný shutdown na `dayEndHour`. Presne tak sa appka správala dovtedy,
+   * takže nikomu sa nič nezmení, kým si čas sám nenastaví.
+   *
+   * Vlastný čas dáva zmysel práve preto, že hodiny dňa sú o inom: `dayStartHour`
+   * hovorí, odkedy sa ráta rozpočet, nie kedy vstávaš. Kto začína pracovať
+   * o ôsmej, ale plánuje si deň nad kávou o pol siedmej, mal dovtedy smolu.
+   *
+   * Tvar je `HH:MM`. Nastavenia sú JSONB so zod predvolenými hodnotami, takže
+   * pridanie poľa NEPOTREBUJE migráciu.
+   */
+  morningRitualAt: timeSchema.nullish().transform((v) => v ?? null),
+  eveningRitualAt: timeSchema.nullish().transform((v) => v ?? null),
 
   /**
    * O koľko minút skôr má prísť pripomienka.

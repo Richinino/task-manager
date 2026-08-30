@@ -16,6 +16,14 @@ export interface TimeBudgetProps {
    * na obe odpovedalo zle.
    */
   availableMin: number;
+  /**
+   * Je v dni celodenná úloha?
+   *
+   * Vtedy sa rozpočet neráta, ale oznamuje: deň je zabraný. Aritmetika by
+   * tam hlásila „naplánoval si o 9 h viac, než máš“, čo nie je pravda —
+   * človek deň nepreplánoval, len ho celý vyhradil na jednu vec.
+   */
+  allDay?: boolean;
   /** Koľko dnešných nedokončených úloh nemá odhad — číslo je o ne neúplné. */
   withoutEstimate: number;
   /**
@@ -35,6 +43,7 @@ export interface TimeBudgetProps {
 export function TimeBudget({
   plannedMin,
   availableMin,
+  allDay = false,
   withoutEstimate,
   meetingMin = 0,
 }: TimeBudgetProps) {
@@ -77,6 +86,15 @@ export function TimeBudget({
           <p className="text-body text-fg-subtle sm:text-xs">{missing}.</p>
         ) : null}
       </div>
+    );
+  }
+
+  if (allDay) {
+    return (
+      <p className="text-body leading-relaxed text-fg-muted sm:text-xs">
+        <span className="font-medium text-fg">Deň je zabraný celodennou úlohou.</span>{" "}
+        Rozpočet sa neráta — na nič iné dnes miesto nie je.
+      </p>
     );
   }
 

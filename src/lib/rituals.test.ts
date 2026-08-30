@@ -86,8 +86,8 @@ describe("shouldAutoOpen", () => {
   function input(overrides: Partial<AutoOpenInput> = {}): AutoOpenInput {
     return {
       type: "daily_shutdown",
-      hour: 20,
-      triggerHour: 18,
+      nowMin: 20 * 60,
+      triggerMin: 18 * 60,
       completed: false,
       snoozed: false,
       enabled: true,
@@ -101,11 +101,11 @@ describe("shouldAutoOpen", () => {
   });
 
   it("presne v nastavenú hodinu sa už otvorí", () => {
-    expect(shouldAutoOpen(input({ hour: 18 }))).toBe(true);
+    expect(shouldAutoOpen(input({ nowMin: 1080 }))).toBe(true);
   });
 
   it("pred nastavenou hodinou nie", () => {
-    expect(shouldAutoOpen(input({ hour: 17 }))).toBe(false);
+    expect(shouldAutoOpen(input({ nowMin: 1020 }))).toBe(false);
   });
 
   it("hotový rituál sa neotvára", () => {
@@ -125,12 +125,12 @@ describe("shouldAutoOpen", () => {
   });
 
   it("rituál bez spúšťacej hodiny sa neotvára nikdy", () => {
-    expect(shouldAutoOpen(input({ type: "weekly", triggerHour: null }))).toBe(false);
+    expect(shouldAutoOpen(input({ type: "weekly", triggerMin: null }))).toBe(false);
   });
 
   it("stačí jedna neplatná podmienka — ostatné ju neprebijú", () => {
     expect(
-      shouldAutoOpen(input({ hour: 23, completed: false, snoozed: true })),
+      shouldAutoOpen(input({ nowMin: 23 * 60, completed: false, snoozed: true })),
     ).toBe(false);
   });
 });

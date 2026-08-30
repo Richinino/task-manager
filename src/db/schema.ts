@@ -219,6 +219,19 @@ export const tasks = pgTable(
     recurrenceParentId: text("recurrence_parent_id"),
 
     /**
+     * Úloha zaberie celý deň.
+     *
+     * Sťahovanie, výlet, celodenná návšteva. Nemá hodinu a v rozpočte
+     * nezaberá svoj odhad, ale celé okno dňa — takže sa na ten deň už nič
+     * iné neplánuje. Presne to je jej zmysel: nie „trvá dlho", ale
+     * „tento deň je zabraný".
+     *
+     * Odhad si napriek tomu môže niesť. Nepoužije sa na rozpočet, ale ostáva
+     * ako údaj o tom, koľko z toho dňa je naozaj práca.
+     */
+    allDay: boolean("all_day").notNull().default(false),
+
+    /**
      * Úloha patrí svojmu dňu a nikam sa nepresúva.
      *
      * Tréning je buď v utorok, alebo nebol. Keď sa nespravil, nemá zmysel,

@@ -128,13 +128,21 @@ export default async function DnesPage({ searchParams }: DnesPageProps) {
 
   const frog = dayTasks.find((task) => task.isFrog) ?? null;
 
-  // Rozpočet počíta len to, čo ešte treba spraviť — hotové už čas nezaberie.
-  const plannedMin = openTasks.reduce((sum, task) => sum + (task.estimateMin ?? 0), 0);
-  const withoutEstimate = openTasks.filter((task) => task.estimateMin === null).length;
-  const availableMin = Math.max(
+  /*
+    Rozpočet počíta len to, čo ešte treba spraviť — hotové už čas nezaberie.
+
+    Celodenná úloha nezaberá svoj odhad, ale celé okno dňa. To je celý jej
+    zmysel: nehovorí „trvá dlho", ale „tento deň je zabraný", takže po nej
+    nesmie v rozpočte ostať voľné miesto na ďalšie plánovanie.
+  */
+  const oknoDna = Math.max(0, (user.settings.dayEndHour - user.settings.dayStartHour) * 60);
+  const jeCelodenny = openTasks.some((task) => task.allDay);
+  const plannedMin = openTasks.reduce(
+    (sum, task) => sum + (task.allDay ? oknoDna : (task.estimateMin ?? 0)),
     0,
-    (user.settings.dayEndHour - user.settings.dayStartHour) * 60,
   );
+  const withoutEstimate = openTasks.filter((task) => task.estimateMin === null).length;
+  const availableMin = oknoDna;
   // Minúty porád idú do rozpočtu surové, hodiny dňa sa o ne neskracujú tu:
   // odpočet si robí `TimeBudget` sám, aby vedel ukázať aj to, koľko z dňa
   // porady zjedli. Celodenné udalosti sa do súčtu nerátajú.
@@ -181,6 +189,7 @@ export default async function DnesPage({ searchParams }: DnesPageProps) {
         budget={
           <LiveTimeBudget
             plannedMin={plannedMin}
+            allDay={jeCelodenny}
             dateIso={date}
             todayIso={todayIso}
             timeZone={user.settings.timezone}
@@ -208,6 +217,8 @@ export default async function DnesPage({ searchParams }: DnesPageProps) {
             <RitualHost
               period={dailyPeriod}
               dayStartHour={user.settings.dayStartHour}
+              morningRitualAt={user.settings.morningRitualAt}
+              eveningRitualAt={user.settings.eveningRitualAt}
               morning={{
                 completed: morningState.completed,
                 ...(morningState.review
@@ -319,6 +330,7 @@ export default async function DnesPage({ searchParams }: DnesPageProps) {
               <LiveBudgetPanel
                 tasks={dayTasks}
                 plannedMin={plannedMin}
+                allDay={jeCelodenny}
                 dateIso={date}
                 todayIso={todayIso}
                 timeZone={user.settings.timezone}

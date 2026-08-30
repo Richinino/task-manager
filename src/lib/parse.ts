@@ -59,6 +59,8 @@ export interface ParsedCapture {
   title: string;
   plannedDate?: string;
   plannedTime?: string;
+  /** Zaberie celý deň — bez hodiny a v rozpočte za celé okno dňa. */
+  allDay?: boolean;
   dueDate?: string;
   dueTime?: string;
   priority?: 1 | 2 | 3;
@@ -319,6 +321,16 @@ const RE_TIME_RANGE_DASH =
 /** „o 9h", „do 15 hod" — hodina s predložkou. Bez predložky ide o odhad. */
 const RE_TIME_HOUR = /(?<![\p{L}\p{N}])(o|do|okolo|od)\s+(\d{1,2})\s*(?:hod|h)(?![\p{L}\p{N}])/gu;
 
+/*
+  „celý deň", „celodenné", „na cely den".
+
+  Zámerne až za rozsahom času: „od 9:00 do 17:00" je blok s dĺžkou, kdežto
+  „celý deň" je vyhlásenie, že sa na ten deň nič iné nepláuje. Sú to dve
+  rôzne vety a nesmú si liezť do cesty.
+*/
+const RE_ALL_DAY =
+  /(?<![\p{L}\p{N}])(?:na\s+)?(?:cel(?:y|a|e)\s*den|celodenn(?:a|e|y|u))(?![\p{L}\p{N}])/gu;
+
 const RE_PRIORITY = /(?<![\p{L}\p{N}!])!([123])(?![\p{L}\p{N}])/gu;
 
 const RE_ENERGY =
@@ -374,6 +386,8 @@ interface Candidate {
   target?: DateTarget;
   priority?: 1 | 2 | 3;
   estimateMin?: number;
+  /** Značka „celý deň" — chodí cestou odhadu, ale nesie príznak, nie minúty. */
+  allDay?: boolean;
   energy?: "low" | "mid" | "high";
   text?: string;
 }
@@ -741,6 +755,17 @@ function parseInner(
 
   /* ── značky ─────────────────────────────────────────────────────────── */
 
+  eachMatch(RE_ALL_DAY, folded, (m) => {
+    candidates.push({
+      kind: "estimate",
+      start: m.index,
+      end: m.index + m[0].length,
+      weight: W_MARKER,
+      label: "celý deň",
+      allDay: true,
+    });
+  });
+
   eachMatch(RE_PRIORITY, folded, (m) => {
     const value = Number.parseInt(m[1]!, 10);
     if (value !== 1 && value !== 2 && value !== 3) return;
@@ -884,6 +909,16 @@ function parseInner(
         contributing.push(c);
         break;
       case "estimate":
+        /*
+          „celý deň" chodí tou istou cestou ako odhad — obe hovoria o tom,
+          koľko z dňa vec zaberie — ale nesie príznak, nie minúty.
+        */
+        if (c.allDay === true) {
+          if (out.allDay === true) continue;
+          out.allDay = true;
+          contributing.push(c);
+          break;
+        }
         if (out.estimateMin !== undefined) continue;
         out.estimateMin = c.estimateMin;
         contributing.push(c);

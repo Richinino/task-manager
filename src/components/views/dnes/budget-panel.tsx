@@ -31,6 +31,8 @@ export interface BudgetPanelProps {
   availableMin: number;
   /** Minúty zabraté poradami z kalendára. */
   meetingMin: number;
+  /** Je v dni celodenná úloha? Vtedy sa rozpočet neráta, ale oznamuje. */
+  allDay?: boolean;
   /** Koľko dnešných úloh odhad nemá. */
   withoutEstimate: number;
   /** Hodiny dňa z nastavení — do vysvetľujúcej vety pod pruhom. */
@@ -48,6 +50,7 @@ export function BudgetPanel({
   tasks,
   plannedMin,
   availableMin,
+  allDay = false,
   meetingMin,
   withoutEstimate,
   dayStartHour,
@@ -137,9 +140,18 @@ export function BudgetPanel({
         v nastaveniach je desať. Bez tejto vety by človek hľadal, kde sa
         stratilo osem hodín.
       */}
+      {/*
+        Pri celodennej úlohe sa rozpočet neráta, ale oznamuje. Aritmetika by
+        hlásila, o koľko si deň „preplánoval“ — a to nie je pravda: deň je
+        vyhradený, nie preťažený.
+      */}
       <p className="mt-2.5 border-t border-border pt-2.5 text-meta leading-relaxed text-fg-muted">
-        Zostáva z dňa {dayStartHour}:00 – {dayEndHour}:00. Bez odhadu:{" "}
-        {taskCountSk(withoutEstimate)}.
+        {allDay ? (
+          <span className="font-medium text-fg">Deň je zabraný celodennou úlohou.</span>
+        ) : (
+          <>Zostáva z dňa {dayStartHour}:00 – {dayEndHour}:00.</>
+        )}{" "}
+        Bez odhadu: {taskCountSk(withoutEstimate)}.
       </p>
     </section>
   );

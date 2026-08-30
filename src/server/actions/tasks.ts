@@ -112,6 +112,11 @@ const taskFieldsSchema = z.object({
     nebol — medzi prepadnuté sa taká úloha nikdy nedostane.
   */
   staysOnDay: z.boolean().optional(),
+  /*
+    Úloha zaberie celý deň. V rozpočte nezaberá svoj odhad, ale celé okno
+    dňa — takže sa na ten deň už nič iné neplánuje.
+  */
+  allDay: z.boolean().optional(),
 });
 
 const createTaskSchema = taskFieldsSchema.extend({ title: titleSchema });
@@ -500,6 +505,7 @@ export async function quickCapture(
       plannedTime,
       horizon,
       estimateMin: sanitize(estimateSchema, clampEstimate(parsed.estimateMin)),
+      allDay: parsed.allDay === true,
       energy: sanitize(energySchema, parsed.energy),
       context: sanitize(contextSchema, clampContext(parsed.context)),
       projectId,
@@ -581,6 +587,15 @@ export async function updateTask(
     if (data.staysOnDay !== undefined && data.staysOnDay !== task.staysOnDay) {
       values.staysOnDay = data.staysOnDay;
       changed.push("staysOnDay");
+    }
+    if (data.allDay !== undefined && data.allDay !== task.allDay) {
+      values.allDay = data.allDay;
+      /*
+        Celodenná úloha nemá hodinu — dvojica „celý deň o 14:30" je
+        protirečenie a v riadku by sa kreslila ako obyčajná naplánovaná vec.
+      */
+      if (data.allDay) values.plannedTime = null;
+      changed.push("allDay");
     }
     if (
       data.estimateMin !== undefined &&

@@ -10,9 +10,11 @@ import {
   formatRelativeSk,
   isPast,
   isToday,
+  minutesIn,
   monthGrid,
   parseIsoDate,
   startOfWeek,
+  timeToMinutes,
   toIsoDate,
   today,
   todayIn,
@@ -351,5 +353,45 @@ describe("zonedInstant", () => {
   it("polnoc a posledná minúta dňa", () => {
     expect(iso(zonedInstant("2026-08-22", "00:00", BA))).toBe("2026-08-21T22:00:00.000Z");
     expect(iso(zonedInstant("2026-08-22", "23:59", BA))).toBe("2026-08-22T21:59:00.000Z");
+  });
+});
+
+describe("timeToMinutes", () => {
+  it("prevedie platný čas na minúty", () => {
+    expect(timeToMinutes("06:30")).toBe(390);
+    expect(timeToMinutes("00:00")).toBe(0);
+    expect(timeToMinutes("23:59")).toBe(1439);
+  });
+
+  /*
+    Polnoc je platný čas a musí sa dať odlíšiť od „nenastavené". Keby sa
+    vracala nula, rituál bez nastaveného času by sa otváral hneď po polnoci.
+  */
+  it("nenastavené dá null, nie nulu", () => {
+    expect(timeToMinutes(null)).toBeNull();
+    expect(timeToMinutes(undefined)).toBeNull();
+    expect(timeToMinutes("")).toBeNull();
+    expect(timeToMinutes("00:00")).toBe(0);
+  });
+
+  it("nezmyselný čas dá null", () => {
+    expect(timeToMinutes("24:00")).toBeNull();
+    expect(timeToMinutes("6:30")).toBeNull();
+    expect(timeToMinutes("06:60")).toBeNull();
+    expect(timeToMinutes("ráno")).toBeNull();
+  });
+});
+
+describe("minutesIn", () => {
+  it("ráta minúty od polnoci v pásme používateľa", () => {
+    // 2026-08-30 12:15 UTC je v Bratislave (UTC+2) 14:15.
+    const okamih = new Date(Date.UTC(2026, 7, 30, 12, 15));
+    expect(minutesIn("Europe/Bratislava", okamih)).toBe(14 * 60 + 15);
+    expect(minutesIn("UTC", okamih)).toBe(12 * 60 + 15);
+  });
+
+  it("neplatné pásmo nezhodí, vráti čas procesu", () => {
+    const okamih = new Date(Date.UTC(2026, 7, 30, 12, 15));
+    expect(typeof minutesIn("Neexistuje/Pásmo", okamih)).toBe("number");
   });
 });
