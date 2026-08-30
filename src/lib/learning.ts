@@ -1,4 +1,4 @@
-import { diffDays, toIsoDate } from "./dates";
+import { diffDays, todayIn } from "./dates";
 
 /**
  * Čísla za sekciou učenia.
@@ -76,15 +76,21 @@ export function skillRank(reached: number, total: number): RankLabel {
  *
  * Kĺzavé okno, nie séria. Nedá sa zlomiť — len klesnúť.
  */
+export function isInWindow(
+  dateIso: string,
+  todayIso: string,
+  days: number = OKNO_DNI,
+): boolean {
+  const rozdiel = diffDays(dateIso, todayIso);
+  return rozdiel >= 0 && rozdiel < days;
+}
+
 export function lessonsInWindow(
   lessons: readonly Lekcia[],
   todayIso: string,
   days: number = OKNO_DNI,
 ): number {
-  return lessons.filter((l) => {
-    const rozdiel = diffDays(l.date, todayIso);
-    return rozdiel >= 0 && rozdiel < days;
-  }).length;
+  return lessons.filter((l) => isInWindow(l.date, todayIso, days)).length;
 }
 
 /**
@@ -191,7 +197,50 @@ export function medianDaysBetweenMilestones(
   return Math.round((rozdiely[stred - 1]! + rozdiely[stred]!) / 2);
 }
 
-/** Dátum ako `RRRR-MM-DD` z okamihu dokončenia — pomôcka pre dopyty. */
-export function lessonDate(completedAt: Date): string {
-  return toIsoDate(completedAt);
+/**
+ * Deň lekcie z okamihu dokončenia úlohy.
+ *
+ * Musí ísť cez pásmo používateľa, nie cez pásmo servera: úloha dokončená
+ * o pol jednej v noci patrí do dňa, v ktorom ju človek naozaj robil, a nie
+ * do dňa, ktorý má práve Vercel.
+ */
+export function lessonDate(completedAt: Date, timeZone: string): string {
+  return todayIn(timeZone, completedAt);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   MÍĽNIKY Z TEXTU
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/**
+ * Riadok = míľnik.
+ *
+ * Míľniky nevznikajú po jednom. Vznikajú tak, že si dáš cieľ do AI alebo si
+ * ho vypíšeš na papier a máš zoznam — takže zadávať ich cez formulár osemkrát
+ * za sebou by bolo presne to trenie, kvôli ktorému sa sekcia prestane používať.
+ *
+ * Odrážky a číslovanie sa odstrihnú, lebo prilepený zoznam ich takmer vždy
+ * má a nie sú súčasťou míľnika. Duplicity padnú — dvakrát ten istý míľnik by
+ * skreslil hodnosť, ktorá je podielom.
+ */
+export function parseMilestones(text: string, limit = 100): string[] {
+  const videne = new Set<string>();
+  const vysledok: string[] = [];
+
+  for (const riadok of text.split(/\r?\n/)) {
+    const cisty = riadok
+      .replace(/^\s*(?:[-–—*•]|\d+[.)])\s+/, "")
+      .trim()
+      .slice(0, 200);
+    if (cisty === "") continue;
+
+    const kluc = cisty.toLocaleLowerCase("sk");
+    if (videne.has(kluc)) continue;
+    videne.add(kluc);
+
+    vysledok.push(cisty);
+    if (vysledok.length >= limit) break;
+  }
+
+  return vysledok;
 }

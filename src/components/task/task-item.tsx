@@ -138,6 +138,8 @@ function buildSummary(
   if (task.subtaskCount > 0) {
     parts.push(`podúlohy ${task.doneSubtaskCount} z ${task.subtaskCount}`);
   }
+  // Značka lekcie je v riadku len znak — čítačka ju musí dostať slovami.
+  if (task.lessonPillar) parts.push(`lekcia, pilier ${task.lessonPillar.name}`);
   // Ikona opakovania v riadku je bez textu — čítačke to musí povedať slovami.
   if (opts.recurrence !== null) {
     parts.push(`opakuje sa ${describeRecurrence(opts.recurrence)}`);
@@ -628,6 +630,20 @@ export function TaskItem({
               className="order-4 shrink-0 text-mini text-fg-subtle sm:order-none"
             >
               ⚓
+            </span>
+          ) : null}
+
+          {/*
+            Lekcia. Zámerne to NIE JE farba: farba v riadku patrí oblasti a
+            druhý odtieň v tom istom riadku by z neho spravil hádanku. Značka
+            je tichá a nesie len to, že tento večer sa niekam počíta.
+          */}
+          {task.lessonPillar !== null ? (
+            <span
+              title={`lekcia — ${task.lessonPillar.name}`}
+              className="order-4 shrink-0 text-mini text-fg-subtle sm:order-none"
+            >
+              ✦
             </span>
           ) : null}
 

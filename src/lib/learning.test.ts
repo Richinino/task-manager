@@ -5,6 +5,7 @@ import {
   isSkillQuiet,
   lessonsInWindow,
   medianDaysBetweenMilestones,
+  parseMilestones,
   pillarBreakdown,
   skillRank,
   type Lekcia,
@@ -181,5 +182,52 @@ describe("medianDaysBetweenMilestones", () => {
     expect(
       medianDaysBetweenMilestones(["2026-01-31", "2026-01-01", "2026-01-11"]),
     ).toBe(15);
+  });
+});
+
+describe("parseMilestones", () => {
+  const RIADKY = [
+    "- Otvoriť zámok s dvomi pinmi",
+    "2. Zvládnuť SPP",
+    "",
+    "• Bez napínača",
+  ].join("\n");
+
+  it("berie riadok ako míľnik a odstrihne odrážky", () => {
+    expect(parseMilestones(RIADKY)).toEqual([
+      "Otvoriť zámok s dvomi pinmi",
+      "Zvládnuť SPP",
+      "Bez napínača",
+    ]);
+  });
+
+  /*
+    Hodnosť je podiel dosiahnutých ku všetkým, takže dvakrát ten istý míľnik
+    by ju rovno skreslil — nie je to len kozmetika.
+  */
+  it("duplicity zahodí bez ohľadu na veľkosť písmen", () => {
+    const text = ["Prvý zámok", "prvý ZÁMOK", "Druhý"].join("\n");
+    expect(parseMilestones(text)).toEqual(["Prvý zámok", "Druhý"]);
+  });
+
+  it("znesie aj windowsové konce riadkov", () => {
+    expect(parseMilestones("Prvý\r\nDruhý")).toEqual(["Prvý", "Druhý"]);
+  });
+
+  it("z prázdneho textu nespraví míľnik", () => {
+    expect(parseMilestones("   \n\n  ")).toEqual([]);
+  });
+
+  it("drží sa stropu", () => {
+    const text = Array.from({ length: 10 }, (_, i) => `Míľnik ${i}`).join("\n");
+    expect(parseMilestones(text, 3)).toHaveLength(3);
+  });
+
+  /*
+    Pomlčka vnútri vety nie je odrážka — odstrihne sa len tá na začiatku
+    riadku, a to aj s medzerou za ňou.
+  */
+  it("pomlčku vo vete nechá na pokoji", () => {
+    expect(parseMilestones("Zámok — do 30 sekúnd")).toEqual(["Zámok — do 30 sekúnd"]);
   });
 });

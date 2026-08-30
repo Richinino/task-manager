@@ -7,7 +7,9 @@ import { z } from "zod";
 import { getDb, type Database } from "@/db";
 import {
   areas,
+  learningPillars,
   projects,
+  skills,
   taggables,
   tags,
   taskEvents,
@@ -117,6 +119,14 @@ const taskFieldsSchema = z.object({
     dňa — takže sa na ten deň už nič iné neplánuje.
   */
   allDay: z.boolean().optional(),
+  /*
+    Úloha JE lekcia, keď má pilier. Samostatná tabuľka lekcií neexistuje —
+    práve preto sa nemôže rozísť s úlohou, z ktorej vznikla. Zručnosť je
+    nepovinná: učenie sa nezačína pomenovanou zručnosťou, ale tým, že si
+    o niečom hodinu čítal, a priradiť sa dá aj spätne.
+  */
+  lessonPillarId: idSchema.nullish(),
+  lessonSkillId: idSchema.nullish(),
 });
 
 const createTaskSchema = taskFieldsSchema.extend({ title: titleSchema });
@@ -196,6 +206,8 @@ async function checkRefs(
     projectId?: string | null;
     areaId?: string | null;
     parentTaskId?: string | null;
+    lessonPillarId?: string | null;
+    lessonSkillId?: string | null;
   },
 ): Promise<string | null> {
   if (refs.projectId) {
@@ -233,7 +245,79 @@ async function checkRefs(
     if (!parent) return "Nadradená úloha sa nenašla.";
   }
 
+  if (refs.lessonPillarId) {
+    const rows = await db
+      .select({ id: learningPillars.id })
+      .from(learningPillars)
+      .where(
+        and(
+          eq(learningPillars.id, refs.lessonPillarId),
+          eq(learningPillars.userId, userId),
+          isNull(learningPillars.deletedAt),
+        ),
+      )
+      .limit(1);
+    if (!rows[0]) return "Pilier sa nenašiel.";
+  }
+
+  /*
+    Zručnosť musí sedieť s pilierom. Bez tejto kontroly by sa dala uložiť
+    lekcia, ktorá tvrdí „Hudba" a zároveň ukazuje na zručnosť z „Ruky" —
+    a rozdelenie v analýze by od tej chvíle klamalo. Preto sa obe polia
+    posielajú vždy spolu: samotná zručnosť je odmietnutá, nie domyslená.
+  */
+  if (refs.lessonSkillId && !refs.lessonPillarId) {
+    return "Zručnosť sa dá priradiť len spolu s pilierom.";
+  }
+
+  if (refs.lessonSkillId) {
+    const rows = await db
+      .select({ pillarId: skills.pillarId })
+      .from(skills)
+      .where(
+        and(
+          eq(skills.id, refs.lessonSkillId),
+          eq(skills.userId, userId),
+          isNull(skills.deletedAt),
+        ),
+      )
+      .limit(1);
+    const skill = rows[0];
+    if (!skill) return "Zručnosť sa nenašla.";
+    if (refs.lessonPillarId && skill.pillarId !== refs.lessonPillarId) {
+      return "Zručnosť patrí do iného piliera.";
+    }
+  }
+
   return null;
+}
+
+/**
+ * Polia lekcie na úlohe — obe naraz, alebo žiadne.
+ *
+ * Keď sa pilier odoberá, ide s ním aj zručnosť. Inak by v databáze ostala
+ * úloha, ktorá o sebe tvrdí, že nie je lekcia, a pritom stále ukazuje na
+ * zručnosť — a tá by sa v prehľade zručnosti počítala, hoci v prehľade
+ * piliera nie.
+ */
+function lessonValues(data: {
+  lessonPillarId?: string | null;
+  lessonSkillId?: string | null;
+}): { lessonPillarId?: string | null; lessonSkillId?: string | null } {
+  if (data.lessonPillarId === undefined && data.lessonSkillId === undefined) return {};
+
+  if (data.lessonPillarId !== undefined && (data.lessonPillarId ?? null) === null) {
+    return { lessonPillarId: null, lessonSkillId: null };
+  }
+
+  return {
+    ...(data.lessonPillarId !== undefined
+      ? { lessonPillarId: data.lessonPillarId ?? null }
+      : {}),
+    ...(data.lessonSkillId !== undefined
+      ? { lessonSkillId: data.lessonSkillId ?? null }
+      : {}),
+  };
 }
 
 /**
@@ -393,6 +477,7 @@ export async function createTask(
       projectId: data.projectId ?? null,
       areaId: data.areaId ?? null,
       parentTaskId: data.parentTaskId ?? null,
+      ...lessonValues(data),
       completedAt: status === "done" ? new Date() : null,
     });
 
@@ -633,6 +718,21 @@ export async function updateTask(
     if (data.sort !== undefined && data.sort !== task.sort) {
       values.sort = data.sort;
       changed.push("sort");
+    }
+    const lekcia = lessonValues(data);
+    if (
+      lekcia.lessonPillarId !== undefined &&
+      lekcia.lessonPillarId !== task.lessonPillarId
+    ) {
+      values.lessonPillarId = lekcia.lessonPillarId;
+      changed.push("lessonPillarId");
+    }
+    if (
+      lekcia.lessonSkillId !== undefined &&
+      lekcia.lessonSkillId !== task.lessonSkillId
+    ) {
+      values.lessonSkillId = lekcia.lessonSkillId;
+      changed.push("lessonSkillId");
     }
 
     // Presun dňa cez updateTask sa neráta ako odklad — od toho je rescheduleTask.
