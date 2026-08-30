@@ -1,4 +1,4 @@
-import { taskCountSk } from "@/components/views/dnes/time-budget";
+import { taskCountSk } from "@/lib/sk";
 
 /**
  * Pásik pod zoznamom — skratky vľavo, súhrn dňa vpravo.

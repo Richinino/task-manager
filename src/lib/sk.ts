@@ -25,3 +25,19 @@ export function pluralSk(count: number, one: string, few: string, many: string):
 export function countSk(count: number, one: string, few: string, many: string): string {
   return `${count} ${pluralSk(count, one, few, many)}`;
 }
+
+/**
+ * „1 úloha" · „3 úlohy" · „7 úloh".
+ *
+ * Býval v `time-budget.tsx`. Keď z toho komponentu vznikol klientský
+ * (rozpočet musí poznať aktuálny čas), stala sa z tejto funkcie klientska
+ * referencia a serverové komponenty, ktoré ju volali, prestali vykresľovať.
+ * `tsc` aj `next build` prešli — spadlo to až pri otvorení stránky.
+ *
+ * Záporné a desatinné čísla sa berú v absolútnej hodnote a orežú: počet úloh
+ * záporný nebýva, ale keby raz bol, „−1 úlohy" je horšie než „1 úloha".
+ */
+export function taskCountSk(count: number): string {
+  const n = Math.abs(Math.trunc(count));
+  return countSk(n, "úloha", "úlohy", "úloh");
+}

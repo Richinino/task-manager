@@ -1,6 +1,6 @@
 import { formatDuration } from "@/lib/dates";
 import { summarizeAreas } from "@/lib/area-summary";
-import { taskCountSk } from "@/components/views/dnes/time-budget";
+import { taskCountSk } from "@/lib/sk";
 import { areaColorValue } from "@/components/task/area-dot";
 
 /**
@@ -131,8 +131,14 @@ export function BudgetPanel({
         </p>
       </div>
 
+      {/*
+        Číslo hore je ZVYŠOK dňa, nie jeho dĺžka — a to sa musí povedať,
+        inak vyzerá ako chyba: o štvrtej popoludní hlási dve hodiny, hoci
+        v nastaveniach je desať. Bez tejto vety by človek hľadal, kde sa
+        stratilo osem hodín.
+      */}
       <p className="mt-2.5 border-t border-border pt-2.5 text-meta leading-relaxed text-fg-muted">
-        Deň {dayStartHour}:00 – {dayEndHour}:00 podľa nastavení. Bez odhadu:{" "}
+        Zostáva z dňa {dayStartHour}:00 – {dayEndHour}:00. Bez odhadu:{" "}
         {taskCountSk(withoutEstimate)}.
       </p>
     </section>

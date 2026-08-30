@@ -5,7 +5,7 @@ import { ListHeader } from "@/components/views/dnes/list-header";
 import { TaskItem } from "@/components/task/task-item";
 import type { TaskWithRelations } from "@/server/queries/tasks";
 
-import { taskCountSk } from "./time-budget";
+import { taskCountSk } from "@/lib/sk";
 
 export interface DayListProps {
   /**

@@ -4,13 +4,13 @@ import { DayHeader } from "@/components/views/dnes/day-header";
 import { DayList } from "@/components/views/dnes/day-list";
 import { AreasToday } from "@/components/views/dnes/areas-today";
 import { DayMeetings } from "@/components/views/dnes/day-meetings";
-import { BudgetPanel } from "@/components/views/dnes/budget-panel";
+import { LiveBudgetPanel } from "@/components/views/dnes/live-budget-panel";
 import { DayFooter } from "@/components/views/dnes/day-footer";
 import { DayRail } from "@/components/views/dnes/day-rail";
 import { DayRituals } from "@/components/views/dnes/day-rituals";
 import { DayPriorityCard } from "@/components/views/dnes/day-priority-card";
 import { OverdueSection } from "@/components/views/dnes/overdue-section";
-import { TimeBudget } from "@/components/views/dnes/time-budget";
+import { LiveTimeBudget } from "@/components/views/dnes/live-time-budget";
 import { WhatNow } from "@/components/views/dnes/what-now";
 import { RitualHost } from "@/components/rituals/ritual-host";
 import { parseIsoDate, todayIn, toIsoDate } from "@/lib/dates";
@@ -76,7 +76,13 @@ export default async function DnesPage({ searchParams }: DnesPageProps) {
     contexts,
   ] = await Promise.all([
       getTasksForDay(user.id, date),
-      getOverdueTasks(user.id, date),
+      /*
+        `todayIso`, NIE `date`. „Po termíne" znamená „malo to byť hotové
+        a nie je" — a to sa meria voči dnešku, nie voči dňu, na ktorý sa
+        práve pozerám. S `date` sa pri prekliknutí na zajtrajšok zrazu celý
+        dnešok tváril ako prepadnutý, hoci deň ešte ani neskončil.
+      */
+      getOverdueTasks(user.id, todayIso),
       // „Čo teraz?" siaha ďalej než dnešok — aj na prepadnuté a nenaplánované.
       // Práve to je jeho zmysel: keď sa dnešok minie, stále je čo robiť.
       getActionableTasks(user.id, date),
@@ -94,6 +100,14 @@ export default async function DnesPage({ searchParams }: DnesPageProps) {
   // Zahodené úlohy do dnešného záväzku nepatria — v zozname by sa tvárili
   // ako nesplnené a kazili by aj počty.
   const dayTasks = planned.filter((task) => task.status !== "dropped");
+
+  /*
+    Prepadnuté sa merajú voči dnešku, takže pri prezeraní minulého dňa by sa
+    tie isté úlohy objavili dvakrát — raz v dni, raz medzi prepadnutými.
+    Sekcia „po termíne" má hovoriť o tom, čo NIE JE na obrazovke.
+  */
+  const naObrazovke = new Set(planned.map((task) => task.id));
+  const overdueOffScreen = overdue.filter((task) => !naObrazovke.has(task.id));
   const openTasks = dayTasks.filter((task) => task.status !== "done");
   const doneCount = dayTasks.length - openTasks.length;
 
@@ -150,9 +164,13 @@ export default async function DnesPage({ searchParams }: DnesPageProps) {
           lište. Od `lg:` sa tu preto skrýva — kreslí sa raz na každej šírke.
         */
         budget={
-          <TimeBudget
+          <LiveTimeBudget
             plannedMin={plannedMin}
-            availableMin={availableMin}
+            dateIso={date}
+            todayIso={todayIso}
+            timeZone={user.settings.timezone}
+            dayStartHour={user.settings.dayStartHour}
+            dayEndHour={user.settings.dayEndHour}
             withoutEstimate={withoutEstimate}
             meetingMin={meetingMin}
           />
@@ -185,7 +203,7 @@ export default async function DnesPage({ searchParams }: DnesPageProps) {
                       >,
                     }
                   : {}),
-                overdue,
+                overdue: overdueOffScreen,
                 // Priorita dňa sa viaže na `plannedDate`, takže kandidáti musia
                 // byť dnešné nevybavené úlohy — inak by sa označila úloha,
                 // ktorá na obrazovke „Dnes" nikde nesvieti.
@@ -244,7 +262,7 @@ export default async function DnesPage({ searchParams }: DnesPageProps) {
           ) : null}
 
           <OverdueSection
-            tasks={overdue}
+            tasks={overdueOffScreen}
             todayIso={todayIso}
             postponeWarnAt={user.settings.postponeWarnAt}
             postponeBlockAt={user.settings.postponeBlockAt}
@@ -265,17 +283,19 @@ export default async function DnesPage({ searchParams }: DnesPageProps) {
         <DayFooter
           openCount={openTasks.length}
           doneCount={doneCount}
-          overdueCount={overdue.length}
+          overdueCount={overdueOffScreen.length}
         />
       </div>
 
       <div className="hidden lg:block">
           <DayRail
             budget={
-              <BudgetPanel
+              <LiveBudgetPanel
                 tasks={dayTasks}
                 plannedMin={plannedMin}
-                availableMin={availableMin}
+                dateIso={date}
+                todayIso={todayIso}
+                timeZone={user.settings.timezone}
                 meetingMin={meetingMin}
                 withoutEstimate={withoutEstimate}
                 dayStartHour={user.settings.dayStartHour}
