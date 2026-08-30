@@ -46,6 +46,25 @@ $env:DATABASE_URL="<connection-string>"; npm run db:migrate
 Poradie je vždy: migrácia → `git push` → Vercel nasadí. Lokálne sa migrácie
 púšťajú samy pri štarte, takže rozdiel medzi vývojom a produkciou je práve tu.
 
+**Na to poradie sa už nemusíš spoliehať.** Build sa najprv pozrie do databázy
+(`npm run kontrola:migracie`, beží ako prvý krok `npm run build`) a keď v
+repozitári leží migrácia, ktorá v produkcii nedobehla, **nasadenie zlyhá** a
+Vercel ostane na poslednej funkčnej verzii. Vo výpise buildu vtedy nájdeš,
+ktorá migrácia chýba.
+
+Stalo sa to raz naozaj: 30. 8. 2026 sa nasadil stĺpec `stays_on_day` bez
+migrácie a spadli všetky obrazovky za prihlásením. Zlyhaný build je
+nepríjemnosť, spadnutá appka je výpadok.
+
+Kontrola chytí aj druhý prípad — **už nasadenú migráciu, ktorej sa zmenil
+súbor**. Migrátor ju druhýkrát nepustí (rozhoduje sa podľa času, nie podľa
+obsahu), takže by rozdiel ticho ležal v repozitári. Riešenie je vrátiť zmenu
+a vygenerovať novú migráciu.
+
+Keby sa kontrola sama pokazila a blokovala opravu, pusti build s premennou
+`SKIP_MIGRATION_CHECK=1`. Bez `DATABASE_URL` sa preskočí sama — lokálny
+PGlite sa migruje pri štarte.
+
 Naplnenie základnými oblasťami (voliteľné, idempotentné):
 
 ```powershell
