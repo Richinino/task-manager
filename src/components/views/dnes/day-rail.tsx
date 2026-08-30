@@ -25,11 +25,16 @@ export interface DayRailProps {
   rituals: ReactNode;
   /** Porady z kalendára. `null`, keď kalendár nič nevrátil. */
   meetings: ReactNode;
+  /**
+   * Návyky na dnes. `null` mimo dnešného dňa a keď žiadne nie sú —
+   * odškrtávať návyk spätne v prehľade dňa je pomýlené.
+   */
+  habits: ReactNode;
   /** Rozpad dňa podľa oblastí — dotiahne zvyšok výšky. */
   areas: ReactNode;
 }
 
-export function DayRail({ budget, rituals, meetings, areas }: DayRailProps) {
+export function DayRail({ budget, rituals, meetings, habits, areas }: DayRailProps) {
   return (
     <aside
       aria-label="Prehľad dňa"
@@ -38,6 +43,10 @@ export function DayRail({ budget, rituals, meetings, areas }: DayRailProps) {
       <div className="shrink-0 border-b border-border px-4 py-3.5">{budget}</div>
       <div className="shrink-0 border-b border-border px-4 py-3.5">{rituals}</div>
       {/* Prázdna sekcia by zabrala 29 px odsadenia a nepovedala nič. */}
+      {habits ? (
+        <div className="shrink-0 border-b border-border px-4 py-3.5">{habits}</div>
+      ) : null}
+
       {meetings ? (
         <div className="shrink-0 border-b border-border px-4 py-3.5">{meetings}</div>
       ) : null}

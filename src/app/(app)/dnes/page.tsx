@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import { DayHeader } from "@/components/views/dnes/day-header";
 import { DayList } from "@/components/views/dnes/day-list";
 import { AreasToday } from "@/components/views/dnes/areas-today";
+import { DayHabits } from "@/components/views/dnes/day-habits";
 import { DayMeetings } from "@/components/views/dnes/day-meetings";
 import { LiveBudgetPanel } from "@/components/views/dnes/live-budget-panel";
 import { DayFooter } from "@/components/views/dnes/day-footer";
@@ -13,7 +14,8 @@ import { OverdueSection } from "@/components/views/dnes/overdue-section";
 import { LiveTimeBudget } from "@/components/views/dnes/live-time-budget";
 import { WhatNow } from "@/components/views/dnes/what-now";
 import { RitualHost } from "@/components/rituals/ritual-host";
-import { parseIsoDate, todayIn, toIsoDate } from "@/lib/dates";
+import { parseIsoDate, startOfWeek, todayIn, toIsoDate } from "@/lib/dates";
+import { listHabits } from "@/server/queries/habits";
 import { ritualPeriod } from "@/lib/rituals";
 import { requireUser } from "@/server/auth-guard";
 import {
@@ -74,6 +76,7 @@ export default async function DnesPage({ searchParams }: DnesPageProps) {
     journalToday,
     events,
     contexts,
+    habits,
   ] = await Promise.all([
       getTasksForDay(user.id, date),
       /*
@@ -95,6 +98,18 @@ export default async function DnesPage({ searchParams }: DnesPageProps) {
       getDayEvents(user.id, date, user.settings.timezone),
       // Kontexty pre výber „kde si" v „Čo teraz?".
       listContexts(user.id),
+      /*
+        Návyky sa ťahajú len pre dnešok — na iný deň sa v prehľade nekreslia
+        a odškrtávať návyk spätne v prehľade dňa je pomýlené.
+      */
+      isToday
+        ? listHabits(
+            user.id,
+            startOfWeek(todayIso, user.settings.weekStartsOn),
+            todayIso,
+            { weekStartsOn: user.settings.weekStartsOn, todayIso },
+          )
+        : Promise.resolve([]),
     ]);
 
   // Zahodené úlohy do dnešného záväzku nepatria — v zozname by sa tvárili
@@ -322,6 +337,20 @@ export default async function DnesPage({ searchParams }: DnesPageProps) {
               />
             }
             meetings={events.length > 0 ? <DayMeetings events={events} flush /> : null}
+            habits={
+              habits.length > 0 ? (
+                <DayHabits
+                  habits={habits.map((h) => ({
+                    id: h.id,
+                    name: h.title,
+                    targetPerWeek: h.targetPerWeek,
+                    weekDone: h.weekDone,
+                    doneToday: h.entries.includes(todayIso),
+                  }))}
+                  todayIso={todayIso}
+                />
+              ) : null
+            }
             areas={<AreasToday tasks={dayTasks} />}
         />
       </div>
