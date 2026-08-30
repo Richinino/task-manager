@@ -22,11 +22,13 @@ import type { AnyPgColumn } from "drizzle-orm/pg-core";
 import { getDb } from "@/db";
 import {
   areas,
+  learningPillars,
   projects,
   taggables,
   tags,
   tasks,
   type Area,
+  type LearningPillar,
   type Project,
   type Task,
   type TaskStatus,
@@ -43,6 +45,14 @@ export interface TaskWithRelations extends Task {
   doneSubtaskCount: number;
   /** Štítky úlohy, zoradené podľa názvu. Prázdne pole, keď žiadne nemá. */
   tags: { id: string; name: string; color: string }[];
+  /**
+   * Pilier, ak je úloha lekcia. `null` znamená obyčajnú úlohu.
+   *
+   * Farba sa NEPOUŽÍVA na obarvenie riadku — tá patrí oblasti a druhá farba
+   * v tom istom riadku by z neho spravila hádanku. Je tu na odznak lekcie
+   * a na to, aby sa dala povedať čítačke.
+   */
+  lessonPillar: { id: string; name: string; color: string } | null;
 }
 
 /** Stavy, po ktorých už úloha nie je „živá". */
@@ -133,6 +143,7 @@ async function selectTasks(
       task: tasks,
       area: areas,
       project: projects,
+      lessonPillar: learningPillars,
       subtaskCount: subtaskCounts.total,
       doneSubtaskCount: subtaskCounts.done,
       tags: taskTags.list,
@@ -153,6 +164,13 @@ async function selectTasks(
     */
     .leftJoin(areas, and(eq(tasks.areaId, areas.id), eq(areas.userId, userId)))
     .leftJoin(projects, and(eq(tasks.projectId, projects.id), eq(projects.userId, userId)))
+    .leftJoin(
+      learningPillars,
+      and(
+        eq(tasks.lessonPillarId, learningPillars.id),
+        eq(learningPillars.userId, userId),
+      ),
+    )
     .leftJoin(subtaskCounts, eq(subtaskCounts.parentId, tasks.id))
     .leftJoin(taskTags, eq(taskTags.taskId, tasks.id))
     .where(and(eq(tasks.userId, userId), isNull(tasks.deletedAt), extra))
@@ -165,6 +183,7 @@ function toTaskWithRelations(row: {
   task: Task;
   area: Area | null;
   project: Project | null;
+  lessonPillar?: LearningPillar | null;
   subtaskCount: number | null;
   doneSubtaskCount: number | null;
   tags?: { id: string; name: string; color: string }[] | null;
@@ -175,6 +194,13 @@ function toTaskWithRelations(row: {
       ? { id: row.area.id, name: row.area.name, color: row.area.color }
       : null,
     project: row.project ? { id: row.project.id, name: row.project.name } : null,
+    lessonPillar: row.lessonPillar
+      ? {
+          id: row.lessonPillar.id,
+          name: row.lessonPillar.name,
+          color: row.lessonPillar.color,
+        }
+      : null,
     subtaskCount: Number(row.subtaskCount ?? 0),
     doneSubtaskCount: Number(row.doneSubtaskCount ?? 0),
     // `json_agg` bez zhody nevráti prázdne pole, ale NULL — preto tá poistka.

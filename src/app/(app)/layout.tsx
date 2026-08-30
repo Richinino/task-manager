@@ -18,6 +18,7 @@ import {
   listContexts,
 } from "@/server/queries/tasks";
 import { listTags } from "@/server/queries/structure";
+import { listPillars, listSkills } from "@/server/queries/learning";
 
 export default async function AppLayout({ children }: { children: ReactNode }) {
   const user = await requireUser();
@@ -26,11 +27,13 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
 
   // Zoznamy pre výbery v paneli s detailom úlohy a pre našepkávanie
   // v zachytení. Kontexty sa odvodzujú z úloh — vlastný zoznam nikdy nebol.
-  const [areas, projects, contexts, tags] = await Promise.all([
+  const [areas, projects, contexts, tags, pillars, learningSkills] = await Promise.all([
     getAreas(user.id),
     getProjects(user.id),
     listContexts(user.id),
     listTags(user.id),
+    listPillars(user.id),
+    listSkills(user.id),
   ]);
 
   // Zásoba pre vyhľadávanie v Ctrl+K palete: naplánované okolo dneška + inbox.
@@ -67,6 +70,12 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
           <TaskDetailProvider
             areas={areas}
             projects={projects}
+            pillars={pillars.map((pillar) => ({ id: pillar.id, name: pillar.name }))}
+            skills={learningSkills.map((skill) => ({
+              id: skill.id,
+              name: skill.name,
+              pillarId: skill.pillarId,
+            }))}
             todayIso={todayIso}
             postponeWarnAt={user.settings.postponeWarnAt}
             postponeBlockAt={user.settings.postponeBlockAt}

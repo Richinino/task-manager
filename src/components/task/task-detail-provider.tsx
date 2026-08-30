@@ -19,6 +19,10 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Kbd } from "@/components/ui/kbd";
 import { TaskDetail } from "@/components/task/task-detail";
+import type {
+  LessonPillarOption,
+  LessonSkillOption,
+} from "@/components/task/task-detail";
 import { restoreTask } from "@/server/actions/tasks";
 import type { TaskWithRelations } from "@/server/queries/tasks";
 
@@ -64,6 +68,8 @@ const ERROR_MS = 5000;
 
 export interface TaskDetailProviderProps {
   areas: Area[];
+  pillars: LessonPillarOption[];
+  skills: LessonSkillOption[];
   projects: Project[];
   /** Dnešok z pásma používateľa. Klient si ho nikdy nepočíta sám. */
   todayIso: string;
@@ -76,6 +82,8 @@ export interface TaskDetailProviderProps {
 
 export function TaskDetailProvider({
   areas,
+  pillars,
+  skills,
   projects,
   todayIso,
   postponeWarnAt,
@@ -200,6 +208,8 @@ export function TaskDetailProvider({
           onDropped={handleDropped}
           onRestoreFocus={restoreFocus}
           areas={areas}
+          pillars={pillars}
+          skills={skills}
           projects={projects}
           todayIso={todayIso}
           postponeWarnAt={postponeWarnAt}

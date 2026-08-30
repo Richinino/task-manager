@@ -110,6 +110,8 @@ interface Draft {
   context: string;
   projectId: string | null;
   areaId: string | null;
+  lessonPillarId: string | null;
+  lessonSkillId: string | null;
   isFrog: boolean;
   postponeCount: number;
 }
@@ -134,6 +136,8 @@ function toDraft(task: TaskWithRelations): Draft {
     context: task.context ?? "",
     projectId: task.projectId,
     areaId: task.areaId,
+    lessonPillarId: task.lessonPillarId,
+    lessonSkillId: task.lessonSkillId,
     isFrog: task.isFrog,
     postponeCount: task.postponeCount,
   };
@@ -179,6 +183,23 @@ function isCompleteDate(value: string): boolean {
   return /^\d{4}-\d{2}-\d{2}$/.test(value) && value >= "1900-01-01";
 }
 
+/**
+ * Piliere a zručnosti do výberu lekcie — len to, čo panel kreslí.
+ *
+ * Celé riadky zo servera by cez hranicu ťahali dátumy a poznámky, ktoré tu
+ * nikto nepoužije. Tvar je zámerne rovnaký ako pri oblastiach a projektoch.
+ */
+export interface LessonPillarOption {
+  id: string;
+  name: string;
+}
+
+export interface LessonSkillOption {
+  id: string;
+  name: string;
+  pillarId: string;
+}
+
 export interface TaskDetailProps {
   task: TaskWithRelations;
   open: boolean;
@@ -189,6 +210,8 @@ export interface TaskDetailProps {
   onRestoreFocus: () => void;
   areas: Area[];
   projects: Project[];
+  pillars: LessonPillarOption[];
+  skills: LessonSkillOption[];
   /** Dnešok z pásma používateľa. Klient si ho nikdy nepočíta sám. */
   todayIso: string;
   postponeWarnAt: number;
@@ -203,6 +226,8 @@ export function TaskDetail({
   onRestoreFocus,
   areas,
   projects,
+  pillars,
+  skills,
   todayIso,
   postponeWarnAt,
   postponeBlockAt,
@@ -1084,6 +1109,88 @@ export function TaskDetail({
                   ))}
                 </SelectContent>
               </Select>
+            </Field>
+
+            {/*
+              Lekcia. Pilier je povinný, zručnosť nie — učenie sa nezačína
+              pomenovanou zručnosťou, ale tým, že si o niečom hodinu čítal.
+              A ráta sa až po dokončení úlohy: zápis je zámer, dokončenie je
+              fakt, a analýza smie stáť len na faktoch.
+            */}
+            <Field
+              label="Lekcia"
+              hint="Do učenia sa započíta až vtedy, keď úlohu odškrtneš."
+            >
+              <div className="flex flex-col gap-2">
+                <Select
+                  value={draft.lessonPillarId ?? NONE}
+                  onValueChange={(value) => {
+                    const lessonPillarId = value === NONE ? null : value;
+                    commit(
+                      { lessonPillarId, lessonSkillId: null },
+                      () =>
+                        updateTask(task.id, {
+                          lessonPillarId,
+                          lessonSkillId: null,
+                        }),
+                      "Lekciu sa nepodarilo uložiť.",
+                    );
+                  }}
+                >
+                  <SelectTrigger aria-label="Pilier lekcie">
+                    <SelectValue placeholder="Nie je lekcia" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value={NONE}>Nie je lekcia</SelectItem>
+                    {pillars.length > 0 ? <SelectSeparator /> : null}
+                    {pillars.map((pillar) => (
+                      <SelectItem key={pillar.id} value={pillar.id}>
+                        {pillar.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+
+                {/*
+                  Zručnosť sa ponúka až po pilieri a len tá z neho. Zručnosť
+                  z cudzieho piliera akcia aj tak odmietne — tu ju radšej
+                  ani neponúkneme, než by sme na ňu odpovedali chybou.
+                */}
+                {draft.lessonPillarId !== null ? (
+                  <Select
+                    value={draft.lessonSkillId ?? NONE}
+                    onValueChange={(value) => {
+                      const lessonSkillId = value === NONE ? null : value;
+                      commit(
+                        { lessonSkillId },
+                        () =>
+                          updateTask(task.id, {
+                            lessonPillarId: draft.lessonPillarId,
+                            lessonSkillId,
+                          }),
+                        "Zručnosť sa nepodarilo priradiť.",
+                      );
+                    }}
+                  >
+                    <SelectTrigger aria-label="Zručnosť lekcie">
+                      <SelectValue placeholder="Bez zručnosti" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value={NONE}>Bez zručnosti</SelectItem>
+                      {skills.some((s) => s.pillarId === draft.lessonPillarId) ? (
+                        <SelectSeparator />
+                      ) : null}
+                      {skills
+                        .filter((s) => s.pillarId === draft.lessonPillarId)
+                        .map((skill) => (
+                          <SelectItem key={skill.id} value={skill.id}>
+                            {skill.name}
+                          </SelectItem>
+                        ))}
+                    </SelectContent>
+                  </Select>
+                ) : null}
+              </div>
             </Field>
 
             <Field

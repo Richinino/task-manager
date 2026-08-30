@@ -9,6 +9,7 @@ import {
   CalendarDays,
   CalendarRange,
   FolderKanban,
+  GraduationCap,
   Hourglass,
   Inbox,
   Layers,
@@ -153,6 +154,18 @@ export const NAV_ITEMS: readonly NavItem[] = [
     label: "Návyky",
     shortcut: "v",
     Icon: Sprout,
+    group: "structure",
+  },
+  /*
+    Učenie hneď za návykmi. Obe sú o veciach, ktoré sa nedokončujú, len návyk
+    sa udržuje a zručnosť rastie — a lekcia je aj tak úloha, takže do zoznamu
+    štruktúry patrí presne sem.
+  */
+  {
+    href: "/ucenie",
+    label: "Učenie",
+    shortcut: "u",
+    Icon: GraduationCap,
     group: "structure",
   },
   /*
