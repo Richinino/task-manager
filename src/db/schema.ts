@@ -219,6 +219,23 @@ export const tasks = pgTable(
     recurrenceParentId: text("recurrence_parent_id"),
 
     /**
+     * Lekcia — úloha, ktorá je zároveň učením.
+     *
+     * Pilier je povinný na to, aby úloha bola lekciou; zručnosť nie.
+     * Učenie sa totiž nezačína pomenovanou zručnosťou, ale tým, že si
+     * o niečom hodinu čítal. Zručnosť sa dá priradiť aj spätne.
+     *
+     * `set null` pri zmazaní: keď pilier zanikne, úloha ostáva úlohou —
+     * len prestane byť lekciou. Zmazať pilier nesmie zmazať prácu.
+     */
+    lessonPillarId: text("lesson_pillar_id").references(() => learningPillars.id, {
+      onDelete: "set null",
+    }),
+    lessonSkillId: text("lesson_skill_id").references(() => skills.id, {
+      onDelete: "set null",
+    }),
+
+    /**
      * Úloha zaberie celý deň.
      *
      * Sťahovanie, výlet, celodenná návšteva. Nemá hodinu a v rozpočte
@@ -388,6 +405,111 @@ export const links = pgTable(
 /* ═══════════════════════════════════════════════════════════════════════════
    NÁVYKY, DENNÍK, REVÍZIE
    ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   UČENIE
+
+   Tri vrstvy nad sebou a jedno rozhodnutie, ktoré celok drží pohromade.
+
+   **Pilier** je doména — Ruky, Hudba, Technika, Telo. Zámerne NIE oblasť:
+   oblasť odpovedá na „do ktorej časti života to patrí", takže by sa všetko
+   učenie zlialo do jednej. Pilier odpovedá na „v čom rastiem" a až vďaka
+   tomu má rozdelenie zmysel.
+
+   **Zručnosť** je konkrétna vec v pilieri — lockpicking, píšťalka, SQL.
+   Keby boli piliere a zručnosti to isté, dostali by sme zoznam zručností
+   napísaný dvakrát a analýza by nepovedala nič.
+
+   **Lekcia NEMÁ vlastnú tabuľku.** Je to dokončená úloha, ktorá má pilier.
+   To nie je šetrenie miestom, ale zásadné rozhodnutie: lekcia sa nemôže
+   rozísť s úlohou, z ktorej vznikla. Od-dokončenie, presun aj zmazanie
+   fungujú samy od seba a niet čo synchronizovať — teda ani čo pokaziť.
+   Zároveň to znamená, že učenie zaberá rozpočet dňa ako každá iná úloha,
+   čo je presne zámer: učenie fyzicky zaberá čas.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+export const learningPillars = pgTable(
+  "learning_pillars",
+  {
+    id: text("id").primaryKey(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    color: text("color").notNull().default("slate"),
+    sort: integer("sort").notNull().default(0),
+    archivedAt: timestamp("archived_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+    deletedAt: timestamp("deleted_at", { withTimezone: true }),
+  },
+  (t) => [index("learning_pillars_user_idx").on(t.userId)],
+);
+
+export const skills = pgTable(
+  "skills",
+  {
+    id: text("id").primaryKey(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    /*
+      Zručnosť bez piliera nedáva zmysel — pilier je jej doména. Pri zmazaní
+      piliera sa preto zmažú aj jeho zručnosti; nemali by kam patriť.
+    */
+    pillarId: text("pillar_id")
+      .notNull()
+      .references(() => learningPillars.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    /** Jedna veta o tom, prečo sa to učíš. Prežije aj to, keď sa míľniky zmenia. */
+    note: text("note"),
+    sort: integer("sort").notNull().default(0),
+    archivedAt: timestamp("archived_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+    deletedAt: timestamp("deleted_at", { withTimezone: true }),
+  },
+  (t) => [
+    index("skills_user_idx").on(t.userId),
+    index("skills_pillar_idx").on(t.pillarId),
+  ],
+);
+
+export const skillMilestones = pgTable(
+  "skill_milestones",
+  {
+    id: text("id").primaryKey(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    skillId: text("skill_id")
+      .notNull()
+      .references(() => skills.id, { onDelete: "cascade" }),
+    /**
+     * Overiteľná veta, nie číslo úrovne.
+     *
+     * „Otvoriť zámok s dvomi bezpečnostnými pinmi", nie „level 3". Je to tá
+     * istá myšlienka ako „definícia hotovo" pri projekte: musí sa to dať
+     * overiť, nie len cítiť.
+     */
+    title: text("title").notNull(),
+    sort: integer("sort").notNull().default(0),
+    /** `null`, kým míľnik nie je dosiahnutý. */
+    reachedAt: timestamp("reached_at", { withTimezone: true }),
+    /**
+     * Jedna veta „ako to vieš". Pýta sa až pri odškrtnutí.
+     *
+     * O rok je z toho čitateľná história namiesto radu odškrtnutých políčok.
+     */
+    evidence: text("evidence"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    index("skill_milestones_user_idx").on(t.userId),
+    index("skill_milestones_skill_idx").on(t.skillId),
+  ],
+);
 
 export const habits = pgTable(
   "habits",
@@ -572,6 +694,15 @@ export const projectsRelations = relations(projects, ({ one, many }) => ({
 export const tasksRelations = relations(tasks, ({ one, many }) => ({
   project: one(projects, { fields: [tasks.projectId], references: [projects.id] }),
   area: one(areas, { fields: [tasks.areaId], references: [areas.id] }),
+  /* Úloha s pilierom JE lekcia — samostatná tabuľka lekcií neexistuje. */
+  lessonPillar: one(learningPillars, {
+    fields: [tasks.lessonPillarId],
+    references: [learningPillars.id],
+  }),
+  lessonSkill: one(skills, {
+    fields: [tasks.lessonSkillId],
+    references: [skills.id],
+  }),
   parent: one(tasks, {
     fields: [tasks.parentTaskId],
     references: [tasks.id],
@@ -591,6 +722,25 @@ export const ideasRelations = relations(ideas, ({ one }) => ({
     fields: [ideas.promotedProjectId],
     references: [projects.id],
   }),
+}));
+
+export const learningPillarsRelations = relations(learningPillars, ({ many }) => ({
+  skills: many(skills),
+  /* Lekcie nie sú vlastná tabuľka — sú to dokončené úlohy s pilierom. */
+  lessons: many(tasks),
+}));
+
+export const skillsRelations = relations(skills, ({ one, many }) => ({
+  pillar: one(learningPillars, {
+    fields: [skills.pillarId],
+    references: [learningPillars.id],
+  }),
+  milestones: many(skillMilestones),
+  lessons: many(tasks),
+}));
+
+export const skillMilestonesRelations = relations(skillMilestones, ({ one }) => ({
+  skill: one(skills, { fields: [skillMilestones.skillId], references: [skills.id] }),
 }));
 
 export const habitsRelations = relations(habits, ({ one, many }) => ({

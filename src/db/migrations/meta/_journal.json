@@ -36,6 +36,13 @@
       "when": 1788103544590,
       "tag": "0004_celodenne_ulohy",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1788106356041,
+      "tag": "0005_ucenie",
+      "breakpoints": true
     }
   ]
 }
