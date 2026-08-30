@@ -690,8 +690,21 @@ export function TaskActions({
         <PopoverContent
           align="end"
           aria-label={menuLabel}
-          // Na telefóne sa menu nesmie roztiahnuť cez okraj obrazovky.
-          className="w-60 max-w-[calc(100vw-1.5rem)]"
+          /*
+            Menu sa nesmie roztiahnuť cez okraj obrazovky — ani do šírky, ani
+            do výšky. `--radix-popover-content-available-height` je presne
+            miesto, ktoré od spúšťača po okraj okna zostáva; menu si z neho
+            vezme, koľko potrebuje, a zvyšok odroluje.
+
+            Bez toho spodok menu („Odložiť", „Zahodiť") končil pod okrajom
+            obrazovky a nedal sa doskrolovať — položka tam bola, ale nedalo
+            sa na ňu dostať.
+          */
+          className={cn(
+            "flex w-60 max-w-[calc(100vw-1.5rem)] flex-col",
+            "max-h-[min(var(--radix-popover-content-available-height),30rem)]",
+            "overflow-y-auto overscroll-contain",
+          )}
           onOpenAutoFocus={(event) => {
             event.preventDefault();
             focusAt(menuStops(), 0);
@@ -705,6 +718,7 @@ export function TaskActions({
             role="menu"
             aria-label={menuLabel}
             aria-orientation="vertical"
+            className="min-h-0"
             // Fokus behá po položkách, nie po menu — ale samotné menu musí byť
             // zaostriteľné aspoň programovo, inak je to podľa ARIA neúplný
             // widget. `-1` ho drží mimo poradia klávesy Tab.
