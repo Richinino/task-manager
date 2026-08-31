@@ -25,6 +25,7 @@ import {
   habits,
   learningPillars,
   projects,
+  schoolSubjects,
   taggables,
   tags,
   tasks,
@@ -32,6 +33,7 @@ import {
   type Habit,
   type LearningPillar,
   type Project,
+  type SchoolSubject,
   type Task,
   type TaskStatus,
 } from "@/db/schema";
@@ -57,6 +59,8 @@ export interface TaskWithRelations extends Task {
   lessonPillar: { id: string; name: string; color: string } | null;
   /** Návyk, ktorý úloha plní. `null` znamená obyčajnú úlohu. */
   habit: { id: string; title: string } | null;
+  /** Školský predmet, ku ktorému úloha patrí. */
+  subject: { id: string; code: string; name: string | null; color: string } | null;
 }
 
 /** Stavy, po ktorých už úloha nie je „živá". */
@@ -149,6 +153,7 @@ async function selectTasks(
       project: projects,
       lessonPillar: learningPillars,
       habit: habits,
+      subject: schoolSubjects,
       subtaskCount: subtaskCounts.total,
       doneSubtaskCount: subtaskCounts.done,
       tags: taskTags.list,
@@ -177,6 +182,10 @@ async function selectTasks(
       ),
     )
     .leftJoin(habits, and(eq(tasks.habitId, habits.id), eq(habits.userId, userId)))
+    .leftJoin(
+      schoolSubjects,
+      and(eq(tasks.subjectId, schoolSubjects.id), eq(schoolSubjects.userId, userId)),
+    )
     .leftJoin(subtaskCounts, eq(subtaskCounts.parentId, tasks.id))
     .leftJoin(taskTags, eq(taskTags.taskId, tasks.id))
     .where(and(eq(tasks.userId, userId), isNull(tasks.deletedAt), extra))
@@ -191,6 +200,7 @@ function toTaskWithRelations(row: {
   project: Project | null;
   lessonPillar?: LearningPillar | null;
   habit?: Habit | null;
+  subject?: SchoolSubject | null;
   subtaskCount: number | null;
   doneSubtaskCount: number | null;
   tags?: { id: string; name: string; color: string }[] | null;
@@ -209,6 +219,14 @@ function toTaskWithRelations(row: {
         }
       : null,
     habit: row.habit ? { id: row.habit.id, title: row.habit.title } : null,
+    subject: row.subject
+      ? {
+          id: row.subject.id,
+          code: row.subject.code,
+          name: row.subject.name,
+          color: row.subject.color,
+        }
+      : null,
     subtaskCount: Number(row.subtaskCount ?? 0),
     doneSubtaskCount: Number(row.doneSubtaskCount ?? 0),
     // `json_agg` bez zhody nevráti prázdne pole, ale NULL — preto tá poistka.

@@ -11,7 +11,7 @@ import {
   type Recurrence,
 } from "@/lib/recurrence";
 import { cn } from "@/lib/utils";
-import { AreaDot, areaLabel } from "@/components/task/area-dot";
+import { AreaDot, areaColorValue, areaLabel } from "@/components/task/area-dot";
 import { energyLabel, energyText } from "@/components/task/energy-badge";
 import { EstimateChip, estimateLabel } from "@/components/task/estimate-chip";
 import {
@@ -137,6 +137,13 @@ function buildSummary(
 
   if (task.subtaskCount > 0) {
     parts.push(`podúlohy ${task.doneSubtaskCount} z ${task.subtaskCount}`);
+  }
+  if (task.subject) {
+    parts.push(
+      task.schoolKind === "exam"
+        ? `písomka z predmetu ${task.subject.name ?? task.subject.code}`
+        : `predmet ${task.subject.name ?? task.subject.code}`,
+    );
   }
   // Aj značka návyku je len znak — čítačka ju musí dostať slovami.
   if (task.habit) parts.push(`plní návyk ${task.habit.title}`);
@@ -646,6 +653,35 @@ export function TaskItem({
               className="order-4 shrink-0 text-mini text-fg-subtle sm:order-none"
             >
               ✦
+            </span>
+          ) : null}
+
+          {/*
+            Školský predmet. Na rozdiel od lekcie a návyku to NIE JE tichý
+            znak, ale skratka — `MAT` povie všetko, čo treba, a je to jediný
+            údaj, podľa ktorého sa školské úlohy v zozname rozoznajú od seba.
+            Farba je farba predmetu; oblasť pri školskej úlohe spravidla nie je.
+          */}
+          {task.subject !== null ? (
+            <span
+              title={`predmet ${task.subject.name ?? task.subject.code}${
+                task.schoolKind === "exam" ? " — písomka" : ""
+              }`}
+              className="order-4 flex shrink-0 items-center gap-1 sm:order-none"
+            >
+              <span
+                aria-hidden="true"
+                className="inline-block size-1.5 shrink-0 rounded-full"
+                style={{ backgroundColor: areaColorValue(task.subject.color) }}
+              />
+              <span
+                className={cn(
+                  "whitespace-nowrap text-mini",
+                  task.schoolKind === "exam" ? "font-medium text-warn" : "text-fg-muted",
+                )}
+              >
+                {task.subject.code}
+              </span>
             </span>
           ) : null}
 

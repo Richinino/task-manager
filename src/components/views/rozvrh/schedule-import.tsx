@@ -1,12 +1,16 @@
 "use client";
 
 import { useRef, useState, useTransition } from "react";
-import { LoaderCircle, Upload } from "lucide-react";
+import { Download, LoaderCircle, Upload } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { countSk } from "@/lib/sk";
-import { importSchedule, readGroups } from "@/server/actions/school";
+import {
+  importSchedule,
+  readGroups,
+  syncScheduleFromUrl,
+} from "@/server/actions/school";
 import { updateSettings } from "@/server/actions/settings";
 
 /* ═══════════════════════════════════════════════════════════════════════════
@@ -24,9 +28,14 @@ import { updateSettings } from "@/server/actions/settings";
 export interface ScheduleImportProps {
   /** Skupiny, ktoré má už uložené v nastaveniach. */
   chosen: readonly string[];
+  /**
+   * Je nastavená adresa odberu? Samotná adresa sem NECHODÍ — je to prístup
+   * k rozvrhu a v prehliadači nemá čo robiť.
+   */
+  hasFeed: boolean;
 }
 
-export function ScheduleImport({ chosen }: ScheduleImportProps) {
+export function ScheduleImport({ chosen, hasFeed }: ScheduleImportProps) {
   const [ics, setIcs] = useState<string | null>(null);
   const [delene, setDelene] = useState<string[]>([]);
   const [vyber, setVyber] = useState<string[]>([...chosen]);
@@ -87,6 +96,28 @@ export function ScheduleImport({ chosen }: ScheduleImportProps) {
     });
   }
 
+  function stiahni(): void {
+    if (isPending) return;
+    setError(null);
+    setSprava(null);
+
+    startTransition(async () => {
+      const result = await syncScheduleFromUrl();
+      if (!result.ok) {
+        setError(result.error);
+        return;
+      }
+      const d = result.data;
+      setSprava(
+        `Stiahnuté. Z ${d.voFeede} hodín triedy je tvojich ${d.mojich}. ` +
+          `Pridaných ${d.pridanych}, upravených ${d.upravenych}, ` +
+          `zmazaných ${d.zmazanych}` +
+          (d.ponechanych > 0 ? `, ponechaných ${d.ponechanych} ručných` : "") +
+          ".",
+      );
+    });
+  }
+
   return (
     <div className="flex flex-col gap-3 px-5 py-4">
       <div className="max-w-prose">
@@ -97,6 +128,22 @@ export function ScheduleImport({ chosen }: ScheduleImportProps) {
           v ňom nie sú, tie sa zadávajú tu.
         </p>
       </div>
+
+      {hasFeed ? (
+        <div className="flex flex-wrap items-center gap-2">
+          <Button variant="primary" disabled={isPending} onClick={stiahni}>
+            {isPending ? (
+              <LoaderCircle className="size-4 animate-spin" />
+            ) : (
+              <Download className="size-4" />
+            )}
+            Stiahnuť z EduPage
+          </Button>
+          <span className="text-mini text-fg-muted">
+            Skupiny už máš vybrané, adresa je v premenných.
+          </span>
+        </div>
+      ) : null}
 
       <div className="flex flex-wrap items-center gap-2">
         <input

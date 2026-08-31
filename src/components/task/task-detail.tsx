@@ -53,6 +53,7 @@ import {
   toggleTaskDone,
   updateTask,
 } from "@/server/actions/tasks";
+import { nextLessonForSubject } from "@/server/actions/school";
 import { syncLinks } from "@/server/actions/links";
 import { usePostponeGuard } from "@/components/task/postpone-guard";
 import type { TaskWithRelations } from "@/server/queries/tasks";
@@ -113,6 +114,8 @@ interface Draft {
   lessonPillarId: string | null;
   lessonSkillId: string | null;
   habitId: string | null;
+  subjectId: string | null;
+  schoolKind: "homework" | "exam" | null;
   isFrog: boolean;
   postponeCount: number;
 }
@@ -140,6 +143,8 @@ function toDraft(task: TaskWithRelations): Draft {
     lessonPillarId: task.lessonPillarId,
     lessonSkillId: task.lessonSkillId,
     habitId: task.habitId,
+    subjectId: task.subjectId,
+    schoolKind: task.schoolKind,
     isFrog: task.isFrog,
     postponeCount: task.postponeCount,
   };
@@ -208,6 +213,13 @@ export interface HabitOption {
   title: string;
 }
 
+/** Školské predmety do výberu. */
+export interface SubjectOption {
+  id: string;
+  code: string;
+  name: string | null;
+}
+
 export interface TaskDetailProps {
   task: TaskWithRelations;
   open: boolean;
@@ -221,6 +233,7 @@ export interface TaskDetailProps {
   pillars: LessonPillarOption[];
   skills: LessonSkillOption[];
   habits: HabitOption[];
+  subjects: SubjectOption[];
   /** Dnešok z pásma používateľa. Klient si ho nikdy nepočíta sám. */
   todayIso: string;
   postponeWarnAt: number;
@@ -238,6 +251,7 @@ export function TaskDetail({
   pillars,
   skills,
   habits,
+  subjects,
   todayIso,
   postponeWarnAt,
   postponeBlockAt,
@@ -1120,6 +1134,103 @@ export function TaskDetail({
                 </SelectContent>
               </Select>
             </Field>
+
+            {/*
+              Školský predmet. Keď ho vyberieš a úloha ešte nemá termín,
+              appka pozrie do rozvrhu a **ponúkne** deň najbližšej hodiny —
+              predvyplní ho, nevnúti. Preto sa to deje tu a nie na serveri:
+              človek má vidieť, čo sa stalo, a vedieť to hneď prepísať.
+            */}
+            {subjects.length > 0 ? (
+              <Field
+                label="Predmet"
+                hint="Termín sa ponúkne na najbližšiu hodinu toho predmetu."
+              >
+                <div className="flex flex-col gap-2">
+                  <Select
+                    value={draft.subjectId ?? NONE}
+                    onValueChange={(value) => {
+                      const subjectId = value === NONE ? null : value;
+
+                      if (subjectId === null) {
+                        commit(
+                          { subjectId: null, schoolKind: null },
+                          () => updateTask(task.id, { subjectId: null }),
+                          "Predmet sa nepodarilo priradiť.",
+                        );
+                        return;
+                      }
+
+                      commit(
+                        { subjectId },
+                        async () => {
+                          const result = await updateTask(task.id, { subjectId });
+                          if (!result.ok) return result;
+
+                          /*
+                            Termín sa ponúka LEN keď ešte žiadny nie je. Prepísať
+                            dátum, ktorý si človek nastavil sám, by bola tichá
+                            zmena záväzku — a to je presne to, čomu sa celá appka
+                            vyhýba.
+                          */
+                          if (draft.dueDate !== null) return result;
+
+                          const najblizsia = await nextLessonForSubject(subjectId);
+                          if (!najblizsia.ok || najblizsia.data.date === null) {
+                            return result;
+                          }
+
+                          const dueDate = najblizsia.data.date;
+                          setDraft((old) => ({ ...old, dueDate }));
+                          return updateTask(task.id, { dueDate });
+                        },
+                        "Predmet sa nepodarilo priradiť.",
+                      );
+                    }}
+                  >
+                    <SelectTrigger aria-label="Školský predmet úlohy">
+                      <SelectValue placeholder="Nie je školská úloha" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value={NONE}>Nie je školská úloha</SelectItem>
+                      <SelectSeparator />
+                      {subjects.map((subject) => (
+                        <SelectItem key={subject.id} value={subject.id}>
+                          {subject.name ?? subject.code}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+
+                  {/*
+                    Písomka sa od domácej úlohy líši len tým, ako skoro sa má
+                    ukázať — na písomku sa človek učí postupne, úlohu spraví
+                    večer predtým. Preto je to voľba, nie samostatný typ záznamu.
+                  */}
+                  {draft.subjectId !== null ? (
+                    <Select
+                      value={draft.schoolKind ?? "homework"}
+                      onValueChange={(value) => {
+                        const schoolKind = value === "exam" ? "exam" : "homework";
+                        commit(
+                          { schoolKind },
+                          () => updateTask(task.id, { schoolKind }),
+                          "Typ sa nepodarilo uložiť.",
+                        );
+                      }}
+                    >
+                      <SelectTrigger aria-label="Domáca úloha alebo písomka">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="homework">Domáca úloha</SelectItem>
+                        <SelectItem value="exam">Písomka</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  ) : null}
+                </div>
+              </Field>
+            ) : null}
 
             {/*
               Lekcia. Pilier je povinný, zručnosť nie — učenie sa nezačína
