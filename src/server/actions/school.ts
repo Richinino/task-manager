@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { and, eq, inArray } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { z } from "zod";
 
 import { getDb } from "@/db";
@@ -22,9 +22,16 @@ import {
   type SubjectTask,
 } from "@/server/queries/school";
 import { addDays, minutesIn, todayIn } from "@/lib/dates";
-import { competingGroups, filterByGroups, groupsInFeed, parseIcs } from "@/lib/ics";
+import { competingGroups, groupsInFeed, parseIcs } from "@/lib/ics";
 import { uuidv7 } from "@/lib/id";
-import { subjectColor } from "@/lib/school-colors";
+import {
+  OdberNedostupny,
+  PrazdnyKalendar,
+  importScheduleFor,
+  maOdber,
+  stiahniOdber,
+  type ImportSummary,
+} from "@/server/school-import";
 import { requireUser } from "@/server/auth-guard";
 
 /* ═══════════════════════════════════════════════════════════════════════════
@@ -67,41 +74,14 @@ function revalidateViews(): void {
   for (const path of AFFECTED_PATHS) revalidatePath(path);
 }
 
-/** `2026-09-07T06:00:00Z` → `08:00` v pásme používateľa. */
-function miestnyCas(okamih: Date, timeZone: string): string {
-  const casti = new Intl.DateTimeFormat("sk-SK", {
-    timeZone,
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: false,
-  }).formatToParts(okamih);
-
-  const hod = casti.find((c) => c.type === "hour")?.value ?? "00";
-  const min = casti.find((c) => c.type === "minute")?.value ?? "00";
-  return `${hod}:${min}`;
-}
-
-export interface ImportSummary {
-  /** Koľko hodín odber obsahoval spolu (aj cudzie skupiny). */
-  voFeede: number;
-  /** Koľko z nich je jeho po odfiltrovaní delenia. */
-  mojich: number;
-  pridanych: number;
-  upravenych: number;
-  zmazanych: number;
-  /** Ponechané, lebo ich upravil človek. */
-  ponechanych: number;
-  novychPredmetov: number;
-  novychUcitelov: number;
-  /** Skupiny, medzi ktorými sa vyberá — na výzvu, keď ešte nevyberal. */
-  deleneSkupiny: string[];
-}
+export type { ImportSummary } from "@/server/school-import";
 
 /**
- * Načíta rozvrh z obsahu kalendára (ICS).
+ * Načíta rozvrh z obsahu kalendára (ICS) pre prihláseného človeka.
  *
- * Text sem príde už stiahnutý — sťahovanie je zvlášť, aby sa dal import
- * otestovať aj zo súboru a aby jedna nedostupná adresa nezhodila celú akciu.
+ * Samotná práca je v `@/server/school-import` — rovnaký kód púšťa aj cron,
+ * ktorý žiadne prihlásenie nemá. Dve kópie by znamenali, že ručný import
+ * a automatický sa časom začnú správať inak.
  */
 export async function importSchedule(
   ics: string,
@@ -111,185 +91,19 @@ export async function importSchedule(
     const parsed = icsSchema.safeParse(ics);
     if (!parsed.success) return invalid(parsed.error, "Neplatný kalendár.");
 
-    const vsetky = parseIcs(parsed.data);
-    if (vsetky.length === 0) {
-      return { ok: false, error: "V kalendári nie je ani jedna hodina." };
-    }
-
-    const timeZone = user.settings.timezone;
-    const moje = filterByGroups(vsetky, user.settings.schoolGroups);
-
-    /*
-      Import siaha len na dnešok a ďalej. Odber nesie aj minulosť, ale tá je
-      hotová — a keby sa prepísala, zmizli by s ňou poznámky k odučeným
-      hodinám.
-    */
-    const dnes = todayIn(timeZone);
-    const buduce = moje.filter((h) => todayIn(timeZone, h.start) >= dnes);
-
-    const db = await getDb();
-
-    /* ── predmety a vyučujúci ───────────────────────────────────────────── */
-    const predmetyVoFeede = [...new Set(buduce.map((h) => h.subject))];
-    const ucitelia = [...new Set(buduce.map((h) => h.teacher).filter((t) => t !== ""))];
-
-    const existujucePredmety = await db
-      .select()
-      .from(schoolSubjects)
-      .where(eq(schoolSubjects.userId, user.id));
-    const predmetPodlaKodu = new Map(existujucePredmety.map((p) => [p.code, p]));
-
-    const pouziteFarby = existujucePredmety.map((p) => p.color);
-    const novePredmety = predmetyVoFeede.filter((k) => !predmetPodlaKodu.has(k));
-
-    for (const kod of novePredmety) {
-      const farba = subjectColor(kod, pouziteFarby);
-      pouziteFarby.push(farba);
-      const id = uuidv7();
-      await db
-        .insert(schoolSubjects)
-        .values({ id, userId: user.id, code: kod, color: farba });
-      predmetPodlaKodu.set(kod, {
-        id,
-        userId: user.id,
-        code: kod,
-        name: null,
-        color: farba,
-        note: null,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      });
-    }
-
-    const existujuciUcitelia = await db
-      .select()
-      .from(schoolTeachers)
-      .where(eq(schoolTeachers.userId, user.id));
-    const ucitelPodlaKodu = new Map(existujuciUcitelia.map((u) => [u.code, u]));
-    const noviUcitelia = ucitelia.filter((k) => !ucitelPodlaKodu.has(k));
-
-    for (const kod of noviUcitelia) {
-      const id = uuidv7();
-      await db.insert(schoolTeachers).values({ id, userId: user.id, code: kod });
-      ucitelPodlaKodu.set(kod, {
-        id,
-        userId: user.id,
-        code: kod,
-        name: null,
-        note: null,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      });
-    }
-
-    /* ── hodiny ─────────────────────────────────────────────────────────── */
-    const ulozene = await db
-      .select()
-      .from(schoolLessons)
-      .where(eq(schoolLessons.userId, user.id));
-    const buduceUlozene = ulozene.filter((h) => h.date >= dnes);
-
-    /* Kľúč slotu musí sedieť s jedinečným indexom v schéme. */
-    const kluc = (date: string, period: number, subjectId: string): string =>
-      `${date}|${period}|${subjectId}`;
-
-    const podlaKluca = new Map(
-      buduceUlozene.map((h) => [kluc(h.date, h.period, h.subjectId), h]),
+    const summary = await importScheduleFor(
+      user.id,
+      user.settings.timezone,
+      user.settings.schoolGroups,
+      parsed.data,
     );
 
-    let pridanych = 0;
-    let upravenych = 0;
-    let ponechanych = 0;
-    const videne = new Set<string>();
-
-    for (const h of buduce) {
-      const predmet = predmetPodlaKodu.get(h.subject);
-      if (predmet === undefined) continue;
-
-      const datum = todayIn(timeZone, h.start);
-      const period = h.period ?? 0;
-      const k = kluc(datum, period, predmet.id);
-      videne.add(k);
-
-      const hodnoty = {
-        startTime: miestnyCas(h.start, timeZone),
-        endTime: miestnyCas(h.end, timeZone),
-        teacherId: ucitelPodlaKodu.get(h.teacher)?.id ?? null,
-        room: h.room === "" ? null : h.room,
-        groupName: h.group === "" ? null : h.group,
-        sourceUid: h.uid,
-      };
-
-      const stara = podlaKluca.get(k);
-
-      if (stara === undefined) {
-        await db.insert(schoolLessons).values({
-          id: uuidv7(),
-          userId: user.id,
-          date: datum,
-          period,
-          subjectId: predmet.id,
-          ...hodnoty,
-        });
-        pridanych += 1;
-        continue;
-      }
-
-      /* Ručne upravený riadok je jediná pravda o suplovaní — neprepisuje sa. */
-      if (stara.manual) {
-        ponechanych += 1;
-        continue;
-      }
-
-      const zmenene =
-        stara.startTime.slice(0, 5) !== hodnoty.startTime ||
-        stara.endTime.slice(0, 5) !== hodnoty.endTime ||
-        stara.teacherId !== hodnoty.teacherId ||
-        stara.room !== hodnoty.room ||
-        stara.groupName !== hodnoty.groupName;
-
-      if (zmenene) {
-        await db
-          .update(schoolLessons)
-          .set({ ...hodnoty, updatedAt: new Date() })
-          .where(eq(schoolLessons.id, stara.id));
-        upravenych += 1;
-      }
-    }
-
-    /*
-      Čo v odbere už nie je, z rozvrhu zmizne — okrem ručných riadkov. Hodina
-      sa naozaj môže zrušiť a nechať ju tam by znamenalo rozvrh, ktorý klame.
-    */
-    const naZmazanie = buduceUlozene
-      .filter((h) => !h.manual && !videne.has(kluc(h.date, h.period, h.subjectId)))
-      .map((h) => h.id);
-
-    if (naZmazanie.length > 0) {
-      await db
-        .delete(schoolLessons)
-        .where(
-          and(eq(schoolLessons.userId, user.id), inArray(schoolLessons.id, naZmazanie)),
-        );
-    }
-
     revalidateViews();
-
-    return {
-      ok: true,
-      data: {
-        voFeede: vsetky.length,
-        mojich: moje.length,
-        pridanych,
-        upravenych,
-        zmazanych: naZmazanie.length,
-        ponechanych,
-        novychPredmetov: novePredmety.length,
-        novychUcitelov: noviUcitelia.length,
-        deleneSkupiny: competingGroups(vsetky),
-      },
-    };
+    return { ok: true, data: summary };
   } catch (error) {
+    if (error instanceof PrazdnyKalendar) {
+      return { ok: false, error: "V kalendári nie je ani jedna hodina." };
+    }
     return fail(error, "Rozvrh sa nepodarilo načítať.");
   }
 }
@@ -578,51 +392,27 @@ export async function nextLessonForSubject(
  */
 export async function hasFeedUrl(): Promise<boolean> {
   await requireUser();
-  return (process.env.SKOLA_ICS_URL ?? "").trim() !== "";
+  return maOdber();
 }
 
-/**
- * Stiahne rozvrh z uloženej adresy a načíta ho.
- *
- * Adresa je v premennej prostredia, nie v databáze — je to tajomstvo a patrí
- * tam, kde už je `DATABASE_URL`. Vďaka tomu ju nevidí ani prehliadač, ani
- * záloha databázy.
- */
+/** Stiahne rozvrh z uloženej adresy a načíta ho. */
 export async function syncScheduleFromUrl(): Promise<ActionResult<ImportSummary>> {
-  await requireUser();
-
-  const raw = (process.env.SKOLA_ICS_URL ?? "").trim();
-  if (raw === "") {
-    return { ok: false, error: "Adresa odberu nie je nastavená (SKOLA_ICS_URL)." };
-  }
-
-  /*
-    Webcal je len iné meno pre https. EduPage adresu ponúka ako `webcal://`,
-    aby ju kalendárová appka chytila na kliknutie — `fetch` takú schému
-    nepozná a spadol by na nezrozumiteľnej chybe.
-  */
-  const url = raw.replace(/^webcal:\/\//i, "https://");
-
+  const user = await requireUser();
   try {
-    const odpoved = await fetch(url, {
-      headers: { accept: "text/calendar, text/plain" },
-      cache: "no-store",
-      signal: AbortSignal.timeout(20_000),
-    });
+    const summary = await importScheduleFor(
+      user.id,
+      user.settings.timezone,
+      user.settings.schoolGroups,
+      await stiahniOdber(),
+    );
 
-    if (!odpoved.ok) {
-      /* Adresa sa do hlášky NEDÁVA — skončila by v logoch aj na obrazovke. */
-      return {
-        ok: false,
-        error:
-          "Odber odpovedal " +
-          String(odpoved.status) +
-          ". Skontroluj, či adresa v EduPage stále platí.",
-      };
-    }
-
-    return await importSchedule(await odpoved.text());
+    revalidateViews();
+    return { ok: true, data: summary };
   } catch (error) {
+    if (error instanceof OdberNedostupny) return { ok: false, error: error.message };
+    if (error instanceof PrazdnyKalendar) {
+      return { ok: false, error: "V odbere nie je ani jedna hodina." };
+    }
     return fail(error, "Rozvrh sa nepodarilo stiahnuť.");
   }
 }

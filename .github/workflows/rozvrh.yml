@@ -1,0 +1,86 @@
+# Automatická synchronizácia školského rozvrhu z EduPage.
+#
+# PREČO RAZ DENNE A NIE ČASTEJŠIE
+#
+# Odber z EduPage je rozvrh natiahnutý na dátumy, nie denný plán —
+# suplovanie v ňom nie je (overené: 15. 9. aj 17. 11. sú štátne sviatky
+# a feed na nich má plných osem hodín). Meniť sa teda má čo raz za čas:
+# posunie sa okno troch mesiacov dopredu, zmení sa rozvrh na polrok.
+# Ťahať ten istý súbor každú hodinu by nezistilo nič nové.
+#
+# Keby raz suplovanie prišlo z iného zdroja, ten bude potrebovať vlastnú
+# kadenciu — nie túto.
+#
+# ČO TREBA NASTAVIŤ (Settings → Secrets and variables → Actions):
+#   ROZVRH_URL     celá adresa, napr. https://tvoja-adresa.vercel.app/api/rozvrh
+#   CRON_SECRET    to isté tajomstvo, aké je v premenných na Verceli
+#
+# Na Verceli musí byť SKOLA_ICS_URL — adresa Webcal odberu z EduPage.
+# Tá sem NEPATRÍ: appka si ju vytiahne sama a nikdy ju nevydá von.
+#
+# Kým nie sú nastavené, beh ZLYHÁ — nech je na prvý pohľad vidno, že sa
+# rozvrh neaktualizuje. To pravidlo sme sa naučili draho pri pripomienkach:
+# 68 zelených behov za štyri dni, ktoré appku ani raz nekontaktovali.
+
+name: Rozvrh
+
+on:
+  schedule:
+    # 03:14 UTC, teda nadránom. Zámerne nie celá hodina — na tie si cron
+    # nastavia všetci ostatní a GitHub v špičke behy odkladá aj o hodiny.
+    # Pri dennej synchronizácii je hodina meškania jedno, ale nech to
+    # zbytočne nečaká.
+    - cron: "14 3 * * *"
+  workflow_dispatch:
+
+# Dva behy naraz by ťahali ten istý odber a zapisovali doň naraz.
+concurrency:
+  group: rozvrh
+  cancel-in-progress: false
+
+jobs:
+  synchronizovat:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Stiahnuť rozvrh z EduPage
+        env:
+          URL: ${{ secrets.ROZVRH_URL }}
+          SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          if [ -z "$URL" ] || [ -z "$SECRET" ]; then
+            echo "::error::Chýba ROZVRH_URL alebo CRON_SECRET medzi tajomstvami repozitára (Settings → Secrets and variables → Actions). Rozvrh sa nesynchronizuje."
+            exit 1
+          fi
+
+          telo=$(curl -sS -X POST "$URL" \
+            -H "Authorization: Bearer $SECRET" \
+            -H "Content-Length: 0" \
+            -w "\n%{http_code}" \
+            --max-time 90)
+
+          kod=$(printf '%s' "$telo" | tail -n1)
+          vypis=$(printf '%s' "$telo" | sed '$d')
+
+          echo "odpoveď: $vypis"
+          echo "kód: $kod"
+
+          # 503 = SKOLA_ICS_URL na Verceli ešte nie je. Beh technicky prešiel,
+          # ale nič nestiahol, tak nech to aspoň nie je ticho.
+          if [ "$kod" = "503" ]; then
+            echo "::warning::Rozvrh ešte nie je nastavený — na Verceli chýba SKOLA_ICS_URL."
+            exit 0
+          fi
+
+          # 409 = rozvrh má viac ľudí a adresa odberu je jedna. Nie je to
+          # chyba behu, ale ani sa to samo nespraví.
+          if [ "$kod" = "409" ]; then
+            echo "::warning::Rozvrh má viac používateľov — nedá sa uhádnuť, komu odber patrí."
+            exit 0
+          fi
+
+          if [ "$kod" != "200" ]; then
+            echo "::error::Synchronizácia vrátila $kod"
+            exit 1
+          fi
