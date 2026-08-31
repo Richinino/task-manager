@@ -34,6 +34,9 @@ export const horizon = pgEnum("horizon", ["day", "week", "month", "someday"]);
 /** Koľko energie si úloha vyžaduje. */
 export const energy = pgEnum("energy", ["low", "mid", "high"]);
 
+/** Domáca úloha, alebo písomka. Líšia sa tým, ako skoro sa majú ukázať. */
+export const schoolItemKind = pgEnum("school_item_kind", ["homework", "exam"]);
+
 export const projectStatus = pgEnum("project_status", [
   "active",
   "on_hold",
@@ -234,6 +237,26 @@ export const tasks = pgTable(
     lessonSkillId: text("lesson_skill_id").references(() => skills.id, {
       onDelete: "set null",
     }),
+
+    /**
+     * Školský predmet, ku ktorému úloha patrí.
+     *
+     * Vďaka nemu si vie úloha nájsť termín sama: „domáca úloha na matiku"
+     * pozrie do rozvrhu, nájde najbližšiu hodinu MAT a dátum PONÚKNE. Je to
+     * ponuka, nie príkaz — dá sa prepísať.
+     */
+    subjectId: text("subject_id").references(() => schoolSubjects.id, {
+      onDelete: "set null",
+    }),
+
+    /**
+     * Domáca úloha, alebo písomka?
+     *
+     * Rozlišuje sa preto, že sa inak ukazujú v čase: úloha je na najbližšiu
+     * hodinu, písomka sa musí objaviť skôr, lebo sa na ňu človek učí
+     * postupne. `null` znamená bežnú úlohu, ktorá so školou nesúvisí.
+     */
+    schoolKind: schoolItemKind("school_kind"),
 
     /**
      * Úloha, ktorá zároveň plní návyk.
@@ -528,6 +551,121 @@ export const skillMilestones = pgTable(
   ],
 );
 
+/* ═══════════════════════════════════════════════════════════════════════════
+   ŠKOLSKÝ ROZVRH
+
+   Hodiny sa ukladajú PO JEDNEJ NA DÁTUM, nie ako opakujúci sa vzor. Vyzerá to
+   plytvo (~400 riadkov za štvrťrok), ale má to jednu veľkú výhodu:
+   **suplovanie nie je zvláštny prípad, je to len zmenený riadok.** Žiadna
+   druhá tabuľka výnimiek, žiadne skladanie „vzor plus odchýlky".
+
+   Zvonenia nemajú vlastnú tabuľku — čas od–do nesie každá hodina, lebo ho tak
+   dodáva aj zdroj. Samostatná tabuľka by bola druhé miesto s tou istou
+   pravdou a raz by sa rozišli.
+
+   A **hotová hodina sa nikde neukladá.** Odvodí sa z toho, či jej koniec už
+   prešiel. Podrobne v `docs/ROZVRH.md`.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+export const schoolSubjects = pgTable(
+  "school_subjects",
+  {
+    id: text("id").primaryKey(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    /** Skratka z rozvrhu, napr. `ANJ`. Celé názvy zdroj nedodáva. */
+    code: text("code").notNull(),
+    /** Celý názov, doplnený ručne. `null`, kým sa nedoplní. */
+    name: text("name"),
+    color: text("color").notNull().default("slate"),
+    /** Poznámka, ktorá platí stále — „vždy skúša z definícií". */
+    note: text("note"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [uniqueIndex("school_subjects_user_code_idx").on(t.userId, t.code)],
+);
+
+export const schoolTeachers = pgTable(
+  "school_teachers",
+  {
+    id: text("id").primaryKey(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    /** Skratka z rozvrhu, napr. `LIN`. */
+    code: text("code").notNull(),
+    name: text("name"),
+    note: text("note"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [uniqueIndex("school_teachers_user_code_idx").on(t.userId, t.code)],
+);
+
+export const schoolLessons = pgTable(
+  "school_lessons",
+  {
+    id: text("id").primaryKey(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    date: date("date").notNull(),
+    /** Poradie hodiny. Nula je nultá — na tejto škole začína o 7:05. */
+    period: integer("period").notNull(),
+    /** Miestny čas, nie okamih — zvonenie je „o ôsmej", nech je leto či zima. */
+    startTime: time("start_time").notNull(),
+    endTime: time("end_time").notNull(),
+    subjectId: text("subject_id")
+      .notNull()
+      .references(() => schoolSubjects.id, { onDelete: "cascade" }),
+    teacherId: text("teacher_id").references(() => schoolTeachers.id, {
+      onDelete: "set null",
+    }),
+    room: text("room"),
+    /** Skupina zo zdroja, napr. `sepB j1.sk`. Podľa nej sa filtruje delenie. */
+    groupName: text("group_name"),
+    /** Poznámka k tejto jednej hodine — „doniesť zošit". */
+    note: text("note"),
+    /** Hodina odpadla. Ostáva v rozvrhu prečiarknutá, nemaže sa. */
+    cancelled: boolean("cancelled").notNull().default(false),
+    /**
+     * Riadku sa dotkol človek — suplovanie alebo poznámka.
+     *
+     * Import ho preto nechá tak. Bez toho by prvá synchronizácia zmazala
+     * každú výnimku, ktorú si zapísal, a rozvrh by sa nedal opraviť.
+     */
+    manual: boolean("manual").notNull().default(false),
+    /** `UID` zo zdroja — podľa neho sa riadok pri ďalšom importe nájde. */
+    sourceUid: text("source_uid"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    index("school_lessons_user_date_idx").on(t.userId, t.date),
+    index("school_lessons_subject_idx").on(t.subjectId),
+    uniqueIndex("school_lessons_slot_idx").on(t.userId, t.date, t.period, t.subjectId),
+  ],
+);
+
+export const schoolBreaks = pgTable(
+  "school_breaks",
+  {
+    id: text("id").primaryKey(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    /** Rozsah vrátane oboch krajných dní. */
+    fromDate: date("from_date").notNull(),
+    toDate: date("to_date").notNull(),
+    /** „Jesenné prázdniny", „riaditeľské voľno". */
+    label: text("label").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("school_breaks_user_idx").on(t.userId, t.fromDate)],
+);
+
 export const habits = pgTable(
   "habits",
   {
@@ -722,6 +860,11 @@ export const tasksRelations = relations(tasks, ({ one, many }) => ({
   }),
   /* Dokončená úloha s návykom zaráta svoj deň do mriežky. */
   habit: one(habits, { fields: [tasks.habitId], references: [habits.id] }),
+  /* Predmet, ku ktorému úloha patrí — z neho si berie aj termín. */
+  subject: one(schoolSubjects, {
+    fields: [tasks.subjectId],
+    references: [schoolSubjects.id],
+  }),
   parent: one(tasks, {
     fields: [tasks.parentTaskId],
     references: [tasks.id],
@@ -762,6 +905,26 @@ export const skillMilestonesRelations = relations(skillMilestones, ({ one }) => 
   skill: one(skills, { fields: [skillMilestones.skillId], references: [skills.id] }),
 }));
 
+export const schoolSubjectsRelations = relations(schoolSubjects, ({ many }) => ({
+  lessons: many(schoolLessons),
+  tasks: many(tasks),
+}));
+
+export const schoolTeachersRelations = relations(schoolTeachers, ({ many }) => ({
+  lessons: many(schoolLessons),
+}));
+
+export const schoolLessonsRelations = relations(schoolLessons, ({ one }) => ({
+  subject: one(schoolSubjects, {
+    fields: [schoolLessons.subjectId],
+    references: [schoolSubjects.id],
+  }),
+  teacher: one(schoolTeachers, {
+    fields: [schoolLessons.teacherId],
+    references: [schoolTeachers.id],
+  }),
+}));
+
 export const habitsRelations = relations(habits, ({ one, many }) => ({
   area: one(areas, { fields: [habits.areaId], references: [areas.id] }),
   entries: many(habitEntries),
@@ -787,6 +950,10 @@ export type Idea = typeof ideas.$inferSelect;
 export type NewIdea = typeof ideas.$inferInsert;
 export type Habit = typeof habits.$inferSelect;
 export type LearningPillar = typeof learningPillars.$inferSelect;
+export type SchoolSubject = typeof schoolSubjects.$inferSelect;
+export type SchoolTeacher = typeof schoolTeachers.$inferSelect;
+export type SchoolLesson = typeof schoolLessons.$inferSelect;
+export type SchoolBreak = typeof schoolBreaks.$inferSelect;
 export type Skill = typeof skills.$inferSelect;
 export type SkillMilestone = typeof skillMilestones.$inferSelect;
 export type JournalEntry = typeof journal.$inferSelect;

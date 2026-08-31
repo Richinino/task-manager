@@ -127,6 +127,19 @@ export const settingsSchema = z.object({
    */
   reminderLeadMin: z.number().int().min(0).max(120).default(10),
 
+  /**
+   * Školské skupiny, do ktorých človek patrí — napr. `sepB j1.sk`.
+   *
+   * Odber rozvrhu je celej triedy, nie jedného žiaka: delené jazyky,
+   * laboratóriá a telesná stoja v jednom okienku dvakrát. Bez výberu by mal
+   * človek v pondelok jedenásť hodín namiesto šiestich a škola by mu rozpočet
+   * dňa zožrala dvakrát.
+   *
+   * Prázdny zoznam znamená „ešte som nevyberal" a rozvrh vtedy ukáže všetko —
+   * ticho schovať polovicu hodín by bolo horšie než dvojité okienka.
+   */
+  schoolGroups: z.array(z.string().trim().min(1).max(80)).max(40).default([]),
+
   theme: z.enum(["system", "light", "dark"]).default("system"),
 });
 

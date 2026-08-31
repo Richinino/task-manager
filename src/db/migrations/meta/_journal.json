@@ -50,6 +50,13 @@
       "when": 1788170407593,
       "tag": "0006_navyk_z_ulohy",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1788200571043,
+      "tag": "0007_skolsky_rozvrh",
+      "breakpoints": true
     }
   ]
 }
