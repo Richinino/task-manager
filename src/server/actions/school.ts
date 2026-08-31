@@ -6,13 +6,16 @@ import { z } from "zod";
 
 import { getDb } from "@/db";
 import { schoolLessons, schoolSubjects, schoolTeachers } from "@/db/schema";
+import { nextLessonDate } from "@/lib/school";
 import {
   getLesson,
+  getLessonsForRange,
   getSubjectTasks,
+  listBreaks,
   type LessonRow,
   type SubjectTask,
 } from "@/server/queries/school";
-import { todayIn } from "@/lib/dates";
+import { addDays, minutesIn, todayIn } from "@/lib/dates";
 import { competingGroups, filterByGroups, groupsInFeed, parseIcs } from "@/lib/ics";
 import { uuidv7 } from "@/lib/id";
 import { subjectColor } from "@/lib/school-colors";
@@ -500,6 +503,121 @@ export async function listNameable(): Promise<
     return { ok: true, data: { subjects, teachers } };
   } catch (error) {
     return fail(error, "Zoznam sa nepodarilo načítať.");
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   TERMÍN PODĽA ROZVRHU
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/**
+ * Kedy je najbližšia hodina toho predmetu.
+ *
+ * Toto je tá vec, kvôli ktorej má rozvrh v appke zmysel oproti EduPage:
+ * napíšeš „domáca úloha na matiku", vyberieš predmet a termín sa **ponúkne
+ * sám** — na deň tej hodiny. Ponúkne, nevnucuje: dátum sa predvyplní
+ * a dá sa prepísať.
+ *
+ * Voľná sa preskakujú a odpadnuté hodiny sa neponúkajú; podrobne
+ * v `nextLessonDate`. Vracia `null`, keď predmet ďalšiu hodinu nemá —
+ * obrazovka vtedy termín nechá tak, namiesto aby hádala.
+ */
+export async function nextLessonForSubject(
+  subjectId: string,
+): Promise<ActionResult<{ date: string | null }>> {
+  const user = await requireUser();
+  try {
+    const timeZone = user.settings.timezone;
+    const todayIso = todayIn(timeZone);
+
+    /*
+      Okno je pol roka. Predmet, ktorý nemá hodinu ani za pol roka, ju
+      spravidla nemá vôbec — a ťahať kvôli tomu celú tabuľku by bolo drahšie
+      než odpoveď „neviem".
+    */
+    const [hodiny, volna] = await Promise.all([
+      getLessonsForRange(user.id, todayIso, addDays(todayIso, 183)),
+      listBreaks(user.id),
+    ]);
+
+    const date = nextLessonDate(
+      hodiny.map((h) => ({
+        date: h.date,
+        startTime: h.startTime,
+        endTime: h.endTime,
+        cancelled: h.cancelled,
+        subjectId: h.subjectId,
+      })),
+      subjectId,
+      todayIso,
+      minutesIn(timeZone),
+      volna.map((v) => ({ fromDate: v.fromDate, toDate: v.toDate })),
+    );
+
+    return { ok: true, data: { date } };
+  } catch (error) {
+    return fail(error, "Najbližšiu hodinu sa nepodarilo nájsť.");
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   STIAHNUTIE Z EDUPAGE
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/**
+ * Je odber vôbec nastavený? Obrazovka podľa toho ukáže alebo skryje tlačidlo.
+ *
+ * Samotnú adresu NEVRACIA a nikdy vracať nebude. Je to prístup k rozvrhu —
+ * kto ju má, vidí, kde si kedy. Do prehliadača nemá čo ísť.
+ */
+export async function hasFeedUrl(): Promise<boolean> {
+  await requireUser();
+  return (process.env.SKOLA_ICS_URL ?? "").trim() !== "";
+}
+
+/**
+ * Stiahne rozvrh z uloženej adresy a načíta ho.
+ *
+ * Adresa je v premennej prostredia, nie v databáze — je to tajomstvo a patrí
+ * tam, kde už je `DATABASE_URL`. Vďaka tomu ju nevidí ani prehliadač, ani
+ * záloha databázy.
+ */
+export async function syncScheduleFromUrl(): Promise<ActionResult<ImportSummary>> {
+  await requireUser();
+
+  const raw = (process.env.SKOLA_ICS_URL ?? "").trim();
+  if (raw === "") {
+    return { ok: false, error: "Adresa odberu nie je nastavená (SKOLA_ICS_URL)." };
+  }
+
+  /*
+    Webcal je len iné meno pre https. EduPage adresu ponúka ako `webcal://`,
+    aby ju kalendárová appka chytila na kliknutie — `fetch` takú schému
+    nepozná a spadol by na nezrozumiteľnej chybe.
+  */
+  const url = raw.replace(/^webcal:\/\//i, "https://");
+
+  try {
+    const odpoved = await fetch(url, {
+      headers: { accept: "text/calendar, text/plain" },
+      cache: "no-store",
+      signal: AbortSignal.timeout(20_000),
+    });
+
+    if (!odpoved.ok) {
+      /* Adresa sa do hlášky NEDÁVA — skončila by v logoch aj na obrazovke. */
+      return {
+        ok: false,
+        error:
+          "Odber odpovedal " +
+          String(odpoved.status) +
+          ". Skontroluj, či adresa v EduPage stále platí.",
+      };
+    }
+
+    return await importSchedule(await odpoved.text());
+  } catch (error) {
+    return fail(error, "Rozvrh sa nepodarilo stiahnuť.");
   }
 }
 

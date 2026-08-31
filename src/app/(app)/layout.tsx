@@ -20,6 +20,7 @@ import {
 import { listTags } from "@/server/queries/structure";
 import { listPillars, listSkills } from "@/server/queries/learning";
 import { listHabits } from "@/server/queries/habits";
+import { listSubjects } from "@/server/queries/school";
 
 export default async function AppLayout({ children }: { children: ReactNode }) {
   const user = await requireUser();
@@ -28,8 +29,16 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
 
   // Zoznamy pre výbery v paneli s detailom úlohy a pre našepkávanie
   // v zachytení. Kontexty sa odvodzujú z úloh — vlastný zoznam nikdy nebol.
-  const [areas, projects, contexts, tags, pillars, learningSkills, habitOptions] =
-    await Promise.all([
+  const [
+    areas,
+    projects,
+    contexts,
+    tags,
+    pillars,
+    learningSkills,
+    habitOptions,
+    predmety,
+  ] = await Promise.all([
     getAreas(user.id),
     getProjects(user.id),
     listContexts(user.id),
@@ -42,6 +51,7 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
       neušetrilo a `listHabits` je jediná cesta, ktorá stráži vlastníka.
     */
     listHabits(user.id, todayIso, todayIso, { todayIso }),
+    listSubjects(user.id),
   ]);
 
   // Zásoba pre vyhľadávanie v Ctrl+K palete: naplánované okolo dneška + inbox.
@@ -87,6 +97,11 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
             habits={habitOptions.map((habit) => ({
               id: habit.id,
               title: habit.title,
+            }))}
+            subjects={predmety.map((s) => ({
+              id: s.id,
+              code: s.code,
+              name: s.name,
             }))}
             todayIso={todayIso}
             postponeWarnAt={user.settings.postponeWarnAt}

@@ -10,6 +10,7 @@ import {
   habits,
   learningPillars,
   projects,
+  schoolSubjects,
   skills,
   taggables,
   tags,
@@ -133,6 +134,14 @@ const taskFieldsSchema = z.object({
     si dni z úloh a z `habit_entries` iba zlúči, nikam sa nič nekopíruje.
   */
   habitId: idSchema.nullish(),
+  /*
+    Školský predmet. Z neho si úloha vie nájsť termín — najbližšiu hodinu
+    toho predmetu. Termín sa PONÚKNE, nevnucuje; robí to obrazovka, nie táto
+    akcia, aby človek videl, čo sa stalo, a vedel to prepísať.
+  */
+  subjectId: idSchema.nullish(),
+  /* Domáca úloha, alebo písomka. Líšia sa tým, ako skoro sa majú ukázať. */
+  schoolKind: z.enum(["homework", "exam"]).nullish(),
 });
 
 const createTaskSchema = taskFieldsSchema.extend({ title: titleSchema });
@@ -215,6 +224,7 @@ async function checkRefs(
     lessonPillarId?: string | null;
     lessonSkillId?: string | null;
     habitId?: string | null;
+    subjectId?: string | null;
   },
 ): Promise<string | null> {
   if (refs.projectId) {
@@ -303,6 +313,17 @@ async function checkRefs(
       .where(and(eq(habits.id, refs.habitId), eq(habits.userId, userId)))
       .limit(1);
     if (!rows[0]) return "Návyk sa nenašiel.";
+  }
+
+  if (refs.subjectId) {
+    const rows = await db
+      .select({ id: schoolSubjects.id })
+      .from(schoolSubjects)
+      .where(
+        and(eq(schoolSubjects.id, refs.subjectId), eq(schoolSubjects.userId, userId)),
+      )
+      .limit(1);
+    if (!rows[0]) return "Predmet sa nenašiel.";
   }
 
   return null;
@@ -495,6 +516,8 @@ export async function createTask(
       parentTaskId: data.parentTaskId ?? null,
       ...lessonValues(data),
       habitId: data.habitId ?? null,
+      subjectId: data.subjectId ?? null,
+      schoolKind: data.schoolKind ?? null,
       completedAt: status === "done" ? new Date() : null,
     });
 
@@ -743,6 +766,24 @@ export async function updateTask(
     if (data.habitId !== undefined && (data.habitId ?? null) !== task.habitId) {
       values.habitId = data.habitId ?? null;
       changed.push("habitId");
+    }
+    if (data.subjectId !== undefined && (data.subjectId ?? null) !== task.subjectId) {
+      values.subjectId = data.subjectId ?? null;
+      changed.push("subjectId");
+      /*
+        Bez predmetu nemá zmysel ani „domáca úloha alebo písomka" — je to
+        rozlíšenie vnútri školy. Nechať ho visieť by znamenalo úlohu, ktorá
+        o sebe tvrdí, že je písomka, a pritom nepatrí k žiadnemu predmetu.
+      */
+      if ((data.subjectId ?? null) === null) values.schoolKind = null;
+    }
+    if (
+      data.schoolKind !== undefined &&
+      (data.schoolKind ?? null) !== task.schoolKind &&
+      values.schoolKind === undefined
+    ) {
+      values.schoolKind = data.schoolKind ?? null;
+      changed.push("schoolKind");
     }
     const lekcia = lessonValues(data);
     if (

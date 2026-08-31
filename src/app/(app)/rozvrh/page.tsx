@@ -89,7 +89,10 @@ export default async function RozvrhPage() {
           />
         </div>
 
-        <ScheduleImport chosen={user.settings.schoolGroups} />
+        <ScheduleImport
+          chosen={user.settings.schoolGroups}
+          hasFeed={(process.env.SKOLA_ICS_URL ?? "").trim() !== ""}
+        />
 
         <NamesPanel
           subjects={predmety.map((p) => ({
