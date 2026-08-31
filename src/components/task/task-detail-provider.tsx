@@ -20,6 +20,7 @@ import { Button } from "@/components/ui/button";
 import { Kbd } from "@/components/ui/kbd";
 import { TaskDetail } from "@/components/task/task-detail";
 import type {
+  HabitOption,
   LessonPillarOption,
   LessonSkillOption,
 } from "@/components/task/task-detail";
@@ -70,6 +71,7 @@ export interface TaskDetailProviderProps {
   areas: Area[];
   pillars: LessonPillarOption[];
   skills: LessonSkillOption[];
+  habits: HabitOption[];
   projects: Project[];
   /** Dnešok z pásma používateľa. Klient si ho nikdy nepočíta sám. */
   todayIso: string;
@@ -84,6 +86,7 @@ export function TaskDetailProvider({
   areas,
   pillars,
   skills,
+  habits,
   projects,
   todayIso,
   postponeWarnAt,
@@ -210,6 +213,7 @@ export function TaskDetailProvider({
           areas={areas}
           pillars={pillars}
           skills={skills}
+          habits={habits}
           projects={projects}
           todayIso={todayIso}
           postponeWarnAt={postponeWarnAt}

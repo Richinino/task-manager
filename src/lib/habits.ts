@@ -133,3 +133,24 @@ export function completionRate(
   const done = closed.reduce((sum, week) => sum + Math.min(week.done, target), 0);
   return done / (closed.length * target);
 }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   DVA ZDROJE JEDNÉHO SPLNENÉHO DŇA
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/**
+ * Zlúči ručne odškrtnuté dni s dňami, ktoré pokryla dokončená úloha.
+ *
+ * Deň sa smie objaviť **len raz**, aj keď ho pokrývajú obe strany. Bez toho
+ * by sa v týždennom počte zarátal dvakrát a cieľ „4× do týždňa" by sa dal
+ * splniť dvomi dňami — séria by potom merala niečo, čo sa nestalo.
+ *
+ * Zoradené, lebo mriežka aj série čítajú dni v poradí a spoliehajú sa naň.
+ */
+export function mergeDoneDays(
+  entries: readonly string[],
+  taskDates: readonly string[],
+): string[] {
+  return [...new Set([...entries, ...taskDates])].sort();
+}
+

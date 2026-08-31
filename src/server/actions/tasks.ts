@@ -7,6 +7,7 @@ import { z } from "zod";
 import { getDb, type Database } from "@/db";
 import {
   areas,
+  habits,
   learningPillars,
   projects,
   skills,
@@ -127,6 +128,11 @@ const taskFieldsSchema = z.object({
   */
   lessonPillarId: idSchema.nullish(),
   lessonSkillId: idSchema.nullish(),
+  /*
+    Úloha, ktorá plní návyk. Deň sa návyku zaráta až jej dokončením — mriežka
+    si dni z úloh a z `habit_entries` iba zlúči, nikam sa nič nekopíruje.
+  */
+  habitId: idSchema.nullish(),
 });
 
 const createTaskSchema = taskFieldsSchema.extend({ title: titleSchema });
@@ -208,6 +214,7 @@ async function checkRefs(
     parentTaskId?: string | null;
     lessonPillarId?: string | null;
     lessonSkillId?: string | null;
+    habitId?: string | null;
   },
 ): Promise<string | null> {
   if (refs.projectId) {
@@ -287,6 +294,15 @@ async function checkRefs(
     if (refs.lessonPillarId && skill.pillarId !== refs.lessonPillarId) {
       return "Zručnosť patrí do iného piliera.";
     }
+  }
+
+  if (refs.habitId) {
+    const rows = await db
+      .select({ id: habits.id })
+      .from(habits)
+      .where(and(eq(habits.id, refs.habitId), eq(habits.userId, userId)))
+      .limit(1);
+    if (!rows[0]) return "Návyk sa nenašiel.";
   }
 
   return null;
@@ -478,6 +494,7 @@ export async function createTask(
       areaId: data.areaId ?? null,
       parentTaskId: data.parentTaskId ?? null,
       ...lessonValues(data),
+      habitId: data.habitId ?? null,
       completedAt: status === "done" ? new Date() : null,
     });
 
@@ -718,6 +735,14 @@ export async function updateTask(
     if (data.sort !== undefined && data.sort !== task.sort) {
       values.sort = data.sort;
       changed.push("sort");
+    }
+    /*
+      Mapuje sa po jednom, tak ako všetko ostatné v tejto akcii. Pridať pole
+      len do zod schémy nestačí — akcia by vrátila úspech a nezapísala nič.
+    */
+    if (data.habitId !== undefined && (data.habitId ?? null) !== task.habitId) {
+      values.habitId = data.habitId ?? null;
+      changed.push("habitId");
     }
     const lekcia = lessonValues(data);
     if (

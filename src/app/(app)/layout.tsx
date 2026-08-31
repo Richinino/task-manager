@@ -19,6 +19,7 @@ import {
 } from "@/server/queries/tasks";
 import { listTags } from "@/server/queries/structure";
 import { listPillars, listSkills } from "@/server/queries/learning";
+import { listHabits } from "@/server/queries/habits";
 
 export default async function AppLayout({ children }: { children: ReactNode }) {
   const user = await requireUser();
@@ -27,13 +28,20 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
 
   // Zoznamy pre výbery v paneli s detailom úlohy a pre našepkávanie
   // v zachytení. Kontexty sa odvodzujú z úloh — vlastný zoznam nikdy nebol.
-  const [areas, projects, contexts, tags, pillars, learningSkills] = await Promise.all([
+  const [areas, projects, contexts, tags, pillars, learningSkills, habitOptions] =
+    await Promise.all([
     getAreas(user.id),
     getProjects(user.id),
     listContexts(user.id),
     listTags(user.id),
     listPillars(user.id),
     listSkills(user.id),
+    /*
+      Návyky do výberu v detaile úlohy. Okno je jediný deň a nikto z neho
+      nečíta sériu — potrebné sú len názvy, takže kratšie okno by nič
+      neušetrilo a `listHabits` je jediná cesta, ktorá stráži vlastníka.
+    */
+    listHabits(user.id, todayIso, todayIso, { todayIso }),
   ]);
 
   // Zásoba pre vyhľadávanie v Ctrl+K palete: naplánované okolo dneška + inbox.
@@ -75,6 +83,10 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
               id: skill.id,
               name: skill.name,
               pillarId: skill.pillarId,
+            }))}
+            habits={habitOptions.map((habit) => ({
+              id: habit.id,
+              title: habit.title,
             }))}
             todayIso={todayIso}
             postponeWarnAt={user.settings.postponeWarnAt}

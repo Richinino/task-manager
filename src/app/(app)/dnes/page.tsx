@@ -107,7 +107,11 @@ export default async function DnesPage({ searchParams }: DnesPageProps) {
             user.id,
             startOfWeek(todayIso, user.settings.weekStartsOn),
             todayIso,
-            { weekStartsOn: user.settings.weekStartsOn, todayIso },
+            {
+              weekStartsOn: user.settings.weekStartsOn,
+              todayIso,
+              timeZone: user.settings.timezone,
+            },
           )
         : Promise.resolve([]),
     ]);

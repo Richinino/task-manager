@@ -112,6 +112,7 @@ interface Draft {
   areaId: string | null;
   lessonPillarId: string | null;
   lessonSkillId: string | null;
+  habitId: string | null;
   isFrog: boolean;
   postponeCount: number;
 }
@@ -138,6 +139,7 @@ function toDraft(task: TaskWithRelations): Draft {
     areaId: task.areaId,
     lessonPillarId: task.lessonPillarId,
     lessonSkillId: task.lessonSkillId,
+    habitId: task.habitId,
     isFrog: task.isFrog,
     postponeCount: task.postponeCount,
   };
@@ -200,6 +202,12 @@ export interface LessonSkillOption {
   pillarId: string;
 }
 
+/** Návyky do výberu — len živé, archivovaný sa už plniť nemá. */
+export interface HabitOption {
+  id: string;
+  title: string;
+}
+
 export interface TaskDetailProps {
   task: TaskWithRelations;
   open: boolean;
@@ -212,6 +220,7 @@ export interface TaskDetailProps {
   projects: Project[];
   pillars: LessonPillarOption[];
   skills: LessonSkillOption[];
+  habits: HabitOption[];
   /** Dnešok z pásma používateľa. Klient si ho nikdy nepočíta sám. */
   todayIso: string;
   postponeWarnAt: number;
@@ -228,6 +237,7 @@ export function TaskDetail({
   projects,
   pillars,
   skills,
+  habits,
   todayIso,
   postponeWarnAt,
   postponeBlockAt,
@@ -1191,6 +1201,44 @@ export function TaskDetail({
                   </Select>
                 ) : null}
               </div>
+            </Field>
+
+            {/*
+              Návyk, ktorý úloha plní. Deň sa zaráta až dokončením úlohy —
+              nezapisuje sa nikam druhýkrát, mriežka si oba zdroje zlúči.
+
+              Nie je to porušenie pravidla „návyk nezapĺňa deň": to hovorí, že
+              návyk NEVYRÁBA úlohy. Tu si úlohu napísal ty a návyk si za ňu
+              len prevezme kredit.
+            */}
+            <Field
+              label="Návyk"
+              hint="Deň sa návyku zaráta až vtedy, keď úlohu odškrtneš."
+            >
+              <Select
+                value={draft.habitId ?? NONE}
+                onValueChange={(value) => {
+                  const habitId = value === NONE ? null : value;
+                  commit(
+                    { habitId },
+                    () => updateTask(task.id, { habitId }),
+                    "Návyk sa nepodarilo priradiť.",
+                  );
+                }}
+              >
+                <SelectTrigger aria-label="Návyk, ktorý úloha plní">
+                  <SelectValue placeholder="Neplní návyk" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={NONE}>Neplní návyk</SelectItem>
+                  {habits.length > 0 ? <SelectSeparator /> : null}
+                  {habits.map((habit) => (
+                    <SelectItem key={habit.id} value={habit.id}>
+                      {habit.title}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </Field>
 
             <Field

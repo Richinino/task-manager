@@ -138,6 +138,8 @@ function buildSummary(
   if (task.subtaskCount > 0) {
     parts.push(`podúlohy ${task.doneSubtaskCount} z ${task.subtaskCount}`);
   }
+  // Aj značka návyku je len znak — čítačka ju musí dostať slovami.
+  if (task.habit) parts.push(`plní návyk ${task.habit.title}`);
   // Značka lekcie je v riadku len znak — čítačka ju musí dostať slovami.
   if (task.lessonPillar) parts.push(`lekcia, pilier ${task.lessonPillar.name}`);
   // Ikona opakovania v riadku je bez textu — čítačke to musí povedať slovami.
@@ -644,6 +646,19 @@ export function TaskItem({
               className="order-4 shrink-0 text-mini text-fg-subtle sm:order-none"
             >
               ✦
+            </span>
+          ) : null}
+
+          {/*
+            Úloha plní návyk. Značka sedí vedľa lekcie a je rovnako tichá —
+            hovorí len to, že sa tento deň niekam zaráta.
+          */}
+          {task.habit !== null ? (
+            <span
+              title={`plní návyk — ${task.habit.title}`}
+              className="order-4 shrink-0 text-mini text-fg-subtle sm:order-none"
+            >
+              ↺
             </span>
           ) : null}
 

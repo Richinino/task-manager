@@ -236,6 +236,23 @@ export const tasks = pgTable(
     }),
 
     /**
+     * Úloha, ktorá zároveň plní návyk.
+     *
+     * Tá istá myšlienka ako pri lekcii, len o vrstvu ďalej: deň sa návyku
+     * zaráta tým, že je úloha dokončená — nezapisuje sa nikam druhýkrát.
+     * `habit_entries` a dokončené úlohy sa v mriežke iba zlúčia, takže sa
+     * nemajú ako rozísť a od-dokončenie deň zase odoberie.
+     *
+     * **Neporušuje to pravidlo „návyk nezapĺňa deň".** To hovorí, že návyk
+     * NEVYRÁBA úlohy. Toto je opačný smer: úlohu si napísal ty, lebo si ju
+     * v ten deň naozaj chcel mať v pláne, a návyk si za ňu len prevezme
+     * kredit. Žiadny riadok v dni navyše nepribudne.
+     */
+    habitId: text("habit_id").references(() => habits.id, {
+      onDelete: "set null",
+    }),
+
+    /**
      * Úloha zaberie celý deň.
      *
      * Sťahovanie, výlet, celodenná návšteva. Nemá hodinu a v rozpočte
@@ -703,6 +720,8 @@ export const tasksRelations = relations(tasks, ({ one, many }) => ({
     fields: [tasks.lessonSkillId],
     references: [skills.id],
   }),
+  /* Dokončená úloha s návykom zaráta svoj deň do mriežky. */
+  habit: one(habits, { fields: [tasks.habitId], references: [habits.id] }),
   parent: one(tasks, {
     fields: [tasks.parentTaskId],
     references: [tasks.id],
@@ -746,6 +765,8 @@ export const skillMilestonesRelations = relations(skillMilestones, ({ one }) => 
 export const habitsRelations = relations(habits, ({ one, many }) => ({
   area: one(areas, { fields: [habits.areaId], references: [areas.id] }),
   entries: many(habitEntries),
+  /* Úlohy, ktoré návyk plnia. Splnený deň môže prísť z oboch strán. */
+  tasks: many(tasks),
 }));
 
 export const habitEntriesRelations = relations(habitEntries, ({ one }) => ({
