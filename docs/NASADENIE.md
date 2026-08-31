@@ -336,6 +336,41 @@ Tabuľky `push_subscriptions` a `reminders` pridáva migrácia
 nasadení, takže tento krok tu ostáva len ako záznam. Podrobne v sekcii
 „Migrácie pri novom míľniku" vyššie.
 
+## Školský rozvrh (EduPage)
+
+Rozvrh sa ťahá z **Webcal odberu** — EduPage → Nastavenia → Ostatné → Môj
+profil → *Enable Webcal*. Je to živá adresa, ktorá nesie tvoj rozvrh; kto ju
+má, vidí, kde si kedy.
+
+**Na Vercel** (Settings → Environment Variables):
+
+    SKOLA_ICS_URL     adresa odberu (aj `webcal://`, appka si ju prepíše)
+
+**Medzi tajomstvá GitHubu** (Settings → Secrets and variables → Actions):
+
+    ROZVRH_URL        https://tvoja-adresa.vercel.app/api/rozvrh
+    CRON_SECRET       to isté tajomstvo, aké je na Verceli
+
+Adresa odberu do GitHubu NEPATRÍ — appka si ju vytiahne sama z premenných
+a nikdy ju nevydá von, ani do chybovej hlášky.
+
+### Prečo raz denne
+
+Odber je rozvrh natiahnutý na dátumy, **nie denný plán**: suplovanie v ňom
+nie je a prázdniny tiež nie (overené — 15. 9. aj 17. 11. sú štátne sviatky
+a feed na nich má plných osem hodín). Meniť sa má čo raz za čas, takže
+nočný beh stačí. Cez tlačidlo *Stiahnuť z EduPage* na obrazovke rozvrhu sa
+dá pustiť kedykoľvek ručne.
+
+### Prvý import treba spraviť ručne
+
+Cron načíta rozvrh tomu, kto už predmety má — teda tomu, kto raz prešiel
+ručným importom a **vybral si skupiny**. Bez nich by sa stiahli dvojité
+okienka celej triedy. Keď rozvrh má viac ľudí, cron radšej neurobí nič:
+adresa odberu je jedna a nedá sa uhádnuť, komu patrí.
+
+---
+
 ### 2. Kľúče VAPID
 
 VAPID je podpis, ktorým sa appka predstaví push službe prehliadača. Kľúče si
