@@ -1,11 +1,16 @@
 /**
  * Brána pred nasadením: nepustí von kód, ktorý čaká na migráciu.
  *
- * Beží ako prvý krok `npm run build`, teda aj na Verceli. Keď v repozitári
+ * Beží v `npm run build` hneď za automatickou migráciou. Keď v repozitári
  * leží migrácia, ktorá v produkčnej databáze nedobehla, build zlyhá a Vercel
  * ostane na poslednej funkčnej verzii. Zlyhaný build je nepríjemnosť,
  * spadnutá appka je výpadok — a tento konkrétny výpadok už raz bol
  * (30. 8. 2026, stĺpec `stays_on_day`, všetky obrazovky za prihlásením).
+ *
+ * **Nie je to zbytočné zdvojenie.** Migrácia sa zámerne nepúšťa všade —
+ * náhľadové buildy a lokálne builds ju preskočia — takže kontrola je jediné
+ * miesto, ktoré platí VŽDY. A keby migrátor skončil bez chyby a databázu
+ * nezmenil, brána to zachytí namiesto používateľa.
  *
  * ## Kedy sa preskočí
  *
@@ -22,65 +27,15 @@
  * spiaceho Neonu nezhodilo nasadenie zbytočne.
  */
 
-import crypto from "node:crypto";
-import fs from "node:fs";
-import path from "node:path";
-
+import {
+  nacitajAplikovane,
+  nacitajZurnal,
+  vypis,
+  vytvorPool,
+} from "./db-migracie.mjs";
 import { porovnajMigracie } from "./migracie.mjs";
 
-const PRIECINOK = path.join("src", "db", "migrations");
 const POKUSY = 2;
-const CAKANIE_MS = 15_000;
-
-/** Prečíta žurnál a k nemu hash každého `.sql` — presne ako to robí Drizzle. */
-function nacitajZurnal() {
-  const cestaZurnalu = path.join(PRIECINOK, "meta", "_journal.json");
-  if (!fs.existsSync(cestaZurnalu)) return [];
-
-  const zurnal = JSON.parse(fs.readFileSync(cestaZurnalu, "utf8"));
-  return (zurnal.entries ?? []).map((zaznam) => {
-    const obsah = fs.readFileSync(path.join(PRIECINOK, `${zaznam.tag}.sql`), "utf8");
-    return {
-      tag: zaznam.tag,
-      when: zaznam.when,
-      hash: crypto.createHash("sha256").update(obsah).digest("hex"),
-    };
-  });
-}
-
-/**
- * Čo už v databáze dobehlo.
- *
- * Chýbajúca tabuľka NIE JE chyba — na čerstvej databáze ju vytvorí až prvá
- * migrácia. Vtedy platí, že nedobehlo nič.
- */
-async function nacitajAplikovane(url) {
-  const { Pool } = await import("pg");
-  const lokalna = url.includes("localhost") || url.includes("127.0.0.1");
-  const pool = new Pool({
-    connectionString: url,
-    ssl: lokalna ? false : { rejectUnauthorized: true },
-    max: 1,
-    connectionTimeoutMillis: CAKANIE_MS,
-  });
-
-  try {
-    const { rows } = await pool.query(
-      `select hash, created_at from drizzle.__drizzle_migrations`,
-    );
-    return rows.map((r) => ({ hash: r.hash, createdAt: Number(r.created_at) }));
-  } catch (chyba) {
-    // 42P01 = tabuľka neexistuje, 3F000 = schéma neexistuje.
-    if (chyba?.code === "42P01" || chyba?.code === "3F000") return [];
-    throw chyba;
-  } finally {
-    await pool.end().catch(() => {});
-  }
-}
-
-function vypis(riadky) {
-  process.stdout.write(`${riadky.join("\n")}\n`);
-}
 
 async function main() {
   if (process.env.SKIP_MIGRATION_CHECK === "1") {
@@ -102,8 +57,9 @@ async function main() {
 
   let aplikovane;
   for (let pokus = 1; pokus <= POKUSY; pokus++) {
+    const pool = await vytvorPool(url);
     try {
-      aplikovane = await nacitajAplikovane(url);
+      aplikovane = await nacitajAplikovane(pool);
       break;
     } catch (chyba) {
       if (pokus === POKUSY) {
@@ -118,6 +74,8 @@ async function main() {
         ]);
         process.exit(1);
       }
+    } finally {
+      await pool.end().catch(() => {});
     }
   }
 
@@ -138,7 +96,13 @@ async function main() {
       ...chybajuce.map((tag) => `  · ${tag}`),
       "",
       "Nasadiť tento kód by znamenalo, že appka siahne na stĺpec alebo tabuľku,",
-      "ktorá v produkcii nie je — a spadne. Pusti najprv migráciu:",
+      "ktorá v produkcii nie je — a spadne.",
+      "",
+      "Pri produkčnom nasadení sa migrácia púšťa sama krok predtým. Ak si to",
+      "čítaš, buď to bol náhľadový build (tam sa zámerne nemigruje), alebo",
+      "automatika zlyhala — dôvod bude vo výpise nad týmto.",
+      "",
+      "Ručne:",
       "",
       '  $env:DATABASE_URL="<connection-string>"; npm run db:migrate',
       "",

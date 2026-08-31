@@ -35,22 +35,59 @@ $env:DATABASE_URL="<connection-string>"; npm run db:migrate
 
 ### Migrácie pri novom míľniku
 
-Neon sa **nemigruje sám**. Keď pribudne migrácia v `src/db/migrations/`, musí
-sa pustiť RUČNE a **skôr, než sa nová verzia nasadí** — inak Vercel nasadí kód,
-ktorý siaha na stĺpec, čo v produkcii ešte nie je.
+**Nemusíš robiť nič.** Migrácia dobehne sama pri produkčnom nasadení, ako
+prvý krok `npm run build`:
+
+```
+npm run db:migrate:nasadenie   →   npm run kontrola:migracie   →   next build
+```
+
+Connection string sa nikam neprelepuje — `DATABASE_URL` je na Verceli už
+kvôli samotnej appke a migračný krok siahne po tej istej premennej.
+
+Poradie teda je: `git push` → Vercel migruje → Vercel nasadí. Lokálne sa
+migrácie púšťajú samy pri štarte PGlite, takže rozdiel medzi vývojom
+a produkciou zmizol.
+
+#### Kedy sa migrácia NEPUSTÍ
+
+| Situácia | Prečo |
+|---|---|
+| náhľadový (preview) build | stavia neschválenú vetvu, ale mieri na tú istú produkčnú databázu |
+| lokálny `npm run build` | aj keď máš v prostredí produkčnú premennú — na ostrú databázu sa nesmie siahnuť omylom |
+| bez `DATABASE_URL` | beží PGlite, ktorý sa migruje sám |
+| `SKIP_MIGRATION=1` | únikový východ, keby sa pokazil samotný krok |
+
+Vynútiť sa dá cez `MIGROVAT_PRI_BUILDE=1`. Rozhoduje o tom jediná funkcia
+(`dovodPreskocenia` v `scripts/migracie.mjs`) a má vlastné testy — je to
+jediné miesto, ktoré určuje, či sa siahne na ostrú databázu.
+
+#### Brána ostáva
+
+Za migráciou beží `npm run kontrola:migracie` ako predtým. Nie je to zdvojenie:
+migrácia sa zámerne nepúšťa všade, takže kontrola je jediné miesto, ktoré
+platí **vždy** — a keby migrátor skončil bez chyby a databázu nezmenil,
+zachytí to ona namiesto používateľa. Keď v repozitári leží migrácia, ktorá
+v produkcii nedobehla, **nasadenie zlyhá** a Vercel ostane na poslednej
+funkčnej verzii.
+
+#### Na čo sa tým spoliehame
+
+**Migrácie musia ostať pridávacie.** Keď migrácia dobehne a build potom zlyhá
+na niečom inom (preklad, test), v databáze je nová schéma, ale navonok ďalej
+beží stará verzia appky. Pridaný stĺpec starému kódu neprekáža — zmazaný alebo
+premenovaný by ho zložil. Keby raz prišla naozaj búracia migrácia, pusti ju
+ručne a mimo nasadenia:
 
 ```powershell
 $env:DATABASE_URL="<connection-string>"; npm run db:migrate
 ```
 
-Poradie je vždy: migrácia → `git push` → Vercel nasadí. Lokálne sa migrácie
-púšťajú samy pri štarte, takže rozdiel medzi vývojom a produkciou je práve tu.
+#### Zlyhaný build sa sám neopakuje
 
-**Na to poradie sa už nemusíš spoliehať.** Build sa najprv pozrie do databázy
-(`npm run kontrola:migracie`, beží ako prvý krok `npm run build`) a keď v
-repozitári leží migrácia, ktorá v produkcii nedobehla, **nasadenie zlyhá** a
-Vercel ostane na poslednej funkčnej verzii. Vo výpise buildu vtedy nájdeš,
-ktorá migrácia chýba.
+Keď build padne (napr. migrácia nedobehla), Vercel ostane na starej verzii
+a **sám to znova neskúsi**. Po odstránení príčiny treba v *Deployments*
+kliknúť **Redeploy** — alebo pushnúť čokoľvek ďalšie.
 
 Stalo sa to raz naozaj: 30. 8. 2026 sa nasadil stĺpec `stays_on_day` bez
 migrácie a spadli všetky obrazovky za prihlásením. Zlyhaný build je
@@ -295,12 +332,9 @@ nikdy neprídu skôr. Kto chce mať náskok, nastaví si v appke predstih.
 ### 1. Migrácia
 
 Tabuľky `push_subscriptions` a `reminders` pridáva migrácia
-`0002_pripomienky`. Je **čisto pridávacia**, takže môže dobehnúť
-samostatne, aj keď je stará verzia appky ešte nasadená.
-
-```powershell
-$env:DATABASE_URL="<connection-string>"; npm run db:migrate
-```
+`0002_pripomienky`. **Už dobehla** — a odteraz sa migrácie púšťajú samy pri
+nasadení, takže tento krok tu ostáva len ako záznam. Podrobne v sekcii
+„Migrácie pri novom míľniku" vyššie.
 
 ### 2. Kľúče VAPID
 
