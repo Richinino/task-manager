@@ -40,17 +40,43 @@ export interface SchoolStripLesson {
 
 export interface SchoolStripProps {
   lessons: readonly SchoolStripLesson[];
+  /** Ak je na tento deň voľno, jeho názov — hodiny sa vtedy nekreslia. */
+  breakLabel: string | null;
   todayIso: string;
   /** Minúty od polnoci zo servera — klient si prvú hodnotu nepočíta. */
   nowMin: number;
   timeZone: string;
 }
 
-export function SchoolStrip({ lessons, todayIso, nowMin, timeZone }: SchoolStripProps) {
+export function SchoolStrip({
+  lessons,
+  breakLabel,
+  todayIso,
+  nowMin,
+  timeZone,
+}: SchoolStripProps) {
   const [openId, setOpenId] = useState<string | null>(null);
   const teraz = useNowMinutes(nowMin, timeZone);
 
-  if (lessons.length === 0) return null;
+  if (lessons.length === 0 && breakLabel === null) return null;
+
+  /*
+    Voľno prekryje rozvrh. Odber ho nepozná — na Sedembolestnú má plných osem
+    hodín — takže bez tohto by pruh tvrdil, že máš celý deň školu.
+  */
+  if (breakLabel !== null) {
+    return (
+      <section
+        aria-label="Škola dnes"
+        className="flex shrink-0 items-baseline gap-2 border-b border-border px-5 py-[11px]"
+      >
+        <h2 className="label text-fg-subtle">Škola</h2>
+        <p className="min-w-0 truncate text-body text-fg-muted">
+          Voľno — {breakLabel}
+        </p>
+      </section>
+    );
+  }
 
   const okno = schoolWindow(lessons);
   const minut = schoolMinutes(lessons);

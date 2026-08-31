@@ -1,15 +1,18 @@
 import type { Metadata } from "next";
 
 import { ScreenFooter, ScreenHeader } from "@/components/shell/screen-chrome";
+import { BreaksPanel } from "@/components/views/rozvrh/breaks-panel";
+import { WeekNav } from "@/components/views/rozvrh/week-nav";
 import { NamesPanel } from "@/components/views/rozvrh/names-panel";
 import { ScheduleImport } from "@/components/views/rozvrh/schedule-import";
 import { WeekGrid } from "@/components/views/rozvrh/week-grid";
-import { formatDuration, minutesIn, todayIn, weekDays } from "@/lib/dates";
+import { addDays, formatDuration, minutesIn, todayIn, weekDays } from "@/lib/dates";
 import { schoolMinutes } from "@/lib/school";
 import { countSk } from "@/lib/sk";
 import { requireUser } from "@/server/auth-guard";
 import {
   getLessonsForRange,
+  listBreaks,
   listSubjects,
   listTeachers,
 } from "@/server/queries/school";
@@ -36,11 +39,26 @@ export const metadata: Metadata = {
    Rozhodnutia k celému podprojektu sú v `docs/ROZVRH.md`.
    ═══════════════════════════════════════════════════════════════════════════ */
 
-export default async function RozvrhPage() {
+interface RozvrhPageProps {
+  /** Next 16: `searchParams` je Promise a musí sa awaitovať. */
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}
+
+/** Kotva týždňa z `?od=RRRR-MM-DD`. Neplatný dátum sa ticho zahodí. */
+function readAnchor(value: string | string[] | undefined): string | null {
+  const raw = Array.isArray(value) ? value[0] : value;
+  if (raw === undefined || !/^\d{4}-\d{2}-\d{2}$/.test(raw)) return null;
+  const parsed = new Date(`${raw}T12:00:00Z`);
+  return Number.isNaN(parsed.getTime()) ? null : raw;
+}
+
+export default async function RozvrhPage({ searchParams }: RozvrhPageProps) {
   const user = await requireUser();
+  const params = await searchParams;
 
   const todayIso = todayIn(user.settings.timezone);
-  const dni = weekDays(todayIso, user.settings.weekStartsOn);
+  const kotva = readAnchor(params["od"]) ?? todayIso;
+  const dni = weekDays(kotva, user.settings.weekStartsOn);
 
   /*
     Víkend sa nekreslí, keď v ňom nič nie je — prázdne riadky by z mriežky
@@ -49,13 +67,35 @@ export default async function RozvrhPage() {
   */
   const prvy = dni[0] ?? todayIso;
   const posledny = dni[dni.length - 1] ?? todayIso;
-  const [hodiny, predmety, ucitelia] = await Promise.all([
+  const predchadzajuci = addDays(prvy, -7);
+  const nasledujuci = addDays(prvy, 7);
+  const [hodiny, predmety, ucitelia, volna] = await Promise.all([
     getLessonsForRange(user.id, prvy, posledny),
     listSubjects(user.id),
     listTeachers(user.id),
+    listBreaks(user.id),
   ]);
 
-  const dniSHodinami = dni.filter((den) => hodiny.some((h) => h.date === den));
+  /*
+    Ktorý školský rok ponúknuť.
+
+    Hranica je AUGUST, nie september. Školský rok 2025/2026 síce formálne beží
+    do 31. augusta, ale koncom augusta už nikoho nezaujíma — vtedy sa človek
+    pripravuje na ten, čo o týždeň začína. Ponúkať mu sviatky, ktoré všetky
+    dávno prešli, by bolo doslova k ničomu.
+  */
+  const skolskyRok =
+    Number(todayIso.slice(0, 4)) - (todayIso.slice(5, 7) < "08" ? 1 : 0);
+
+  /*
+    Deň sa kreslí, keď v ňom niečo JE — hodina alebo voľno. Víkend tak vypadne
+    sám, ale prázdninový utorok ostane aj s dôvodom, prečo je prázdny.
+  */
+  const jeVolno = (den: string): boolean =>
+    volna.some((v) => v.fromDate <= den && den <= v.toDate);
+  const dniSHodinami = dni.filter(
+    (den) => hodiny.some((h) => h.date === den) || jeVolno(den),
+  );
   const tyzdenMin = schoolMinutes(hodiny);
 
   const meta =
@@ -65,7 +105,17 @@ export default async function RozvrhPage() {
 
   return (
     <div className="flex w-full flex-col md:h-dvh">
-      <ScreenHeader title="Rozvrh" meta={meta} />
+      <ScreenHeader
+        title="Rozvrh"
+        meta={meta}
+        chip={dni.includes(todayIso) ? "tento týždeň" : undefined}
+      >
+        <WeekNav
+          previous={`/rozvrh?od=${predchadzajuci}`}
+          next={`/rozvrh?od=${nasledujuci}`}
+          today={dni.includes(todayIso) ? null : "/rozvrh"}
+        />
+      </ScreenHeader>
 
       <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
         <div className="border-b border-border px-2 py-2">
@@ -83,15 +133,35 @@ export default async function RozvrhPage() {
               cancelled: h.cancelled,
               hasNote: h.note !== null || h.subjectNote !== null,
             }))}
+            breaks={volna.map((v) => ({
+              fromDate: v.fromDate,
+              toDate: v.toDate,
+              label: v.label,
+            }))}
             todayIso={todayIso}
             nowMin={minutesIn(user.settings.timezone)}
             timeZone={user.settings.timezone}
+            emptyHint={
+              predmety.length === 0
+                ? "Zatiaľ tu nič nie je. Načítaj rozvrh nižšie."
+                : "V tomto týždni nič nie je — prázdniny alebo leto."
+            }
           />
         </div>
 
         <ScheduleImport
           chosen={user.settings.schoolGroups}
           hasFeed={(process.env.SKOLA_ICS_URL ?? "").trim() !== ""}
+        />
+
+        <BreaksPanel
+          breaks={volna.map((v) => ({
+            id: v.id,
+            fromDate: v.fromDate,
+            toDate: v.toDate,
+            label: v.label,
+          }))}
+          schoolYear={skolskyRok}
         />
 
         <NamesPanel

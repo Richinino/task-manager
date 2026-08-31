@@ -31,7 +31,7 @@ import {
   getTasksForDay,
   listContexts,
 } from "@/server/queries/tasks";
-import { getLessonsForDay } from "@/server/queries/school";
+import { getLessonsForDay, listBreaks } from "@/server/queries/school";
 import { getJournalEntry, getRitualState } from "@/server/queries/rituals";
 import { getDayEvents, meetingMinutes } from "@/server/queries/calendar";
 
@@ -85,6 +85,7 @@ export default async function DnesPage({ searchParams }: DnesPageProps) {
     events,
     contexts,
     schoolLessons,
+    schoolBreaks,
     habits,
   ] = await Promise.all([
       getTasksForDay(user.id, date),
@@ -113,6 +114,7 @@ export default async function DnesPage({ searchParams }: DnesPageProps) {
         bude zabratý, inak si naň naplánuje prácu na čas, keď sedí v triede.
       */
       getLessonsForDay(user.id, date),
+      listBreaks(user.id),
       /*
         Návyky sa ťahajú len pre dnešok — na iný deň sa v prehľade nekreslia
         a odškrtávať návyk spätne v prehľade dňa je pomýlené.
@@ -332,6 +334,10 @@ export default async function DnesPage({ searchParams }: DnesPageProps) {
               hodina by prebila každý čas. Je to tá istá pasca ako pri
               prepadnutých úlohách.
             */
+            breakLabel={
+              schoolBreaks.find((v) => v.fromDate <= date && date <= v.toDate)?.label ??
+              null
+            }
             todayIso={todayIso}
             nowMin={minutesIn(user.settings.timezone)}
             timeZone={user.settings.timezone}

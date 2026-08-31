@@ -40,13 +40,25 @@ export interface GridLesson {
 export interface WeekGridProps {
   /** Dni týždňa ako `RRRR-MM-DD`, od pondelka. */
   days: readonly string[];
+  /** Prázdniny a voľná — v odbere nie sú, prekrývajú rozvrh. */
+  breaks: readonly { fromDate: string; toDate: string; label: string }[];
   lessons: readonly GridLesson[];
   todayIso: string;
   nowMin: number;
   timeZone: string;
+  /** Čo napísať, keď v týždni nie je nič — vie to len volajúci. */
+  emptyHint: string;
 }
 
-export function WeekGrid({ days, lessons, todayIso, nowMin, timeZone }: WeekGridProps) {
+export function WeekGrid({
+  days,
+  lessons,
+  breaks,
+  todayIso,
+  nowMin,
+  timeZone,
+  emptyHint,
+}: WeekGridProps) {
   const [openId, setOpenId] = useState<string | null>(null);
   const teraz = useNowMinutes(nowMin, timeZone);
 
@@ -57,12 +69,13 @@ export function WeekGrid({ days, lessons, todayIso, nowMin, timeZone }: WeekGrid
   */
   const periods = [...new Set(lessons.map((l) => l.period))].sort((a, b) => a - b);
 
-  if (periods.length === 0) {
-    return (
-      <p className="px-5 py-6 text-body text-fg-muted">
-        Zatiaľ tu nič nie je. Načítaj rozvrh zo súboru nižšie.
-      </p>
-    );
+  /*
+    Týždeň bez jedinej hodiny sa ešte nemusí kresliť naprázdno: cez prázdniny
+    v ňom nie sú hodiny, ale JE v ňom dôvod, prečo nie sú. Ten je to jediné,
+    čo v takom týždni treba vedieť.
+  */
+  if (days.length === 0) {
+    return <p className="px-5 py-6 text-body text-fg-muted">{emptyHint}</p>;
   }
 
   const casy = new Map<number, string>();
@@ -95,6 +108,7 @@ export function WeekGrid({ days, lessons, todayIso, nowMin, timeZone }: WeekGrid
             {days.map((den) => {
               const denne = lessons.filter((l) => l.date === den);
               const dnesok = den === todayIso;
+              const volno = breaks.find((v) => v.fromDate <= den && den <= v.toDate);
 
               return (
                 <tr key={den} className="border-b border-border last:border-b-0">
@@ -112,7 +126,24 @@ export function WeekGrid({ days, lessons, todayIso, nowMin, timeZone }: WeekGrid
                     </span>
                   </th>
 
-                  {periods.map((p) => {
+                  {volno !== undefined ? (
+                    /*
+                      Voľno prekryje celý riadok. Ukázať hodiny prečiarknuté by
+                      bolo presnejšie k dátam, ale nepresnejšie k skutočnosti:
+                      v ten deň sa nič z toho nedeje a jediné, čo treba vedieť,
+                      je prečo.
+                    */
+                    <td
+                      colSpan={Math.max(periods.length, 1)}
+                      className="px-1 py-1 align-middle"
+                    >
+                      <span className="block truncate rounded border border-dashed border-border bg-surface-2/40 px-2 py-1.5 text-mini text-fg-muted">
+                        {volno.label}
+                      </span>
+                    </td>
+                  ) : null}
+
+                  {volno !== undefined ? null : periods.map((p) => {
                     const hodina = denne.find((l) => l.period === p);
                     if (hodina === undefined) {
                       return <td key={p} className="px-1 py-1" />;
