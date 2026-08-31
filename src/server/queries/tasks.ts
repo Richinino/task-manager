@@ -22,12 +22,14 @@ import type { AnyPgColumn } from "drizzle-orm/pg-core";
 import { getDb } from "@/db";
 import {
   areas,
+  habits,
   learningPillars,
   projects,
   taggables,
   tags,
   tasks,
   type Area,
+  type Habit,
   type LearningPillar,
   type Project,
   type Task,
@@ -53,6 +55,8 @@ export interface TaskWithRelations extends Task {
    * a na to, aby sa dala povedať čítačke.
    */
   lessonPillar: { id: string; name: string; color: string } | null;
+  /** Návyk, ktorý úloha plní. `null` znamená obyčajnú úlohu. */
+  habit: { id: string; title: string } | null;
 }
 
 /** Stavy, po ktorých už úloha nie je „živá". */
@@ -144,6 +148,7 @@ async function selectTasks(
       area: areas,
       project: projects,
       lessonPillar: learningPillars,
+      habit: habits,
       subtaskCount: subtaskCounts.total,
       doneSubtaskCount: subtaskCounts.done,
       tags: taskTags.list,
@@ -171,6 +176,7 @@ async function selectTasks(
         eq(learningPillars.userId, userId),
       ),
     )
+    .leftJoin(habits, and(eq(tasks.habitId, habits.id), eq(habits.userId, userId)))
     .leftJoin(subtaskCounts, eq(subtaskCounts.parentId, tasks.id))
     .leftJoin(taskTags, eq(taskTags.taskId, tasks.id))
     .where(and(eq(tasks.userId, userId), isNull(tasks.deletedAt), extra))
@@ -184,6 +190,7 @@ function toTaskWithRelations(row: {
   area: Area | null;
   project: Project | null;
   lessonPillar?: LearningPillar | null;
+  habit?: Habit | null;
   subtaskCount: number | null;
   doneSubtaskCount: number | null;
   tags?: { id: string; name: string; color: string }[] | null;
@@ -201,6 +208,7 @@ function toTaskWithRelations(row: {
           color: row.lessonPillar.color,
         }
       : null,
+    habit: row.habit ? { id: row.habit.id, title: row.habit.title } : null,
     subtaskCount: Number(row.subtaskCount ?? 0),
     doneSubtaskCount: Number(row.doneSubtaskCount ?? 0),
     // `json_agg` bez zhody nevráti prázdne pole, ale NULL — preto tá poistka.

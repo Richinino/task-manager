@@ -91,6 +91,15 @@ export function HabitCard({
   const serverDoneToday = habit.entries.includes(todayIso);
 
   /*
+    Dnešok, ktorý drží dokončená úloha.
+
+    Takýto deň sa ručne prepnúť nedá a je to zámer: jeho pravda je v tej
+    úlohe. Keby tlačidlo zostalo živé, ťuknutie by políčko nezmenilo (úloha ho
+    drží ďalej) a vyzeralo by to ako chyba. Radšej ho vypnúť a povedať prečo.
+  */
+  const drziUloha = habit.taskDates.includes(todayIso);
+
+  /*
     `useOptimistic`, nie `useState`: po dobehnutí tranzície sa hodnota sama
     vráti k tomu, čo tvrdí server. Pri zlyhaní sa teda fajka odškrtne späť bez
     jediného riadku navyše — a pri úspechu ju vystrieda revalidovaný prop, nie
@@ -156,7 +165,7 @@ export function HabitCard({
   const area = areas.find((item) => item.id === habit.areaId);
 
   function toggleToday(): void {
-    if (isPending || archived) return;
+    if (isPending || archived || drziUloha) return;
 
     const next = !doneToday;
     setError(null);
@@ -249,15 +258,20 @@ export function HabitCard({
               stav zavádzal. Opakované ťuknutie zachytáva stráž v `toggleToday`.
             */
             aria-pressed={doneToday}
+            aria-disabled={drziUloha}
             aria-label={
-              doneToday
-                ? `Zrušiť dnešné splnenie návyku ${habit.title}`
-                : `Odškrtnúť dnes návyk ${habit.title}`
+              drziUloha
+                ? `Návyk ${habit.title} dnes plní dokončená úloha`
+                : doneToday
+                  ? `Zrušiť dnešné splnenie návyku ${habit.title}`
+                  : `Odškrtnúť dnes návyk ${habit.title}`
             }
             title={
-              doneToday
-                ? "Dnes je odškrtnuté — ďalším ťuknutím sa to vráti"
-                : "Odškrtnúť dnešok"
+              drziUloha
+                ? "Dnešok plní dokončená úloha — odškrtnutie sa riadi ňou"
+                : doneToday
+                  ? "Dnes je odškrtnuté — ďalším ťuknutím sa to vráti"
+                  : "Odškrtnúť dnešok"
             }
             className={cn(
               "inline-flex min-h-11 shrink-0 items-center gap-1.5 rounded border px-2.5 sm:min-h-9",
@@ -265,6 +279,12 @@ export function HabitCard({
               doneToday
                 ? "border-success bg-surface-2 text-fg"
                 : "border-border bg-surface text-fg-muted hover:border-border-strong hover:bg-surface-2 hover:text-fg",
+              /*
+                `aria-disabled` a nie `disabled`: vypnuté tlačidlo sa nedá
+                zamerať, takže by sa k jeho vysvetleniu nedostal nikto, kto
+                chodí klávesnicou — a práve to vysvetlenie je tu to podstatné.
+              */
+              drziUloha && "cursor-default opacity-70",
             )}
           >
             <span

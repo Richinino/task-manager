@@ -5,6 +5,7 @@ import {
   currentStreak,
   habitWeeks,
   longestStreak,
+  mergeDoneDays,
   type HabitWeek,
 } from "@/lib/habits";
 
@@ -155,3 +156,34 @@ describe("completionRate", () => {
     expect(completionRate([], 3)).toBe(0);
   });
 });
+
+describe("mergeDoneDays", () => {
+  it("spojí ručné odškrtnutia s dňami z úloh", () => {
+    expect(mergeDoneDays(["2026-08-03"], ["2026-08-05"])).toEqual([
+      "2026-08-03",
+      "2026-08-05",
+    ]);
+  });
+
+  /*
+    Toto je celý dôvod, prečo funkcia existuje. Deň pokrytý oboma stranami
+    by sa inak v týždennom počte zarátal dvakrát a cieľ „4× do týždňa" by sa
+    dal splniť dvomi dňami.
+  */
+  it("deň pokrytý z oboch strán ráta raz", () => {
+    expect(mergeDoneDays(["2026-08-03"], ["2026-08-03"])).toEqual(["2026-08-03"]);
+  });
+
+  it("vracia dni zoradené, nech prídu v akomkoľvek poradí", () => {
+    expect(mergeDoneDays(["2026-08-09", "2026-08-01"], ["2026-08-05"])).toEqual([
+      "2026-08-01",
+      "2026-08-05",
+      "2026-08-09",
+    ]);
+  });
+
+  it("znesie prázdne obe strany", () => {
+    expect(mergeDoneDays([], [])).toEqual([]);
+  });
+});
+

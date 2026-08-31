@@ -1,11 +1,12 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { and, eq, isNull } from "drizzle-orm";
+import { and, eq, isNotNull, isNull } from "drizzle-orm";
 import { z } from "zod";
 
 import { getDb } from "@/db";
-import { areas, habitEntries, habits } from "@/db/schema";
+import { areas, habitEntries, habits, tasks } from "@/db/schema";
+import { localDate } from "@/server/queries/tasks";
 import { uuidv7 } from "@/lib/id";
 import { requireUser } from "@/server/auth-guard";
 
@@ -220,6 +221,37 @@ export async function toggleHabitEntry(
     }
 
     const db = await getDb();
+
+    /*
+      Deň, ktorý drží dokončená úloha, sa ručne prepnúť nedá.
+
+      Jeho pravda je inde — v tej úlohe. Keby sa tu smel zapísať alebo zmazať
+      riadok v `habit_entries`, políčko by po ťuknutí ostalo plné (úloha ho
+      drží ďalej) a vyzeralo by to pokazene. Odmietnuť s vysvetlením je
+      poctivejšie než ticho nespraviť nič.
+    */
+    const drziUloha = await db
+      .select({ id: tasks.id })
+      .from(tasks)
+      .where(
+        and(
+          eq(tasks.userId, user.id),
+          eq(tasks.habitId, habitId),
+          eq(tasks.status, "done"),
+          isNotNull(tasks.completedAt),
+          isNull(tasks.deletedAt),
+          eq(localDate(tasks.completedAt, user.settings.timezone), dateParsed.data),
+        ),
+      )
+      .limit(1);
+
+    if (drziUloha[0]) {
+      return {
+        ok: false,
+        error: "Tento deň plní dokončená úloha — odškrtnutie sa riadi ňou.",
+      };
+    }
+
     const existing = await db
       .select({ habitId: habitEntries.habitId })
       .from(habitEntries)

@@ -86,6 +86,8 @@ export default async function NavykyPage() {
       weekStartsOn,
       todayIso,
       includeArchived: true,
+      // Bez pásma by sa dni z dokončených úloh nepribrali vôbec.
+      timeZone: user.settings.timezone,
     }),
     listAreas(user.id, { includeArchived: true }),
   ]);
