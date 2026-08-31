@@ -6,6 +6,12 @@ import { z } from "zod";
 
 import { getDb } from "@/db";
 import { schoolLessons, schoolSubjects, schoolTeachers } from "@/db/schema";
+import {
+  getLesson,
+  getSubjectTasks,
+  type LessonRow,
+  type SubjectTask,
+} from "@/server/queries/school";
 import { todayIn } from "@/lib/dates";
 import { competingGroups, filterByGroups, groupsInFeed, parseIcs } from "@/lib/ics";
 import { uuidv7 } from "@/lib/id";
@@ -300,3 +306,200 @@ export async function readGroups(
     return fail(error, "Skupiny sa nepodarilo prečítať.");
   }
 }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   DETAIL HODINY
+
+   Načítava sa až pri otvorení, nie dopredu ku každej hodine. Na obrazovke
+   rozvrhu je hodín štyridsať a ťahať ku každej z nich úlohy predmetu by
+   znamenalo štyridsať dotazov za jedno vykreslenie — pritom otvorí sa jedna.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+export interface LessonDetail {
+  lesson: LessonRow;
+  /** Otvorené úlohy a písomky z toho predmetu. */
+  tasks: SubjectTask[];
+}
+
+export async function loadLessonDetail(
+  id: string,
+): Promise<ActionResult<LessonDetail>> {
+  const user = await requireUser();
+  try {
+    const lesson = await getLesson(user.id, id);
+    if (lesson === null) return { ok: false, error: "Hodina sa nenašla." };
+
+    return { ok: true, data: { lesson, tasks: await getSubjectTasks(user.id, lesson.subjectId) } };
+  } catch (error) {
+    return fail(error, "Detail hodiny sa nepodarilo načítať.");
+  }
+}
+
+const noteSchema = z.string().trim().max(500, "Poznámka je príliš dlhá.");
+
+/**
+ * Poznámka k jednej konkrétnej hodine — „doniesť zošit".
+ *
+ * Zapísaním sa hodina označí ako ručne upravená, takže ju ďalší import
+ * nechá tak. Bez toho by prvá synchronizácia poznámku zmazala.
+ */
+export async function setLessonNote(
+  id: string,
+  note: string,
+): Promise<ActionResult> {
+  const user = await requireUser();
+  try {
+    const parsed = noteSchema.safeParse(note);
+    if (!parsed.success) return invalid(parsed.error, "Neplatná poznámka.");
+
+    const db = await getDb();
+    const text = parsed.data === "" ? null : parsed.data;
+
+    await db
+      .update(schoolLessons)
+      .set({ note: text, manual: true, updatedAt: new Date() })
+      .where(and(eq(schoolLessons.id, id), eq(schoolLessons.userId, user.id)));
+
+    revalidateViews();
+    return { ok: true };
+  } catch (error) {
+    return fail(error, "Poznámku sa nepodarilo uložiť.");
+  }
+}
+
+/** Poznámka k predmetu — platí stále, naprieč všetkými jeho hodinami. */
+export async function setSubjectNote(
+  id: string,
+  note: string,
+): Promise<ActionResult> {
+  const user = await requireUser();
+  try {
+    const parsed = noteSchema.safeParse(note);
+    if (!parsed.success) return invalid(parsed.error, "Neplatná poznámka.");
+
+    const db = await getDb();
+    await db
+      .update(schoolSubjects)
+      .set({
+        note: parsed.data === "" ? null : parsed.data,
+        updatedAt: new Date(),
+      })
+      .where(and(eq(schoolSubjects.id, id), eq(schoolSubjects.userId, user.id)));
+
+    revalidateViews();
+    return { ok: true };
+  } catch (error) {
+    return fail(error, "Poznámku sa nepodarilo uložiť.");
+  }
+}
+
+/**
+ * Hodina odpadla — alebo predsa len bude.
+ *
+ * **Nemaže sa, len sa označí.** Prečiarknutá hodina v rozvrhu je informácia
+ * („o desiatej mala byť matika"); prázdne miesto by vyzeralo, že tam nikdy nič
+ * nebolo, a človek by po ňom hľadal, čo sa stalo. Do rozpočtu dňa sa taká
+ * hodina neráta — čas, ktorý sa neučí, je voľný.
+ */
+export async function setLessonCancelled(
+  id: string,
+  cancelled: boolean,
+): Promise<ActionResult> {
+  const user = await requireUser();
+  try {
+    const db = await getDb();
+    await db
+      .update(schoolLessons)
+      .set({ cancelled, manual: true, updatedAt: new Date() })
+      .where(and(eq(schoolLessons.id, id), eq(schoolLessons.userId, user.id)));
+
+    revalidateViews();
+    return { ok: true };
+  } catch (error) {
+    return fail(error, "Zmenu sa nepodarilo uložiť.");
+  }
+}
+
+/** Celý názov predmetu, doplnený ručne — zdroj dodáva len skratku. */
+export async function setSubjectName(
+  id: string,
+  name: string,
+): Promise<ActionResult> {
+  const user = await requireUser();
+  try {
+    const parsed = z
+      .string()
+      .trim()
+      .max(120, "Názov je príliš dlhý.")
+      .safeParse(name);
+    if (!parsed.success) return invalid(parsed.error, "Neplatný názov.");
+
+    const db = await getDb();
+    await db
+      .update(schoolSubjects)
+      .set({
+        name: parsed.data === "" ? null : parsed.data,
+        updatedAt: new Date(),
+      })
+      .where(and(eq(schoolSubjects.id, id), eq(schoolSubjects.userId, user.id)));
+
+    revalidateViews();
+    return { ok: true };
+  } catch (error) {
+    return fail(error, "Názov sa nepodarilo uložiť.");
+  }
+}
+
+/** Celé meno vyučujúceho, doplnené ručne — zdroj dodáva len skratku. */
+export async function setTeacherName(
+  id: string,
+  name: string,
+): Promise<ActionResult> {
+  const user = await requireUser();
+  try {
+    const parsed = z.string().trim().max(120, "Meno je príliš dlhé.").safeParse(name);
+    if (!parsed.success) return invalid(parsed.error, "Neplatné meno.");
+
+    const db = await getDb();
+    await db
+      .update(schoolTeachers)
+      .set({ name: parsed.data === "" ? null : parsed.data, updatedAt: new Date() })
+      .where(and(eq(schoolTeachers.id, id), eq(schoolTeachers.userId, user.id)));
+
+    revalidateViews();
+    return { ok: true };
+  } catch (error) {
+    return fail(error, "Meno sa nepodarilo uložiť.");
+  }
+}
+
+/**
+ * Predmety a vyučujúci na doplnenie mien — skratka a to, čo už je vyplnené.
+ *
+ * Zdroj dodáva len skratky (`ANJ`, `LIN`), celé názvy v ňom nie sú vôbec.
+ * Doplnia sa raz a ďalší import sa ich nedotkne.
+ */
+export async function listNameable(): Promise<
+  ActionResult<{
+    subjects: { id: string; code: string; name: string | null }[];
+    teachers: { id: string; code: string; name: string | null }[];
+  }>
+> {
+  const user = await requireUser();
+  try {
+    const db = await getDb();
+    const subjects = await db
+      .select({ id: schoolSubjects.id, code: schoolSubjects.code, name: schoolSubjects.name })
+      .from(schoolSubjects)
+      .where(eq(schoolSubjects.userId, user.id));
+    const teachers = await db
+      .select({ id: schoolTeachers.id, code: schoolTeachers.code, name: schoolTeachers.name })
+      .from(schoolTeachers)
+      .where(eq(schoolTeachers.userId, user.id));
+
+    return { ok: true, data: { subjects, teachers } };
+  } catch (error) {
+    return fail(error, "Zoznam sa nepodarilo načítať.");
+  }
+}
+

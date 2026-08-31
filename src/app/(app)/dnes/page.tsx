@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 
 import { DayHeader } from "@/components/views/dnes/day-header";
 import { DayList } from "@/components/views/dnes/day-list";
+import { SchoolStrip } from "@/components/views/dnes/school-strip";
 import { AreasToday } from "@/components/views/dnes/areas-today";
 import { DayHabits } from "@/components/views/dnes/day-habits";
 import { DayMeetings } from "@/components/views/dnes/day-meetings";
@@ -14,7 +15,13 @@ import { OverdueSection } from "@/components/views/dnes/overdue-section";
 import { LiveTimeBudget } from "@/components/views/dnes/live-time-budget";
 import { WhatNow } from "@/components/views/dnes/what-now";
 import { RitualHost } from "@/components/rituals/ritual-host";
-import { parseIsoDate, startOfWeek, todayIn, toIsoDate } from "@/lib/dates";
+import {
+  minutesIn,
+  parseIsoDate,
+  startOfWeek,
+  todayIn,
+  toIsoDate,
+} from "@/lib/dates";
 import { listHabits } from "@/server/queries/habits";
 import { ritualPeriod } from "@/lib/rituals";
 import { requireUser } from "@/server/auth-guard";
@@ -24,6 +31,7 @@ import {
   getTasksForDay,
   listContexts,
 } from "@/server/queries/tasks";
+import { getLessonsForDay } from "@/server/queries/school";
 import { getJournalEntry, getRitualState } from "@/server/queries/rituals";
 import { getDayEvents, meetingMinutes } from "@/server/queries/calendar";
 
@@ -76,6 +84,7 @@ export default async function DnesPage({ searchParams }: DnesPageProps) {
     journalToday,
     events,
     contexts,
+    schoolLessons,
     habits,
   ] = await Promise.all([
       getTasksForDay(user.id, date),
@@ -98,6 +107,12 @@ export default async function DnesPage({ searchParams }: DnesPageProps) {
       getDayEvents(user.id, date, user.settings.timezone),
       // Kontexty pre výber „kde si" v „Čo teraz?".
       listContexts(user.id),
+      /*
+        Hodiny sa ťahajú pre PRÁVE ZOBRAZENÝ deň, nie len pre dnešok. Rozvrh
+        je fakt o tom dni — pri prezeraní zajtrajška má človek vidieť, čím mu
+        bude zabratý, inak si naň naplánuje prácu na čas, keď sedí v triede.
+      */
+      getLessonsForDay(user.id, date),
       /*
         Návyky sa ťahajú len pre dnešok — na iný deň sa v prehľade nekreslia
         a odškrtávať návyk spätne v prehľade dňa je pomýlené.
@@ -290,6 +305,37 @@ export default async function DnesPage({ searchParams }: DnesPageProps) {
               postponeBlockAt={user.settings.postponeBlockAt}
             />
           ) : null}
+
+          {/*
+            Škola sedí MEDZI prioritou dňa a naplánovanými úlohami. Nie hore:
+            priorita dňa ostáva prvá vec, ktorú človek ráno vidí, a rozvrh je
+            kontext k nej — „toto chcem spraviť a takto mám zabratý deň".
+          */}
+          <SchoolStrip
+            lessons={schoolLessons.map((lesson) => ({
+              id: lesson.id,
+              date: lesson.date,
+              period: lesson.period,
+              startTime: lesson.startTime,
+              endTime: lesson.endTime,
+              subjectCode: lesson.subjectCode,
+              subjectName: lesson.subjectName,
+              subjectColor: lesson.subjectColor,
+              room: lesson.room,
+              cancelled: lesson.cancelled,
+              hasNote: lesson.note !== null || lesson.subjectNote !== null,
+            }))}
+            /*
+              SKUTOČNÝ dnešok, nie zobrazený deň. Stav hodiny sa odvodzuje
+              z času, takže s `date` by sa pri prezeraní zajtrajška všetky
+              hodiny tvárili ako odškrtnuté — deň by sa rovnal dnešku a večerná
+              hodina by prebila každý čas. Je to tá istá pasca ako pri
+              prepadnutých úlohách.
+            */
+            todayIso={todayIso}
+            nowMin={minutesIn(user.settings.timezone)}
+            timeZone={user.settings.timezone}
+          />
 
           {/*
             Prepadnuté patria LEN k dnešku.

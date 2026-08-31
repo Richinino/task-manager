@@ -8,6 +8,7 @@ import {
   CalendarCheck,
   CalendarDays,
   CalendarRange,
+  CalendarClock,
   FolderKanban,
   GraduationCap,
   Hourglass,
@@ -155,6 +156,18 @@ export const NAV_ITEMS: readonly NavItem[] = [
     shortcut: "v",
     Icon: Sprout,
     group: "structure",
+  },
+  /*
+    Rozvrh patrí k dňu, nie k štruktúre: je to fakt o tom, čím je deň zabratý,
+    rovnako ako porady. Preto sedí hneď za mesiacom a nie dole medzi vecami,
+    ktoré sa nastavujú raz za polrok.
+  */
+  {
+    href: "/rozvrh",
+    label: "Rozvrh",
+    shortcut: "z",
+    Icon: CalendarClock,
+    group: "day",
   },
   /*
     Učenie hneď za návykmi. Obe sú o veciach, ktoré sa nedokončujú, len návyk
