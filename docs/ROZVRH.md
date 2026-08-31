@@ -1,0 +1,165 @@
+# Školský rozvrh
+
+Podprojekt. Zadanie a rozhodnutia z brainstormu 31. 8. 2026 — píšem ich sem,
+lebo väčšina z nich nie je vidieť z kódu a bez nich sa dá ľahko „opraviť"
+niečo, čo je zámer.
+
+---
+
+## Pravidlo, na ktorom to stojí
+
+**Hodina sa nikdy nezapisuje ako hotová.** Je hotová vtedy, keď jej čas
+prešiel — porovná sa s hodinami a nič sa neuloží.
+
+Je to tá istá myšlienka ako pri lekcii (dokončená úloha s pilierom, žiadna
+tabuľka lekcií) a pri splnenom dni návyku (zlúčenie dvoch zdrojov, žiadny
+zápis navyše). Dôvod je vždy rovnaký: **čo sa nikam nekopíruje, to sa nemá
+ako rozísť.** Keď si v piatok pozrieš pondelok, uvidíš ho správne, lebo sa
+nič neuložilo.
+
+**A hodina nikdy nevyrobí úlohu.** Tridsať riadkov týždenne by zabilo WIP
+limit rovnako, ako by ho zabili návyky — to pravidlo je popísané
+v `src/app/(app)/navyky/page.tsx` a platí aj tu.
+
+---
+
+## Čo sa nikdy neukladá
+
+| údaj | ako vzniká |
+|---|---|
+| hodina je hotová | jej koniec už prešiel |
+| ktorá hodina práve beží | porovnanie s hodinami |
+| kedy je najbližšia matika | prvý budúci riadok s MAT mimo voľna |
+| koľko dnes zoberie škola | súčet minút dnešných hodín |
+
+---
+
+## Dáta
+
+Hodiny sa ukladajú **po jednej na dátum**, nie ako opakujúci sa vzor.
+Vyzerá to plytvo (~400 riadkov za štvrťrok), ale má to jednu veľkú výhodu:
+**suplovanie nie je zvláštny prípad, je to len zmenený riadok.** Žiadna druhá
+tabuľka výnimiek, žiadne skladanie „vzor plus odchýlky".
+
+| vrstva | obsah | zdroj |
+|---|---|---|
+| **Predmet** | skratka, celý názov, farba, poznámka | ICS + ručné doplnenie názvov |
+| **Vyučujúci** | skratka, celé meno, poznámka | ICS + ručné doplnenie mien |
+| **Hodina** | dátum, poradie, čas od–do, predmet, vyučujúci, učebňa, skupina, poznámka | ICS |
+| **Voľno** | prázdniny, sviatky, riaditeľské voľno — rozsah dátumov | ručne |
+
+Zvonenia **nemajú vlastnú tabuľku**: čas od–do nesie každá hodina, lebo ho
+tak dodáva aj zdroj. Samostatná tabuľka by bola druhé miesto s tou istou
+pravdou.
+
+### Poznámky sú krátke
+
+Dve úrovne a obe sú na jednu-dve vety:
+
+- **k predmetu** — platí stále („vždy skúša z definícií")
+- **ku konkrétnej hodine** — „doniesť zošit", „vrátiť test"
+
+**Zápisky z hodiny sem nepatria.** Tie si Richard robí v RemNote a druhé
+miesto na to isté by znamenalo, že ani jedno nebude úplné.
+
+---
+
+## Zdroj dát: EduPage
+
+Škola `gmet.edupage.org`, odber cez **Webcal** (ICS). Overené na skutočnom
+súbore z 31. 8. 2026:
+
+**Vo feede JE:** predmet (skratka), učebňa, skupina, vyučujúci (skratka),
+poradie hodiny, presný čas. 560 hodín na tri mesiace dopredu, každý deň
+vypísaný zvlášť.
+
+**Vo feede NIE JE:**
+
+- **suplovanie** — feed je rozvrh natiahnutý na dátumy, nie denný plán
+- **prázdniny a sviatky** — dokázané: 15. 9. aj 17. 11. 2026 sú štátne
+  sviatky a feed na nich má 8 hodín
+
+Preto sú voľná vlastná vrstva a suplovanie sa zatiaľ zadáva ručne.
+
+### Feed je triedy, nie jeho
+
+**153 okienok zo 407 má dve hodiny naraz** — deliace skupiny. Bez filtra by
+mal v pondelok 11 hodín namiesto šiestich a rozpočet dňa by bol dvojnásobne
+zožratý.
+
+Richardove skupiny: **`sepB j1.sk`**, **`sepB lab 1.sk`**, **`sepB Chlapci`**
+(plus `sepB` bez prívlastku, čo má celá trieda).
+
+### Import neprepisuje ručné zmeny
+
+Riadok, ktorého sa človek dotkol (suplovanie, poznámka), sa pri ďalšom
+importe nechá tak. Inak by prvá synchronizácia zmazala každú výnimku, ktorú
+si zapísal.
+
+---
+
+## Obrazovky
+
+### Pruh na „Dnes"
+
+**Umiestnenie: MEDZI prioritu dňa a naplánované na dnes.** Nie hore nad
+všetkým — priorita dňa ostáva prvá vec, ktorú človek vidí.
+
+```
+ŠKOLA 8:00–14:45 · zostáva 5 h 12 min
+ANJ  NEJ  CHE  CHE  DEJ  TSV
+ ✓    ✓    ▶
+```
+
+Prešlé hodiny stlmené, prebiehajúca zvýraznená. **Klik na hodinu otvorí jej
+detail** — ten istý, aký je na obrazovke rozvrhu.
+
+### Mriežka rozvrhu
+
+**Deň je RIADOK, nie stĺpec.** Pondelok jeden riadok, utorok druhý. Na
+telefóne sa tak zmestí viac a dni sa čítajú zhora nadol ako všetko ostatné
+v appke.
+
+V okienku len to najnutnejšie — celé názvy sa tam nezmestia a skratky aj tak
+pozná:
+
+- **skratka predmetu** väčším
+- **učebňa** menším
+- **bodka**, keď na tú hodinu niečo je (poznámka, úloha alebo písomka)
+
+Prešlé hodiny stlmené, prebiehajúca zvýraznená — to je to automatické
+odškrtávanie.
+
+### Detail hodiny
+
+Otvára sa z mriežky aj z pruhu na „Dnes". Obsahuje:
+
+- celý názov predmetu a **celé meno vyučujúceho**
+- učebňa, skupina, čas
+- **poznámka k tejto hodine** a **poznámka k predmetu**
+- **úlohy a písomky** z tohto predmetu, najbližšia navrchu
+- **„odpadla"** a **„zmena"** — ručné suplovanie na tri ťuknutia
+
+---
+
+## Rozpočet času
+
+Škola zaberá deň ako porady, ale **je to vlastná kategória, nie „porady"**.
+Veta musí znieť „škola 5 h 15 min" — inak by rozpočet klamal o tom, čo ten
+čas zobralo.
+
+Skutočné čísla: pondelok/streda/piatok 270 min, utorok/štvrtok 315 min.
+
+---
+
+## Spojenie s úlohami
+
+Úloha dostane **predmet**. Z toho plynie zvyšok:
+
+- **Termín sa ponúkne sám — na deň tej hodiny.** Napíšeš „domáca úloha na
+  matiku", appka nájde najbližšiu hodinu MAT a dátum **predvyplní**. Je to
+  ponuka, nie príkaz — dá sa prepísať.
+- **Voľná sa preskakujú.** Bez toho by termín padol na deň, keď škola nie je.
+- V detaile predmetu je **všetko otvorené z toho predmetu** na jednom mieste.
+- **Písomka je iný druh záznamu než úloha** — ukazuje sa skôr (dva týždne
+  dopredu, nie deň), lebo sa na ňu učí postupne.
