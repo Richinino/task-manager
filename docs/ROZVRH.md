@@ -81,6 +81,20 @@ vypísaný zvlášť.
 
 Preto sú voľná vlastná vrstva a suplovanie sa zatiaľ zadáva ručne.
 
+### Sviatky sa dajú vypočítať, prázdniny nie
+
+**Štátne sviatky** sú v zákone a nemenia sa — appka ich vie doplniť na jedno
+kliknutie vrátane Veľkej noci, ktorá sa počíta z cirkevného pravidla.
+
+**Školské prázdniny** určuje ministerstvo, líšia sa podľa kraja a menia sa
+každý rok. Tie appka hádať nebude — hádaním by tvrdila niečo, čo nevie,
+a termín domácej úlohy by padol na deň, keď škola je.
+
+Voľno **prekryje celý deň**: hodiny sa v ňom nekreslia a do rozpočtu sa
+nerátajú. Ukázať ich prečiarknuté by bolo presnejšie k dátam, ale
+nepresnejšie k skutočnosti — v ten deň sa nič z toho nedeje a jediné, čo
+treba vedieť, je prečo.
+
 ### Feed je triedy, nie jeho
 
 **153 okienok zo 407 má dve hodiny naraz** — deliace skupiny. Bez filtra by

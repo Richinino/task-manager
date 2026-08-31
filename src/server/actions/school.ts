@@ -5,8 +5,14 @@ import { and, eq, inArray } from "drizzle-orm";
 import { z } from "zod";
 
 import { getDb } from "@/db";
-import { schoolLessons, schoolSubjects, schoolTeachers } from "@/db/schema";
+import {
+  schoolBreaks,
+  schoolLessons,
+  schoolSubjects,
+  schoolTeachers,
+} from "@/db/schema";
 import { nextLessonDate } from "@/lib/school";
+import { sviatkySkolskehoRoka } from "@/lib/sviatky";
 import {
   getLesson,
   getLessonsForRange,
@@ -618,6 +624,130 @@ export async function syncScheduleFromUrl(): Promise<ActionResult<ImportSummary>
     return await importSchedule(await odpoved.text());
   } catch (error) {
     return fail(error, "Rozvrh sa nepodarilo stiahnuť.");
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   VOĽNÁ
+
+   Odber rozvrhu je rozvrh natiahnutý na dátumy, nie denný plán — sviatky
+   ani prázdniny v ňom vynechané nie sú. Bez tejto vrstvy by appka na
+   Sedembolestnú tvrdila, že máš celý deň školu, a termín domácej úlohy by
+   padol na deň, keď škola nie je.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+const isoDate = z
+  .string()
+  .regex(/^\d{4}-\d{2}-\d{2}$/, "Dátum musí byť v tvare RRRR-MM-DD.");
+
+const breakSchema = z
+  .object({
+    fromDate: isoDate,
+    toDate: isoDate,
+    label: z
+      .string()
+      .trim()
+      .min(1, "Voľno musí mať názov.")
+      .max(120, "Názov je príliš dlhý."),
+  })
+  /* Obrátený rozsah by ticho neplatil na žiadny deň — lepšie ho odmietnuť. */
+  .refine((v) => v.fromDate <= v.toDate, {
+    message: "Koniec nemôže byť pred začiatkom.",
+    path: ["toDate"],
+  });
+
+export type AddBreakInput = z.infer<typeof breakSchema>;
+
+export async function addBreak(input: AddBreakInput): Promise<ActionResult> {
+  const user = await requireUser();
+  try {
+    const parsed = breakSchema.safeParse(input);
+    if (!parsed.success) return invalid(parsed.error, "Neplatné voľno.");
+
+    const db = await getDb();
+    await db.insert(schoolBreaks).values({
+      id: uuidv7(),
+      userId: user.id,
+      fromDate: parsed.data.fromDate,
+      toDate: parsed.data.toDate,
+      label: parsed.data.label,
+    });
+
+    revalidateViews();
+    return { ok: true };
+  } catch (error) {
+    return fail(error, "Voľno sa nepodarilo pridať.");
+  }
+}
+
+export async function deleteBreak(id: string): Promise<ActionResult> {
+  const user = await requireUser();
+  try {
+    const db = await getDb();
+    await db
+      .delete(schoolBreaks)
+      .where(and(eq(schoolBreaks.id, id), eq(schoolBreaks.userId, user.id)));
+
+    revalidateViews();
+    return { ok: true };
+  } catch (error) {
+    return fail(error, "Voľno sa nepodarilo zmazať.");
+  }
+}
+
+/**
+ * Doplní štátne sviatky školského roka.
+ *
+ * Sú to jediné voľná, ktoré sa dajú vypočítať. Školské prázdniny určuje
+ * ministerstvo, líšia sa podľa kraja a menia sa každý rok — tie treba zadať
+ * ručne a appka ich hádať nebude.
+ *
+ * Dátumy, ktoré už nejaké voľno pokrýva, sa preskočia: druhé kliknutie nemá
+ * vyrobiť pätnásť duplikátov.
+ */
+export async function addPublicHolidays(
+  schoolYear: number,
+): Promise<ActionResult<{ added: number; skipped: number }>> {
+  const user = await requireUser();
+  try {
+    const parsed = z
+      .number()
+      .int()
+      .min(2000)
+      .max(2100)
+      .safeParse(schoolYear);
+    if (!parsed.success) return invalid(parsed.error, "Neplatný školský rok.");
+
+    const db = await getDb();
+    const uzMa = await db
+      .select({ fromDate: schoolBreaks.fromDate, toDate: schoolBreaks.toDate })
+      .from(schoolBreaks)
+      .where(eq(schoolBreaks.userId, user.id));
+
+    const sviatky = sviatkySkolskehoRoka(parsed.data);
+    const nove = sviatky.filter(
+      (s) => !uzMa.some((v) => v.fromDate <= s.date && s.date <= v.toDate),
+    );
+
+    if (nove.length > 0) {
+      await db.insert(schoolBreaks).values(
+        nove.map((s) => ({
+          id: uuidv7(),
+          userId: user.id,
+          fromDate: s.date,
+          toDate: s.date,
+          label: s.nazov,
+        })),
+      );
+    }
+
+    revalidateViews();
+    return {
+      ok: true,
+      data: { added: nove.length, skipped: sviatky.length - nove.length },
+    };
+  } catch (error) {
+    return fail(error, "Sviatky sa nepodarilo pridať.");
   }
 }
 
