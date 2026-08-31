@@ -4,7 +4,7 @@
   "description": "",
   "scripts": {
     "dev": "next dev",
-    "build": "npm run kontrola:migracie && next build",
+    "build": "npm run db:migrate:nasadenie && npm run kontrola:migracie && next build",
     "kontrola:migracie": "node scripts/kontrola-migracii.mjs",
     "start": "next start",
     "lint": "eslint",
@@ -18,7 +18,8 @@
     "db:migrate": "drizzle-kit migrate",
     "db:studio": "drizzle-kit studio",
     "db:seed": "tsx --env-file-if-exists=.env.local src/db/seed.ts",
-    "db:reset": "node -e \"require('fs').rmSync('.data',{recursive:true,force:true})\""
+    "db:reset": "node -e \"require('fs').rmSync('.data',{recursive:true,force:true})\"",
+    "db:migrate:nasadenie": "node scripts/migracia-pri-nasadeni.mjs"
   },
   "keywords": [],
   "author": "",

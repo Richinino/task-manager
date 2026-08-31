@@ -72,3 +72,40 @@ export function porovnajMigracie(zurnal, aplikovane) {
 
   return { chybajuce, zmenene };
 }
+
+/**
+ * Smie sa v tomto prostredí pustiť migrácia? Vracia dôvod, prečo NIE, alebo
+ * `null`, keď sa smie.
+ *
+ * Je to čistá funkcia nad premennými prostredia, a to zámerne: je to jediné
+ * miesto, ktoré rozhoduje, či sa siahne na ostrú databázu. Keby žilo
+ * v skripte medzi sieťou a súbormi, nedalo by sa naň napísať test — a práve
+ * tu je chyba najdrahšia.
+ *
+ * Poradie podmienok je súčasťou významu:
+ *
+ * 1. `SKIP_MIGRATION=1` vypína všetko. Keby sa pokazil samotný krok, nesmie
+ *    byť jediná vec, ktorá blokuje nasadenie opravy.
+ * 2. `MIGROVAT_PRI_BUILDE=1` je vedomé vynútenie a preváži prostredie.
+ * 3. Bez `DATABASE_URL` beží lokálny PGlite, ktorý sa migruje sám.
+ * 4. Inak sa migruje **len pri produkčnom nasadení**. Náhľadové buildy
+ *    stavajú vetvy, ktoré nikto neschválil, a mieria na tú istú produkčnú
+ *    databázu; lokálny build s produkčnou premennou v prostredí by na ňu
+ *    siahol omylom.
+ *
+ * @param {Record<string, string | undefined>} env
+ * @returns {string | null}
+ */
+export function dovodPreskocenia(env) {
+  if (env.SKIP_MIGRATION === "1") return "SKIP_MIGRATION=1";
+  if (env.MIGROVAT_PRI_BUILDE === "1") return null;
+
+  if (!env.DATABASE_URL?.trim()) {
+    return "bez DATABASE_URL beží lokálny PGlite, ktorý sa migruje sám";
+  }
+  if (env.VERCEL_ENV !== "production") {
+    return `nie je to produkčné nasadenie (${env.VERCEL_ENV ?? "mimo Vercelu"})`;
+  }
+  return null;
+}
+

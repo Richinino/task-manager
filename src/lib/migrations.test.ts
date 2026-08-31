@@ -6,7 +6,7 @@ import { describe, expect, it } from "vitest";
   pohyblivých častí. Jej rozhodovacia časť je však presne to, na čom
   závisí, či sa appka nasadí, takže test patrí sem k ostatným.
 */
-import { porovnajMigracie } from "../../scripts/migracie.mjs";
+import { dovodPreskocenia, porovnajMigracie } from "../../scripts/migracie.mjs";
 
 /** Žurnál v tvare, v akom ho číta `readMigrationFiles` z Drizzle. */
 const ZURNAL = [
@@ -86,3 +86,60 @@ describe("porovnajMigracie", () => {
     expect(vysledok.zmenene).toEqual(["0000_zaklad", "0001_udalosti"]);
   });
 });
+
+describe("dovodPreskocenia", () => {
+  /*
+    Toto je jediné miesto, ktoré rozhoduje, či sa siahne na ostrú databázu.
+    Preto sa neskúša „že to funguje", ale každý spôsob, akým sa dá pomýliť.
+  */
+  it("pri produkčnom nasadení migruje", () => {
+    expect(
+      dovodPreskocenia({ DATABASE_URL: "postgres://x", VERCEL_ENV: "production" }),
+    ).toBeNull();
+  });
+
+  it("náhľadový build na produkčnú databázu NESIAHNE", () => {
+    expect(
+      dovodPreskocenia({ DATABASE_URL: "postgres://x", VERCEL_ENV: "preview" }),
+    ).toContain("preview");
+  });
+
+  /*
+    Najnebezpečnejší prípad: `npm run build` na vlastnom počítači, keď má
+    človek v prostredí ešte produkčnú premennú z predchádzajúceho príkazu.
+  */
+  it("lokálny build s produkčnou premennou tiež nesiahne", () => {
+    expect(dovodPreskocenia({ DATABASE_URL: "postgres://x" })).toContain(
+      "mimo Vercelu",
+    );
+  });
+
+  it("bez DATABASE_URL nemá čo migrovať", () => {
+    expect(dovodPreskocenia({ VERCEL_ENV: "production" })).toContain("PGlite");
+    expect(dovodPreskocenia({ DATABASE_URL: "   ", VERCEL_ENV: "production" })).toContain(
+      "PGlite",
+    );
+  });
+
+  it("vynútenie preváži prostredie", () => {
+    expect(
+      dovodPreskocenia({ DATABASE_URL: "postgres://x", MIGROVAT_PRI_BUILDE: "1" }),
+    ).toBeNull();
+  });
+
+  /*
+    Únikový východ musí vypnúť aj vynútenie — inak by neexistoval spôsob,
+    ako nasadiť opravu, keby sa pokazil samotný migračný krok.
+  */
+  it("únikový východ preváži aj vynútenie", () => {
+    expect(
+      dovodPreskocenia({
+        DATABASE_URL: "postgres://x",
+        VERCEL_ENV: "production",
+        MIGROVAT_PRI_BUILDE: "1",
+        SKIP_MIGRATION: "1",
+      }),
+    ).toBe("SKIP_MIGRATION=1");
+  });
+});
+
