@@ -31,6 +31,17 @@ export interface TimeBudgetProps {
    * kalendár je doplnok — rozpočet musí dávať zmysel aj bez pripojeného účtu.
    */
   meetingMin?: number;
+  /**
+   * Minúty, ktoré si z dňa ešte vezme škola.
+   *
+   * Musí to byť ZVYŠOK školy, nie celá — `remainingSchoolMinutes`, nie
+   * `schoolMinutes`. Dostupný čas sa už počíta od teraz, takže hodiny, ktoré
+   * prebehli, z neho vypadli samy; celá škola by dopoludnie odrátala druhý raz.
+   *
+   * Vlastné číslo, nie prihodené k poradám: veta musí znieť „škola 3 h",
+   * lebo školu na rozdiel od porady nemôžeš presunúť ani zrušiť.
+   */
+  schoolMin?: number;
 }
 
 /**
@@ -46,6 +57,7 @@ export function TimeBudget({
   allDay = false,
   withoutEstimate,
   meetingMin = 0,
+  schoolMin = 0,
 }: TimeBudgetProps) {
   const missing = withoutEstimate > 0 ? `${taskCountSk(withoutEstimate)} bez odhadu` : null;
 
@@ -58,7 +70,9 @@ export function TimeBudget({
     už nemá kedy siahnuť.
   */
   const meetings = Math.max(0, Math.round(meetingMin));
-  const workMin = availableMin - meetings;
+  /* Škola sa odpočítava z rovnakého dôvodu ako porady — len sa nedá presunúť. */
+  const skola = Math.max(0, Math.round(schoolMin));
+  const workMin = availableMin - meetings - skola;
 
   /*
     Na prácu nemusí zostať nič z dvoch celkom rôznych dôvodov: buď hodiny dňa
