@@ -225,3 +225,64 @@ describe("filterByGroups", () => {
     expect(moje.map((h) => h.subject)).toEqual(["DEJ"]);
   });
 });
+
+describe("suplovanie v SUMMARY", () => {
+  /*
+    Toto sa zistilo až na živých dátach. Odber z 31. 8. nemal šípku ani raz,
+    ten z 2. 9. mal `DEJ -> SJL`. Bez rozdelenia vznikne predmet so skratkou
+    „DEJ -> SJL" a takých pribudne jeden za každú novú dvojicu, kým sa zoznam
+    predmetov nezaplní odpadom.
+  */
+  function jedna(summary: string) {
+    return parseIcs(
+      [
+        "BEGIN:VEVENT",
+        "UID:x_3@s.edupage.org",
+        "DTSTART:20260902T075000Z",
+        "DTEND:20260902T083500Z",
+        `SUMMARY:${summary}`,
+        "DESCRIPTION:sepB\nBEU",
+        "END:VEVENT",
+      ].join("\n"),
+    )[0];
+  }
+
+  it("rozdelí `DEJ -> SJL` na nový a pôvodný predmet", () => {
+    expect(jedna("DEJ -> SJL")).toMatchObject({
+      subject: "SJL",
+      originalSubject: "DEJ",
+    });
+  });
+
+  it("bežná hodina pôvodný predmet nemá", () => {
+    expect(jedna("SJL")).toMatchObject({ subject: "SJL", originalSubject: null });
+  });
+
+  /* Jeden odber nestačí na tvrdenie, že medzery píše EduPage vždy rovnako. */
+  it("znesie šípku bez medzier aj s viacerými", () => {
+    expect(jedna("DEJ->SJL")?.subject).toBe("SJL");
+    expect(jedna("DEJ   ->   SJL")?.originalSubject).toBe("DEJ");
+  });
+
+  it("viacslovné skratky sa neroztrhnú", () => {
+    expect(jedna("BIO lab -> CHE lab")).toMatchObject({
+      subject: "CHE lab",
+      originalSubject: "BIO lab",
+    });
+  });
+
+  /*
+    Polovičný údaj sa nechá tak, ako prišiel. Domyslieť si chýbajúcu stranu by
+    znamenalo vyrobiť suplovanie, ktoré zdroj nikdy nepovedal.
+  */
+  it("polovičnú šípku nechá na pokoji", () => {
+    expect(jedna("-> SJL")).toMatchObject({
+      subject: "-> SJL",
+      originalSubject: null,
+    });
+    expect(jedna("DEJ ->")).toMatchObject({
+      subject: "DEJ ->",
+      originalSubject: null,
+    });
+  });
+});

@@ -33,11 +33,19 @@
  *   Prevod robí volajúci cez `minutesIn`/`todayIn`, ktoré poznajú pásmo
  *   používateľa.
  *
+ * ## Suplovanie TAM JE — ako šípka v `SUMMARY`
+ *
+ * `SUMMARY:DEJ -> SJL` znamená „namiesto dejepisu je slovenčina". Zistilo sa
+ * to až na živých dátach: odber z 31. 8. nemal šípku ani raz, ten z 2. 9. ju
+ * mal. Kto ju nerozdelí, vyrobí predmet so skratkou `DEJ -> SJL` — a takých
+ * pribudne jeden za každú novú dvojicu, kým sa zoznam predmetov nezaplní
+ * odpadom.
+ *
  * ## Čo vo feede NIE JE
  *
- * **Suplovanie ani prázdniny.** Feed je rozvrh natiahnutý na dátumy, nie
- * denný plán — dokázané tým, že 15. 9. aj 17. 11. 2026 sú štátne sviatky
- * a feed na nich má plných osem hodín.
+ * **Prázdniny a sviatky.** Dokázané tým, že 15. 9. aj 17. 11. 2026 sú štátne
+ * sviatky a feed na nich má plných osem hodín. Suplovanie a voľná sú teda dve
+ * rôzne veci: prvé zdroj dodáva, druhé nie.
  */
 
 /** Jedna hodina tak, ako ju vydal kalendár. Časy sú okamihy v UTC. */
@@ -46,8 +54,13 @@ export interface IcsLesson {
   uid: string;
   start: Date;
   end: Date;
-  /** Skratka predmetu zo `SUMMARY`, napr. `ANJ`. */
+  /** Skratka predmetu zo `SUMMARY`, napr. `ANJ`. Pri suplovaní ten NOVÝ. */
   subject: string;
+  /**
+   * Pri suplovaní skratka predmetu, ktorý tu mal byť podľa rozvrhu.
+   * `null` pri bežnej hodine.
+   */
+  originalSubject: string | null;
   /** Učebňa z `LOCATION`. Prázdny reťazec, keď chýba. */
   room: string;
   /** Skupina z prvého riadku `DESCRIPTION`, napr. `sepB j1.sk`. */
@@ -127,6 +140,32 @@ function citajCas(hodnota: string): Date | null {
   return Number.isNaN(cas) ? null : new Date(cas);
 }
 
+/**
+ * `DEJ -> SJL` → pôvodný a nový predmet.
+ *
+ * Šípka je jediné, čo o suplovaní vo feede je. Delí sa len vtedy, keď sú OBE
+ * strany neprázdne — `-> SJL` alebo `DEJ ->` je pokazený údaj a je lepšie ho
+ * nechať tak, ako je, než si domyslieť polovicu.
+ *
+ * Medzery okolo šípky sú voliteľné, lebo jeden jediný odber nestačí na to,
+ * aby sa tvrdilo, že ich EduPage píše vždy rovnako.
+ */
+function rozdelSuplovanie(summary: string): {
+  subject: string;
+  originalSubject: string | null;
+} {
+  const zhoda = /^(.+?)\s*->\s*(.+)$/.exec(summary);
+  if (zhoda === null) return { subject: summary, originalSubject: null };
+
+  const povodny = zhoda[1]?.trim() ?? "";
+  const novy = zhoda[2]?.trim() ?? "";
+  if (povodny === "" || novy === "") {
+    return { subject: summary, originalSubject: null };
+  }
+
+  return { subject: novy, originalSubject: povodny };
+}
+
 /** Poradie hodiny z `UID` tvaru `2026-09-02:6bb02a0f_3@skola.edupage.org`. */
 function citajPoradie(uid: string): number | null {
   const zhoda = /_(\d+)@/.exec(uid);
@@ -177,20 +216,22 @@ export function parseIcs(text: string): IcsLesson[] {
 function zloz(polia: Record<string, string>): IcsLesson | null {
   const start = citajCas(polia.DTSTART ?? "");
   const end = citajCas(polia.DTEND ?? "");
-  const subject = odescapuj(polia.SUMMARY ?? "").trim();
+  const summary = odescapuj(polia.SUMMARY ?? "").trim();
 
-  if (start === null || end === null || subject === "") return null;
+  if (start === null || end === null || summary === "") return null;
   /* Koniec pred začiatkom je pokazený údaj, nie hodina cez polnoc. */
   if (end.getTime() <= start.getTime()) return null;
 
   const popis = odescapuj(polia.DESCRIPTION ?? "").split("\n");
   const uid = polia.UID ?? "";
+  const { subject, originalSubject } = rozdelSuplovanie(summary);
 
   return {
     uid,
     start,
     end,
     subject,
+    originalSubject,
     room: odescapuj(polia.LOCATION ?? "").trim(),
     group: (popis[0] ?? "").trim(),
     teacher: (popis[1] ?? "").trim(),

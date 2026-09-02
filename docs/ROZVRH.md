@@ -73,13 +73,28 @@ súbore z 31. 8. 2026:
 poradie hodiny, presný čas. 560 hodín na tri mesiace dopredu, každý deň
 vypísaný zvlášť.
 
+**Suplovanie vo feede JE** — ako šípka v `SUMMARY`:
+
+    SUMMARY:DEJ -> SJL
+
+znamená „namiesto dejepisu je slovenčina". Prišlo sa na to až na živých
+dátach: odber z 31. 8. 2026 nemal šípku ani raz, ten z 2. 9. ju mal. Import
+ju rozdelí — `subjectId` dostane nový predmet, `originalSubjectId` ten
+pôvodný — takže suplovanie z EduPage tečie do appky samo, **bez hesla
+a bez robota**.
+
+Kto by šípku nerozdelil, vyrobí predmet so skratkou `DEJ -> SJL` a takých
+pribudne jeden za každú novú dvojicu, kým sa zoznam predmetov nezaplní
+odpadom.
+
 **Vo feede NIE JE:**
 
-- **suplovanie** — feed je rozvrh natiahnutý na dátumy, nie denný plán
 - **prázdniny a sviatky** — dokázané: 15. 9. aj 17. 11. 2026 sú štátne
   sviatky a feed na nich má 8 hodín
 
-Preto sú voľná vlastná vrstva a suplovanie sa zatiaľ zadáva ručne.
+Suplovanie a voľná sú teda dve rôzne veci: prvé zdroj dodáva, druhé nie.
+Ručné zadanie suplovania ostáva — na riaditeľské voľno, výlety a všetko, čo
+v EduPage nikdy nebude.
 
 ### Sviatky sa dajú vypočítať, prázdniny nie
 
