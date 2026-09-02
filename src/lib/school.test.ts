@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   isSchoolBreak,
+  schoolBreakOn,
   lessonState,
   lessonsDone,
   nextLessonDate,
@@ -220,3 +221,35 @@ describe("remainingSchoolMinutes", () => {
   });
 });
 
+
+describe("schoolBreakOn", () => {
+  const volna = [
+    { fromDate: "2026-10-28", toDate: "2026-10-30", label: "Jesenné prázdniny" },
+    { fromDate: "2026-09-15", toDate: "2026-09-15", label: "Sedembolestná" },
+  ];
+
+  /*
+    Obrazovky takmer vždy chcú aj dôvod: prázdny utorok bez vysvetlenia
+    vyzerá ako pokazená appka, „Voľno — Sedembolestná" je odpoveď.
+  */
+  it("vráti voľno aj s dôvodom", () => {
+    expect(schoolBreakOn("2026-09-15", volna)?.label).toBe("Sedembolestná");
+    expect(schoolBreakOn("2026-10-29", volna)?.label).toBe("Jesenné prázdniny");
+  });
+
+  it("bežný deň nemá voľno", () => {
+    expect(schoolBreakOn("2026-09-16", volna)).toBeNull();
+    expect(schoolBreakOn("2026-10-27", volna)).toBeNull();
+    expect(schoolBreakOn("2026-10-31", volna)).toBeNull();
+  });
+
+  /* Rozsah platí vrátane oboch krajných dní — aj ten piatok sú prázdniny. */
+  it("kraje rozsahu patria dnu", () => {
+    expect(schoolBreakOn("2026-10-28", volna)).not.toBeNull();
+    expect(schoolBreakOn("2026-10-30", volna)).not.toBeNull();
+  });
+
+  it("znesie prázdny zoznam", () => {
+    expect(schoolBreakOn("2026-09-15", [])).toBeNull();
+  });
+});

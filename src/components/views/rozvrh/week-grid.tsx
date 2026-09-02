@@ -4,7 +4,7 @@ import { useState } from "react";
 
 import { areaColorValue } from "@/components/task/area-dot";
 import { WEEKDAYS_SK } from "@/lib/dates";
-import { lessonState } from "@/lib/school";
+import { lessonState, schoolBreakOn } from "@/lib/school";
 import { cn } from "@/lib/utils";
 
 import { LessonDetail } from "./lesson-detail";
@@ -108,7 +108,7 @@ export function WeekGrid({
             {days.map((den) => {
               const denne = lessons.filter((l) => l.date === den);
               const dnesok = den === todayIso;
-              const volno = breaks.find((v) => v.fromDate <= den && den <= v.toDate);
+              const volno = schoolBreakOn(den, breaks);
 
               return (
                 <tr key={den} className="border-b border-border last:border-b-0">
@@ -126,7 +126,7 @@ export function WeekGrid({
                     </span>
                   </th>
 
-                  {volno !== undefined ? (
+                  {volno !== null ? (
                     /*
                       Voľno prekryje celý riadok. Ukázať hodiny prečiarknuté by
                       bolo presnejšie k dátam, ale nepresnejšie k skutočnosti:
@@ -143,7 +143,7 @@ export function WeekGrid({
                     </td>
                   ) : null}
 
-                  {volno !== undefined ? null : periods.map((p) => {
+                  {volno !== null ? null : periods.map((p) => {
                     const hodina = denne.find((l) => l.period === p);
                     if (hodina === undefined) {
                       return <td key={p} className="px-1 py-1" />;

@@ -7,7 +7,7 @@ import { NamesPanel } from "@/components/views/rozvrh/names-panel";
 import { ScheduleImport } from "@/components/views/rozvrh/schedule-import";
 import { WeekGrid } from "@/components/views/rozvrh/week-grid";
 import { addDays, formatDuration, minutesIn, todayIn, weekDays } from "@/lib/dates";
-import { schoolMinutes } from "@/lib/school";
+import { schoolBreakOn, schoolMinutes } from "@/lib/school";
 import { countSk } from "@/lib/sk";
 import { requireUser } from "@/server/auth-guard";
 import {
@@ -91,17 +91,24 @@ export default async function RozvrhPage({ searchParams }: RozvrhPageProps) {
     Deň sa kreslí, keď v ňom niečo JE — hodina alebo voľno. Víkend tak vypadne
     sám, ale prázdninový utorok ostane aj s dôvodom, prečo je prázdny.
   */
-  const jeVolno = (den: string): boolean =>
-    volna.some((v) => v.fromDate <= den && den <= v.toDate);
+  /*
+    Hodiny, ktoré v ten deň naozaj sú. Voľno prekryje celý deň, takže sa
+    nekreslia ani nerátajú — inak by hlavička hlásila „32 hodín" nad
+    mriežkou, v ktorej ich je vidieť dvadsaťpäť, a to číslo by neplatilo
+    o ničom.
+  */
+  const hodinyMimoVolna = hodiny.filter((h) => schoolBreakOn(h.date, volna) === null);
+
   const dniSHodinami = dni.filter(
-    (den) => hodiny.some((h) => h.date === den) || jeVolno(den),
+    (den) =>
+      hodinyMimoVolna.some((h) => h.date === den) || schoolBreakOn(den, volna) !== null,
   );
-  const tyzdenMin = schoolMinutes(hodiny);
+  const tyzdenMin = schoolMinutes(hodinyMimoVolna);
 
   const meta =
     hodiny.length === 0
       ? "zatiaľ prázdny"
-      : `${countSk(hodiny.length, "hodina", "hodiny", "hodín")} · ${formatDuration(tyzdenMin)}`;
+      : `${countSk(hodinyMimoVolna.length, "hodina", "hodiny", "hodín")} · ${formatDuration(tyzdenMin)}`;
 
   return (
     <div className="flex w-full flex-col md:h-dvh">
@@ -121,7 +128,7 @@ export default async function RozvrhPage({ searchParams }: RozvrhPageProps) {
         <div className="border-b border-border px-2 py-2">
           <WeekGrid
             days={dniSHodinami}
-            lessons={hodiny.map((h) => ({
+            lessons={hodinyMimoVolna.map((h) => ({
               id: h.id,
               date: h.date,
               period: h.period,
