@@ -1,9 +1,9 @@
 import "server-only";
 
-import { and, eq, inArray } from "drizzle-orm";
+import { and, eq, inArray, isNotNull, isNull } from "drizzle-orm";
 
 import { getDb } from "@/db";
-import { schoolLessons, schoolSubjects, schoolTeachers } from "@/db/schema";
+import { schoolLessons, schoolSubjects, schoolTeachers, tasks } from "@/db/schema";
 import { todayIn } from "@/lib/dates";
 import { filterByGroups, parseIcs } from "@/lib/ics";
 import { uuidv7 } from "@/lib/id";
@@ -62,6 +62,8 @@ export interface ImportSummary {
   ponechanych: number;
   novychPredmetov: number;
   novychUcitelov: number;
+  /** Koľko nepoužitých predmetov po importe zmizlo. */
+  upratanychPredmetov: number;
 }
 
 /**
@@ -257,6 +259,8 @@ export async function importScheduleFor(
         );
     }
 
+  const upratanychPredmetov = await upracPredmety(userId);
+
   return {
     voFeede: vsetky.length,
     mojich: moje.length,
@@ -266,7 +270,78 @@ export async function importScheduleFor(
     ponechanych,
     novychPredmetov: novePredmety.length,
     novychUcitelov: noviUcitelia.length,
+    upratanychPredmetov,
   };
+}
+
+/**
+ * Zmaže predmety, ktoré po importe nikto nepoužíva.
+ *
+ * Vzniklo to z konkrétnej škody: kým sa šípka v `SUMMARY` nerozdeľovala,
+ * každé suplovanie vyrobilo predmet so skratkou ako `DEJ -> SJL`. Za rok by
+ * ich boli desiatky a plnili by výber predmetu pri každej úlohe.
+ *
+ * **Podmienky sú zámerne prísne.** Maže sa len to, čo appka sama vyrobila
+ * a čoho sa človek nikdy nedotkol:
+ *
+ * - **žiadna hodina** ho nepoužíva — ani ako predmet, ani ako ten pôvodný
+ *   pri suplovaní
+ * - **žiadna úloha** naň neukazuje (cudzí kľúč je `set null`, takže by úloha
+ *   ticho prišla o predmet)
+ * - **nemá doplnený názov ani poznámku** — to je vždy ľudská práca
+ *
+ * Predmet, ktorý človek pomenoval a prestal chodiť, tu teda ostane. Je to
+ * lacnejšie než zmazať niečo, čo si niekto vypisoval ručne.
+ */
+async function upracPredmety(userId: string): Promise<number> {
+  const db = await getDb();
+
+  const kandidati = await db
+    .select({ id: schoolSubjects.id })
+    .from(schoolSubjects)
+    .where(
+      and(
+        eq(schoolSubjects.userId, userId),
+        isNull(schoolSubjects.name),
+        isNull(schoolSubjects.note),
+      ),
+    );
+
+  if (kandidati.length === 0) return 0;
+
+  const [pouziteHodinami, pouzitePovodne, pouziteUlohami] = await Promise.all([
+    db
+      .selectDistinct({ id: schoolLessons.subjectId })
+      .from(schoolLessons)
+      .where(eq(schoolLessons.userId, userId)),
+    db
+      .selectDistinct({ id: schoolLessons.originalSubjectId })
+      .from(schoolLessons)
+      .where(
+        and(eq(schoolLessons.userId, userId), isNotNull(schoolLessons.originalSubjectId)),
+      ),
+    db
+      .selectDistinct({ id: tasks.subjectId })
+      .from(tasks)
+      .where(and(eq(tasks.userId, userId), isNotNull(tasks.subjectId))),
+  ]);
+
+  const pouzite = new Set(
+    [...pouziteHodinami, ...pouzitePovodne, ...pouziteUlohami]
+      .map((r) => r.id)
+      .filter((id): id is string => id !== null),
+  );
+
+  const naZmazanie = kandidati.map((k) => k.id).filter((id) => !pouzite.has(id));
+  if (naZmazanie.length === 0) return 0;
+
+  await db
+    .delete(schoolSubjects)
+    .where(
+      and(eq(schoolSubjects.userId, userId), inArray(schoolSubjects.id, naZmazanie)),
+    );
+
+  return naZmazanie.length;
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════

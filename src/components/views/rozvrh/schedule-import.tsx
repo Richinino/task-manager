@@ -10,6 +10,7 @@ import {
   importSchedule,
   readGroups,
   syncScheduleFromUrl,
+  type ImportSummary,
 } from "@/server/actions/school";
 import { updateSettings } from "@/server/actions/settings";
 
@@ -83,14 +84,7 @@ export function ScheduleImport({ chosen, hasFeed }: ScheduleImportProps) {
         return;
       }
 
-      const d = result.data;
-      setSprava(
-        `Z ${d.voFeede} hodín triedy je tvojich ${d.mojich}. ` +
-          `Pridaných ${d.pridanych}, upravených ${d.upravenych}, ` +
-          `zmazaných ${d.zmazanych}` +
-          (d.ponechanych > 0 ? `, ponechaných ${d.ponechanych} ručných` : "") +
-          `. Nových predmetov ${d.novychPredmetov}, vyučujúcich ${d.novychUcitelov}.`,
-      );
+      setSprava(zhrnutie(result.data, `Z ${result.data.voFeede} hodín triedy je tvojich ${result.data.mojich}.`));
       setIcs(null);
       if (inputRef.current !== null) inputRef.current.value = "";
     });
@@ -107,13 +101,11 @@ export function ScheduleImport({ chosen, hasFeed }: ScheduleImportProps) {
         setError(result.error);
         return;
       }
-      const d = result.data;
       setSprava(
-        `Stiahnuté. Z ${d.voFeede} hodín triedy je tvojich ${d.mojich}. ` +
-          `Pridaných ${d.pridanych}, upravených ${d.upravenych}, ` +
-          `zmazaných ${d.zmazanych}` +
-          (d.ponechanych > 0 ? `, ponechaných ${d.ponechanych} ručných` : "") +
-          ".",
+        zhrnutie(
+          result.data,
+          `Stiahnuté. Z ${result.data.voFeede} hodín triedy je tvojich ${result.data.mojich}.`,
+        ),
       );
     });
   }
@@ -124,8 +116,8 @@ export function ScheduleImport({ chosen, hasFeed }: ScheduleImportProps) {
         <h2 className="text-row font-semibold text-fg">Načítať rozvrh</h2>
         <p className="mt-1 text-pretty text-body leading-normal text-fg-muted">
           Súbor <code className="font-mono text-mini">.ics</code> z EduPage —
-          Nastavenia → Ostatné → Môj profil → iCalendar. Suplovanie ani prázdniny
-          v ňom nie sú, tie sa zadávajú tu.
+          Nastavenia → Ostatné → Môj profil → iCalendar. Suplovanie v ňom je
+          a načíta sa samo; prázdniny nie, tie sa zadávajú nižšie.
         </p>
       </div>
 
@@ -224,3 +216,30 @@ export function ScheduleImport({ chosen, hasFeed }: ScheduleImportProps) {
     </div>
   );
 }
+
+/**
+ * Jedna veta o tom, čo import spravil.
+ *
+ * Spoločná pre súbor aj sťahovanie — dve znenia tej istej správy by sa časom
+ * rozišli a človek by podľa toho, ktorou cestou išiel, čítal iné čísla.
+ *
+ * Vypisuje sa len to, čo sa naozaj stalo. „Zmazaných 0, ponechaných 0" je
+ * šum, cez ktorý sa to podstatné hľadá ťažšie.
+ */
+function zhrnutie(d: ImportSummary, uvod: string): string {
+  const casti: string[] = [];
+
+  if (d.pridanych > 0) casti.push(`pridaných ${d.pridanych}`);
+  if (d.upravenych > 0) casti.push(`upravených ${d.upravenych}`);
+  if (d.zmazanych > 0) casti.push(`zmazaných ${d.zmazanych}`);
+  if (d.ponechanych > 0) casti.push(`ponechaných ${d.ponechanych} ručných`);
+  if (d.novychPredmetov > 0) casti.push(`nových predmetov ${d.novychPredmetov}`);
+  if (d.novychUcitelov > 0) casti.push(`nových vyučujúcich ${d.novychUcitelov}`);
+  if (d.upratanychPredmetov > 0) {
+    casti.push(`upratané nepoužité predmety (${d.upratanychPredmetov})`);
+  }
+
+  if (casti.length === 0) return `${uvod} Nič sa nezmenilo.`;
+  return `${uvod} Zmeny: ${casti.join(", ")}.`;
+}
+
