@@ -135,6 +135,7 @@ export default async function RozvrhPage({ searchParams }: RozvrhPageProps) {
               startTime: h.startTime,
               endTime: h.endTime,
               subjectCode: h.subjectCode,
+              originalSubjectCode: h.originalSubjectCode,
               subjectColor: h.subjectColor,
               room: h.room,
               cancelled: h.cancelled,

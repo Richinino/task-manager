@@ -31,6 +31,8 @@ export interface GridLesson {
   startTime: string;
   endTime: string;
   subjectCode: string;
+  /** Pri suplovaní skratka predmetu, ktorý tu mal byť. */
+  originalSubjectCode?: string | null;
   subjectColor: string;
   room: string | null;
   cancelled: boolean;
@@ -194,8 +196,20 @@ export function WeekGrid({
                             ) : null}
                           </span>
 
-                          {hodina.room ? (
+                          {/*
+                            Suplovanie sa píše na spodný riadok k učebni, nie
+                            k skratke hore. Hore musí ostať čitateľné, ČO sa
+                            učí — to je vec, ktorú človek z mriežky číta ako
+                            prvú a najčastejšie.
+                          */}
+                          {hodina.originalSubjectCode || hodina.room ? (
                             <span className="w-full truncate font-mono text-micro text-fg-subtle">
+                              {hodina.originalSubjectCode ? (
+                                <span className="text-warn">
+                                  ↩ {hodina.originalSubjectCode}
+                                </span>
+                              ) : null}
+                              {hodina.originalSubjectCode && hodina.room ? " · " : ""}
                               {hodina.room}
                             </span>
                           ) : null}
@@ -227,6 +241,9 @@ function popis(lesson: GridLesson, stav: "past" | "now" | "future"): string {
     `${lesson.startTime}–${lesson.endTime}`,
   ];
 
+  if (lesson.originalSubjectCode) {
+    casti.push(`namiesto ${lesson.originalSubjectCode}`);
+  }
   if (lesson.room) casti.push(lesson.room);
   if (lesson.cancelled) casti.push("odpadla");
   else if (stav === "past") casti.push("prebehla");

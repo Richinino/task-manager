@@ -92,7 +92,21 @@ export async function importScheduleFor(
     const db = await getDb();
 
     /* ── predmety a vyučujúci ───────────────────────────────────────────── */
-    const predmetyVoFeede = [...new Set(buduce.map((h) => h.subject))];
+    /*
+      Pri suplovaní treba OBA predmety — ten, čo naozaj bude, aj ten, čo tu mal
+      byť. Bez pôvodného by sa nedalo napísať „namiesto dejepisu".
+
+      Cez `Set`, lebo pôvodný predmet je spravidla aj bežným predmetom inde
+      v rozvrhu — dvakrát v zozname by znamenalo dva `insert` s tou istou
+      skratkou a jedinečný index by to odmietol.
+    */
+    const predmetyVoFeede = [
+      ...new Set(
+        buduce.flatMap((h) =>
+          h.originalSubject === null ? [h.subject] : [h.subject, h.originalSubject],
+        ),
+      ),
+    ];
     const ucitelia = [...new Set(buduce.map((h) => h.teacher).filter((t) => t !== ""))];
 
     const existujucePredmety = await db
@@ -180,6 +194,14 @@ export async function importScheduleFor(
         room: h.room === "" ? null : h.room,
         groupName: h.group === "" ? null : h.group,
         sourceUid: h.uid,
+        /*
+          Suplovanie zo zdroja. Keď šípka zo `SUMMARY` zmizne, pole sa vráti na
+          `null` — hodina sa teda sama opraví späť, keď suplovanie odvolajú.
+        */
+        originalSubjectId:
+          h.originalSubject === null
+            ? null
+            : (predmetPodlaKodu.get(h.originalSubject)?.id ?? null),
       };
 
       const stara = podlaKluca.get(k);
