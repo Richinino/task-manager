@@ -139,8 +139,15 @@ export function ScheduleImport({ chosen, hasFeed }: ScheduleImportProps) {
             )}
             Stiahnuť z EduPage
           </Button>
+          {/*
+            Netvrdiť, že skupiny sú vybrané, kým vybrané nie sú. Sťahovanie bez
+            výberu natiahne dvojité okienka celej triedy — človek to musí
+            vedieť DOPREDU, nie až keď mu v pondelok svieti jedenásť hodín.
+          */}
           <span className="text-mini text-fg-muted">
-            Skupiny už máš vybrané, adresa je v premenných.
+            {chosen.length > 0
+              ? "Skupiny už máš vybrané, adresa je v premenných."
+              : "Skupiny ešte nemáš vybrané — načítaj najprv súbor nižšie."}
           </span>
         </div>
       ) : null}

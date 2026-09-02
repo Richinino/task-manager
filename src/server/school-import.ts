@@ -286,11 +286,34 @@ export async function stiahniOdber(): Promise<string> {
   */
   const url = raw.replace(/^webcal:\/\//i, "https://");
 
-  const odpoved = await fetch(url, {
-    headers: { accept: "text/calendar, text/plain" },
-    cache: "no-store",
-    signal: AbortSignal.timeout(20_000),
-  });
+  let odpoved: Response;
+  try {
+    odpoved = await fetch(url, {
+      headers: { accept: "text/calendar, text/plain" },
+      cache: "no-store",
+      signal: AbortSignal.timeout(20_000),
+    });
+  } catch (chyba) {
+    /*
+      Spojenie vôbec nevzniklo — zlá adresa, spadnutý server, alebo sieť,
+      z ktorej sa tam nedá dostať.
+
+      Dôvod sa ukazuje, lebo bez neho vyzerá odmietnuté spojenie rovnako ako
+      preklep v adrese a človek hľadá chybu v appke. Ide von LEN kód chyby
+      (`ECONNREFUSED`, `UND_ERR_CONNECT_TIMEOUT`), nikdy `cause.message` —
+      ten by mohol niesť celú adresu aj s tajným kľúčom.
+    */
+    const kod =
+      chyba instanceof Error && chyba.cause instanceof Error
+        ? ((chyba.cause as { code?: string }).code ?? chyba.cause.name)
+        : "neznáma chyba";
+
+    throw new OdberNedostupny(
+      "K odberu sa nepodarilo pripojiť (" +
+        kod +
+        "). Skús načítať súbor .ics nižšie.",
+    );
+  }
 
   if (!odpoved.ok) {
     throw new OdberNedostupny(
