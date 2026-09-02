@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useTransition } from "react";
-import { CalendarX2, LoaderCircle, RotateCcw } from "lucide-react";
+import { CalendarX2, LoaderCircle, RotateCcw, Replace } from "lucide-react";
 
 import { areaColorValue } from "@/components/task/area-dot";
 import { Button } from "@/components/ui/button";
@@ -13,11 +13,21 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectSeparator,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { formatLongSk, formatRelativeSk } from "@/lib/dates";
 import { cn } from "@/lib/utils";
 import {
   loadLessonDetail,
+  clearLessonSubstitution,
   setLessonCancelled,
+  setLessonSubstitution,
   setLessonNote,
   setSubjectNote,
   type LessonDetail as LessonDetailData,
@@ -54,6 +64,12 @@ export function LessonDetail({ lessonId, onClose, todayIso }: LessonDetailProps)
     null,
   );
   const [error, setError] = useState<string | null>(null);
+  /*
+    Formulár zmeny si nesie, KTOREJ hodiny sa týka — rovnako ako načítané
+    dáta o riadok nižšie. Nulovať ho v efekte by znamenalo `setState` počas
+    vykresľovania; takto sa pri inej hodine proste nezhodne a nevykreslí.
+  */
+  const [meniSaPre, setMeniSaPre] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
   useEffect(() => {
@@ -73,6 +89,47 @@ export function LessonDetail({ lessonId, onClose, todayIso }: LessonDetailProps)
 
   const data = nacitane !== null && nacitane.id === lessonId ? nacitane.data : null;
   const lesson = data?.lesson;
+  const meniSa = meniSaPre !== null && meniSaPre === lessonId;
+  const subjects = data?.subjects ?? [];
+  const teachers = data?.teachers ?? [];
+
+  /*
+    Vyučujúci sa v detaile nesie ako skratka, nie ako id — do výberu ho treba
+    nájsť podľa nej. Pridávať ďalší stĺpec do dotazu len kvôli tomuto by
+    znamenalo ťahať id, ktoré nikto iný nepotrebuje.
+  */
+  const teacherId =
+    teachers.find((u) => u.code === lesson?.teacherCode)?.id ?? null;
+
+  /** Hodnota pre „vyučujúci sa nevie" — prázdny reťazec Select neprijme. */
+  const NIKTO = "ziadny";
+
+  /**
+   * Uloží zmenu a načíta detail znova.
+   *
+   * Znova, a nie optimisticky: suplovanie mení predmet, a s ním farbu, názov
+   * aj zoznam úloh k nemu. Domýšľať si to v klientovi by znamenalo mať tú istú
+   * logiku na dvoch miestach.
+   */
+  function uloz(
+    akcia: () => Promise<{ ok: boolean; error?: string }>,
+    poUspechu?: () => void,
+  ): void {
+    if (lessonId === null) return;
+    setError(null);
+
+    startTransition(async () => {
+      const result = await akcia();
+      if (!result.ok) {
+        setError(result.error ?? "Zmenu sa nepodarilo uložiť.");
+        return;
+      }
+
+      const znova = await loadLessonDetail(lessonId);
+      if (znova.ok) setNacitane({ id: lessonId, data: znova.data });
+      poUspechu?.();
+    });
+  }
 
   return (
     <Dialog open={lessonId !== null} onOpenChange={(open) => !open && onClose()}>
@@ -103,6 +160,19 @@ export function LessonDetail({ lessonId, onClose, todayIso }: LessonDetailProps)
                   {lesson.startTime}–{lesson.endTime}
                   {lesson.room ? ` · ${lesson.room}` : ""}
                 </DialogDescription>
+
+                {/*
+                  Suplovanie sa píše ako veta, nie ako značka. „Namiesto
+                  fyziky" povie všetko naraz — že je to zmena aj čo tu malo
+                  byť — a človek to prečíta bez toho, aby sa učil, čo ktorý
+                  symbol znamená.
+                */}
+                {lesson.originalSubjectCode !== null ? (
+                  <p className="text-mini text-warn">
+                    Namiesto{" "}
+                    {lesson.originalSubjectName ?? lesson.originalSubjectCode}
+                  </p>
+                ) : null}
 
                 {lesson.teacherName ?? lesson.teacherCode ? (
                   <DialogDescription>
@@ -176,7 +246,96 @@ export function LessonDetail({ lessonId, onClose, todayIso }: LessonDetailProps)
                 )}
               </div>
 
-              <div className="flex items-center gap-2">
+              {/*
+                SUPLOVANIE
+
+                Zapisuje sa priamo do hodiny: predmet, učiteľ a učebňa vždy
+                hovoria, čo sa v ten deň NAOZAJ deje. Mriežka aj rozpočet tak
+                ukazujú skutočnosť bez toho, aby o suplovaní čokoľvek vedeli.
+              */}
+              {meniSa ? (
+                <div className="flex flex-col gap-2 rounded border border-border bg-surface-2/40 p-3">
+                  <h3 className="label text-fg-subtle">Čo je namiesto toho</h3>
+
+                  <Select
+                    value={lesson.subjectId}
+                    onValueChange={(subjectId) =>
+                      uloz(() => setLessonSubstitution(lesson.id, { subjectId }))
+                    }
+                  >
+                    <SelectTrigger aria-label="Predmet, ktorý naozaj bude">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {subjects.map((predmet) => (
+                        <SelectItem key={predmet.id} value={predmet.id}>
+                          {predmet.name ?? predmet.code}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+
+                  <Select
+                    value={teacherId ?? NIKTO}
+                    onValueChange={(hodnota) =>
+                      uloz(() =>
+                        setLessonSubstitution(lesson.id, {
+                          teacherId: hodnota === NIKTO ? null : hodnota,
+                        }),
+                      )
+                    }
+                  >
+                    <SelectTrigger aria-label="Kto supluje">
+                      <SelectValue placeholder="Vyučujúci" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value={NIKTO}>Nevie sa</SelectItem>
+                      <SelectSeparator />
+                      {teachers.map((ucitel) => (
+                        <SelectItem key={ucitel.id} value={ucitel.id}>
+                          {ucitel.name ?? ucitel.code}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+
+                  <Input
+                    defaultValue={lesson.room ?? ""}
+                    placeholder="Učebňa"
+                    aria-label="Učebňa"
+                    onBlur={(event) => {
+                      const room = event.currentTarget.value.trim();
+                      if (room === (lesson.room ?? "")) return;
+                      uloz(() => setLessonSubstitution(lesson.id, { room }));
+                    }}
+                  />
+                </div>
+              ) : null}
+
+              <div className="flex flex-wrap items-center gap-2">
+                <Button
+                  size="sm"
+                  variant={meniSa ? "primary" : undefined}
+                  disabled={isPending}
+                  onClick={() => setMeniSaPre(meniSa ? null : lessonId)}
+                >
+                  <Replace className="size-3.5" />
+                  {meniSa ? "Hotovo" : "Zmena"}
+                </Button>
+
+                {lesson.originalSubjectCode !== null ? (
+                  <Button
+                    size="sm"
+                    disabled={isPending}
+                    onClick={() =>
+                      uloz(() => clearLessonSubstitution(lesson.id), () => setMeniSaPre(null))
+                    }
+                  >
+                    <RotateCcw className="size-3.5" />
+                    Zrušiť zmenu
+                  </Button>
+                ) : null}
+
                 <Button
                   size="sm"
                   disabled={isPending}

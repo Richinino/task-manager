@@ -637,6 +637,22 @@ export const schoolLessons = pgTable(
      * každú výnimku, ktorú si zapísal, a rozvrh by sa nedal opraviť.
      */
     manual: boolean("manual").notNull().default(false),
+    /**
+     * Suplovanie: čo tu malo byť podľa rozvrhu.
+     *
+     * Jeden stĺpec namiesto troch („náhradný predmet, náhradný učiteľ,
+     * náhradná učebňa"). `subjectId`, `teacherId` a `room` vždy hovoria, čo sa
+     * v ten deň NAOZAJ deje — takže mriežka, pruh na „Dnes" aj rozpočet
+     * ukazujú skutočnosť bez jediného riadku navyše. Toto pole len pamätá,
+     * čo tam bolo predtým, aby sa dalo povedať „namiesto fyziky".
+     *
+     * `null` znamená hodinu podľa rozvrhu.
+     */
+    originalSubjectId: text("original_subject_id").references(
+      () => schoolSubjects.id,
+      { onDelete: "set null" },
+    ),
+
     /** `UID` zo zdroja — podľa neho sa riadok pri ďalšom importe nájde. */
     sourceUid: text("source_uid"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),

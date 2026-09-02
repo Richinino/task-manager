@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { and, eq } from "drizzle-orm";
+import { and, asc, eq } from "drizzle-orm";
 import { z } from "zod";
 
 import { getDb } from "@/db";
@@ -142,6 +142,9 @@ export interface LessonDetail {
   lesson: LessonRow;
   /** Otvorené úlohy a písomky z toho predmetu. */
   tasks: SubjectTask[];
+  /** Predmety a vyučujúci do výberu pri suplovaní. */
+  subjects: { id: string; code: string; name: string | null }[];
+  teachers: { id: string; code: string; name: string | null }[];
 }
 
 export async function loadLessonDetail(
@@ -152,7 +155,35 @@ export async function loadLessonDetail(
     const lesson = await getLesson(user.id, id);
     if (lesson === null) return { ok: false, error: "Hodina sa nenašla." };
 
-    return { ok: true, data: { lesson, tasks: await getSubjectTasks(user.id, lesson.subjectId) } };
+    const db = await getDb();
+    /*
+      Zoznamy sa ťahajú spolu s detailom, nie zvlášť. Je to pätnásť predmetov
+      a pätnásť učiteľov — druhé kolo na server by pri otvorení panela znamenalo
+      len to, že sa výber na chvíľu tvári prázdny.
+    */
+    const [tasks, subjects, teachers] = await Promise.all([
+      getSubjectTasks(user.id, lesson.subjectId),
+      db
+        .select({
+          id: schoolSubjects.id,
+          code: schoolSubjects.code,
+          name: schoolSubjects.name,
+        })
+        .from(schoolSubjects)
+        .where(eq(schoolSubjects.userId, user.id))
+        .orderBy(asc(schoolSubjects.code)),
+      db
+        .select({
+          id: schoolTeachers.id,
+          code: schoolTeachers.code,
+          name: schoolTeachers.name,
+        })
+        .from(schoolTeachers)
+        .where(eq(schoolTeachers.userId, user.id))
+        .orderBy(asc(schoolTeachers.code)),
+    ]);
+
+    return { ok: true, data: { lesson, tasks, subjects, teachers } };
   } catch (error) {
     return fail(error, "Detail hodiny sa nepodarilo načítať.");
   }
@@ -241,6 +272,145 @@ export async function setLessonCancelled(
   } catch (error) {
     return fail(error, "Zmenu sa nepodarilo uložiť.");
   }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   SUPLOVANIE
+
+   V odbere z EduPage suplovanie nie je — je to rozvrh natiahnutý na dátumy,
+   nie denný plán. Zadáva sa teda ručne, a to na tri ťuknutia.
+
+   Zapisuje sa PRIAMO do riadku hodiny: `subjectId`, `teacherId` a `room` vždy
+   hovoria, čo sa v ten deň naozaj deje. Vďaka tomu mriežka, pruh na „Dnes"
+   aj rozpočet ukazujú skutočnosť bez jediného riadku navyše.
+   `originalSubjectId` len pamätá, čo tam malo byť.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/** Identifikátor záznamu. Prázdny reťazec nie je „nič", ale preklep. */
+const idSchema = z.string().trim().min(1);
+
+const substitutionSchema = z.object({
+  /** Predmet, ktorý sa naozaj bude učiť. `null` nechá pôvodný. */
+  subjectId: idSchema.nullish(),
+  /** Kto supluje. `null` znamená „nevieme" a učiteľ sa vymaže. */
+  teacherId: idSchema.nullish(),
+  /** Kde sa učí. Prázdny reťazec učebňu vymaže. */
+  room: z.string().trim().max(80, "Názov učebne je príliš dlhý.").nullish(),
+});
+
+export type SubstitutionInput = z.infer<typeof substitutionSchema>;
+
+/**
+ * Zapíše suplovanie na jednu hodinu.
+ *
+ * Pôvodný predmet sa zapamätá **len pri prvej zmene**. Keby sa prepisoval
+ * zakaždým, druhá oprava toho istého dňa by za pôvodný predmet vyhlásila ten
+ * suplovaný a veta „namiesto fyziky" by zrazu tvrdila „namiesto matiky".
+ */
+export async function setLessonSubstitution(
+  id: string,
+  input: SubstitutionInput,
+): Promise<ActionResult> {
+  const user = await requireUser();
+  try {
+    const parsed = substitutionSchema.safeParse(input);
+    if (!parsed.success) return invalid(parsed.error, "Neplatná zmena.");
+
+    const db = await getDb();
+    const hodina = await getLesson(user.id, id);
+    if (hodina === null) return { ok: false, error: "Hodina sa nenašla." };
+
+    const novyPredmet = parsed.data.subjectId ?? null;
+    if (novyPredmet !== null) {
+      const chyba = await overPredmet(user.id, novyPredmet);
+      if (chyba !== null) return { ok: false, error: chyba };
+    }
+
+    const values: Record<string, unknown> = {
+      manual: true,
+      updatedAt: new Date(),
+    };
+
+    if (novyPredmet !== null && novyPredmet !== hodina.subjectId) {
+      values.subjectId = novyPredmet;
+      /* Pôvodný predmet len raz — pozri komentár nad funkciou. */
+      if (hodina.originalSubjectCode === null) {
+        values.originalSubjectId = hodina.subjectId;
+      }
+    }
+
+    if (parsed.data.teacherId !== undefined) {
+      values.teacherId = parsed.data.teacherId ?? null;
+    }
+    if (parsed.data.room !== undefined) {
+      const ucebna = (parsed.data.room ?? "").trim();
+      values.room = ucebna === "" ? null : ucebna;
+    }
+
+    await db
+      .update(schoolLessons)
+      .set(values)
+      .where(and(eq(schoolLessons.id, id), eq(schoolLessons.userId, user.id)));
+
+    revalidateViews();
+    return { ok: true };
+  } catch (error) {
+    return fail(error, "Suplovanie sa nepodarilo uložiť.");
+  }
+}
+
+/**
+ * Vráti hodinu na to, čo hovorí rozvrh.
+ *
+ * Učebňu ani učiteľa nevracia — tie sa pri najbližšom importe obnovia zo
+ * zdroja samy, len čo riadok prestane byť ručný. Vrátiť ich tu by znamenalo
+ * hádať, čo v odbere bolo.
+ */
+export async function clearLessonSubstitution(id: string): Promise<ActionResult> {
+  const user = await requireUser();
+  try {
+    const db = await getDb();
+    const hodina = await getLesson(user.id, id);
+    if (hodina === null) return { ok: false, error: "Hodina sa nenašla." };
+
+    const povodny = await db
+      .select({ id: schoolLessons.originalSubjectId })
+      .from(schoolLessons)
+      .where(and(eq(schoolLessons.id, id), eq(schoolLessons.userId, user.id)))
+      .limit(1);
+
+    const povodnyId = povodny[0]?.id ?? null;
+    if (povodnyId === null) return { ok: true };
+
+    await db
+      .update(schoolLessons)
+      .set({
+        subjectId: povodnyId,
+        originalSubjectId: null,
+        /*
+          `manual` sa vedome NEVYPÍNA. Riadku sa človek dotkol a mohol na ňom
+          zmeniť aj poznámku — pustiť naň import by ju zmazalo.
+        */
+        updatedAt: new Date(),
+      })
+      .where(and(eq(schoolLessons.id, id), eq(schoolLessons.userId, user.id)));
+
+    revalidateViews();
+    return { ok: true };
+  } catch (error) {
+    return fail(error, "Zmenu sa nepodarilo vrátiť.");
+  }
+}
+
+/** Patrí predmet tomuto človeku? Vracia chybu, alebo `null`. */
+async function overPredmet(userId: string, subjectId: string): Promise<string | null> {
+  const db = await getDb();
+  const rows = await db
+    .select({ id: schoolSubjects.id })
+    .from(schoolSubjects)
+    .where(and(eq(schoolSubjects.id, subjectId), eq(schoolSubjects.userId, userId)))
+    .limit(1);
+  return rows[0] ? null : "Predmet sa nenašiel.";
 }
 
 /** Celý názov predmetu, doplnený ručne — zdroj dodáva len skratku. */
