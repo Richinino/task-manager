@@ -144,6 +144,25 @@ pozná:
 Prešlé hodiny stlmené, prebiehajúca zvýraznená — to je to automatické
 odškrtávanie.
 
+### Suplovanie
+
+**Zapisuje sa priamo do riadku hodiny.** `subjectId`, `teacherId` a `room`
+vždy hovoria, čo sa v ten deň NAOZAJ deje — takže mriežka, pruh na „Dnes"
+aj rozpočet ukazujú skutočnosť bez toho, aby o suplovaní čokoľvek vedeli.
+
+Jediný stĺpec navyše je `originalSubjectId`: pamätá, čo tam malo byť, aby sa
+dalo napísať „Namiesto CHE". Alternatíva — tri stĺpce `substitute_*` — by
+znamenala, že každá obrazovka si musí vyberať, ktorú trojicu čítať, a jedno
+zabudnuté miesto by ukazovalo rozvrh, ktorý v ten deň neplatí.
+
+Pôvodný predmet sa zapamätá **len pri prvej zmene**. Inak by druhá oprava
+toho istého dňa za pôvodný predmet vyhlásila ten suplovaný a veta „namiesto
+fyziky" by zrazu tvrdila „namiesto matiky".
+
+Zrušenie zmeny vráti predmet, ale **`manual` nechá zapnuté**: riadku sa
+človek dotkol a mohol na ňom zmeniť aj poznámku — pustiť naň import by ju
+zmazalo. Učebňu ani učiteľa zrušenie nevracia, tie sa obnovia zo zdroja samy.
+
 ### Detail hodiny
 
 Otvára sa z mriežky aj z pruhu na „Dnes". Obsahuje:

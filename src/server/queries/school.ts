@@ -1,6 +1,7 @@
 import "server-only";
 
 import { and, asc, between, eq, isNull } from "drizzle-orm";
+import { alias } from "drizzle-orm/pg-core";
 
 import { getDb } from "@/db";
 import {
@@ -45,7 +46,19 @@ export interface LessonRow {
   subjectNote: string | null;
   teacherCode: string | null;
   teacherName: string | null;
+  /**
+   * Čo tu malo byť podľa rozvrhu, keď je hodina suplovaná.
+   * `null` znamená hodinu podľa rozvrhu.
+   */
+  originalSubjectCode: string | null;
+  originalSubjectName: string | null;
 }
+
+/*
+  Alias na druhé spojenie s tou istou tabuľkou. Bez neho by Drizzle nevedel
+  odlíšiť predmet, ktorý sa učí, od toho, ktorý sa mal učiť.
+*/
+const povodnyPredmet = alias(schoolSubjects, "povodny_predmet");
 
 /** `08:00:00` → `08:00`. Stĺpec `time` vracia sekundy, tie nikde nepotrebujeme. */
 function cas(hodnota: string): string {
@@ -71,6 +84,8 @@ function select() {
     subjectNote: schoolSubjects.note,
     teacherCode: schoolTeachers.code,
     teacherName: schoolTeachers.name,
+    originalSubjectCode: povodnyPredmet.code,
+    originalSubjectName: povodnyPredmet.name,
   };
 }
 
@@ -103,6 +118,13 @@ export async function getLessonsForRange(
       and(
         eq(schoolLessons.teacherId, schoolTeachers.id),
         eq(schoolTeachers.userId, userId),
+      ),
+    )
+    .leftJoin(
+      povodnyPredmet,
+      and(
+        eq(schoolLessons.originalSubjectId, povodnyPredmet.id),
+        eq(povodnyPredmet.userId, userId),
       ),
     )
     .where(
@@ -141,6 +163,13 @@ export async function getLesson(userId: string, id: string): Promise<LessonRow |
       and(
         eq(schoolLessons.teacherId, schoolTeachers.id),
         eq(schoolTeachers.userId, userId),
+      ),
+    )
+    .leftJoin(
+      povodnyPredmet,
+      and(
+        eq(schoolLessons.originalSubjectId, povodnyPredmet.id),
+        eq(povodnyPredmet.userId, userId),
       ),
     )
     .where(and(eq(schoolLessons.id, id), eq(schoolLessons.userId, userId)))
