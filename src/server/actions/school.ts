@@ -11,6 +11,7 @@ import {
   schoolSubjects,
   schoolTeachers,
 } from "@/db/schema";
+import { parseNamePairs } from "@/lib/names-paste";
 import { nextLessonDate } from "@/lib/school";
 import { sviatkySkolskehoRoka } from "@/lib/sviatky";
 import {
@@ -411,6 +412,95 @@ async function overPredmet(userId: string, subjectId: string): Promise<string | 
     .where(and(eq(schoolSubjects.id, subjectId), eq(schoolSubjects.userId, userId)))
     .limit(1);
   return rows[0] ? null : "Predmet sa nenašiel.";
+}
+
+/**
+ * Doplní celé mená naraz z vloženého textu.
+ *
+ * Pätnásť predmetov a pätnásť vyučujúcich znamená tridsať políčok — a človek
+ * ich má spravidla už napísané v tabuľke. Vloženie je jedno `Ctrl+V` namiesto
+ * tridsiatich krokov.
+ *
+ * Skratky sa hľadajú v OBOCH tabuľkách naraz, takže sa dá vložiť jeden zoznam
+ * s predmetmi aj učiteľmi zmiešane. Skratky sa medzi nimi neprekrývajú
+ * (`ANJ` vs `LIN`) a keby raz áno, doplní sa oboje — čo je stále lepšie než
+ * nútiť človeka vkladať dvakrát.
+ *
+ * **Prepisuje aj vyplnené mená.** Vloženie zoznamu je vedomý úkon; keby sa
+ * vyplnené preskakovali, oprava preklepu by sa dala spraviť len po jednom
+ * a človek by nechápal, prečo sa nič nezmenilo.
+ */
+export async function importNames(
+  text: string,
+): Promise<ActionResult<{ predmetov: number; ucitelov: number; nezname: string[] }>> {
+  const user = await requireUser();
+  try {
+    const parsed = z
+      .string()
+      .max(20_000, "Text je príliš dlhý.")
+      .safeParse(text);
+    if (!parsed.success) return invalid(parsed.error, "Neplatný text.");
+
+    const dvojice = parseNamePairs(parsed.data);
+    if (dvojice.length === 0) {
+      return {
+        ok: false,
+        error: "Nenašiel som ani jeden riadok v tvare „skratka; celé meno“.",
+      };
+    }
+
+    const db = await getDb();
+    const [predmety, ucitelia] = await Promise.all([
+      db
+        .select({ id: schoolSubjects.id, code: schoolSubjects.code })
+        .from(schoolSubjects)
+        .where(eq(schoolSubjects.userId, user.id)),
+      db
+        .select({ id: schoolTeachers.id, code: schoolTeachers.code })
+        .from(schoolTeachers)
+        .where(eq(schoolTeachers.userId, user.id)),
+    ]);
+
+    /* Porovnáva sa bez ohľadu na veľkosť písmen — v tabuľke býva `anj` aj `ANJ`. */
+    const predmetPodlaKodu = new Map(predmety.map((p) => [p.code.toLowerCase(), p.id]));
+    const ucitelPodlaKodu = new Map(ucitelia.map((u) => [u.code.toLowerCase(), u.id]));
+
+    let predmetov = 0;
+    let ucitelov = 0;
+    const nezname: string[] = [];
+
+    for (const { code, name } of dvojice) {
+      const kluc = code.toLowerCase();
+      const predmetId = predmetPodlaKodu.get(kluc);
+      const ucitelId = ucitelPodlaKodu.get(kluc);
+
+      if (predmetId === undefined && ucitelId === undefined) {
+        nezname.push(code);
+        continue;
+      }
+
+      if (predmetId !== undefined) {
+        await db
+          .update(schoolSubjects)
+          .set({ name, updatedAt: new Date() })
+          .where(eq(schoolSubjects.id, predmetId));
+        predmetov += 1;
+      }
+
+      if (ucitelId !== undefined) {
+        await db
+          .update(schoolTeachers)
+          .set({ name, updatedAt: new Date() })
+          .where(eq(schoolTeachers.id, ucitelId));
+        ucitelov += 1;
+      }
+    }
+
+    revalidateViews();
+    return { ok: true, data: { predmetov, ucitelov, nezname } };
+  } catch (error) {
+    return fail(error, "Mená sa nepodarilo doplniť.");
+  }
 }
 
 /** Celý názov predmetu, doplnený ručne — zdroj dodáva len skratku. */
