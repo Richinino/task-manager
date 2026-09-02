@@ -110,6 +110,41 @@ export function schoolWindow(
   return start === null || end === null ? null : { start, end };
 }
 
+/**
+ * Koľko zo školy ešte len bude — od `nowMin` dopredu.
+ *
+ * Toto je číslo, ktoré patrí do rozpočtu dňa, NIE `schoolMinutes`. Rozpočet
+ * na obrazovke „Dnes" počíta, koľko z dňa ešte zostáva — hodiny, ktoré už
+ * prebehli, z neho vypadli samy. Keby sa od zvyšku dňa odrátala celá škola,
+ * dopoludnie by sa odpočítalo dvakrát a o tretej by rozpočet tvrdil, že máš
+ * o tri hodiny menej, než naozaj máš.
+ *
+ * Prebiehajúca hodina sa ráta len tým kusom, ktorý zostáva: o 12:00 je
+ * z hodiny 11:50–12:35 pred tebou 35 minút, nie 45.
+ *
+ * Iný deň než dnešok nemá „teraz": budúci deň sa ráta celý, minulý nulou.
+ */
+export function remainingSchoolMinutes(
+  hodiny: readonly SkolskaHodina[],
+  todayIso: string,
+  nowMin: number,
+): number {
+  return hodiny.reduce((sucet, h) => {
+    if (h.cancelled === true) return sucet;
+
+    const zaciatok = timeToMinutes(h.startTime);
+    const koniec = timeToMinutes(h.endTime);
+    if (zaciatok === null || koniec === null || koniec <= zaciatok) return sucet;
+
+    const rozdiel = diffDays(h.date, todayIso);
+    if (rozdiel > 0) return sucet;
+    if (rozdiel < 0) return sucet + (koniec - zaciatok);
+
+    /* Dnešok: berie sa len to, čo je ešte pred nami. */
+    return sucet + Math.max(0, koniec - Math.max(zaciatok, nowMin));
+  }, 0);
+}
+
 /* ═══════════════════════════════════════════════════════════════════════════
    VOĽNÁ
    ═══════════════════════════════════════════════════════════════════════════ */

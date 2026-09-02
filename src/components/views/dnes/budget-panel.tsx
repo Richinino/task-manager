@@ -31,6 +31,11 @@ export interface BudgetPanelProps {
   availableMin: number;
   /** Minúty zabraté poradami z kalendára. */
   meetingMin: number;
+  /**
+   * Minúty, ktoré si z dňa ešte vezme škola — ZVYŠOK, nie celá.
+   * Podrobne v `TimeBudget`.
+   */
+  schoolMin?: number;
   /** Je v dni celodenná úloha? Vtedy sa rozpočet neráta, ale oznamuje. */
   allDay?: boolean;
   /** Koľko dnešných úloh odhad nemá. */
@@ -52,6 +57,7 @@ export function BudgetPanel({
   availableMin,
   allDay = false,
   meetingMin,
+  schoolMin = 0,
   withoutEstimate,
   dayStartHour,
   dayEndHour,
@@ -72,8 +78,9 @@ export function BudgetPanel({
       .map((task) => ({ area: task.area, estimateMin: task.estimateMin })),
   );
 
+  const skola = Math.max(0, Math.round(schoolMin));
   const celkom = availableMin + meetingMin;
-  const volne = Math.max(0, availableMin - plannedMin);
+  const volne = Math.max(0, availableMin - skola - plannedMin);
 
   const segmenty: Segment[] = [
     ...(frogMin > 0 ? [{ key: "frog", minutes: frogMin, color: "var(--frog)" }] : []),
@@ -86,6 +93,14 @@ export function BudgetPanel({
       })),
     ...(meetingMin > 0
       ? [{ key: "porady", minutes: meetingMin, color: "var(--border-strong)" }]
+      : []),
+    /*
+      Škola má vlastný segment a nesplýva s poradami. Sú to dva rôzne druhy
+      obsadeného času: poradu vieš presunúť, školu nie — a rozklad má práve
+      takéto rozdiely ukazovať.
+    */
+    ...(skola > 0
+      ? [{ key: "skola", minutes: skola, color: "var(--border-strong)" }]
       : []),
     ...(volne > 0 ? [{ key: "volne", minutes: volne, color: "var(--border)" }] : []),
   ];
@@ -126,6 +141,12 @@ export function BudgetPanel({
           <p className="flex">
             <span>porady</span>
             <span className="ml-auto text-fg">{formatDuration(meetingMin)}</span>
+          </p>
+        ) : null}
+        {skola > 0 ? (
+          <p className="flex">
+            <span>škola</span>
+            <span className="ml-auto text-fg">{formatDuration(skola)}</span>
           </p>
         ) : null}
         <p className="flex">

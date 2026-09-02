@@ -5,6 +5,7 @@ import {
   lessonState,
   lessonsDone,
   nextLessonDate,
+  remainingSchoolMinutes,
   schoolMinutes,
   schoolWindow,
   type HodinaPredmetu,
@@ -168,3 +169,54 @@ describe("nextLessonDate", () => {
     expect(nextLessonDate(rozvrh, "mat", "2026-09-30", 0)).toBeNull();
   });
 });
+
+describe("remainingSchoolMinutes", () => {
+  const DNES = "2026-09-16";
+  const den = [
+    { date: DNES, startTime: "09:50", endTime: "10:35" },
+    { date: DNES, startTime: "10:55", endTime: "11:40" },
+    { date: DNES, startTime: "11:50", endTime: "12:35" },
+    { date: DNES, startTime: "12:45", endTime: "13:30" },
+  ];
+
+  it("pred školou ráta celú", () => {
+    expect(remainingSchoolMinutes(den, DNES, 8 * 60 + 41)).toBe(180);
+  });
+
+  /*
+    Toto je celý dôvod, prečo funkcia existuje. Dostupný čas sa už počíta od
+    teraz, takže hodiny, ktoré prebehli, z neho vypadli samy. Odrátať celú
+    školu by dopoludnie odpočítalo druhý raz a rozpočet by o tretej tvrdil,
+    že máš o tri hodiny menej, než naozaj máš.
+  */
+  it("po škole neráta nič", () => {
+    expect(remainingSchoolMinutes(den, DNES, 15 * 60)).toBe(0);
+  });
+
+  it("prebiehajúcu hodinu ráta len zvyškom", () => {
+    /* 12:00 — z hodiny 11:50–12:35 zostáva 35 min, plus celá posledná. */
+    expect(remainingSchoolMinutes(den, DNES, 12 * 60)).toBe(35 + 45);
+  });
+
+  it("odpadnutú hodinu neráta", () => {
+    const sOdpadnutou = [{ ...den[0]!, cancelled: true }, den[1]!];
+    expect(remainingSchoolMinutes(sOdpadnutou, DNES, 8 * 60)).toBe(45);
+  });
+
+  /*
+    Iný deň nemá „teraz". Budúci sa ráta celý, minulý nulou — inak by sa pri
+    prezeraní zajtrajška odrátalo podľa dnešnej hodiny.
+  */
+  it("iný deň sa neriadi dnešným časom", () => {
+    const zajtra = [{ date: "2026-09-17", startTime: "08:00", endTime: "08:45" }];
+    expect(remainingSchoolMinutes(zajtra, DNES, 23 * 60)).toBe(45);
+
+    const vcera = [{ date: "2026-09-15", startTime: "08:00", endTime: "08:45" }];
+    expect(remainingSchoolMinutes(vcera, DNES, 0)).toBe(0);
+  });
+
+  it("znesie prázdny deň", () => {
+    expect(remainingSchoolMinutes([], DNES, 600)).toBe(0);
+  });
+});
+

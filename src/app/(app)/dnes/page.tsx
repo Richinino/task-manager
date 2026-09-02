@@ -169,6 +169,23 @@ export default async function DnesPage({ searchParams }: DnesPageProps) {
   // porady zjedli. Celodenné udalosti sa do súčtu nerátajú.
   const meetingMin = meetingMinutes(events);
 
+  /*
+    Podklad pre rozpočet: hodiny dňa a čas zo servera.
+
+    Vo voľne sa škola neráta vôbec — v ten deň sa nič z toho nedeje, takže by
+    rozpočet ubral čas, ktorý máš celý k dispozícii.
+  */
+  const jeVolno = schoolBreaks.some((v) => v.fromDate <= date && date <= v.toDate);
+  const hodinyPreRozpocet = jeVolno
+    ? []
+    : schoolLessons.map((lesson) => ({
+        date: lesson.date,
+        startTime: lesson.startTime,
+        endTime: lesson.endTime,
+        cancelled: lesson.cancelled,
+      }));
+  const nowMin = minutesIn(user.settings.timezone);
+
   const showFrogCard = frog !== null || openTasks.length > 0;
 
   // Priorita dňa má na obrazovke jedno miesto — kartu nad zoznamom. V zozname
@@ -218,6 +235,8 @@ export default async function DnesPage({ searchParams }: DnesPageProps) {
             dayEndHour={user.settings.dayEndHour}
             withoutEstimate={withoutEstimate}
             meetingMin={meetingMin}
+            lessons={hodinyPreRozpocet}
+            nowMin={nowMin}
           />
         }
         action={
@@ -339,7 +358,7 @@ export default async function DnesPage({ searchParams }: DnesPageProps) {
               null
             }
             todayIso={todayIso}
-            nowMin={minutesIn(user.settings.timezone)}
+            nowMin={nowMin}
             timeZone={user.settings.timezone}
           />
 
@@ -391,6 +410,8 @@ export default async function DnesPage({ searchParams }: DnesPageProps) {
                 todayIso={todayIso}
                 timeZone={user.settings.timezone}
                 meetingMin={meetingMin}
+                lessons={hodinyPreRozpocet}
+                nowMin={nowMin}
                 withoutEstimate={withoutEstimate}
                 dayStartHour={user.settings.dayStartHour}
                 dayEndHour={user.settings.dayEndHour}
