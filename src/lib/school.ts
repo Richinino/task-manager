@@ -154,12 +154,34 @@ export interface SkolskeVolno {
   toDate: string;
 }
 
-/** Je ten deň prázdninový? Rozsah platí vrátane oboch krajných dní. */
+/**
+ * Voľno, ktoré na ten deň padá — aj s dôvodom. `null`, keď je bežný deň.
+ *
+ * Vracia celý záznam, nie `true`/`false`, lebo obrazovky takmer vždy chcú aj
+ * názov: prázdny utorok bez vysvetlenia vyzerá ako pokazená appka, kdežto
+ * „Voľno — Sedembolestná" je odpoveď.
+ *
+ * **Je to jediné miesto, kde sa rozsah dátumov porovnáva.** Predtým si tú
+ * istú podmienku písala každá obrazovka sama — štyri kópie jedného `<=`,
+ * z ktorých by stačilo jednu opraviť inak a prázdniny by na dvoch
+ * obrazovkách začínali iným dňom.
+ *
+ * Rozsah platí vrátane oboch krajných dní: prázdniny „od pondelka do piatka"
+ * zahŕňajú aj ten piatok.
+ */
+export function schoolBreakOn<T extends SkolskeVolno>(
+  dateIso: string,
+  volna: readonly T[],
+): T | null {
+  return volna.find((v) => v.fromDate <= dateIso && dateIso <= v.toDate) ?? null;
+}
+
+/** Je ten deň prázdninový? Skratka nad `schoolBreakOn`. */
 export function isSchoolBreak(
   dateIso: string,
   volna: readonly SkolskeVolno[],
 ): boolean {
-  return volna.some((v) => v.fromDate <= dateIso && dateIso <= v.toDate);
+  return schoolBreakOn(dateIso, volna) !== null;
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════

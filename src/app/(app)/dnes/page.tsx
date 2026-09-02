@@ -31,6 +31,7 @@ import {
   getTasksForDay,
   listContexts,
 } from "@/server/queries/tasks";
+import { schoolBreakOn } from "@/lib/school";
 import { getLessonsForDay, listBreaks } from "@/server/queries/school";
 import { getJournalEntry, getRitualState } from "@/server/queries/rituals";
 import { getDayEvents, meetingMinutes } from "@/server/queries/calendar";
@@ -175,8 +176,8 @@ export default async function DnesPage({ searchParams }: DnesPageProps) {
     Vo voľne sa škola neráta vôbec — v ten deň sa nič z toho nedeje, takže by
     rozpočet ubral čas, ktorý máš celý k dispozícii.
   */
-  const jeVolno = schoolBreaks.some((v) => v.fromDate <= date && date <= v.toDate);
-  const hodinyPreRozpocet = jeVolno
+  const volnoDna = schoolBreakOn(date, schoolBreaks);
+  const hodinyPreRozpocet = volnoDna !== null
     ? []
     : schoolLessons.map((lesson) => ({
         date: lesson.date,
@@ -353,10 +354,7 @@ export default async function DnesPage({ searchParams }: DnesPageProps) {
               hodina by prebila každý čas. Je to tá istá pasca ako pri
               prepadnutých úlohách.
             */
-            breakLabel={
-              schoolBreaks.find((v) => v.fromDate <= date && date <= v.toDate)?.label ??
-              null
-            }
+            breakLabel={volnoDna?.label ?? null}
             todayIso={todayIso}
             nowMin={nowMin}
             timeZone={user.settings.timezone}
