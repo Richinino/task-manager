@@ -81,6 +81,26 @@ export const settingsSchema = z.object({
         match: z.string().trim().min(1).max(80),
         tags: z.array(z.string().trim().min(1).max(64)).max(5).default([]),
         context: z.string().trim().max(64).optional(),
+
+        /*
+          Pravidlo vie nastaviť VŠETKO, čo sa dá nastaviť úlohe. Menované veci
+          sa držia pod názvom, nie pod identifikátorom — text pravidiel si píše
+          človek a musí v ňom vidieť, čo tam stojí. Preklad na identifikátory
+          robí server pri zachytení.
+        */
+        priority: z.union([z.literal(1), z.literal(2), z.literal(3)]).optional(),
+        energy: z.enum(["low", "mid", "high"]).optional(),
+        estimateMin: z.number().int().min(1).max(24 * 60).optional(),
+        projectName: z.string().trim().max(120).optional(),
+        areaName: z.string().trim().max(120).optional(),
+        subjectName: z.string().trim().max(120).optional(),
+        schoolKind: z.enum(["homework", "exam"]).optional(),
+        pillarName: z.string().trim().max(120).optional(),
+        skillName: z.string().trim().max(120).optional(),
+        habitName: z.string().trim().max(120).optional(),
+        horizon: z.enum(["day", "week", "month", "someday"]).optional(),
+        isFrog: z.boolean().optional(),
+        staysOnDay: z.boolean().optional(),
       }),
     )
     .max(50)

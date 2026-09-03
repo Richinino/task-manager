@@ -13,7 +13,7 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Plus } from "lucide-react";
 
 import { QuickCapture } from "@/components/capture/quick-capture";
-import type { AutoTagRule } from "@/lib/auto-tag";
+import type { AutoTagRule } from "@/lib/rules";
 import { CommandPalette, type CommandTask } from "@/components/command/command-palette";
 import { NAV_ITEMS } from "@/components/shell/sidebar";
 import { registerShortcuts, type Shortcut } from "@/lib/keyboard";

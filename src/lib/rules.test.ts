@@ -6,7 +6,7 @@ import {
   suggestAutoTags,
   textToRules,
   type AutoTagRule,
-} from "@/lib/auto-tag";
+} from "@/lib/rules";
 
 const RULES: AutoTagRule[] = [
   { match: "trening", tags: ["trening"], context: "domino" },
@@ -177,5 +177,80 @@ describe("rulesToText a textToRules", () => {
 
   it("holé # alebo @ sa neberie ako značka", () => {
     expect(textToRules("x = # @")).toEqual([]);
+  });
+});
+
+describe("pravidlá nastavujú všetko", () => {
+  /*
+    Zámerne TÁ ISTÁ syntax ako v rýchlom zachytení. Kto vie zapísať úlohu,
+    vie napísať aj pravidlo a nemusí sa učiť druhý jazyk.
+  */
+  it("prečíta značky, ktoré pozná aj zachytenie", () => {
+    const [r] = textToRules("fitko = #fitko @fitko +Forma !2 !!vysoka 45m");
+    expect(r).toMatchObject({
+      match: "fitko",
+      tags: ["fitko"],
+      context: "fitko",
+      projectName: "Forma",
+      priority: 2,
+      energy: "high",
+      estimateMin: 45,
+    });
+  });
+
+  it("hodiny prepočíta na minúty", () => {
+    expect(textToRules("x = 2h")[0]?.estimateMin).toBe(120);
+  });
+
+  it("prečíta pomenované veci cez kľúč", () => {
+    const [r] = textToRules(
+      "matika = predmet:MAT skola:du oblast:Škola pilier:Programovanie navyk:Cvičiť",
+    );
+    expect(r).toMatchObject({
+      subjectName: "MAT",
+      schoolKind: "homework",
+      areaName: "Škola",
+      pillarName: "Programovanie",
+      habitName: "Cvičiť",
+    });
+  });
+
+  it("pozná písomku aj horizont", () => {
+    expect(textToRules("t = skola:pisomka")[0]?.schoolKind).toBe("exam");
+    expect(textToRules("t = horizont:niekedy")[0]?.horizon).toBe("someday");
+    expect(textToRules("t = horizont:tyzden")[0]?.horizon).toBe("week");
+  });
+
+  it("pozná žabu aj neprenášanie", () => {
+    const [r] = textToRules("rano = zaba drzi");
+    expect(r).toMatchObject({ isFrog: true, staysOnDay: true });
+  });
+
+  /* Hodnota s medzerami sa píše do úvodzoviek. */
+  it("znesie meno s medzerami v úvodzovkách", () => {
+    expect(textToRules('x = oblast:"Osobný rozvoj"')[0]?.areaName).toBe("Osobný rozvoj");
+  });
+
+  /*
+    Preklep v jednom slove nesmie zahodiť celé pravidlo — zvyšok riadku platí
+    ďalej. Inak by človek pri písaní stratil aj to, čo mal správne.
+  */
+  it("neznámu značku preskočí a zvyšok nechá", () => {
+    const [r] = textToRules("x = #stitok nezmysel:hodnota !1");
+    expect(r).toMatchObject({ tags: ["stitok"], priority: 1 });
+  });
+
+  it("pravidlo, ktoré nič nenastavuje, sa neuloží", () => {
+    expect(textToRules("x = ")).toEqual([]);
+    expect(textToRules("x = nezmysel:hodnota")).toEqual([]);
+  });
+
+  /* Zápis a čítanie musia byť navzájom opačné, inak sa text pri uložení mení. */
+  it("text prežije cestu tam a späť", () => {
+    const zdroj = [
+      "fitko = #fitko @fitko !2 !!vysoka 45m oblast:Zdravie navyk:Cvičiť",
+      "matika = predmet:MAT skola:du horizont:tyzden zaba drzi",
+    ].join("\n");
+    expect(rulesToText(textToRules(zdroj))).toBe(zdroj);
   });
 });
