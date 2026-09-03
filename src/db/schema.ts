@@ -239,6 +239,18 @@ export const tasks = pgTable(
     }),
 
     /**
+     * Pri rozdelenej úlohe: čo z nej bolo v tomto zázname naozaj spravené.
+     *
+     * Názov ostáva pôvodný — ten si zvolil človek a nemá sa meniť pod rukami.
+     * Toto je riadok pod ním, malým: „Napísať referát o Štefánikovi" a pod
+     * tým „úvod a osnova".
+     *
+     * Vlastný stĺpec, nie poznámka: poznámka je na čokoľvek a v zozname sa
+     * nekreslí. Toto sa kreslí vždy a znamená vždy to isté.
+     */
+    completedPart: text("completed_part"),
+
+    /**
      * Školský predmet, ku ktorému úloha patrí.
      *
      * Vďaka nemu si vie úloha nájsť termín sama: „domáca úloha na matiku"
