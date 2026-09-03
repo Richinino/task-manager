@@ -28,6 +28,10 @@ import { matchSubject } from "@/lib/subject-match";
 import { applyRules } from "@/server/apply-rules";
 import { nextLessonDate } from "@/lib/school";
 import { getLessonsForRange, listBreaks } from "@/server/queries/school";
+import {
+  getTask as getTaskWithRelations,
+  type TaskWithRelations,
+} from "@/server/queries/tasks";
 import { nextOccurrence, parseRecurrence } from "@/lib/recurrence";
 import { requireUser } from "@/server/auth-guard";
 
@@ -547,6 +551,27 @@ export async function createTask(
  * deň a čas sa v tom prípade ignorujú, termín (`dueDate`) ostáva, lebo to je
  * fakt, nie plán.
  */
+/**
+ * Načíta jednu úlohu aj s väzbami — na otvorenie detailu odinakiaľ.
+ *
+ * Panel s detailom sa otvára celým objektom úlohy, nie identifikátorom: kto
+ * ho otvára zo zoznamu, ten objekt už má a ušetrí to dotaz. Detail hodiny ho
+ * ale nemá — pozná len úlohy k predmetu v okresanom tvare — a preto si ho
+ * musí dopýtať.
+ */
+export async function loadTaskDetail(
+  id: string,
+): Promise<ActionResult<TaskWithRelations>> {
+  const user = await requireUser();
+  try {
+    const task = await getTaskWithRelations(user.id, id);
+    if (task === null) return { ok: false, error: "Úloha sa nenašla." };
+    return { ok: true, data: task };
+  } catch (error) {
+    return fail(error, "Úlohu sa nepodarilo načítať.");
+  }
+}
+
 export async function quickCapture(
   raw: string,
   opts?: { forceInbox?: boolean; defaultPlannedDate?: string },

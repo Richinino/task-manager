@@ -185,7 +185,12 @@ Otvára sa z mriežky aj z pruhu na „Dnes". Obsahuje:
 - celý názov predmetu a **celé meno vyučujúceho**
 - učebňa, skupina, čas
 - **poznámka k tejto hodine** a **poznámka k predmetu**
-- **úlohy a písomky** z tohto predmetu, najbližšia navrchu
+- **úlohy a písomky** z tohto predmetu, rozdelené na dve kôpky:
+  **„na túto hodinu"** (termín sedí na deň hodiny) a **„ďalšie z predmetu"**.
+  Jeden spoločný zoznam by ten rozdiel skryl — a práve on hovorí, čo si treba
+  doniesť dnes.
+- **klik na úlohu ju otvorí** — najprv sa zavrie hodina, aby sa dva panely
+  neprekrývali a Escape zatváral ten správny
 - **„odpadla"** a **„zmena"** — ručné suplovanie na tri ťuknutia
 
 ---
