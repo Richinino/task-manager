@@ -28,6 +28,10 @@ import { splitTask } from "@/server/actions/tasks";
    Otázka je jedna jediná a znie „čo si spravil", nie „na koľko percent si
    to spravil". Percentá si nikto neodhadne poctivo a nedá sa z nich nič
    vyčítať; veta „úvod a osnova" povie o týždeň presne to, čo sa stalo.
+
+   Názov hotového záznamu ostáva PÔVODNÝ a spravená časť ide pod neho malým.
+   Premenovať úlohu na to, čo z nej vzniklo, by znamenalo, že ju človek
+   o týždeň v zozname nenájde — hľadá ju pod menom, ktoré jej dal sám.
    ═══════════════════════════════════════════════════════════════════════════ */
 
 export interface SplitTaskDialogProps {
@@ -104,8 +108,8 @@ export function SplitTaskDialog({
           <DialogHeader>
             <DialogTitle>Rozdeliť úlohu</DialogTitle>
             <DialogDescription>
-              Časť, ktorú si spravil, sa uzavrie ako hotová a zaráta sa do dnešného
-              dňa. Zvyšok pokračuje pod pôvodným názvom „{taskTitle}“.
+              Vznikne hotový záznam s tým istým názvom „{taskTitle}“ a pod ním
+              malým to, čo si spravil. Zvyšok pokračuje ďalej.
             </DialogDescription>
           </DialogHeader>
 

@@ -158,7 +158,13 @@ function buildSummary(
     parts.push(postponeLabel(task.postponeCount));
   }
 
-  return `Úloha: ${task.title}. ${parts.join(", ")}.`;
+  /* Druhý riadok je v zozname text, nie ozdoba — čítačka ho musí povedať. */
+  const cast =
+    task.completedPart !== null && task.completedPart !== ""
+      ? ` Spravené: ${task.completedPart}.`
+      : "";
+
+  return `Úloha: ${task.title}. ${parts.join(", ")}.${cast}`;
 }
 
 /** Prázdna zmena — stabilná referencia pre `useOptimistic`. */
@@ -321,6 +327,24 @@ export function TaskItem({
   const openDetail = detail ? () => detail.open(shown) : null;
   const titleAction = openDetail ?? (select ? () => select(task.id) : null);
 
+  /*
+    Pri rozdelenej úlohe druhý riadok pod názvom: čo z nej bolo naozaj
+    spravené. Názov ostáva ten, ktorý si zvolil človek — meniť ho pod rukami
+    by znamenalo, že o týždeň nenájde v zozname to, čo hľadá.
+
+    Kreslí sa `min-w-0` a `truncate`, aby dlhá veta nerozťahovala riadok;
+    celá je v `title`, teda po nabehnutí myšou.
+  */
+  const castNode =
+    task.completedPart !== null && task.completedPart !== "" ? (
+      <span
+        title={task.completedPart}
+        className="min-w-0 truncate text-mini leading-tight text-fg-muted"
+      >
+        {task.completedPart}
+      </span>
+    ) : null;
+
   const titleNode = titleAction ? (
     <button
       type="button"
@@ -338,6 +362,30 @@ export function TaskItem({
   ) : (
     <span className={titleClass}>{task.title}</span>
   );
+
+  /*
+    Obal je `flex flex-col` len vtedy, keď je čo pod názov dať. Inak by sa
+    do každého riadku pridal prvok navyše a rozloženia, ktoré počítajú
+    s názvom ako priamym dieťaťom, by sa posunuli.
+  */
+  const titleBlock =
+    castNode === null ? (
+      titleNode
+    ) : (
+      /*
+        MRIEŽKA, nie `flex-col`. Názov má triedy `shrink grow basis-24` písané
+        pre riadok; v stĺpci by `grow` znamenalo rásť do VÝŠKY a názov by sa
+        roztiahol cez celý riadok (namerané 96 px namiesto 20). V mriežke sa
+        `flex-grow` neuplatní vôbec, takže obe deti majú výšku svojho textu.
+
+        `self-center` drží dvojicu na výške riadku aj tam, kde je rodič
+        `display: contents` a obal sa stáva bunkou, ktorá by sa inak roztiahla.
+      */
+      <span className="grid min-w-0 self-center">
+        {titleNode}
+        {castNode}
+      </span>
+    );
 
   const actions = (
     <TaskActions
@@ -400,7 +448,7 @@ export function TaskItem({
         </span>
 
         <div className="flex min-w-0 flex-1 flex-col">
-          {titleNode}
+          {titleBlock}
 
           <span
             aria-hidden="true"
@@ -479,7 +527,7 @@ export function TaskItem({
               {frogMark}
               <PriorityDot priority={shown.priority} size="sm" />
             </span>
-            {titleNode}
+            {titleBlock}
           </div>
           {/*
             Druhý riadok kartičky. Štítky sem nejdú vôbec — stĺpec týždňa má
@@ -583,7 +631,7 @@ export function TaskItem({
       <div className="flex min-w-0 flex-1 flex-col gap-[3px] sm:contents">
         <div className="flex min-w-0 items-center gap-1.5 sm:contents">
           <PriorityDot priority={shown.priority} />
-          {titleNode}
+          {titleBlock}
         </div>
 
         {/*

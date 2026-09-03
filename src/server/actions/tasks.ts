@@ -569,6 +569,12 @@ export async function createTask(
    Rozdelenie vyrobí **hotový záznam o tom, čo si naozaj spravil**, a pôvodnú
    úlohu nechá bežať ďalej so zvyškom.
 
+   Hotový záznam si **necháva pôvodný názov** — ten si zvolil človek a nemá sa
+   meniť pod rukami. To, čo bolo spravené, ide pod neho ako druhý riadok
+   (`completedPart`): „Napísať referát o Štefánikovi" a pod tým „úvod a osnova".
+   V zozname sa tak dá prečítať, čoho sa tá hotová vec týkala, bez toho, aby
+   sa musela otvárať.
+
    ## Prečo hotová časť vzniká ako NOVÁ úloha
 
    Opačné poradie — uzavrieť pôvodnú a založiť novú na zvyšok — by vyzeralo
@@ -588,7 +594,7 @@ export async function createTask(
    ═══════════════════════════════════════════════════════════════════════════ */
 
 const splitSchema = z.object({
-  /** Čo z úlohy je hotové. Stane sa názvom hotového záznamu. */
+  /** Čo z úlohy je hotové. Ide pod pôvodný názov ako druhý riadok. */
   doneTitle: z
     .string()
     .trim()
@@ -623,7 +629,9 @@ export async function splitTask(
     await db.insert(tasks).values({
       id: doneId,
       userId: user.id,
-      title: parsed.data.doneTitle,
+      /* Názov ostáva jeho. Spravená časť je samostatný riadok pod ním. */
+      title: task.title,
+      completedPart: parsed.data.doneTitle,
       status: "done",
       completedAt: new Date(),
       /*
