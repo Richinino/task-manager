@@ -253,3 +253,45 @@ describe("schoolBreakOn", () => {
     expect(schoolBreakOn("2026-09-15", [])).toBeNull();
   });
 });
+
+describe("nextLessonDate — najbližšia hodina", () => {
+  const DNES = "2026-09-02";
+  const hodiny = [
+    { date: "2026-09-03", startTime: "11:50", endTime: "12:35", subjectId: "fyz" },
+    { date: "2026-09-08", startTime: "14:00", endTime: "14:45", subjectId: "fyz" },
+    { date: "2026-09-04", startTime: "08:00", endTime: "08:45", subjectId: "mat" },
+  ];
+
+  /*
+    Zajtrajšia hodina musí vyhrať nad budúcotýždňovou. Pri prvom skutočnom
+    použití vyšiel utorok namiesto štvrtka — preto je tu tento test.
+  */
+  it("vyberie najbližšiu budúcu, nie ktorúkoľvek", () => {
+    expect(nextLessonDate(hodiny, "fyz", DNES, 12 * 60)).toBe("2026-09-03");
+  });
+
+  it("cudzí predmet neberie", () => {
+    expect(nextLessonDate(hodiny, "mat", DNES, 12 * 60)).toBe("2026-09-04");
+    expect(nextLessonDate(hodiny, "che", DNES, 12 * 60)).toBeNull();
+  });
+
+  it("voľno preskočí", () => {
+    expect(
+      nextLessonDate(hodiny, "fyz", DNES, 12 * 60, [
+        { fromDate: "2026-09-03", toDate: "2026-09-03" },
+      ]),
+    ).toBe("2026-09-08");
+  });
+
+  it("odpadnutú hodinu neponúkne", () => {
+    const sOdpadnutou = [{ ...hodiny[0]!, cancelled: true }, hodiny[1]!];
+    expect(nextLessonDate(sOdpadnutou, "fyz", DNES, 12 * 60)).toBe("2026-09-08");
+  });
+
+  /* Dnešná hodina platí len dovtedy, kým nezačala. */
+  it("dnešnú hodinu berie len pred jej začiatkom", () => {
+    const dnes = [{ date: DNES, startTime: "14:00", endTime: "14:45", subjectId: "fyz" }];
+    expect(nextLessonDate(dnes, "fyz", DNES, 10 * 60)).toBe(DNES);
+    expect(nextLessonDate(dnes, "fyz", DNES, 14 * 60 + 10)).toBeNull();
+  });
+});

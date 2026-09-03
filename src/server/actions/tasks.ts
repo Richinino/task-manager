@@ -21,9 +21,12 @@ import {
   type TaskEvent,
   type TaskStatus,
 } from "@/db/schema";
-import { addDays, todayIn } from "@/lib/dates";
+import { addDays, minutesIn, todayIn } from "@/lib/dates";
 import { uuidv7 } from "@/lib/id";
 import { parseCapture } from "@/lib/parse";
+import { matchSubject } from "@/lib/subject-match";
+import { nextLessonDate } from "@/lib/school";
+import { getLessonsForRange, listBreaks } from "@/server/queries/school";
 import { nextOccurrence, parseRecurrence } from "@/lib/recurrence";
 import { requireUser } from "@/server/auth-guard";
 
@@ -612,6 +615,57 @@ export async function quickCapture(
       ? null
       : sanitize(isoTimeSchema, parsed.plannedTime);
 
+    /*
+      Školský predmet z názvu — „Fyzika DU" nájde `FYZ`.
+
+      Rieši sa tu, na serveri, nie v parseri: parser by na to musel poznať
+      zoznam predmetov, a ten je v databáze. Je to tá istá cesta, akou sa už
+      prideľuje projekt podľa názvu.
+
+      Predmet sa priradí AJ BEZ školského slova („Fyzika príklady" je tiež
+      školská úloha). Naopak „DU" bez predmetu ostane len druhom úlohy —
+      hádať, ktorého predmetu sa týka, by znamenalo vymyslieť si to.
+    */
+    let subjectId: string | null = null;
+    const predmety = await db
+      .select({
+        id: schoolSubjects.id,
+        code: schoolSubjects.code,
+        name: schoolSubjects.name,
+      })
+      .from(schoolSubjects)
+      .where(eq(schoolSubjects.userId, user.id));
+    if (predmety.length > 0) {
+      subjectId = matchSubject(title, predmety)?.id ?? null;
+    }
+
+    /*
+      Termín na najbližšiu hodinu toho predmetu — to isté, čo ponúka detail
+      úlohy, len bez klikania. Ponúka sa LEN keď si termín nenapísal sám.
+    */
+    let dueDate = sanitize(isoDateSchema, parsed.dueDate);
+    if (dueDate === null && subjectId !== null) {
+      const todayIsoPreTermin = todayIn(user.settings.timezone);
+      const [hodiny, volna] = await Promise.all([
+        getLessonsForRange(user.id, todayIsoPreTermin, addDays(todayIsoPreTermin, 183)),
+        listBreaks(user.id),
+      ]);
+      dueDate =
+        nextLessonDate(
+          hodiny.map((h) => ({
+            date: h.date,
+            startTime: h.startTime,
+            endTime: h.endTime,
+            cancelled: h.cancelled,
+            subjectId: h.subjectId,
+          })),
+          subjectId,
+          todayIsoPreTermin,
+          minutesIn(user.settings.timezone),
+          volna.map((v) => ({ fromDate: v.fromDate, toDate: v.toDate })),
+        ) ?? null;
+    }
+
     const status: TaskStatus = plannedDate ? "todo" : "inbox";
     const horizon: Horizon = plannedDate
       ? horizonForDate(plannedDate, todayIn(user.settings.timezone))
@@ -624,7 +678,7 @@ export async function quickCapture(
       title: title.slice(0, 500),
       status,
       priority: sanitize(prioritySchema, parsed.priority) ?? 3,
-      dueDate: sanitize(isoDateSchema, parsed.dueDate),
+      dueDate,
       dueTime: sanitize(isoTimeSchema, parsed.dueTime),
       plannedDate,
       plannedTime,
@@ -634,6 +688,9 @@ export async function quickCapture(
       energy: sanitize(energySchema, parsed.energy),
       context: sanitize(contextSchema, clampContext(parsed.context)),
       projectId,
+      subjectId,
+      /* Bez predmetu je „domáca úloha vs písomka" rozlíšenie o ničom. */
+      schoolKind: subjectId === null ? null : (parsed.schoolKind ?? null),
     });
 
     // Štítky sú samostatné riadky — bez tohto kroku by `#tag` z náhľadu
