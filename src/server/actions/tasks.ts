@@ -25,6 +25,7 @@ import { addDays, minutesIn, todayIn } from "@/lib/dates";
 import { uuidv7 } from "@/lib/id";
 import { parseCapture } from "@/lib/parse";
 import { matchSubject } from "@/lib/subject-match";
+import { applyRules } from "@/server/apply-rules";
 import { nextLessonDate } from "@/lib/school";
 import { getLessonsForRange, listBreaks } from "@/server/queries/school";
 import { nextOccurrence, parseRecurrence } from "@/lib/recurrence";
@@ -640,8 +641,29 @@ export async function quickCapture(
     }
 
     /*
+      Vlastné pravidlá z nastavení. Prekladajú sa až tu, lebo držia mená
+      („oblast:Zdravie") a na identifikátory ich vie preložiť len databáza.
+
+      Použije sa z nich len to, čo si človek nenapísal sám — napísané `!1`
+      prebije pravidlo s `!3`. Bez toho by sa nedala spraviť výnimka a človek
+      by musel pravidlo prepisovať kvôli jednej úlohe.
+    */
+    const patch = await applyRules(user.id, title, user.settings.autoTagRules);
+
+    if (projectId === null && patch.projectId !== undefined) {
+      projectId = patch.projectId;
+    }
+    if (subjectId === null && patch.subjectId !== undefined) {
+      subjectId = patch.subjectId;
+    }
+
+    /*
       Termín na najbližšiu hodinu toho predmetu — to isté, čo ponúka detail
       úlohy, len bez klikania. Ponúka sa LEN keď si termín nenapísal sám.
+
+      Až TU, za pravidlami: predmet môže prísť aj z pravidla („matika" →
+      `predmet:MAT`) a taká úloha si termín zaslúži rovnako ako tá, ktorej
+      predmet vypadol z názvu.
     */
     let dueDate = sanitize(isoDateSchema, parsed.dueDate);
     if (dueDate === null && subjectId !== null) {
@@ -666,10 +688,16 @@ export async function quickCapture(
         ) ?? null;
     }
 
+
     const status: TaskStatus = plannedDate ? "todo" : "inbox";
+    /*
+      Naplánovaný deň určuje horizont sám — „na piatok" je proste tento
+      týždeň. Pravidlo sa preto uplatní len na úlohu bez dňa, kde by inak
+      ticho spadla do „tento týždeň", hoci pravidlo hovorí „niekedy".
+    */
     const horizon: Horizon = plannedDate
       ? horizonForDate(plannedDate, todayIn(user.settings.timezone))
-      : "week";
+      : (patch.horizon ?? "week");
 
     const id = uuidv7();
     await db.insert(tasks).values({
@@ -677,20 +705,30 @@ export async function quickCapture(
       userId: user.id,
       title: title.slice(0, 500),
       status,
-      priority: sanitize(prioritySchema, parsed.priority) ?? 3,
+      priority: sanitize(prioritySchema, parsed.priority) ?? patch.priority ?? 3,
       dueDate,
       dueTime: sanitize(isoTimeSchema, parsed.dueTime),
       plannedDate,
       plannedTime,
       horizon,
-      estimateMin: sanitize(estimateSchema, clampEstimate(parsed.estimateMin)),
+      estimateMin:
+        sanitize(estimateSchema, clampEstimate(parsed.estimateMin)) ??
+        patch.estimateMin ??
+        null,
       allDay: parsed.allDay === true,
-      energy: sanitize(energySchema, parsed.energy),
+      energy: sanitize(energySchema, parsed.energy) ?? patch.energy ?? null,
       context: sanitize(contextSchema, clampContext(parsed.context)),
       projectId,
       subjectId,
       /* Bez predmetu je „domáca úloha vs písomka" rozlíšenie o ničom. */
-      schoolKind: subjectId === null ? null : (parsed.schoolKind ?? null),
+      schoolKind:
+        subjectId === null ? null : (parsed.schoolKind ?? patch.schoolKind ?? null),
+      areaId: patch.areaId ?? null,
+      lessonPillarId: patch.lessonPillarId ?? null,
+      lessonSkillId: patch.lessonSkillId ?? null,
+      habitId: patch.habitId ?? null,
+      isFrog: patch.isFrog === true,
+      staysOnDay: patch.staysOnDay === true,
     });
 
     // Štítky sú samostatné riadky — bez tohto kroku by `#tag` z náhľadu

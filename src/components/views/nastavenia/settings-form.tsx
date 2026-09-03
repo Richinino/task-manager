@@ -4,7 +4,7 @@ import { useId, useRef, useState, useTransition } from "react";
 import { LoaderCircle, TriangleAlert } from "lucide-react";
 
 import type { Settings } from "@/lib/settings";
-import { rulesToText, textToRules } from "@/lib/auto-tag";
+import { rulesToText, textToRules } from "@/lib/rules";
 import { placesToText } from "@/lib/places";
 import { Input } from "@/components/ui/input";
 import {
@@ -506,14 +506,52 @@ export function SettingsForm({ settings, pushSetup }: SettingsFormProps) {
       </Section>
 
       <Section
-        title="Automatické štítky"
-        description="Keď názov obsahuje slovo vľavo, zachytenie ponúkne značky vpravo. Ponúkne — nedoplní: kliknutie je na tebe."
+        title="Automatické pravidlá"
+        description="Keď názov obsahuje slovo vľavo, úloha dostane všetko, čo stojí vpravo. Štítok a kontext sa ponúknu na kliknutie, ostatné sa nastaví pri uložení."
       >
         <Field
           id={fieldId("autoTagRules")}
           label="Pravidlá"
-          hint="Riadok na pravidlo, v tvare „slovo = #štítok @kontext“. Na diakritike ani veľkosti písmen nezáleží a slovo sa hľadá aj v skloňovaných tvaroch."
+          hint="Riadok na pravidlo: „slovo = čo nastaviť“. Na diakritike ani veľkosti písmen nezáleží a slovo sa hľadá aj v skloňovaných tvaroch. Čo si napíšeš v úlohe sám, pravidlo neprepíše."
         >
+          {/*
+            Nápoveda je zoznam, nie odsek. Značiek je štrnásť a v súvislom
+            texte by sa hľadala tá jedna, ktorú človek práve potrebuje.
+          */}
+          <details className="mb-2 rounded border border-border bg-surface-2/40 px-3 py-2">
+            <summary className="cursor-pointer text-mini text-fg-muted">
+              Čo všetko sa dá nastaviť
+            </summary>
+            <dl className="mt-2 grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-mini">
+              {[
+                ["#štítok", "štítok"],
+                ["@kontext", "kontext"],
+                ["+projekt", "projekt (medzery ako spojovníky)"],
+                ["!1 !2 !3", "priorita"],
+                ["!!nizka !!stredna !!vysoka", "energia"],
+                ["45m 2h", "odhad"],
+                ["oblast:Zdravie", "oblasť"],
+                ["predmet:MAT", "školský predmet (skratka aj názov)"],
+                ["skola:du skola:pisomka", "domáca úloha alebo písomka"],
+                ["pilier:Programovanie", "pilier učenia"],
+                ["zrucnost:TypeScript", "zručnosť (pilier sa doplní sám)"],
+                ["navyk:Cvičiť", "návyk"],
+                ["horizont:niekedy", "horizont — den, tyzden, mesiac, niekedy"],
+                ["zaba", "priorita dňa"],
+                ["drzi", "neprenášať do ďalšieho dňa"],
+              ].map(([znacka, popis]) => (
+                <div key={znacka} className="contents">
+                  <dt className="font-mono text-fg">{znacka}</dt>
+                  <dd className="text-fg-muted">{popis}</dd>
+                </div>
+              ))}
+            </dl>
+            <p className="mt-2 text-mini text-fg-subtle">
+              Meno s medzerou patrí do úvodzoviek:{" "}
+              <code className="font-mono">oblast:&quot;Osobný rozvoj&quot;</code>
+            </p>
+          </details>
+
           <Textarea
             id={fieldId("autoTagRules")}
             value={rulesText}

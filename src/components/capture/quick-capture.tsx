@@ -25,7 +25,7 @@ import { parseCapture, type ParsedCapture } from "@/lib/parse";
 import { cn } from "@/lib/utils";
 import { fold } from "@/lib/fold";
 import { activeTrigger, applySuggestion } from "@/lib/capture-suggest";
-import { hasSuggestion, suggestAutoTags, type AutoTagRule } from "@/lib/auto-tag";
+import { hasSuggestion, suggestAutoTags, type AutoTagRule } from "@/lib/rules";
 import { createProject } from "@/server/actions/structure";
 import { createIdea } from "@/server/actions/ideas";
 import { quickCapture } from "@/server/actions/tasks";
