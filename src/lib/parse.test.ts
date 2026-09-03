@@ -706,3 +706,47 @@ describe("celý deň", () => {
     expectAligned(vstup, p(vstup));
   });
 });
+
+describe("domáca úloha a písomka", () => {
+  /*
+    „Fyzika DU" je to, ako si to človek naozaj napíše. Zapisovať dvakrát to
+    isté — raz slovom, raz kliknutím do políčka — je presne ten krok, kvôli
+    ktorému sa appky prestanú používať.
+  */
+  it("rozpozná DU ako domácu úlohu", () => {
+    expect(parseCapture("Fyzika DU na štvrtok").schoolKind).toBe("homework");
+    expect(parseCapture("dú z matiky").schoolKind).toBe("homework");
+    expect(parseCapture("domáca úloha z chémie").schoolKind).toBe("homework");
+  });
+
+  it("rozpozná písomku", () => {
+    expect(parseCapture("písomka z matiky").schoolKind).toBe("exam");
+    expect(parseCapture("test z dejepisu").schoolKind).toBe("exam");
+    expect(parseCapture("skúšanie zo slovenčiny").schoolKind).toBe("exam");
+  });
+
+  /*
+    Hľadá sa celé slovo. Bez toho by „duch" aj „dudy" boli domáca úloha
+    a človek by nevedel, prečo mu appka pripisuje školu k nákupu.
+  */
+  it("vnútri iného slova sa nespustí", () => {
+    expect(parseCapture("duch v dome").schoolKind).toBeUndefined();
+    expect(parseCapture("kúpiť dudy").schoolKind).toBeUndefined();
+    expect(parseCapture("pretestovať to").schoolKind).toBeUndefined();
+  });
+
+  it("bez školského slova nenastaví nič", () => {
+    expect(parseCapture("kúpiť mlieko").schoolKind).toBeUndefined();
+  });
+
+  /* Prvý výskyt vyhráva — hádať medzi dvomi by nastavilo, čo nikto nenapísal. */
+  it("pri oboch platí prvé", () => {
+    expect(parseCapture("Fyzika DU aj písomka").schoolKind).toBe("homework");
+    expect(parseCapture("písomka a potom DU").schoolKind).toBe("exam");
+  });
+
+  /* Rozpoznané slovo sa z názvu VYNECHÁ, ako každý iný token. */
+  it("slovo z názvu vypadne", () => {
+    expect(parseCapture("Fyzika DU").title).toBe("Fyzika");
+  });
+});

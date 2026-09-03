@@ -44,7 +44,8 @@ export type ParsedTokenKind =
   | "energy"
   | "context"
   | "tag"
-  | "project";
+  | "project"
+  | "schoolKind";
 
 export interface ParsedToken {
   kind: ParsedTokenKind;
@@ -69,6 +70,18 @@ export interface ParsedCapture {
   context?: string;
   tags: string[];
   projectName?: string;
+  /**
+   * Domáca úloha, alebo písomka — z textu, nie z výberu.
+   *
+   * „Fyzika DU" je to, ako si to človek naozaj napíše. Zapisovať dvakrát to
+   * isté (raz slovom, raz kliknutím do políčka) je presne ten krok, kvôli
+   * ktorému sa appky prestanú používať.
+   *
+   * Predmet sa tu NEHÁDA. Na to treba vedieť, aké predmety človek má, a to
+   * je databáza — parser je čistá funkcia. Predmet dopĺňa obrazovka, ktorá
+   * zoznam predmetov už aj tak drží.
+   */
+  schoolKind?: "homework" | "exam";
   tokens: ParsedToken[];
 }
 
@@ -350,6 +363,21 @@ const RE_CONTEXT = /(?<![\p{L}\p{N}])@([\p{L}\p{N}_-]+)/gu;
 const RE_TAG = /(?<![\p{L}\p{N}])#([\p{L}\p{N}_-]+)/gu;
 
 const RE_PROJECT = /(?<![\p{L}\p{N}])\+([\p{L}\p{N}_]+(?:-[\p{L}\p{N}_]+)*)/gu;
+
+/**
+ * Domáca úloha alebo písomka — tak, ako si to človek napíše.
+ *
+ * `du` a `dú` sú v školskom kontexte jednoznačné; hľadajú sa ako celé slovo,
+ * takže „duch" ani „dudy" ich nespustia. Text je už zbavený diakritiky, preto
+ * stačí `du`.
+ *
+ * „Test" je vedome v písomkách. Áno, dá sa napísať „otestovať appku" — ale
+ * tam je to slovo v inom tvare a celé slovo `test` samo o sebe znamená
+ * v škole skúšku.
+ */
+const RE_HOMEWORK = /(?<![\p{L}\p{N}])(du|domaca uloha|domacu ulohu|dom\. uloha)(?![\p{L}\p{N}])/gu;
+
+const RE_EXAM = /(?<![\p{L}\p{N}])(pisomka|pisomku|pisomna|test|skusanie|skuska|skusku)(?![\p{L}\p{N}])/gu;
 
 /**
  * Predložka tesne pred rozpoznaným úsekom. Kotví sa na koniec predpony,
@@ -848,6 +876,30 @@ function parseInner(
     });
   });
 
+  eachMatch(RE_HOMEWORK, folded, (m) => {
+    const end = m.index + m[0].length;
+    candidates.push({
+      kind: "schoolKind",
+      start: m.index,
+      end,
+      weight: W_MARKER,
+      label: "domáca úloha",
+      text: "homework",
+    });
+  });
+
+  eachMatch(RE_EXAM, folded, (m) => {
+    const end = m.index + m[0].length;
+    candidates.push({
+      kind: "schoolKind",
+      start: m.index,
+      end,
+      weight: W_MARKER,
+      label: "písomka",
+      text: "exam",
+    });
+  });
+
   /* ── hranice tokenov ────────────────────────────────────────────────── */
 
   // Token sa zvýrazňuje priamo v inpute, takže jeho rozsah nesmie obsahovať
@@ -933,6 +985,23 @@ function parseInner(
         out.context = c.text;
         contributing.push(c);
         break;
+      case "schoolKind": {
+        /*
+          Prvý výskyt vyhráva. „DU aj písomka" v jednom názve je preklep alebo
+          dve úlohy naraz, a hádať, ktorá z nich to je, by znamenalo nastaviť
+          niečo, čo človek nenapísal.
+        */
+        if (out.schoolKind !== undefined) continue;
+        out.schoolKind = c.text === "exam" ? "exam" : "homework";
+        /*
+          Slovo sa z názvu vystrihne, ako každý iný token. Nechať ho tam by
+          znamenalo, že tá istá informácia je v názve aj v poli — a riadok
+          úlohy už písomku aj tak označuje sám.
+        */
+        contributing.push(c);
+        break;
+      }
+
       case "project":
         if (out.projectName !== undefined) continue;
         out.projectName = c.text;
