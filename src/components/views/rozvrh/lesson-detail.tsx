@@ -4,6 +4,9 @@ import { useEffect, useState, useTransition } from "react";
 import { CalendarX2, LoaderCircle, RotateCcw, Replace } from "lucide-react";
 
 import { areaColorValue } from "@/components/task/area-dot";
+import { useTaskDetail } from "@/components/task/task-detail-provider";
+import { loadTaskDetail } from "@/server/actions/tasks";
+import type { SubjectTask } from "@/server/queries/school";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -70,6 +73,12 @@ export function LessonDetail({ lessonId, onClose, todayIso }: LessonDetailProps)
     vykresľovania; takto sa pri inej hodine proste nezhodne a nevykreslí.
   */
   const [meniSaPre, setMeniSaPre] = useState<string | null>(null);
+  /*
+    Panel s detailom úlohy žije v layoute a otvára sa CELÝM objektom úlohy.
+    Detail hodiny ho nemá — pozná len okresaný tvar — takže si ho dopýta.
+    Mimo providera (náhľady) je `null` a preklik sa proste neponúkne.
+  */
+  const detailUlohy = useTaskDetail();
   const [isPending, startTransition] = useTransition();
 
   useEffect(() => {
@@ -98,6 +107,10 @@ export function LessonDetail({ lessonId, onClose, todayIso }: LessonDetailProps)
     nájsť podľa nej. Pridávať ďalší stĺpec do dotazu len kvôli tomuto by
     znamenalo ťahať id, ktoré nikto iný nepotrebuje.
   */
+  const vsetkyUlohy = data?.tasks ?? [];
+  const naTutoHodinu = vsetkyUlohy.filter((t) => t.dueDate === lesson?.date);
+  const ostatne = vsetkyUlohy.filter((t) => t.dueDate !== lesson?.date);
+
   const teacherId =
     teachers.find((u) => u.code === lesson?.teacherCode)?.id ?? null;
 
@@ -128,6 +141,25 @@ export function LessonDetail({ lessonId, onClose, todayIso }: LessonDetailProps)
       const znova = await loadLessonDetail(lessonId);
       if (znova.ok) setNacitane({ id: lessonId, data: znova.data });
       poUspechu?.();
+    });
+  }
+
+  function otvorUlohu(id: string): void {
+    if (detailUlohy === null || isPending) return;
+    setError(null);
+
+    startTransition(async () => {
+      const result = await loadTaskDetail(id);
+      if (!result.ok) {
+        setError(result.error);
+        return;
+      }
+      /*
+        Najprv sa zavrie hodina, až potom otvorí úloha. Dva panely na sebe
+        by sa prekrývali a Escape by zatváral ten nesprávny.
+      */
+      onClose();
+      detailUlohy.open(result.data);
     });
   }
 
@@ -214,36 +246,37 @@ export function LessonDetail({ lessonId, onClose, todayIso }: LessonDetailProps)
                 />
               </div>
 
-              <div className="flex flex-col gap-1.5">
-                <h3 className="label text-fg-subtle">Z tohto predmetu</h3>
-                {(data?.tasks ?? []).length === 0 ? (
-                  <p className="text-mini text-fg-muted">
-                    Nič otvorené. Úloha, ktorej dáš tento predmet, sa objaví tu.
-                  </p>
-                ) : (
-                  <ul className="flex flex-col">
-                    {(data?.tasks ?? []).map((task) => (
-                      <li
-                        key={task.id}
-                        className="flex min-w-0 items-center gap-2 border-b border-border/60 py-1.5 last:border-b-0"
-                      >
-                        <span className="min-w-0 flex-1 truncate text-body text-fg">
-                          {task.title}
-                        </span>
-                        {task.schoolKind === "exam" ? (
-                          <span className="shrink-0 font-mono text-micro uppercase tracking-[0.08em] text-warn">
-                            písomka
-                          </span>
-                        ) : null}
-                        {task.dueDate ? (
-                          <span className="shrink-0 font-mono text-mini tabular-nums text-fg-muted">
-                            {formatRelativeSk(task.dueDate, new Date(`${todayIso}T12:00:00`))}
-                          </span>
-                        ) : null}
-                      </li>
-                    ))}
-                  </ul>
-                )}
+              {/*
+                ÚLOHY K PREDMETU
+
+                Rozdelené na dve kôpky, a to je celý zmysel tejto sekcie: „na
+                túto hodinu" je to, čo si musíš doniesť DNES, ostatné je
+                kontext. Jeden spoločný zoznam by ten rozdiel skryl a človek
+                by ho musel hľadať očami cez dátumy.
+
+                Rozhoduje termín rovný dňu hodiny — nie predmet, ten je
+                spoločný pre obe kôpky.
+              */}
+              <div className="flex flex-col gap-3">
+                {naTutoHodinu.length > 0 ? (
+                  <ZoznamUloh
+                    nadpis="Na túto hodinu"
+                    ulohy={naTutoHodinu}
+                    todayIso={todayIso}
+                    onOpen={detailUlohy === null ? null : otvorUlohu}
+                    zvyraznene
+                  />
+                ) : null}
+
+                {ostatne.length > 0 || naTutoHodinu.length === 0 ? (
+                  <ZoznamUloh
+                    nadpis={naTutoHodinu.length > 0 ? "Ďalšie z predmetu" : "Z tohto predmetu"}
+                    ulohy={ostatne}
+                    todayIso={todayIso}
+                    onOpen={detailUlohy === null ? null : otvorUlohu}
+                    prazdneHlasenie="Nič otvorené. Úloha, ktorej dáš tento predmet, sa objaví tu."
+                  />
+                ) : null}
               </div>
 
               {/*
@@ -424,5 +457,91 @@ function PoznamkaPole({
         placeholder={placeholder}
       />
     </label>
+  );
+}
+
+/**
+ * Jedna kôpka úloh k predmetu.
+ *
+ * Riadok je tlačidlo, keď je kam prekliknúť — úloha, na ktorú sa človek
+ * pozerá, je presne tá, ktorú chce otvoriť, a nútiť ho hľadať ju znova
+ * v zozname dňa je krok navyše. Mimo providera panela (náhľady) je `onOpen`
+ * `null` a riadok ostane obyčajným textom, nie mŕtvym tlačidlom.
+ */
+function ZoznamUloh({
+  nadpis,
+  ulohy,
+  todayIso,
+  onOpen,
+  zvyraznene = false,
+  prazdneHlasenie,
+}: {
+  nadpis: string;
+  ulohy: readonly SubjectTask[];
+  todayIso: string;
+  onOpen: ((id: string) => void) | null;
+  /** Kôpka „na túto hodinu" — odlíšená rámikom, nie len poradím. */
+  zvyraznene?: boolean;
+  prazdneHlasenie?: string;
+}) {
+  if (ulohy.length === 0 && prazdneHlasenie === undefined) return null;
+
+  return (
+    <section className="flex flex-col gap-1.5">
+      <h3 className={cn("label", zvyraznene ? "text-warn" : "text-fg-subtle")}>
+        {nadpis}
+      </h3>
+
+      {ulohy.length === 0 ? (
+        <p className="text-mini text-fg-muted">{prazdneHlasenie}</p>
+      ) : (
+        <ul
+          className={cn(
+            "flex flex-col",
+            zvyraznene && "rounded border border-warn/40 bg-warn/5 px-2",
+          )}
+        >
+          {ulohy.map((task) => {
+            const obsah = (
+              <>
+                <span className="min-w-0 flex-1 truncate text-body text-fg">
+                  {task.title}
+                </span>
+                {task.schoolKind === "exam" ? (
+                  <span className="shrink-0 font-mono text-micro uppercase tracking-[0.08em] text-warn">
+                    písomka
+                  </span>
+                ) : null}
+                {task.dueDate ? (
+                  <span className="shrink-0 font-mono text-mini tabular-nums text-fg-muted">
+                    {formatRelativeSk(task.dueDate, new Date(`${todayIso}T12:00:00`))}
+                  </span>
+                ) : null}
+              </>
+            );
+
+            return (
+              <li
+                key={task.id}
+                className="min-w-0 border-b border-border/60 last:border-b-0"
+              >
+                {onOpen === null ? (
+                  <span className="flex min-w-0 items-center gap-2 py-1.5">{obsah}</span>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => onOpen(task.id)}
+                    aria-label={`Otvoriť úlohu ${task.title}`}
+                    className="flex min-h-11 w-full min-w-0 items-center gap-2 py-1.5 text-left hover:text-fg sm:min-h-9"
+                  >
+                    {obsah}
+                  </button>
+                )}
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </section>
   );
 }
