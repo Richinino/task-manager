@@ -18,6 +18,7 @@ import {
   Ellipsis,
   Hourglass,
   Pencil,
+  Split,
   Star,
   Sun,
   Sunrise,
@@ -26,6 +27,7 @@ import {
 } from "lucide-react";
 
 import { addDays, formatDayMonthSk, formatDuration, startOfWeek } from "@/lib/dates";
+import { SplitTaskDialog } from "@/components/task/split-task-dialog";
 import { cn } from "@/lib/utils";
 import { ESTIMATE_CHOICES } from "@/components/views/sablony/template-labels";
 import { Button } from "@/components/ui/button";
@@ -648,11 +650,24 @@ export function TaskActions({
 
   /* ── menu ────────────────────────────────────────────────────────────── */
 
+  /*
+    Rozdelenie je vlastný panel, nie ďalšia položka menu: pýta sa otázku
+    a menu na otázky nie je miesto.
+  */
+  const [rozdelujeSa, setRozdelujeSa] = useState(false);
+
   const menuLabel = `Akcie úlohy „${task.title}“`;
   const nextWeek = addDays(startOfWeek(todayIso), 7);
 
   return (
     <span className={cn("relative flex shrink-0 items-center", className)}>
+      <SplitTaskDialog
+        taskId={rozdelujeSa ? task.id : null}
+        taskTitle={task.title}
+        todayIso={todayIso}
+        onClose={() => setRozdelujeSa(false)}
+      />
+
       <Popover open={open} onOpenChange={setOpen}>
         <PopoverTrigger asChild>
           <button
@@ -727,18 +742,33 @@ export function TaskActions({
             onKeyDown={handleMenuKeyDown}
           >
             {detail ? (
-              <>
-                <MenuItem
-                  icon={<Pencil size={14} />}
-                  label="Upraviť…"
-                  onSelect={() => {
-                    setOpen(false);
-                    detail.open(task);
-                  }}
-                />
-                <MenuSeparator />
-              </>
+              <MenuItem
+                icon={<Pencil size={14} />}
+                label="Upraviť…"
+                onSelect={() => {
+                  setOpen(false);
+                  detail.open(task);
+                }}
+              />
             ) : null}
+
+            {/*
+              Rozdeliť sa dá len rozrobená úloha. Pri hotovej nie je čo deliť
+              a pri zahodenej by to vyrobilo záznam o práci, ktorú si zrušil.
+            */}
+            {task.status !== "done" && task.status !== "dropped" ? (
+              <MenuItem
+                icon={<Split size={14} />}
+                label="Rozdeliť…"
+                hint="hotové + zvyšok"
+                onSelect={() => {
+                  setOpen(false);
+                  setRozdelujeSa(true);
+                }}
+              />
+            ) : null}
+
+            {detail || task.status !== "done" ? <MenuSeparator /> : null}
 
             <MenuGroup label="Naplánovať">
               <MenuItem

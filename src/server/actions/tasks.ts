@@ -559,6 +559,124 @@ export async function createTask(
  * ale nemá — pozná len úlohy k predmetu v okresanom tvare — a preto si ho
  * musí dopýtať.
  */
+/* ═══════════════════════════════════════════════════════════════════════════
+   ROZDELENIE ÚLOHY
+
+   Úloha, ktorú si začal a nestihol dokončiť, sa na druhý deň hlási ako
+   nespravená. Nie je to pravda a je to demotivujúce: spravená bola, len nie
+   celá — a appka podľa vlastného sľubu nemá dávať pocit, že si pozadu.
+
+   Rozdelenie vyrobí **hotový záznam o tom, čo si naozaj spravil**, a pôvodnú
+   úlohu nechá bežať ďalej so zvyškom.
+
+   ## Prečo hotová časť vzniká ako NOVÁ úloha
+
+   Opačné poradie — uzavrieť pôvodnú a založiť novú na zvyšok — by vyzeralo
+   rovnako, ale zahodilo by všetko, čo na pôvodnej visí: podúlohy, prepojenia,
+   opakovanie, pripomienky, históriu udalostí. Pokračovanie je tá istá vec,
+   čo predtým, takže si má nechať svoju totožnosť. Nová je tá spravená časť —
+   tá je záznam o práci a nič ťahať nepotrebuje.
+
+   ## Čo hotová časť zdedí
+
+   Všetko, čo hovorí, AKÝ druh práce to bol: oblasť, projekt, predmet, druh
+   školskej úlohy, kontext, pilier, zručnosť, návyk.
+
+   Áno, znamená to, že polovica učenia sa zaráta ako lekcia a druhá polovica
+   neskôr ako ďalšia. To je správne — boli to dve sedenia. Nezarátať prvé
+   z nich by bola presne tá krivda, kvôli ktorej rozdelenie vzniklo.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+const splitSchema = z.object({
+  /** Čo z úlohy je hotové. Stane sa názvom hotového záznamu. */
+  doneTitle: z
+    .string()
+    .trim()
+    .min(1, "Napíš, čo z toho je hotové.")
+    .max(500, "Názov je príliš dlhý."),
+  /** Kedy sa pokračuje. `undefined` deň pôvodnej úlohy nemení. */
+  remainderDate: isoDateSchema.nullish(),
+});
+
+export type SplitTaskInput = z.infer<typeof splitSchema>;
+
+export async function splitTask(
+  id: string,
+  input: SplitTaskInput,
+): Promise<ActionResult<{ doneId: string }>> {
+  const user = await requireUser();
+  try {
+    const parsed = splitSchema.safeParse(input);
+    if (!parsed.success) return invalid(parsed.error, "Rozdelenie sa nepodarilo.");
+
+    const db = await getDb();
+    const task = await loadTask(db, user.id, id);
+    if (task === undefined) return { ok: false, error: "Úloha sa nenašla." };
+
+    if (task.status === "done") {
+      return { ok: false, error: "Hotová úloha sa nedá rozdeliť." };
+    }
+
+    const todayIso = todayIn(user.settings.timezone);
+    const doneId = uuidv7();
+
+    await db.insert(tasks).values({
+      id: doneId,
+      userId: user.id,
+      title: parsed.data.doneTitle,
+      status: "done",
+      completedAt: new Date(),
+      /*
+        Hotová časť patrí do dňa, v ktorom vznikla — dnes. Deň pôvodnej úlohy
+        môže byť aj minulý a záznam o dnešnej práci by sa potom v prehľade dňa
+        neobjavil, hoci sa práve stala.
+      */
+      plannedDate: todayIso,
+      horizon: "day",
+      priority: task.priority,
+      energy: task.energy,
+      /* Odhad sa nekopíruje: koľko trvala hotová časť, vie len človek. */
+      areaId: task.areaId,
+      projectId: task.projectId,
+      context: task.context,
+      subjectId: task.subjectId,
+      schoolKind: task.schoolKind,
+      lessonPillarId: task.lessonPillarId,
+      lessonSkillId: task.lessonSkillId,
+      habitId: task.habitId,
+    });
+
+    await db.insert(taskEvents).values({
+      id: uuidv7(),
+      userId: user.id,
+      taskId: doneId,
+      type: "created",
+      toValue: parsed.data.doneTitle,
+    });
+
+    /* Zvyšok pokračuje. Deň sa mení len vtedy, keď oň človek požiadal. */
+    if (parsed.data.remainderDate !== undefined) {
+      const remainderDate = parsed.data.remainderDate ?? null;
+      await db
+        .update(tasks)
+        .set({
+          plannedDate: remainderDate,
+          horizon:
+            remainderDate === null
+              ? task.horizon
+              : horizonForDate(remainderDate, todayIso),
+          updatedAt: new Date(),
+        })
+        .where(and(eq(tasks.id, id), eq(tasks.userId, user.id)));
+    }
+
+    revalidateViews();
+    return { ok: true, data: { doneId } };
+  } catch (error) {
+    return fail(error, "Rozdelenie sa nepodarilo.");
+  }
+}
+
 export async function loadTaskDetail(
   id: string,
 ): Promise<ActionResult<TaskWithRelations>> {
