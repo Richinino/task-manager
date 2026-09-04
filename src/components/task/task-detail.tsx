@@ -56,6 +56,11 @@ import {
 import { nextLessonForSubject } from "@/server/actions/school";
 import { syncLinks } from "@/server/actions/links";
 import { usePostponeGuard } from "@/components/task/postpone-guard";
+import {
+  SCHOOL_KINDS,
+  schoolKindLabel,
+  type SchoolKind,
+} from "@/lib/school-kind";
 import type { TaskWithRelations } from "@/server/queries/tasks";
 
 /* ═══════════════════════════════════════════════════════════════════════════
@@ -115,7 +120,7 @@ interface Draft {
   lessonSkillId: string | null;
   habitId: string | null;
   subjectId: string | null;
-  schoolKind: "homework" | "exam" | null;
+  schoolKind: SchoolKind | null;
   isFrog: boolean;
   postponeCount: number;
 }
@@ -1207,11 +1212,17 @@ export function TaskDetail({
                     ukázať — na písomku sa človek učí postupne, úlohu spraví
                     večer predtým. Preto je to voľba, nie samostatný typ záznamu.
                   */}
+                  {/*
+                    Štyri druhy školskej práce. Učenie a opakovanie sú zámerne
+                    zvlášť: „naučiť sa kapitolu" a „prebehnúť si kapitolu" sú
+                    dve rôzne dĺžky večera a keby ich appka miešala, plánovanie
+                    by klamalo v oboch smeroch naraz.
+                  */}
                   {draft.subjectId !== null ? (
                     <Select
                       value={draft.schoolKind ?? "homework"}
                       onValueChange={(value) => {
-                        const schoolKind = value === "exam" ? "exam" : "homework";
+                        const schoolKind = value as SchoolKind;
                         commit(
                           { schoolKind },
                           () => updateTask(task.id, { schoolKind }),
@@ -1219,12 +1230,15 @@ export function TaskDetail({
                         );
                       }}
                     >
-                      <SelectTrigger aria-label="Domáca úloha alebo písomka">
+                      <SelectTrigger aria-label="Druh školskej práce">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="homework">Domáca úloha</SelectItem>
-                        <SelectItem value="exam">Písomka</SelectItem>
+                        {SCHOOL_KINDS.map((kind) => (
+                          <SelectItem key={kind} value={kind}>
+                            {schoolKindLabel(kind)}
+                          </SelectItem>
+                        ))}
                       </SelectContent>
                     </Select>
                   ) : null}

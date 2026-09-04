@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+import { SCHOOL_KINDS } from "@/lib/school-kind";
+
 /**
  * Používateľské nastavenia. Uložené ako jsonb v `users.settings`,
  * aby sa dali rozširovať bez migrácie.
@@ -94,7 +96,7 @@ export const settingsSchema = z.object({
         projectName: z.string().trim().max(120).optional(),
         areaName: z.string().trim().max(120).optional(),
         subjectName: z.string().trim().max(120).optional(),
-        schoolKind: z.enum(["homework", "exam"]).optional(),
+        schoolKind: z.enum(SCHOOL_KINDS).optional(),
         pillarName: z.string().trim().max(120).optional(),
         skillName: z.string().trim().max(120).optional(),
         habitName: z.string().trim().max(120).optional(),

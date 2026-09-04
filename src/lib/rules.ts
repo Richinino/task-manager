@@ -1,4 +1,5 @@
 import { fold } from "@/lib/fold";
+import type { SchoolKind } from "@/lib/school-kind";
 import { parseCapture } from "@/lib/parse";
 
 /**
@@ -35,7 +36,7 @@ export interface AutoTagRule {
   areaName?: string;
   /** Školský predmet — skratka alebo celý názov. */
   subjectName?: string;
-  schoolKind?: "homework" | "exam";
+  schoolKind?: SchoolKind;
   /** Lekcia: pilier učenia a prípadne zručnosť pod ním. */
   pillarName?: string;
   skillName?: string;
@@ -197,7 +198,7 @@ const HORIZONT_NA_SLOVO: Record<string, string> = {
   someday: "niekedy",
 };
 
-const SKOLA_ZO_SLOVA: Record<string, "homework" | "exam" | undefined> = {
+const SKOLA_ZO_SLOVA: Record<string, SchoolKind | undefined> = {
   du: "homework",
   uloha: "homework",
   homework: "homework",
@@ -205,6 +206,23 @@ const SKOLA_ZO_SLOVA: Record<string, "homework" | "exam" | undefined> = {
   test: "exam",
   skuska: "exam",
   exam: "exam",
+  ucit: "study",
+  "ucit sa": "study",
+  naucit: "study",
+  study: "study",
+  zopakovat: "review",
+  opakovat: "review",
+  prejst: "review",
+  prebehnut: "review",
+  review: "review",
+};
+
+/** Späť do textu — jedno slovo na druh, to najkratšie zrozumiteľné. */
+const SKOLA_NA_SLOVO: Record<SchoolKind, string> = {
+  homework: "du",
+  exam: "pisomka",
+  study: "ucit",
+  review: "zopakovat",
 };
 
 /** Značky tvaru `kluc:hodnota`, ktoré nesú meno alebo slovo. */
@@ -240,9 +258,7 @@ export function rulesToText(rules: readonly AutoTagRule[]): string {
           : []),
         ...(rule.areaName ? [`oblast:${rule.areaName}`] : []),
         ...(rule.subjectName ? [`predmet:${rule.subjectName}`] : []),
-        ...(rule.schoolKind
-          ? [`skola:${rule.schoolKind === "exam" ? "pisomka" : "du"}`]
-          : []),
+        ...(rule.schoolKind ? [`skola:${SKOLA_NA_SLOVO[rule.schoolKind]}`] : []),
         ...(rule.pillarName ? [`pilier:${rule.pillarName}`] : []),
         ...(rule.skillName ? [`zrucnost:${rule.skillName}`] : []),
         ...(rule.habitName ? [`navyk:${rule.habitName}`] : []),

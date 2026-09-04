@@ -34,8 +34,27 @@ export const horizon = pgEnum("horizon", ["day", "week", "month", "someday"]);
 /** Koľko energie si úloha vyžaduje. */
 export const energy = pgEnum("energy", ["low", "mid", "high"]);
 
-/** Domáca úloha, alebo písomka. Líšia sa tým, ako skoro sa majú ukázať. */
-export const schoolItemKind = pgEnum("school_item_kind", ["homework", "exam"]);
+/**
+ * Aký druh školskej práce úloha je.
+ *
+ * Líšia sa tým, ako skoro sa majú ukázať a koľko práce znamenajú:
+ *
+ * - `homework` — domáca úloha na najbližšiu hodinu
+ * - `exam` — písomka; treba ju vidieť dlho dopredu, lebo sa na ňu učí postupne
+ * - `study` — **učiť sa**: nová látka, ktorú treba pochopiť
+ * - `review` — **zopakovať**: látka, ktorú už vieš a len si ju pre istotu
+ *   prebehneš
+ *
+ * Rozdiel medzi poslednými dvomi je zámerný a nie je kozmetický. „Naučiť sa
+ * kapitolu" a „prebehnúť si kapitolu" sú dve rôzne dĺžky večera a keby ich
+ * appka miešala, plánovanie by klamalo v oboch smeroch.
+ */
+export const schoolItemKind = pgEnum("school_item_kind", [
+  "homework",
+  "exam",
+  "study",
+  "review",
+]);
 
 export const projectStatus = pgEnum("project_status", [
   "active",

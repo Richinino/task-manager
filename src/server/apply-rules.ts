@@ -13,6 +13,7 @@ import {
 } from "@/db/schema";
 import { fold } from "@/lib/fold";
 import type { AutoTagRule } from "@/lib/rules";
+import type { SchoolKind } from "@/lib/school-kind";
 
 /**
  * Preklad pravidiel na hodnoty, ktoré sa dajú zapísať do úlohy.
@@ -43,7 +44,7 @@ export interface RulePatch {
   projectId?: string;
   areaId?: string;
   subjectId?: string;
-  schoolKind?: "homework" | "exam";
+  schoolKind?: SchoolKind;
   lessonPillarId?: string;
   lessonSkillId?: string;
   habitId?: string;

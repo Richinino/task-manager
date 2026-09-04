@@ -12,6 +12,11 @@ import {
 } from "@/lib/recurrence";
 import { cn } from "@/lib/utils";
 import { AreaDot, areaColorValue, areaLabel } from "@/components/task/area-dot";
+import {
+  schoolKindHighlighted,
+  schoolKindInRow,
+  schoolKindShort,
+} from "@/lib/school-kind";
 import { energyLabel, energyText } from "@/components/task/energy-badge";
 import { EstimateChip, estimateLabel } from "@/components/task/estimate-chip";
 import {
@@ -139,10 +144,11 @@ function buildSummary(
     parts.push(`podúlohy ${task.doneSubtaskCount} z ${task.subtaskCount}`);
   }
   if (task.subject) {
+    const nazovPredmetu = task.subject.name ?? task.subject.code;
     parts.push(
-      task.schoolKind === "exam"
-        ? `písomka z predmetu ${task.subject.name ?? task.subject.code}`
-        : `predmet ${task.subject.name ?? task.subject.code}`,
+      task.schoolKind === null
+        ? `predmet ${nazovPredmetu}`
+        : `${schoolKindShort(task.schoolKind)}, predmet ${nazovPredmetu}`,
     );
   }
   // Aj značka návyku je len znak — čítačka ju musí dostať slovami.
@@ -713,7 +719,9 @@ export function TaskItem({
           {task.subject !== null ? (
             <span
               title={`predmet ${task.subject.name ?? task.subject.code}${
-                task.schoolKind === "exam" ? " — písomka" : ""
+                task.schoolKind === null
+                  ? ""
+                  : ` — ${schoolKindShort(task.schoolKind)}`
               }`}
               className="order-4 flex shrink-0 items-center gap-1 sm:order-none"
             >
@@ -725,10 +733,24 @@ export function TaskItem({
               <span
                 className={cn(
                   "whitespace-nowrap text-mini",
-                  task.schoolKind === "exam" ? "font-medium text-warn" : "text-fg-muted",
+                  task.schoolKind !== null && schoolKindHighlighted(task.schoolKind)
+                    ? "font-medium text-warn"
+                    : "text-fg-muted",
                 )}
               >
                 {task.subject.code}
+                {/*
+                  Druh sa dopisuje k skratke, nie vedľa nej ako ďalší odznak:
+                  „MAT · učiť sa" sa číta ako jedna vec, dva samostatné odznaky
+                  by v riadku súperili o pozornosť.
+
+                  Domáca úloha sa nepíše — je to najbežnejší prípad a slovo pri
+                  každej školskej úlohe by bolo šumom, cez ktorý sa tie ostatné
+                  hľadajú ťažšie.
+                */}
+                {task.schoolKind !== null && schoolKindInRow(task.schoolKind)
+                  ? ` · ${schoolKindShort(task.schoolKind)}`
+                  : ""}
               </span>
             </span>
           ) : null}
