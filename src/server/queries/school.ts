@@ -2,6 +2,7 @@ import "server-only";
 
 import { and, asc, between, eq, isNull } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
+import type { SchoolKind } from "@/lib/school-kind";
 
 import { getDb } from "@/db";
 import {
@@ -215,7 +216,7 @@ export interface SubjectTask {
   title: string;
   dueDate: string | null;
   status: string;
-  schoolKind: "homework" | "exam" | null;
+  schoolKind: SchoolKind | null;
 }
 
 /**

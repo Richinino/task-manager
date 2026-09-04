@@ -19,6 +19,7 @@
  * `title` a prázdne tokeny.
  */
 
+import type { SchoolKind } from "@/lib/school-kind";
 import {
   addDays,
   addMonths,
@@ -81,7 +82,7 @@ export interface ParsedCapture {
    * je databáza — parser je čistá funkcia. Predmet dopĺňa obrazovka, ktorá
    * zoznam predmetov už aj tak drží.
    */
-  schoolKind?: "homework" | "exam";
+  schoolKind?: SchoolKind;
   tokens: ParsedToken[];
 }
 
@@ -378,6 +379,16 @@ const RE_PROJECT = /(?<![\p{L}\p{N}])\+([\p{L}\p{N}_]+(?:-[\p{L}\p{N}_]+)*)/gu;
 const RE_HOMEWORK = /(?<![\p{L}\p{N}])(du|domaca uloha|domacu ulohu|dom\. uloha)(?![\p{L}\p{N}])/gu;
 
 const RE_EXAM = /(?<![\p{L}\p{N}])(pisomka|pisomku|pisomna|test|skusanie|skuska|skusku)(?![\p{L}\p{N}])/gu;
+
+/**
+ * Učiť sa novú látku verzus len si ju prebehnúť.
+ *
+ * Dva samostatné vzory, lebo je to dvakrát iná dĺžka večera. „Naučiť sa" musí
+ * chytiť aj holé „ucit", inak by veta „ucit sa chemiu" prešla bez druhu.
+ */
+const RE_STUDY = /(?<![\p{L}\p{N}])(ucit sa|naucit sa|ucit|naucit|nastudovat)(?![\p{L}\p{N}])/gu;
+
+const RE_REVIEW = /(?<![\p{L}\p{N}])(zopakovat|opakovat|prejst si|prebehnut|precitat si|zhrnut)(?![\p{L}\p{N}])/gu;
 
 /**
  * Predložka tesne pred rozpoznaným úsekom. Kotví sa na koniec predpony,
@@ -888,6 +899,30 @@ function parseInner(
     });
   });
 
+  eachMatch(RE_STUDY, folded, (m) => {
+    const end = m.index + m[0].length;
+    candidates.push({
+      kind: "schoolKind",
+      start: m.index,
+      end,
+      weight: W_MARKER,
+      label: "učiť sa",
+      text: "study",
+    });
+  });
+
+  eachMatch(RE_REVIEW, folded, (m) => {
+    const end = m.index + m[0].length;
+    candidates.push({
+      kind: "schoolKind",
+      start: m.index,
+      end,
+      weight: W_MARKER,
+      label: "zopakovať",
+      text: "review",
+    });
+  });
+
   eachMatch(RE_EXAM, folded, (m) => {
     const end = m.index + m[0].length;
     candidates.push({
@@ -992,7 +1027,12 @@ function parseInner(
           niečo, čo človek nenapísal.
         */
         if (out.schoolKind !== undefined) continue;
-        out.schoolKind = c.text === "exam" ? "exam" : "homework";
+        /*
+          `c.text` je už presný druh — vzory sú štyri a každý si ho nesie sám.
+          Pôvodné „exam, inak homework" by po pridaní učenia a opakovania
+          ticho spravilo z oboch domácu úlohu.
+        */
+        out.schoolKind = c.text as SchoolKind;
         /*
           Slovo sa z názvu vystrihne, ako každý iný token. Nechať ho tam by
           znamenalo, že tá istá informácia je v názve aj v poli — a riadok

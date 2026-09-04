@@ -254,3 +254,27 @@ describe("pravidlá nastavujú všetko", () => {
     expect(rulesToText(textToRules(zdroj))).toBe(zdroj);
   });
 });
+
+describe("štyri druhy školskej práce v pravidlách", () => {
+  it("pozná učenie aj opakovanie", () => {
+    expect(textToRules("x = skola:ucit")[0]?.schoolKind).toBe("study");
+    expect(textToRules("x = skola:zopakovat")[0]?.schoolKind).toBe("review");
+    expect(textToRules("x = skola:prejst")[0]?.schoolKind).toBe("review");
+  });
+
+  it("pôvodné dva druhy platia ďalej", () => {
+    expect(textToRules("x = skola:du")[0]?.schoolKind).toBe("homework");
+    expect(textToRules("x = skola:pisomka")[0]?.schoolKind).toBe("exam");
+  });
+
+  /* Zápis a čítanie musia byť opačné aj pre nové druhy. */
+  it("všetky štyri prežijú cestu tam a späť", () => {
+    const zdroj = [
+      "a = skola:du",
+      "b = skola:pisomka",
+      "c = skola:ucit",
+      "d = skola:zopakovat",
+    ].join("\n");
+    expect(rulesToText(textToRules(zdroj))).toBe(zdroj);
+  });
+});

@@ -750,3 +750,37 @@ describe("domáca úloha a písomka", () => {
     expect(parseCapture("Fyzika DU").title).toBe("Fyzika");
   });
 });
+
+describe("učiť sa verzus zopakovať", () => {
+  /*
+    Dva rôzne druhy práce, nie odtiene toho istého. „Naučiť sa kapitolu"
+    a „prebehnúť si kapitolu" sú dve rôzne dĺžky večera; keby ich parser
+    zlial, plánovanie by klamalo v oboch smeroch naraz.
+  */
+  it("rozozná učenie", () => {
+    expect(parseCapture("ucit sa chemiu").schoolKind).toBe("study");
+    expect(parseCapture("naucit sa slovicka").schoolKind).toBe("study");
+    expect(parseCapture("nastudovat kapitolu 3").schoolKind).toBe("study");
+  });
+
+  it("rozozná opakovanie", () => {
+    expect(parseCapture("zopakovat si dejepis").schoolKind).toBe("review");
+    expect(parseCapture("prejst si poznamky").schoolKind).toBe("review");
+    expect(parseCapture("prebehnut vzorce").schoolKind).toBe("review");
+  });
+
+  /* Pôvodné dva druhy musia platiť ďalej — pribudli, nie nahradili sa. */
+  it("domácu úlohu a písomku nechá tak", () => {
+    expect(parseCapture("matika du").schoolKind).toBe("homework");
+    expect(parseCapture("pisomka z fyziky").schoolKind).toBe("exam");
+  });
+
+  it("bez školského slova nie je druh", () => {
+    expect(parseCapture("kupit chlieb").schoolKind).toBeUndefined();
+  });
+
+  /* Slovo sa z názvu vystrihne, ako každý iný token. */
+  it("slovo z názvu zmizne", () => {
+    expect(parseCapture("zopakovat si dejepis").title).toBe("si dejepis");
+  });
+});

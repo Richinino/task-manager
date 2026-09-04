@@ -26,6 +26,7 @@ import { uuidv7 } from "@/lib/id";
 import { parseCapture } from "@/lib/parse";
 import { matchSubject } from "@/lib/subject-match";
 import { applyRules } from "@/server/apply-rules";
+import { SCHOOL_KINDS } from "@/lib/school-kind";
 import { nextLessonDate } from "@/lib/school";
 import { getLessonsForRange, listBreaks } from "@/server/queries/school";
 import {
@@ -149,7 +150,7 @@ const taskFieldsSchema = z.object({
   */
   subjectId: idSchema.nullish(),
   /* Domáca úloha, alebo písomka. Líšia sa tým, ako skoro sa majú ukázať. */
-  schoolKind: z.enum(["homework", "exam"]).nullish(),
+  schoolKind: z.enum(SCHOOL_KINDS).nullish(),
 });
 
 const createTaskSchema = taskFieldsSchema.extend({ title: titleSchema });

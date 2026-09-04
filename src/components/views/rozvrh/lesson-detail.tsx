@@ -7,6 +7,11 @@ import { areaColorValue } from "@/components/task/area-dot";
 import { useTaskDetail } from "@/components/task/task-detail-provider";
 import { loadTaskDetail } from "@/server/actions/tasks";
 import type { SubjectTask } from "@/server/queries/school";
+import {
+  schoolKindHighlighted,
+  schoolKindInRow,
+  schoolKindShort,
+} from "@/lib/school-kind";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -507,9 +512,16 @@ function ZoznamUloh({
                 <span className="min-w-0 flex-1 truncate text-body text-fg">
                   {task.title}
                 </span>
-                {task.schoolKind === "exam" ? (
-                  <span className="shrink-0 font-mono text-micro uppercase tracking-[0.08em] text-warn">
-                    písomka
+                {task.schoolKind !== null && schoolKindInRow(task.schoolKind) ? (
+                  <span
+                    className={cn(
+                      "shrink-0 font-mono text-micro uppercase tracking-[0.08em]",
+                      schoolKindHighlighted(task.schoolKind)
+                        ? "text-warn"
+                        : "text-fg-subtle",
+                    )}
+                  >
+                    {schoolKindShort(task.schoolKind)}
                   </span>
                 ) : null}
                 {task.dueDate ? (

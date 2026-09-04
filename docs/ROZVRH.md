@@ -214,5 +214,24 @@ Skutočné čísla: pondelok/streda/piatok 270 min, utorok/štvrtok 315 min.
   ponuka, nie príkaz — dá sa prepísať.
 - **Voľná sa preskakujú.** Bez toho by termín padol na deň, keď škola nie je.
 - V detaile predmetu je **všetko otvorené z toho predmetu** na jednom mieste.
-- **Písomka je iný druh záznamu než úloha** — ukazuje sa skôr (dva týždne
-  dopredu, nie deň), lebo sa na ňu učí postupne.
+- **Štyri druhy školskej práce**, nie dva:
+
+  | druh | čo to je |
+  |---|---|
+  | domáca úloha | na najbližšiu hodinu |
+  | písomka | treba ju vidieť dlho dopredu, učí sa na ňu postupne |
+  | **učiť sa** | nová látka, ktorú treba pochopiť |
+  | **zopakovať** | látka, ktorú už vie a len si ju pre istotu prebehne |
+
+  Posledné dva sú zámerne oddelené a nie je to kozmetika: „naučiť sa
+  kapitolu" a „prebehnúť si kapitolu" sú **dve rôzne dĺžky večera**. Keby sa
+  miešali, plánovanie by klamalo v oboch smeroch naraz — na učenie by si
+  nechal málo času a na opakovanie zbytočne veľa.
+
+  Rozpoznávajú sa aj zo zachytenia (`ucit sa`, `naucit`, `nastudovat`
+  verzus `zopakovat`, `prejst si`, `prebehnut`) a dajú sa nastaviť
+  pravidlom (`skola:ucit`, `skola:zopakovat`).
+
+  V riadku sa druh dopisuje k skratke predmetu — `CHE · učiť sa`. Domáca
+  úloha nie: je to najbežnejší prípad a slovo pri každej školskej úlohe by
+  bolo šumom, cez ktorý sa tie ostatné hľadajú ťažšie.
