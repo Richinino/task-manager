@@ -84,15 +84,15 @@ Next.js 16 (App Router) · React 19 · TypeScript 6 · Tailwind CSS 4 · Drizzle
 
 | Míľnik | Stav |
 |---|---|
-| M0 — kostra, schéma, auth, seed | hotové |
-| M1 — vrstvy: parser, dátumy, dotazy, akcie, UI primitívy, shell | hotové |
-| M1 — obrazovky: Dnes, Týždeň, Mesiac, Inbox, zachytenie, klávesnica | hotové |
-| M1 — adversariálna revízia a opravy | hotové |
-| M2 — offline + PWA | ďalšie na rade |
-| M3–M9 | viď [PLAN.md](PLAN.md) |
+| M0–M9 — od kostry po šablóny, odkazy, archív a export | hotové |
+| Školský rozvrh — import z EduPage, suplovanie, prázdniny, úlohy k predmetom | hotové |
+| Učenie — piliere, zručnosti, míľniky, lekcia z dokončenej úlohy | hotové |
 
-**M1 je uzavreté.** Traja nezávislí recenzenti našli 25 chýb, opravené sú všetky vážne.
-Overené strojovo (0 typových chýb, 83 testov, build) aj ručne v prehliadači.
+**Všetko je nasadené a používa sa.** Rozpis míľnikov aj rozhodnutia za nimi sú
+v [PLAN.md](PLAN.md), školský rozvrh má vlastný dokument
+[docs/ROZVRH.md](docs/ROZVRH.md).
+
+Čo ešte nie je hotové, je v PLAN.md v sekcii **Čo zostáva**.
 
 ---
 
