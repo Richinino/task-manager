@@ -1,6 +1,9 @@
 # Osobný task manažér — plán systému
 
-> Stav: návrh k odsúhlaseniu · Verzia 1 · 2026-08-05
+> Stav: postavené a nasadené · pôvodný návrh 2026-08-05, priebežne opravovaný podľa kódu
+>
+> **Kde sa dokument a kód rozídu, platí kód.** Čo z návrhu nevzniklo, je
+> označené priamo v texte — nie zamlčané.
 
 ---
 
@@ -26,13 +29,13 @@ ZACHYTENIE  →  TRIEDENIE  →  PLÁNOVANIE  →  VYKONANIE  →  REVÍZIA
 
 | Vrstva | Voľba | Prečo |
 |---|---|---|
-| Framework | Next.js 15 (App Router) + TypeScript | jedno repo pre web aj API, PWA out of the box |
-| UI | Tailwind CSS + shadcn/ui | rýchle, prístupné komponenty, plná kontrola nad vzhľadom |
-| Databáza | Neon Postgres + Drizzle ORM | free tier, typovo bezpečné migrácie |
-| Lokálne dáta | Dexie (IndexedDB) | zdroj pravdy pre čítanie → appka je okamžitá a funguje offline |
-| Sync | vlastný outbox + `/api/sync` | jeden používateľ ⇒ last-write-wins stačí, žiadny ťažký sync engine |
+| Framework | **Next.js 16** (App Router) + TypeScript | jedno repo pre web aj API, PWA out of the box |
+| UI | Tailwind CSS 4 + vlastné primitívy | rýchle, prístupné komponenty, plná kontrola nad vzhľadom |
+| Databáza | Neon Postgres + Drizzle ORM (lokálne PGlite) | free tier, typovo bezpečné migrácie |
+| Lokálne dáta | **žiadne** — obrazovky sú serverové | pozri poznámku nižšie |
+| Sync | **outbox len na zápis**, bez `/api/sync` | pozri poznámku nižšie |
 | Auth | Auth.js, Google login, allowlist na 1 e-mail | rovnaký účet ako kalendár |
-| PWA | Serwist (service worker) + manifest | inštalovateľné na telefón |
+| PWA | vlastný `public/sw.js` + `src/app/manifest.ts` | inštalovateľné na telefón |
 | Hosting | Vercel | 0 € |
 | Kalendár | Google Calendar API, scope `calendar.readonly` | len čítanie, podľa rozhodnutia |
 
@@ -40,11 +43,25 @@ ZACHYTENIE  →  TRIEDENIE  →  PLÁNOVANIE  →  VYKONANIE  →  REVÍZIA
 
 ### Ako funguje offline
 
-- Každý záznam má `id` (UUID v7 generované na klientovi — funguje aj offline) a `updated_at`.
-- Čítanie ide vždy z IndexedDB → UI je okamžité, bez spinnerov.
-- Zápis ide do IndexedDB + do `outbox` fronty.
-- Sync worker posiela outbox na `/api/sync` a sťahuje zmeny od posledného syncu.
-- Konflikty: jeden používateľ ⇒ vyhráva novší `updated_at`. Mazanie je mäkké (`deleted_at`), aby sa nasyncovalo.
+> **Toto je jediné miesto, kde sa realita najviac líši od pôvodného návrhu.**
+> Zrkadlo v IndexedDB (Dexie) ani `/api/sync` nevznikli a v kóde po nich nie
+> je stopa. Nepíš nič, čo s nimi počíta.
+
+Postavené je toto — vedome menej, ale bez druhého zdroja pravdy:
+
+- Každý záznam má `id` (UUID v7 generované na klientovi — funguje aj offline).
+- **Čítanie ide zo servera.** Obrazovky sú serverové komponenty; bez signálu
+  vidíš to, čo service worker naposledy uložil do cache.
+- **Zápis funguje offline len pri rýchlom zachytení.** Nová úloha ide do
+  fronty v prehliadači (`src/lib/outbox.ts`) a odošle sa po pripojení; potom
+  `router.refresh()` a dáta pritečú bežnou cestou zo servera.
+- Položka, ktorú server odmietne validáciou, sa z fronty zahodí — inak by ju
+  blokovala navždy. Sieťová chyba je naopak dočasná a skúša sa znova.
+- Mazanie je mäkké (`deleted_at`).
+
+Jeden zdroj pravdy je zámer, nie lenivosť: dve kópie dát, ktoré sa majú samy
+zosúlaďovať, sú najdrahšia časť celej appky a pri jednom používateľovi na
+dvoch zariadeniach sa nezaplatia.
 
 ---
 
@@ -221,11 +238,9 @@ Každá z týchto vecí pridá réžiu a po troch týždňoch systém opustíš.
 | **M5** | Anti-prokrastinácia | počítadlo odkladov, WIP limit, rozpočet dňa, „Čo teraz?" | 2 večery |
 | **M6** | Rituály | 4 sprievodcovia (ráno, večer, týždeň, mesiac) + denník | 3 večery |
 
-> **M0–M9 hotové a nasadené.**
+> **M0–M9 hotové a nasadené**, k tomu školský rozvrh a učenie.
 >
-> Zostáva doriešiť: napojenie `[[odkazov]]` na detail úlohy a nápadu (knižnica
-> a akcie sú hotové), pripojenie kalendára v Google Cloud Console a nevolaná
-> `hasCalendarAccess`, ktorá má zmysel až s obrazovkou stavu kalendára.
+> Čo zostáva, je v sekcii [Čo zostáva](#8-čo-zostáva) na konci.
 | **M7** | Návyky a čísla | opakovanie, série, mriežka, štatistiky, win report | 2–3 večery |
 | **M8** | Kalendár | Google Calendar read-only, meetingy v dennom pláne a v rozpočte | 1 večer |
 | **M9** | Dolaďovanie | šablóny, `[[odkazy]]`, archív, export, fulltext | 2–3 večery |
@@ -630,9 +645,42 @@ na večer.
 
 ---
 
-## 8. Otvorené otázky na neskôr
+## 8. Čo zostáva
 
-- Farebná schéma a vizuálny štýl (rozhodneme pri M1 na živých obrazovkách)
+Zoznam vznikol prečesaním repozitáru šiestimi nezávislými pohľadmi; každý
+nález prešiel skeptikom, ktorý ho mal za úlohu vyvrátiť. Je tu len to, čo
+prežilo — nie všetko, čo sa niekomu zdalo.
+
+**Detailové obrazovky, ktoré nevznikli.** Serverové dotazy na ne sú hotové
+a nikto ich nevolá:
+
+- **nápad** — `getIdea`. Nápad sa dá otvoriť len ako kartička na doske, takže
+  jeho dlhý text (`ideas.body`) nemá kde byť vidieť a z projektu, ktorý
+  z nápadu vznikol, sa k nemu nedá vrátiť.
+- **zručnosť** — `getSkill`. Vráti zoznam lekcií, teda čo presne si za tie
+  večery robil. Číslo „11 lekcií za 30 dní" sa dnes nedá rozkliknúť ani
+  overiť.
+- **návyk** — `getHabit`, s dlhším oknom, než posiela zoznam.
+
+**Odkazy `[[…]]` fungujú len v úlohe.** Dopredný smer je hotový pre všetky
+štyri ciele, ale `syncLinks` sa v celej appke volá jediný raz — z detailu
+úlohy. Cieľ projektu, definícia „hotovo" a denník sú voľné textové polia,
+do ktorých sa odkaz napísať dá a nikdy sa nezaindexuje. Panel spätných
+odkazov je tiež len na úlohe.
+
+**Míľnik sa nedá opraviť.** `updateMilestone` je napísaná a nikto ju nevolá,
+takže preklep v znení míľnika sa odstráni len zmazaním — a s ním zmizne
+`reachedAt` aj `evidence`, teda dôkaz, že bol dosiahnutý. Pri veci, ktorá má
+byť „západka, o ktorú sa nedá prísť", je to zlé.
+
+**Mimo appky:** pripojenie kalendára v Google Cloud Console, podpisový kľúč
+na `.apk`.
+
+---
+
+## 9. Otvorené otázky na neskôr
+
+- ~~Farebná schéma a vizuálny štýl~~ → rozhodnuté na živých obrazovkách, návrh je naimplementovaný
 - ~~Presné hodnoty: WIP limit, dostupné hodiny dňa, prahy odkladov (3/5) — nastaviteľné~~ → rieši obrazovka nastavení v M5
 - Či nápady chcú aj prílohy/obrázky
 - Či bude treba Tauri obal kvôli globálnej skratke (rozhodne sa po pár týždňoch používania)
