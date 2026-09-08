@@ -1,16 +1,19 @@
 "use client";
 
 import { useEffect, useState, useTransition } from "react";
-import { CalendarX2, LoaderCircle, RotateCcw, Replace } from "lucide-react";
+import { CalendarX2, LoaderCircle, Plus, RotateCcw, Replace } from "lucide-react";
 
 import { areaColorValue } from "@/components/task/area-dot";
 import { useTaskDetail } from "@/components/task/task-detail-provider";
-import { loadTaskDetail } from "@/server/actions/tasks";
+import { loadTaskDetail, quickCapture } from "@/server/actions/tasks";
 import type { SubjectTask } from "@/server/queries/school";
 import {
+  SCHOOL_KINDS,
   schoolKindHighlighted,
   schoolKindInRow,
+  schoolKindLabel,
   schoolKindShort,
+  type SchoolKind,
 } from "@/lib/school-kind";
 import { Button } from "@/components/ui/button";
 import {
@@ -279,9 +282,37 @@ export function LessonDetail({ lessonId, onClose, todayIso }: LessonDetailProps)
                     ulohy={ostatne}
                     todayIso={todayIso}
                     onOpen={detailUlohy === null ? null : otvorUlohu}
-                    prazdneHlasenie="Nič otvorené. Úloha, ktorej dáš tento predmet, sa objaví tu."
+                    prazdneHlasenie="Nič otvorené. Zapíš to rovno tu."
                   />
                 ) : null}
+
+                {/*
+                  PRIDAŤ ÚLOHU
+
+                  Zapisuje sa tam, kde na to príde reč: učiteľka zadá domácu
+                  úlohu a ty máš otvorenú práve tú hodinu. Posielať človeka do
+                  rýchleho zachytenia a nechať ho tam znova vypisovať predmet
+                  je krok, ktorý si na tomto mieste vie odpustiť.
+
+                  Ide to cez `quickCapture`, teda tú istú a jedinú cestu zápisu
+                  ako všade inde — takže tu fungujú aj `!1`, `30m` či „do
+                  piatku“ a platia autotagovacie pravidlá. Predmet sa len
+                  predvyplní podľa hodiny a termín si appka dopočíta na
+                  najbližšiu hodinu toho predmetu.
+                */}
+                <PridatUlohu
+                  key={`pridat-${lesson.id}`}
+                  subjectCode={lesson.subjectCode}
+                  disabled={isPending}
+                  onAdd={(text, kind) =>
+                    uloz(() =>
+                      quickCapture(text, {
+                        defaultSubjectId: lesson.subjectId,
+                        defaultSchoolKind: kind,
+                      }),
+                    )
+                  }
+                />
               </div>
 
               {/*
@@ -462,6 +493,89 @@ function PoznamkaPole({
         placeholder={placeholder}
       />
     </label>
+  );
+}
+
+/**
+ * Nová úloha k tomuto predmetu.
+ *
+ * Druh sa vyberá PRED písaním, nie po ňom: „domáca úloha" a „písomka" sú dva
+ * rôzne večery a človek to vie skôr, než začne písať, čo má vlastne spraviť.
+ * Predvolená je domáca úloha — je to najčastejší dôvod, prečo sa hodina
+ * otvára.
+ *
+ * Pole sa po odoslaní vyprázdni, ale panel ostáva otvorený: z jednej hodiny
+ * býva zadaní viac naraz a zatvárať ho po každom by znamenalo otvárať ho
+ * znova.
+ */
+function PridatUlohu({
+  subjectCode,
+  disabled,
+  onAdd,
+}: {
+  subjectCode: string;
+  disabled: boolean;
+  onAdd: (text: string, kind: SchoolKind) => void;
+}) {
+  const [text, setText] = useState("");
+  const [kind, setKind] = useState<SchoolKind>("homework");
+
+  function odosli(): void {
+    const cisty = text.trim();
+    if (cisty === "" || disabled) return;
+    onAdd(cisty, kind);
+    setText("");
+  }
+
+  return (
+    <section className="flex flex-col gap-2">
+      <h3 className="label text-fg-subtle">Pridať k predmetu {subjectCode}</h3>
+
+      <div className="flex flex-wrap items-center gap-2">
+        <Input
+          value={text}
+          onChange={(event) => setText(event.target.value)}
+          onKeyDown={(event) => {
+            if (event.key === "Enter") {
+              event.preventDefault();
+              odosli();
+            }
+          }}
+          maxLength={500}
+          placeholder="Príklady 3–7 z učebnice…"
+          aria-label={`Nová úloha k predmetu ${subjectCode}`}
+          className="min-w-40 flex-1"
+        />
+
+        <Select value={kind} onValueChange={(hodnota) => setKind(hodnota as SchoolKind)}>
+          <SelectTrigger aria-label="Druh školskej práce" className="w-36 shrink-0">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {SCHOOL_KINDS.map((druh) => (
+              <SelectItem key={druh} value={druh}>
+                {schoolKindLabel(druh)}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+
+        <Button
+          variant="primary"
+          size="sm"
+          disabled={disabled || text.trim() === ""}
+          onClick={odosli}
+        >
+          <Plus className="size-3.5" />
+          Pridať
+        </Button>
+      </div>
+
+      <p className="text-mini text-fg-muted">
+        Termín sa dopočíta na najbližšiu hodinu {subjectCode}. Prepíšeš ho tým,
+        že ho napíšeš — napríklad „do piatku“.
+      </p>
+    </section>
   );
 }
 

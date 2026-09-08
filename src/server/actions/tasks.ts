@@ -26,7 +26,7 @@ import { uuidv7 } from "@/lib/id";
 import { parseCapture } from "@/lib/parse";
 import { matchSubject } from "@/lib/subject-match";
 import { applyRules } from "@/server/apply-rules";
-import { SCHOOL_KINDS } from "@/lib/school-kind";
+import { SCHOOL_KINDS, type SchoolKind } from "@/lib/school-kind";
 import { nextLessonDate } from "@/lib/school";
 import { getLessonsForRange, listBreaks } from "@/server/queries/school";
 import {
@@ -701,7 +701,20 @@ export async function loadTaskDetail(
 
 export async function quickCapture(
   raw: string,
-  opts?: { forceInbox?: boolean; defaultPlannedDate?: string },
+  opts?: {
+    forceInbox?: boolean;
+    defaultPlannedDate?: string;
+    /**
+     * Predmet podľa miesta, odkiaľ sa písalo — dnes z detailu hodiny.
+     *
+     * Je to východisko, nie príkaz: keď v texte stojí iný predmet, vyhráva
+     * text. Overuje sa proti predmetom používateľa, nie len prevezme —
+     * prichádza z prehliadača.
+     */
+    defaultSubjectId?: string;
+    /** Druh školskej práce, keď ho text nepovie ani pravidlo. */
+    defaultSchoolKind?: SchoolKind;
+  },
 ): Promise<ActionResult<{ id: string; title: string }>> {
   const user = await requireUser();
   try {
@@ -810,6 +823,21 @@ export async function quickCapture(
     }
 
     /*
+      Predmet podľa miesta, odkiaľ sa písalo — z detailu hodiny.
+
+      Až TU, za názvom aj za pravidlami: keď si v texte napísal iný predmet,
+      vyhráva on. Inak by sa z otvorenej chémie nedala zapísať úloha z matiky.
+
+      A overuje sa proti zoznamu, nie prevezme: `defaultSubjectId` prichádza
+      z prehliadača a bez tejto kontroly by sa dala úlohe prilepiť cudzia
+      hodnota.
+    */
+    const zHodiny = opts?.defaultSubjectId;
+    if (subjectId === null && zHodiny !== undefined) {
+      subjectId = predmety.some((p) => p.id === zHodiny) ? zHodiny : null;
+    }
+
+    /*
       Termín na najbližšiu hodinu toho predmetu — to isté, čo ponúka detail
       úlohy, len bez klikania. Ponúka sa LEN keď si termín nenapísal sám.
 
@@ -874,7 +902,12 @@ export async function quickCapture(
       subjectId,
       /* Bez predmetu je „domáca úloha vs písomka" rozlíšenie o ničom. */
       schoolKind:
-        subjectId === null ? null : (parsed.schoolKind ?? patch.schoolKind ?? null),
+        subjectId === null
+          ? null
+          : (parsed.schoolKind ??
+            patch.schoolKind ??
+            opts?.defaultSchoolKind ??
+            null),
       areaId: patch.areaId ?? null,
       lessonPillarId: patch.lessonPillarId ?? null,
       lessonSkillId: patch.lessonSkillId ?? null,
