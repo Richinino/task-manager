@@ -7,11 +7,17 @@ import { NamesPanel } from "@/components/views/rozvrh/names-panel";
 import { ScheduleImport } from "@/components/views/rozvrh/schedule-import";
 import { WeekGrid } from "@/components/views/rozvrh/week-grid";
 import { addDays, formatDuration, minutesIn, todayIn, weekDays } from "@/lib/dates";
-import { schoolBreakOn, schoolMinutes } from "@/lib/school";
+import {
+  drawnDays,
+  lessonsOutsideBreaks,
+  schoolMinutes,
+  teachingDays,
+} from "@/lib/school";
 import { countSk } from "@/lib/sk";
 import { requireUser } from "@/server/auth-guard";
 import {
   getLessonsForRange,
+  getSubjectTaskDays,
   listBreaks,
   listSubjects,
   listTeachers,
@@ -69,11 +75,12 @@ export default async function RozvrhPage({ searchParams }: RozvrhPageProps) {
   const posledny = dni[dni.length - 1] ?? todayIso;
   const predchadzajuci = addDays(prvy, -7);
   const nasledujuci = addDays(prvy, 7);
-  const [hodiny, predmety, ucitelia, volna] = await Promise.all([
+  const [hodiny, predmety, ucitelia, volna, ulohyNaDen] = await Promise.all([
     getLessonsForRange(user.id, prvy, posledny),
     listSubjects(user.id),
     listTeachers(user.id),
     listBreaks(user.id),
+    getSubjectTaskDays(user.id, prvy, posledny),
   ]);
 
   /*
@@ -97,12 +104,15 @@ export default async function RozvrhPage({ searchParams }: RozvrhPageProps) {
     mriežkou, v ktorej ich je vidieť dvadsaťpäť, a to číslo by neplatilo
     o ničom.
   */
-  const hodinyMimoVolna = hodiny.filter((h) => schoolBreakOn(h.date, volna) === null);
+  const hodinyMimoVolna = lessonsOutsideBreaks(hodiny, volna);
 
-  const dniSHodinami = dni.filter(
-    (den) =>
-      hodinyMimoVolna.some((h) => h.date === den) || schoolBreakOn(den, volna) !== null,
-  );
+  /*
+    Dva rôzne zoznamy dní, a ten rozdiel je celé jadro veci: pätička ráta len
+    dni, v ktorých sa učí, mriežka kreslí aj prázdninové. Prečo, je pri
+    `teachingDays` v `@/lib/school`.
+  */
+  const dniSVyucbou = teachingDays(dni, hodinyMimoVolna);
+  const dniSHodinami = drawnDays(dni, hodinyMimoVolna, volna);
   const tyzdenMin = schoolMinutes(hodinyMimoVolna);
 
   const meta =
@@ -139,7 +149,16 @@ export default async function RozvrhPage({ searchParams }: RozvrhPageProps) {
               subjectColor: h.subjectColor,
               room: h.room,
               cancelled: h.cancelled,
-              hasNote: h.note !== null || h.subjectNote !== null,
+              /*
+                Bodka svieti na poznámku, úlohu aj písomku — tak, ako to
+                sľubuje `docs/ROZVRH.md`. Predtým brala len poznámku, takže
+                zajtrajšia písomka z chémie sa z mriežky nedala zbadať a
+                musel si otvárať hodinu po hodine.
+              */
+              hasNote:
+                h.note !== null ||
+                h.subjectNote !== null ||
+                ulohyNaDen.has(`${h.date}|${h.subjectId}`),
             }))}
             breaks={volna.map((v) => ({
               fromDate: v.fromDate,
@@ -185,9 +204,9 @@ export default async function RozvrhPage({ searchParams }: RozvrhPageProps) {
 
       <ScreenFooter
         summary={
-          hodiny.length === 0
+          hodinyMimoVolna.length === 0
             ? "žiadne hodiny"
-            : countSk(dniSHodinami.length, "školský deň", "školské dni", "školských dní")
+            : countSk(dniSVyucbou.length, "školský deň", "školské dni", "školských dní")
         }
       />
     </div>

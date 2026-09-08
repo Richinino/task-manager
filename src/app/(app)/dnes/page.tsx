@@ -32,7 +32,11 @@ import {
   listContexts,
 } from "@/server/queries/tasks";
 import { schoolBreakOn } from "@/lib/school";
-import { getLessonsForDay, listBreaks } from "@/server/queries/school";
+import {
+  getLessonsForDay,
+  getSubjectTaskDays,
+  listBreaks,
+} from "@/server/queries/school";
 import { getJournalEntry, getRitualState } from "@/server/queries/rituals";
 import { getDayEvents, meetingMinutes } from "@/server/queries/calendar";
 
@@ -87,6 +91,7 @@ export default async function DnesPage({ searchParams }: DnesPageProps) {
     contexts,
     schoolLessons,
     schoolBreaks,
+    skolskeUlohyNaDen,
     habits,
   ] = await Promise.all([
       getTasksForDay(user.id, date),
@@ -116,6 +121,11 @@ export default async function DnesPage({ searchParams }: DnesPageProps) {
       */
       getLessonsForDay(user.id, date),
       listBreaks(user.id),
+      /*
+        Na ktoré hodiny toho dňa niečo čaká — do bodky v pruhu. Rovnaký
+        rozsah ako hodiny, teda zobrazený deň, nie dnešok.
+      */
+      getSubjectTaskDays(user.id, date, date),
       /*
         Návyky sa ťahajú len pre dnešok — na iný deň sa v prehľade nekreslia
         a odškrtávať návyk spätne v prehľade dňa je pomýlené.
@@ -345,7 +355,11 @@ export default async function DnesPage({ searchParams }: DnesPageProps) {
               subjectColor: lesson.subjectColor,
               room: lesson.room,
               cancelled: lesson.cancelled,
-              hasNote: lesson.note !== null || lesson.subjectNote !== null,
+              /* Poznámka, úloha aj písomka — tak ako v mriežke rozvrhu. */
+              hasNote:
+                lesson.note !== null ||
+                lesson.subjectNote !== null ||
+                skolskeUlohyNaDen.has(`${lesson.date}|${lesson.subjectId}`),
             }))}
             /*
               SKUTOČNÝ dnešok, nie zobrazený deň. Stav hodiny sa odvodzuje

@@ -1,8 +1,11 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  drawnDays,
   isSchoolBreak,
+  lessonsOutsideBreaks,
   schoolBreakOn,
+  teachingDays,
   lessonState,
   lessonsDone,
   nextLessonDate,
@@ -293,5 +296,58 @@ describe("nextLessonDate — najbližšia hodina", () => {
     const dnes = [{ date: DNES, startTime: "14:00", endTime: "14:45", subjectId: "fyz" }];
     expect(nextLessonDate(dnes, "fyz", DNES, 10 * 60)).toBe(DNES);
     expect(nextLessonDate(dnes, "fyz", DNES, 14 * 60 + 10)).toBeNull();
+  });
+});
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   ŠKOLSKÉ DNI V TÝŽDNI
+
+   Mriežka a pätička sa pýtajú na dve RÔZNE veci a raz sa im na to použil
+   jeden zoznam. Výsledok: na prázdninový týždeň appka na jednej obrazovke
+   naraz tvrdila „0 hodín" hore a „5 školských dní" dole.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+describe("teachingDays a drawnDays", () => {
+  const TYZDEN = [
+    "2026-11-02",
+    "2026-11-03",
+    "2026-11-04",
+    "2026-11-05",
+    "2026-11-06",
+  ];
+  const PRAZDNINY = [{ fromDate: "2026-11-02", toDate: "2026-11-06" }];
+
+  const hodinyTyzdna = TYZDEN.map((date) => ({ date }));
+
+  it("prázdninový týždeň nemá ani jeden učebný deň", () => {
+    const mimoVolna = lessonsOutsideBreaks(hodinyTyzdna, PRAZDNINY);
+
+    expect(mimoVolna).toHaveLength(0);
+    expect(teachingDays(TYZDEN, mimoVolna)).toEqual([]);
+  });
+
+  /* Mriežka ich naopak kreslí — prázdny riadok má povedať, PREČO je prázdny. */
+  it("prázdninový týždeň sa aj tak celý nakreslí", () => {
+    const mimoVolna = lessonsOutsideBreaks(hodinyTyzdna, PRAZDNINY);
+
+    expect(drawnDays(TYZDEN, mimoVolna, PRAZDNINY)).toEqual(TYZDEN);
+  });
+
+  it("bežný týždeň ráta len dni, v ktorých hodiny sú", () => {
+    const hodiny = [{ date: "2026-11-02" }, { date: "2026-11-04" }];
+    const mimoVolna = lessonsOutsideBreaks(hodiny, []);
+
+    expect(teachingDays(TYZDEN, mimoVolna)).toEqual(["2026-11-02", "2026-11-04"]);
+    expect(drawnDays(TYZDEN, mimoVolna, [])).toEqual(["2026-11-02", "2026-11-04"]);
+  });
+
+  /* Riaditeľské voľno v strede týždňa: učí sa štyri dni, kreslí sa päť. */
+  it("jeden voľný deň uberie z učenia, ale z mriežky nie", () => {
+    const hodiny = TYZDEN.map((date) => ({ date }));
+    const volno = [{ fromDate: "2026-11-04", toDate: "2026-11-04" }];
+    const mimoVolna = lessonsOutsideBreaks(hodiny, volno);
+
+    expect(teachingDays(TYZDEN, mimoVolna)).toHaveLength(4);
+    expect(drawnDays(TYZDEN, mimoVolna, volno)).toHaveLength(5);
   });
 });

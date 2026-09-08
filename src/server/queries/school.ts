@@ -1,6 +1,6 @@
 import "server-only";
 
-import { and, asc, between, eq, isNull } from "drizzle-orm";
+import { and, asc, between, eq, isNotNull, isNull } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 import type { SchoolKind } from "@/lib/school-kind";
 
@@ -250,4 +250,51 @@ export async function getSubjectTasks(
     .orderBy(asc(tasks.dueDate));
 
   return rows.filter((r) => r.status !== "done" && r.status !== "dropped");
+}
+
+/**
+ * Na ktoré dvojice deň + predmet niečo čaká. Do bodky v mriežke.
+ *
+ * Vracia sa množina kľúčov `dátum|predmet`, nie úlohy. Mriežka potrebuje
+ * odpoveď áno/nie na tridsať okienok a ťahať kvôli bodke tridsať názvov by
+ * bolo o rád viac dát, než z čoho sa kreslí jeden bod.
+ *
+ * Berie sa **termín**, nie predmet ako taký: bodka má povedať „na túto hodinu
+ * si niečo doniesť", nie „z tohto predmetu niečo niekedy máš". Keby svietila
+ * z celého predmetu, svietila by pri matike každý týždeň a prestala by
+ * čokoľvek znamenať — to je tá istá úvaha, prečo detail hodiny delí úlohy na
+ * „na túto hodinu" a „ďalšie z predmetu".
+ */
+export async function getSubjectTaskDays(
+  userId: string,
+  fromIso: string,
+  toIso: string,
+): Promise<Set<string>> {
+  const db = await getDb();
+
+  const rows = await db
+    .select({
+      dueDate: tasks.dueDate,
+      subjectId: tasks.subjectId,
+      status: tasks.status,
+    })
+    .from(tasks)
+    .where(
+      and(
+        eq(tasks.userId, userId),
+        isNotNull(tasks.subjectId),
+        isNotNull(tasks.dueDate),
+        isNull(tasks.deletedAt),
+        between(tasks.dueDate, fromIso, toIso),
+      ),
+    );
+
+  const kluce = new Set<string>();
+  for (const r of rows) {
+    /* Hotové nesvietia — bodka hovorí, čo ťa ešte čaká. */
+    if (r.status === "done" || r.status === "dropped") continue;
+    if (r.dueDate === null || r.subjectId === null) continue;
+    kluce.add(`${r.dueDate}|${r.subjectId}`);
+  }
+  return kluce;
 }

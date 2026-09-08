@@ -184,6 +184,45 @@ export function isSchoolBreak(
   return schoolBreakOn(dateIso, volna) !== null;
 }
 
+/**
+ * Hodiny, ktoré v ten týždeň naozaj sú. Voľno prekryje celý deň.
+ *
+ * Prázdninová hodina sa nekreslí ani neráta — inak by hlavička hlásila
+ * „32 hodín" nad mriežkou, v ktorej ich je vidieť dvadsaťpäť.
+ */
+export function lessonsOutsideBreaks<T extends { date: string }>(
+  hodiny: readonly T[],
+  volna: readonly SkolskeVolno[],
+): T[] {
+  return hodiny.filter((h) => !isSchoolBreak(h.date, volna));
+}
+
+/**
+ * Dni, v ktorých sa naozaj učí.
+ *
+ * **Nie je to to isté ako dni, ktoré nakreslí mriežka** — a práve to
+ * splynutie bola chyba. Mriežka prázdninový deň kreslí zámerne, aby bolo
+ * vidieť, prečo je prázdny; pätička ho ale rátala ako školský, takže appka na
+ * prázdninový týždeň naraz tvrdila „0 hodín" v hlavičke a „5 školských dní"
+ * dole. Sú to dve otázky a odteraz majú dve funkcie.
+ */
+export function teachingDays(
+  dni: readonly string[],
+  hodinyMimoVolna: readonly { date: string }[],
+): string[] {
+  return dni.filter((den) => hodinyMimoVolna.some((h) => h.date === den));
+}
+
+/** Dni, ktoré má mriežka nakresliť: buď sa v nich učí, alebo je voľno. */
+export function drawnDays(
+  dni: readonly string[],
+  hodinyMimoVolna: readonly { date: string }[],
+  volna: readonly SkolskeVolno[],
+): string[] {
+  const ucebne = new Set(teachingDays(dni, hodinyMimoVolna));
+  return dni.filter((den) => ucebne.has(den) || isSchoolBreak(den, volna));
+}
+
 /* ═══════════════════════════════════════════════════════════════════════════
    NAJBLIŽŠIA HODINA PREDMETU
    ═══════════════════════════════════════════════════════════════════════════ */
