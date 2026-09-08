@@ -8,6 +8,7 @@ import { todayIn } from "@/lib/dates";
 import { filterByGroups, parseIcs } from "@/lib/ics";
 import { uuidv7 } from "@/lib/id";
 import { subjectColor } from "@/lib/school-colors";
+import { lessonMatcher, slotKey } from "@/lib/school-pairing";
 
 /* ═══════════════════════════════════════════════════════════════════════════
    NAČÍTANIE ROZVRHU — SPOLOČNÉ JADRO
@@ -167,17 +168,28 @@ export async function importScheduleFor(
       .where(eq(schoolLessons.userId, userId));
     const buduceUlozene = ulozene.filter((h) => h.date >= dnes);
 
-    /* Kľúč slotu musí sedieť s jedinečným indexom v schéme. */
-    const kluc = (date: string, period: number, subjectId: string): string =>
-      `${date}|${period}|${subjectId}`;
+    /*
+      Riadok sa hľadá najprv podľa `UID` zo zdroja a až potom podľa slotu.
+      Prečo — a čo sa bez toho pokazí — je v `@/lib/school-pairing`.
+    */
+    const najdiUlozenu = lessonMatcher(buduceUlozene);
 
-    const podlaKluca = new Map(
-      buduceUlozene.map((h) => [kluc(h.date, h.period, h.subjectId), h]),
+    /*
+      Ktorý slot je práve obsadený. Odkedy sa riadku smie zmeniť predmet,
+      môže zápis naraziť na jedinečný index — a to by zhodilo celý import
+      kvôli jednej hodine.
+    */
+    const obsadene = new Map(
+      buduceUlozene.map((h) => [slotKey(h.date, h.period, h.subjectId), h.id]),
     );
 
     let pridanych = 0;
     let upravenych = 0;
     let ponechanych = 0;
+    /*
+      Videné sa značí ID riadku, nie kľúčom slotu: podľa UID sa nájde aj
+      riadok, ktorého predmet sa medzitým zmenil, a ten sa nesmie zmazať.
+    */
     const videne = new Set<string>();
 
     for (const h of buduce) {
@@ -186,10 +198,16 @@ export async function importScheduleFor(
 
       const datum = todayIn(timeZone, h.start);
       const period = h.period ?? 0;
-      const k = kluc(datum, period, predmet.id);
-      videne.add(k);
+      const k = slotKey(datum, period, predmet.id);
 
       const hodnoty = {
+        /*
+          Predmet je súčasťou zápisu, nie len kľúča. Keď škola zapíše
+          suplovanie priamo do odberu (`DEJ -> SJL`), riadok sa nájde podľa
+          UID a musí sa mu prepísať aj predmet — inak by mriežka ďalej
+          ukazovala hodinu, ktorá v ten deň nebude.
+        */
+        subjectId: predmet.id,
         startTime: miestnyCas(h.start, timeZone),
         endTime: miestnyCas(h.end, timeZone),
         teacherId: ucitelPodlaKodu.get(h.teacher)?.id ?? null,
@@ -206,20 +224,23 @@ export async function importScheduleFor(
             : (predmetPodlaKodu.get(h.originalSubject)?.id ?? null),
       };
 
-      const stara = podlaKluca.get(k);
+      const stara = najdiUlozenu(h.uid, k);
 
       if (stara === undefined) {
+        const id = uuidv7();
         await db.insert(schoolLessons).values({
-          id: uuidv7(),
+          id,
           userId: userId,
           date: datum,
           period,
-          subjectId: predmet.id,
           ...hodnoty,
         });
+        obsadene.set(k, id);
         pridanych += 1;
         continue;
       }
+
+      videne.add(stara.id);
 
       /* Ručne upravený riadok je jediná pravda o suplovaní — neprepisuje sa. */
       if (stara.manual) {
@@ -227,18 +248,43 @@ export async function importScheduleFor(
         continue;
       }
 
+      /*
+        Zmena predmetu na slot, ktorý drží iný riadok, by spadla na jedinečnom
+        indexe a zhodila by celý import. Radšej sa tá jedna hodina nechá tak;
+        pri ďalšom behu už bude ten druhý riadok inde alebo zmazaný.
+      */
+      const drziSlot = obsadene.get(k);
+      if (
+        hodnoty.subjectId !== stara.subjectId &&
+        drziSlot !== undefined &&
+        drziSlot !== stara.id
+      ) {
+        ponechanych += 1;
+        continue;
+      }
+
       const zmenene =
+        stara.subjectId !== hodnoty.subjectId ||
         stara.startTime.slice(0, 5) !== hodnoty.startTime ||
         stara.endTime.slice(0, 5) !== hodnoty.endTime ||
         stara.teacherId !== hodnoty.teacherId ||
         stara.room !== hodnoty.room ||
-        stara.groupName !== hodnoty.groupName;
+        stara.groupName !== hodnoty.groupName ||
+        stara.sourceUid !== hodnoty.sourceUid ||
+        /*
+          Bez tohto porovnania sa preložené suplovanie nikdy neopraví: keď sa
+          zmení len to, ČO hodina nahrádza, ostatné polia sedia a veta
+          „Namiesto dejepisu" tam ostane visieť aj po zmene na fyziku.
+        */
+        stara.originalSubjectId !== hodnoty.originalSubjectId;
 
       if (zmenene) {
         await db
           .update(schoolLessons)
           .set({ ...hodnoty, updatedAt: new Date() })
           .where(eq(schoolLessons.id, stara.id));
+        obsadene.delete(slotKey(stara.date, stara.period, stara.subjectId));
+        obsadene.set(k, stara.id);
         upravenych += 1;
       }
     }
@@ -248,7 +294,7 @@ export async function importScheduleFor(
       sa naozaj môže zrušiť a nechať ju tam by znamenalo rozvrh, ktorý klame.
     */
     const naZmazanie = buduceUlozene
-      .filter((h) => !h.manual && !videne.has(kluc(h.date, h.period, h.subjectId)))
+      .filter((h) => !h.manual && !videne.has(h.id))
       .map((h) => h.id);
 
     if (naZmazanie.length > 0) {
