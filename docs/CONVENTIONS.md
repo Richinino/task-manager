@@ -987,6 +987,8 @@ export function getDayEvents(userId: string, dateIso: string, timeZone: string):
 
 Vylúčené sú udalosti, ktoré používateľ **odmietol** (`responseStatus: "declined"`), a zrušené (`status: "cancelled"`). Pozvánka, ktorú si odmietol, nie je tvoj čas.
 
+**`timeMin` a `timeMax` nesú posun pásma.** Počítajú sa v `src/lib/calendar-day.ts` ako polnoc dňa a polnoc ďalšieho v pásme používateľa a posielajú sa cez `toISOString()`. Zápis bez posunu (`2026-09-25T00:00:00`) Google odmieta kódom 400 — kalendár tak týždne nevrátil nič. Minúty udalosti sa orezávajú na deň (`minutesWithin`), takže porada cez polnoc nezje z rozpočtu aj včerajšok.
+
 ## Rozpočet času
 
 **Meetingy UBERAJÚ z dostupného času, nepripočítavajú sa k naplánovanému.**

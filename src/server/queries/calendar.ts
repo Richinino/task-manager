@@ -1,5 +1,6 @@
 import "server-only";
 
+import { calendarDayRange, minutesWithin, type DayRange } from "@/lib/calendar-day";
 import { getValidAccessToken } from "@/server/google-tokens";
 
 /* ═══════════════════════════════════════════════════════════════════════════
@@ -66,7 +67,11 @@ function declinedBySelf(event: GoogleEvent): boolean {
   );
 }
 
-function toCalendarEvent(event: GoogleEvent, timeZone: string): CalendarEvent | null {
+function toCalendarEvent(
+  event: GoogleEvent,
+  timeZone: string,
+  day: DayRange,
+): CalendarEvent | null {
   const id = event.id;
   if (id === undefined) return null;
 
@@ -82,10 +87,9 @@ function toCalendarEvent(event: GoogleEvent, timeZone: string): CalendarEvent | 
 
   const startMs = new Date(startIso).getTime();
   const endMs = endIso === undefined ? startMs : new Date(endIso).getTime();
-  const minutes =
-    Number.isNaN(startMs) || Number.isNaN(endMs)
-      ? 0
-      : Math.max(0, Math.round((endMs - startMs) / 60_000));
+  // Len tá časť, ktorá padne do dňa — porada cez polnoc nezje z rozpočtu
+  // aj včerajšie hodiny.
+  const minutes = minutesWithin(startMs, endMs, day);
 
   return {
     id,
@@ -100,9 +104,10 @@ function toCalendarEvent(event: GoogleEvent, timeZone: string): CalendarEvent | 
 /**
  * Udalosti daného dňa z hlavného kalendára, zoradené podľa začiatku.
  *
- * Rozsah sa Googlu posiela s pásmom používateľa, aby „dnes" znamenalo ten istý
- * deň ako všade inde v appke — server beží na Verceli v UTC a bez pásma by sa
- * deň o polnoci rozišiel.
+ * Rozsah sa Googlu posiela ako dva okamihy — polnoc dňa a polnoc ďalšieho
+ * v pásme používateľa — aby „dnes" znamenalo ten istý deň ako všade inde
+ * v appke. Server beží na Verceli v UTC a bez pásma by sa deň o polnoci
+ * rozišiel.
  *
  * Zatiaľ len hlavný kalendár. Viac kalendárov je nastavenie navyše a pri
  * jednom používateľovi sa oplatí až vtedy, keď to naozaj bude chýbať.
@@ -113,12 +118,20 @@ export async function getDayEvents(
   timeZone: string,
 ): Promise<CalendarEvent[]> {
   try {
+    const day = calendarDayRange(dateIso, timeZone);
+    if (day === null) return [];
+
     const accessToken = await getValidAccessToken(userId);
     if (accessToken === null) return [];
 
+    /*
+      Hranice MUSIA niesť posun pásma — `toISOString()` dá `…Z`. Zápis bez
+      neho Google odmieta kódom 400 a kalendár tak v produkcii nikdy
+      nevrátil ani jednu udalosť. Podrobnosti v `@/lib/calendar-day`.
+    */
     const params = new URLSearchParams({
-      timeMin: `${dateIso}T00:00:00`,
-      timeMax: `${dateIso}T23:59:59`,
+      timeMin: day.start.toISOString(),
+      timeMax: day.end.toISOString(),
       timeZone,
       singleEvents: "true",
       orderBy: "startTime",
@@ -135,7 +148,13 @@ export async function getDayEvents(
     );
 
     if (!response.ok) {
-      console.error("[calendar] Google odpovedal", response.status);
+      /*
+        Telo odpovede nesie dôvod (`invalid timeMin`, `accessNotConfigured`…).
+        Bez neho je v logoch len číslo a hľadá sa naslepo — presne tak sa
+        chyba s chýbajúcim pásmom ťahala týždne.
+      */
+      const detail = await response.text().catch(() => "");
+      console.error("[calendar] Google odpovedal", response.status, detail.slice(0, 300));
       return [];
     }
 
@@ -143,7 +162,7 @@ export async function getDayEvents(
 
     return (data.items ?? [])
       .filter((event) => event.status !== "cancelled" && !declinedBySelf(event))
-      .map((event) => toCalendarEvent(event, timeZone))
+      .map((event) => toCalendarEvent(event, timeZone, day))
       .filter((event): event is CalendarEvent => event !== null);
   } catch (error) {
     console.error("[calendar] Udalosti sa nepodarilo načítať:", error);
