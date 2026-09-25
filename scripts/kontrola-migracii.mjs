@@ -30,6 +30,7 @@
 import {
   nacitajAplikovane,
   nacitajZurnal,
+  popisChyby,
   vypis,
   vytvorPool,
 } from "./db-migracie.mjs";
@@ -66,7 +67,7 @@ async function main() {
         vypis([
           "",
           "K databáze sa nedá pripojiť, takže sa nedá povedať, či je nasadenie bezpečné.",
-          `Dôvod: ${chyba instanceof Error ? chyba.message : String(chyba)}`,
+          `Dôvod: ${popisChyby(chyba)}`,
           "",
           "Keď je databáza v poriadku a blokuje to len táto kontrola, pusti build",
           "s premennou SKIP_MIGRATION_CHECK=1.",

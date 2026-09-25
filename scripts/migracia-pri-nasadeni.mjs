@@ -43,6 +43,7 @@ import {
   PRIECINOK,
   nacitajAplikovane,
   nacitajZurnal,
+  popisChyby,
   vypis,
   vytvorPool,
 } from "./db-migracie.mjs";
@@ -149,7 +150,7 @@ async function main() {
       [
         "",
         "Migráciu sa nepodarilo pustiť, takže sa nenasadzuje.",
-        `Dôvod: ${chyba instanceof Error ? chyba.message : String(chyba)}`,
+        `Dôvod: ${popisChyby(chyba)}`,
         "",
         "Keď je databáza v poriadku a blokuje to len tento krok, pusti migráciu",
         "ručne a build zopakuj so SKIP_MIGRATION=1.",
