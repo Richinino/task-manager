@@ -1,15 +1,16 @@
-# Automatická synchronizácia školského rozvrhu z EduPage.
+# Automatická synchronizácia školského rozvrhu z EduPage — ZÁLOHA.
 #
-# PREČO RAZ DENNE A NIE ČASTEJŠIE
+# Hlavný plánovač je externý cron (cron-job.org, každú hodinu cez školský
+# deň) — návod v docs/NASADENIE.md. GitHub naplánované behy púšťa s
+# hodinovými až päťhodinovými oneskoreniami, takže sa naň na čas spoliehať
+# nedá; ako záloha, keď externý cron vypadne, stačí.
 #
-# Odber z EduPage je rozvrh natiahnutý na dátumy, nie denný plán —
-# suplovanie v ňom nie je (overené: 15. 9. aj 17. 11. sú štátne sviatky
-# a feed na nich má plných osem hodín). Meniť sa teda má čo raz za čas:
-# posunie sa okno troch mesiacov dopredu, zmení sa rozvrh na polrok.
-# Ťahať ten istý súbor každú hodinu by nezistilo nič nové.
+# PREČO NIELEN RAZ DENNE
 #
-# Keby raz suplovanie prišlo z iného zdroja, ten bude potrebovať vlastnú
-# kadenciu — nie túto.
+# Pôvodne sa tu tvrdilo, že suplovanie v odbere nie je. Je — ako šípka
+# v `SUMMARY` (`DEJ -> SJL`), a import ho od commitu „Suplovanie chodí
+# z EduPage samo" aj číta. Zmena na dnešok sa teda dá chytiť ešte v ten
+# deň, ak sa odber stiahne aj cez deň, nie len v noci.
 #
 # ČO TREBA NASTAVIŤ (Settings → Secrets and variables → Actions):
 #   ROZVRH_URL     celá adresa, napr. https://tvoja-adresa.vercel.app/api/rozvrh
@@ -26,11 +27,11 @@ name: Rozvrh
 
 on:
   schedule:
-    # 03:14 UTC, teda nadránom. Zámerne nie celá hodina — na tie si cron
-    # nastavia všetci ostatní a GitHub v špičke behy odkladá aj o hodiny.
-    # Pri dennej synchronizácii je hodina meškania jedno, ale nech to
-    # zbytočne nečaká.
+    # 03:14 UTC, teda nadránom, a v pracovné dni ešte dvakrát cez vyučovanie
+    # (07:43 a 12:43 UTC). Zámerne nie celé hodiny — na tie si cron nastavia
+    # všetci ostatní a GitHub v špičke behy odkladá aj o hodiny.
     - cron: "14 3 * * *"
+    - cron: "43 7,12 * * 1-5"
   workflow_dispatch:
 
 # Dva behy naraz by ťahali ten istý odber a zapisovali doň naraz.
