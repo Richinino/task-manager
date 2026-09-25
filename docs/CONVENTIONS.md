@@ -1073,6 +1073,8 @@ export function getArchivedIdeas(userId: string): Promise<IdeaWithRelations[]>;
 
 Archív **nemaže natvrdo**. Jediné miesto, kde sa v celej appke maže naozaj, ostáva návyk — a aj ten sa pýta dvakrát. Vracia sa cez existujúce `restoreTask` / `restoreIdea`.
 
+Druh sa filtruje **v SQL pred limitom** — obrazovka načíta len otvorenú priehradku a čísla v prepínači počíta `countArchive(userId)`. Filtrovanie v pamäti za limitom skrývalo staršie zmazané úlohy, keď bolo hotových viac než 200.
+
 ## Export — `src/app/api/export/route.ts`
 
 Jeden JSON so všetkým, cez `GET` s `Content-Disposition: attachment`.

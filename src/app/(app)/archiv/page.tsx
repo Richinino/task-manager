@@ -14,7 +14,11 @@ import { ExportCard } from "@/components/views/archiv/export-card";
 import { SearchField } from "@/components/views/archiv/search-field";
 import { SearchResults } from "@/components/views/archiv/search-results";
 import { requireUser } from "@/server/auth-guard";
-import { getArchivedIdeas, getArchivedTasks } from "@/server/queries/archive";
+import {
+  countArchive,
+  getArchivedIdeas,
+  getArchivedTasks,
+} from "@/server/queries/archive";
 import { search } from "@/server/queries/search";
 
 export const metadata: Metadata = {
@@ -44,22 +48,14 @@ function excerpt(text: string | null, max = 120): string | null {
 
 /** Koľko vecí leží v ktorej priehradke. Čísla idú do prepínača. */
 function countByFilter(
-  entries: readonly ArchiveEntry[],
+  byKind: Record<"done" | "dropped" | "deleted", number>,
 ): Record<ArchiveFilterValue, number> {
-  const counts: Record<ArchiveFilterValue, number> = {
-    vsetko: entries.length,
-    hotove: 0,
-    zahodene: 0,
-    zmazane: 0,
+  return {
+    vsetko: byKind.done + byKind.dropped + byKind.deleted,
+    hotove: byKind.done,
+    zahodene: byKind.dropped,
+    zmazane: byKind.deleted,
   };
-
-  for (const entry of entries) {
-    if (entry.reason === "done") counts.hotove += 1;
-    else if (entry.reason === "dropped") counts.zahodene += 1;
-    else counts.zmazane += 1;
-  }
-
-  return counts;
 }
 
 /**
@@ -82,18 +78,21 @@ export default async function ArchivPage({ searchParams }: ArchivPageProps) {
   const query = readSearchQuery(params.q);
   const filter = readArchiveFilter(params.druh);
 
-  const [hits, archivedTasks, archivedIdeas] = await Promise.all([
+  const kinds = archiveKindsFor(filter);
+
+  const [hits, archivedTasks, archivedIdeas, byKind] = await Promise.all([
     // Prázdny aj jednoznakový dopyt vráti `search()` prázdny sám — nemá zmysel
     // to obchádzať tu druhým `if`.
     search(user.id, query),
     /*
-      Zámerne bez `kinds`: prepínač ukazuje pri každej priehradke číslo a to sa
-      nedá zistiť z výberu, ktorý ostatné druhy do výsledku vôbec nepustí.
-      Dotaz je aj tak zastropovaný a rozdelenie do priehradiek je jedno
-      prejdenie poľa.
+      Len druhy otvorenej priehradky — filtrované v SQL pred limitom. Predtým
+      sa načítalo 200 najnovších riadkov všetkých druhov a filtrovalo sa až
+      tu, takže staršie zmazané úlohy vo „Zmazaných" chýbali. Čísla
+      v prepínači počíta zvlášť `countArchive`.
     */
-    getArchivedTasks(user.id),
-    getArchivedIdeas(user.id),
+    getArchivedTasks(user.id, { kinds }),
+    getArchivedIdeas(user.id, { kinds }),
+    countArchive(user.id),
   ]);
 
   /*
@@ -139,11 +138,8 @@ export default async function ArchivPage({ searchParams }: ArchivPageProps) {
     })),
   ].sort((a, b) => b.at - a.at);
 
-  const entries = rows.map((row) => row.entry);
-  const counts = countByFilter(entries);
-
-  const kinds = archiveKindsFor(filter);
-  const visible = entries.filter((entry) => kinds.includes(entry.reason));
+  const visible = rows.map((row) => row.entry);
+  const counts = countByFilter(byKind);
 
   return (
     <div className="flex w-full flex-col md:h-dvh">
