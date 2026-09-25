@@ -7,9 +7,17 @@ import {
   habits,
   ideas,
   journal,
+  learningPillars,
   links,
   projects,
+  reminders,
   reviews,
+  schoolBreaks,
+  schoolLessons,
+  schoolSubjects,
+  schoolTeachers,
+  skillMilestones,
+  skills,
   taggables,
   tags,
   taskEvents,
@@ -28,7 +36,13 @@ import { getCurrentUser } from "@/server/auth-guard";
    Obsahuje **aj mäkko zmazané** riadky — je to záloha, nie prehľad.
 
    NEOBSAHUJE `accounts`: poverenie ku Googlu do zálohy nepatrí. Refresh token
-   v súbore v stiahnutých je presne to, čo sa raz omylom pošle ďalej.
+   v súbore v stiahnutých je presne to, čo sa raz omylom pošle ďalej. Ani
+   `push_subscriptions` — kľúče prehliadača sú viazané na jedno zariadenie
+   a na obnovu dát sú k ničomu.
+
+   Formát 2 (od 25. 9. 2026) pridal školský rozvrh a učenie. Formát 1 ich
+   vynechával, hoci úlohy na ne odkazujú (`subjectId`, `lessonPillarId`,
+   `lessonSkillId`) — záloha by sa po obnove nedala zložiť dokopy.
    ═══════════════════════════════════════════════════════════════════════════ */
 
 export const dynamic = "force-dynamic";
@@ -67,6 +81,14 @@ export async function GET(): Promise<Response> {
       userLinks,
       userHabitEntries,
       userTaggables,
+      userSchoolSubjects,
+      userSchoolTeachers,
+      userSchoolLessons,
+      userSchoolBreaks,
+      userLearningPillars,
+      userSkills,
+      userSkillMilestones,
+      userReminders,
     ] = await Promise.all([
       db.select().from(tasks).where(eq(tasks.userId, user.id)),
       db.select().from(taskEvents).where(eq(taskEvents.userId, user.id)),
@@ -89,11 +111,19 @@ export async function GET(): Promise<Response> {
         .from(taggables)
         .innerJoin(tags, eq(taggables.tagId, tags.id))
         .where(eq(tags.userId, user.id)),
+      db.select().from(schoolSubjects).where(eq(schoolSubjects.userId, user.id)),
+      db.select().from(schoolTeachers).where(eq(schoolTeachers.userId, user.id)),
+      db.select().from(schoolLessons).where(eq(schoolLessons.userId, user.id)),
+      db.select().from(schoolBreaks).where(eq(schoolBreaks.userId, user.id)),
+      db.select().from(learningPillars).where(eq(learningPillars.userId, user.id)),
+      db.select().from(skills).where(eq(skills.userId, user.id)),
+      db.select().from(skillMilestones).where(eq(skillMilestones.userId, user.id)),
+      db.select().from(reminders).where(eq(reminders.userId, user.id)),
     ]);
 
     const payload = {
       exportedAt: new Date().toISOString(),
-      format: 1,
+      format: 2,
       user: { id: user.id, email: user.email, name: user.name, settings: user.settings },
       tasks: userTasks,
       taskEvents: userTaskEvents,
@@ -108,6 +138,18 @@ export async function GET(): Promise<Response> {
       reviews: userReviews,
       templates: userTemplates,
       links: userLinks,
+      school: {
+        subjects: userSchoolSubjects,
+        teachers: userSchoolTeachers,
+        lessons: userSchoolLessons,
+        breaks: userSchoolBreaks,
+      },
+      learning: {
+        pillars: userLearningPillars,
+        skills: userSkills,
+        milestones: userSkillMilestones,
+      },
+      reminders: userReminders,
     };
 
     const stamp = new Date().toISOString().slice(0, 10);
