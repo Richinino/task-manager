@@ -39,6 +39,13 @@ jobs:
       # Prázdny zoznam znamená v produkcii „nikto" (fail-closed). Tu na tom
       # nezáleží, lebo sa nikto neprihlasuje, ale nech je to výslovné.
       ALLOWED_EMAILS: ""
+      # Brána migrácií (`npm run kontrola:migracie`) sa pýta produkčnej
+      # databázy, či v nej dobehlo všetko z repozitára. Tu žiadna databáza
+      # nie je — `DATABASE_URL` vyššie je len náhradná hodnota — takže by sa
+      # build zastavil na „k databáze sa nedá pripojiť". Presne tak bola táto
+      # kontrola červená na každom commite od 8. 9. Stráži nasadenie na
+      # Verceli, nie tento beh.
+      SKIP_MIGRATION_CHECK: "1"
 
     steps:
       - uses: actions/checkout@v4

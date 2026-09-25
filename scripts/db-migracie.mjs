@@ -74,3 +74,24 @@ export async function nacitajAplikovane(pool) {
 export function vypis(riadky) {
   process.stdout.write(`${riadky.join("\n")}\n`);
 }
+
+/**
+ * Čitateľný dôvod chyby spojenia.
+ *
+ * Odmietnuté spojenie vráti `pg` ako `AggregateError` — jeden pokus na IPv4
+ * a jeden na IPv6 — a ten má **prázdne** `message`. Výpis potom končil holým
+ * „Dôvod:" bez ničoho, presne v situácii, keď je dôvod to jediné, čo treba
+ * vedieť. Preto sa siaha aj do vnorených chýb a na ich kód (`ECONNREFUSED`).
+ */
+export function popisChyby(chyba) {
+  if (!(chyba instanceof Error)) return String(chyba);
+  if (chyba.message.trim() !== "") return chyba.message;
+
+  const vnorene = Array.isArray(chyba.errors) ? chyba.errors : [];
+  const casti = vnorene
+    .map((e) => (e instanceof Error ? e.message || e.code || e.name : String(e)))
+    .filter((text) => text !== "");
+  if (casti.length > 0) return [...new Set(casti)].join("; ");
+
+  return chyba.code ?? chyba.name;
+}
