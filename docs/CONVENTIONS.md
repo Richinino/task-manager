@@ -1077,7 +1077,9 @@ Jeden JSON so všetkým, cez `GET` s `Content-Disposition: attachment`.
 
 **Nie CSV.** Úlohy majú podúlohy, štítky, históriu a vzťahy, ktoré tabuľka nezachytí. Cieľ nie je otvoriť to v Exceli, ale mať dáta von, keby appka zajtra zhorela.
 
-Export obsahuje **aj mäkko zmazané** riadky — je to záloha, nie prehľad. Neobsahuje tokeny z `accounts`: poverenie ku Googlu do zálohy nepatrí.
+Export obsahuje **aj mäkko zmazané** riadky — je to záloha, nie prehľad. Neobsahuje tokeny z `accounts`: poverenie ku Googlu do zálohy nepatrí. Ani `push_subscriptions`: kľúče prehliadača platia pre jedno zariadenie.
+
+**Nová tabuľka s `userId` patrí do exportu.** Formát 1 vynechával školský rozvrh a učenie, hoci úlohy na ne odkazujú. Formát 2 ich má pod kľúčmi `school` a `learning`, k tomu `reminders`.
 
 ## Šablóny — `src/server/actions/templates.ts`
 
