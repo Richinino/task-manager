@@ -682,6 +682,31 @@ export async function splitTask(
   }
 }
 
+/** Tvar uuid, aký vyrába `uuidv7` v prehliadači. Nič iné za id neprejde. */
+const CLIENT_ID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/**
+ * Už zachytená úloha podľa id z prehliadača — pre idempotentné `quickCapture`.
+ *
+ * Cudzia úloha s tým istým id (nemožné pri náhodnom uuid, ale id prichádza
+ * z prehliadača) sa za zhodu nepovažuje a zápis potom zlyhá na konflikte.
+ * Mäkko zmazaná sa za zhodu považuje: človek ju medzitým zmazal a druhý
+ * pokus fronty ju nemá vzkriesiť.
+ */
+async function findCapturedTask(
+  userId: string,
+  id: string,
+): Promise<{ ok: true; data: { id: string; title: string } } | null> {
+  const db = await getDb();
+  const rows = await db
+    .select({ id: tasks.id, title: tasks.title })
+    .from(tasks)
+    .where(and(eq(tasks.id, id), eq(tasks.userId, userId)))
+    .limit(1);
+  const row = rows[0];
+  return row ? { ok: true, data: { id: row.id, title: row.title } } : null;
+}
+
 export async function loadTaskDetail(
   id: string,
 ): Promise<ActionResult<TaskWithRelations>> {
@@ -710,6 +735,16 @@ export async function quickCapture(
     defaultSubjectId?: string;
     /** Druh školskej práce, keď ho text nepovie ani pravidlo. */
     defaultSchoolKind?: SchoolKind;
+    /**
+     * Identifikátor, ktorý úloha dostala už v prehliadači — z offline fronty.
+     *
+     * Robí z odoslania idempotentnú operáciu. Keď server úlohu zapíše, ale
+     * odpoveď sa cestou stratí (výpadok signálu presne v tej chvíli), fronta
+     * to berie ako sieťovú chybu a pošle položku znova. Bez spoločného id by
+     * vznikla druhá, rovnaká úloha; s ním sa druhý pokus pozná a vráti tú
+     * prvú.
+     */
+    clientId?: string;
   },
 ): Promise<ActionResult<{ id: string; title: string }>> {
   const user = await requireUser();
@@ -720,6 +755,15 @@ export async function quickCapture(
       .max(2000, "Text je príliš dlhý.")
       .safeParse(raw);
     if (!rawParsed.success) return invalid(rawParsed.error, "Neplatný text.");
+
+    const clientId =
+      opts?.clientId !== undefined && CLIENT_ID_RE.test(opts.clientId)
+        ? opts.clientId.toLowerCase()
+        : null;
+    if (clientId !== null) {
+      const already = await findCapturedTask(user.id, clientId);
+      if (already !== null) return already;
+    }
 
     /*
       Parser číta z `now` lokálne zložky dátumu. Keby sme mu podstrčili obyčajné
@@ -875,42 +919,77 @@ export async function quickCapture(
       ? horizonForDate(plannedDate, todayIn(user.settings.timezone))
       : (patch.horizon ?? "week");
 
-    const id = uuidv7();
-    await db.insert(tasks).values({
-      id,
-      userId: user.id,
-      title: title.slice(0, 500),
-      status,
-      priority: sanitize(prioritySchema, parsed.priority) ?? patch.priority ?? 3,
-      dueDate,
-      dueTime: sanitize(isoTimeSchema, parsed.dueTime),
-      plannedDate,
-      plannedTime,
-      horizon,
-      estimateMin:
-        sanitize(estimateSchema, clampEstimate(parsed.estimateMin)) ??
-        patch.estimateMin ??
-        null,
-      allDay: parsed.allDay === true,
-      energy: sanitize(energySchema, parsed.energy) ?? patch.energy ?? null,
-      context: sanitize(contextSchema, clampContext(parsed.context)),
-      projectId,
-      subjectId,
-      /* Bez predmetu je „domáca úloha vs písomka" rozlíšenie o ničom. */
-      schoolKind:
-        subjectId === null
-          ? null
-          : (parsed.schoolKind ??
-            patch.schoolKind ??
-            opts?.defaultSchoolKind ??
-            null),
-      areaId: patch.areaId ?? null,
-      lessonPillarId: patch.lessonPillarId ?? null,
-      lessonSkillId: patch.lessonSkillId ?? null,
-      habitId: patch.habitId ?? null,
-      isFrog: patch.isFrog === true,
-      staysOnDay: patch.staysOnDay === true,
-    });
+    /*
+      Priorita dňa z pravidla — len pre úlohu s dňom, a ako jediná v ten deň.
+      Bez dňa by vznikla priorita, ktorú `setFrog` vôbec nedovolí nastaviť,
+      a pri dvoch zachyteniach toho istého dňa by boli dve naraz.
+    */
+    const isFrog = patch.isFrog === true && plannedDate !== null;
+
+    const id = clientId ?? uuidv7();
+    const inserted = await db
+      .insert(tasks)
+      .values({
+        id,
+        userId: user.id,
+        title: title.slice(0, 500),
+        status,
+        priority: sanitize(prioritySchema, parsed.priority) ?? patch.priority ?? 3,
+        dueDate,
+        dueTime: sanitize(isoTimeSchema, parsed.dueTime),
+        plannedDate,
+        plannedTime,
+        horizon,
+        estimateMin:
+          sanitize(estimateSchema, clampEstimate(parsed.estimateMin)) ??
+          patch.estimateMin ??
+          null,
+        allDay: parsed.allDay === true,
+        energy: sanitize(energySchema, parsed.energy) ?? patch.energy ?? null,
+        context: sanitize(contextSchema, clampContext(parsed.context)),
+        projectId,
+        subjectId,
+        /* Bez predmetu je „domáca úloha vs písomka" rozlíšenie o ničom. */
+        schoolKind:
+          subjectId === null
+            ? null
+            : (parsed.schoolKind ??
+              patch.schoolKind ??
+              opts?.defaultSchoolKind ??
+              null),
+        areaId: patch.areaId ?? null,
+        lessonPillarId: patch.lessonPillarId ?? null,
+        lessonSkillId: patch.lessonSkillId ?? null,
+        habitId: patch.habitId ?? null,
+        isFrog,
+        staysOnDay: patch.staysOnDay === true,
+      })
+      .onConflictDoNothing()
+      // Bez výberu stĺpcov: `Database` je zjednotenie dvoch ovládačov a
+      // `returning({ … })` na ňom typovo nejde. Stačí vedieť, či riadok vznikol.
+      .returning();
+
+    // Konflikt znamená, že tú istú položku fronty práve zapísal súbežný
+    // pokus. Nič druhýkrát nezakladáme — vrátime tú, ktorá už je.
+    if (inserted.length === 0) {
+      const already = await findCapturedTask(user.id, id);
+      return already ?? { ok: false, error: "Úlohu sa nepodarilo zachytiť." };
+    }
+
+    if (isFrog && plannedDate !== null) {
+      await db
+        .update(tasks)
+        .set({ isFrog: false, updatedAt: new Date() })
+        .where(
+          and(
+            eq(tasks.userId, user.id),
+            eq(tasks.plannedDate, plannedDate),
+            eq(tasks.isFrog, true),
+            ne(tasks.id, id),
+            isNull(tasks.deletedAt),
+          ),
+        );
+    }
 
     // Štítky sú samostatné riadky — bez tohto kroku by `#tag` z náhľadu
     // aj z titulku zmizol a nikde by sa neuložil.
