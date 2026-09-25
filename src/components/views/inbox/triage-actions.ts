@@ -22,7 +22,8 @@ import {
 
 import { addDays, startOfWeek } from "@/lib/dates";
 import {
-  deleteTask,
+  dropTask,
+  moveToSomeday,
   rescheduleTask,
   toggleTaskDone,
   updateTask,
@@ -85,9 +86,9 @@ export const TRIAGE_ACTIONS: Record<TriageAction, TriageActionMeta> = {
     label: "Niekedy",
     shortLabel: "Niekedy",
     shortcut: "4",
-    hint: "Odložiť na niekedy — ostane v inboxe, kým nedostane deň",
+    hint: "Odložiť na niekedy — presunie sa na zoznam Niekedy",
     Icon: Archive,
-    leavesInbox: false,
+    leavesInbox: true,
   },
   done: {
     label: "Hotovo",
@@ -175,19 +176,19 @@ export async function runTriage(
     case "week":
       return planOnDay(taskId, thisWeekDate(todayIso));
     case "someday":
-      // Zámerne sa NEmení `status`. Zoznam úloh s horizontom „niekedy" zatiaľ
-      // žiadna obrazovka nemá (`getSomedayTasks` nikto nevolá), takže úloha
-      // musí ostať v inboxe — je to jediné miesto, kde ju používateľ nájde.
-      // Až keď pribudne obrazovka „Niekedy", môže sa stav posunúť ďalej.
-      return updateTask(taskId, { horizon: "someday" });
+      // Úloha odchádza z inboxu na zoznam „Niekedy". Kým tá obrazovka
+      // neexistovala, musela úloha ostať v inboxe — a inbox sa preto nikdy
+      // nedal dotriediť na nulu. Teraz má „niekedy" vlastné miesto.
+      return moveToSomeday(taskId);
     case "done": {
       const result = await toggleTaskDone(taskId);
       return result.ok ? { ok: true } : result;
     }
     case "drop":
-      // Mäkké zmazanie. Zoznam za to ponúkne „Vrátiť späť" cez `restoreTask` —
+      // Zahodenie, nie zmazanie — úloha ostane v archíve medzi zahodenými.
+      // Zoznam za to ponúkne „Vrátiť späť" cez `restoreTask` —
       // bez neho by sa úloha dala získať naspäť len priamym SQL.
-      return deleteTask(taskId);
+      return dropTask(taskId);
   }
 }
 

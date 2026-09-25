@@ -25,7 +25,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { useTaskDetail } from "@/components/task/task-detail-provider";
 import { isPostponeBlocked } from "@/server/action-result";
-import { deleteTask, rescheduleTask } from "@/server/actions/tasks";
+import { dropTask, rescheduleTask } from "@/server/actions/tasks";
 import type { TaskWithRelations } from "@/server/queries/tasks";
 
 /* ═══════════════════════════════════════════════════════════════════════════
@@ -153,15 +153,15 @@ export function PostponeGuardProvider({ children }: { children: ReactNode }) {
     });
   }
 
-  function dropTask(): void {
+  function dropPending(): void {
     if (!pending) return;
     startTransition(async () => {
-      const result = await deleteTask(pending.input.taskId);
+      const result = await dropTask(pending.input.taskId);
       if (!result.ok) {
         setError(result.error);
         return;
       }
-      // Úloha je preč, takže sa neodložila — volajúci má vrátiť svoj
+      // Úloha je zahodená, takže sa neodložila — volajúci má vrátiť svoj
       // optimistický stav a zoznam sa prekreslí z revalidácie.
       settle({ ok: false, error: "" });
     });
@@ -236,7 +236,7 @@ export function PostponeGuardProvider({ children }: { children: ReactNode }) {
 
             <button
               type="button"
-              onClick={dropTask}
+              onClick={dropPending}
               disabled={isPending}
               className={cn(
                 "flex w-full items-start gap-2.5 rounded border border-border bg-surface",

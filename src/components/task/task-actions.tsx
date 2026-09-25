@@ -40,7 +40,8 @@ import { PriorityDot } from "@/components/task/priority-dot";
 import { usePostponeGuard } from "@/components/task/postpone-guard";
 import { useTaskDetail } from "@/components/task/task-detail-provider";
 import {
-  deleteTask,
+  dropTask,
+  moveToSomeday,
   rescheduleTask,
   restoreTask,
   setFrog,
@@ -80,11 +81,12 @@ export interface TaskRowPatch {
 /* ═══════════════════════════════════════════════════════════════════════════
    ZAHODENIE S MOŽNOSŤOU VRÁTENIA
 
-   Zmazanie je jediná akcia, ktorú si človek nevie vziať späť sám, a v menu
-   je na dosah myši. Preto sa nemaže hneď: riadok sa premení na pásik
-   „Zahodené — Vrátiť späť" a `deleteTask` odíde až po uplynutí okna.
+   Zahodenie je v menu na dosah myši a omylom sa klikne ľahko. Preto sa
+   nezapisuje hneď: riadok sa premení na pásik „Zahodené — Vrátiť späť"
+   a `dropTask` odíde až po uplynutí okna. Úloha sa nemaže — ostáva
+   v archíve v priehradke „Zahodené".
 
-   Prečo takto a nie „zmaž hneď, potom ponúkni restoreTask": `deleteTask`
+   Prečo takto a nie „zahoď hneď, potom ponúkni restoreTask": `dropTask`
    revaliduje obrazovky, riadok zmizne zo zoznamu a s ním by zmizla aj ponuka
    vrátenia — človek by ju nestihol ani prečítať. Zoznamy patria iným
    komponentom, takže hlášku nemá kam odložiť. Odklad zápisu je jediné miesto,
@@ -127,7 +129,7 @@ export function useTaskDiscard(taskId: string): TaskDiscard {
       setError(message);
     }
 
-    void deleteTask(taskId)
+    void dropTask(taskId)
       .then((result) => {
         if (!result.ok) recover(result.error);
       })
@@ -927,9 +929,8 @@ export function TaskActions({
                       úlohy. Zároveň sa odoberá z plánu: inak by ostala visieť
                       v dni, z ktorého ju človek práve odkladá.
                     */
-                    { horizon: "someday", plannedDate: null },
-                    () =>
-                      updateTask(task.id, { horizon: "someday", plannedDate: null }),
+                    { horizon: "someday", plannedDate: null, isFrog: false },
+                    () => moveToSomeday(task.id),
                     "Úlohu sa nepodarilo odložiť. Skús to znova.",
                   )
                 }

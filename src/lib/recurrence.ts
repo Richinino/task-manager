@@ -182,6 +182,42 @@ export function nextOccurrence(
 }
 
 /**
+ * Ďalší výskyt, ktorý má vzniknúť po `afterIso`, keď je dnes `todayIso`.
+ *
+ * Bežne je to jednoducho `nextOccurrence` — ďalší deň podľa pravidla. Keď
+ * ale reťazec zaostal (posledný výskyt je hlboko v minulosti), holé
+ * `nextOccurrence` by vrátilo zase deň v minulosti. Ranný sprievodca tak
+ * pri dennej úlohe zameškanej desať dní zakladal každé ráno ďalšiu
+ * prepadnutú kópiu — o deň novšiu, no stále starú — a dnešok nikdy nedobehol.
+ *
+ * Preto: keď ďalší výskyt už prešiel, vráti sa **najnovší výskyt, ktorý
+ * dnes nie je v budúcnosti** — teda ten, ktorý je práve na rade. Vznikne
+ * jediný, nie sto prepadnutých faktúr naraz. Keď ďalší výskyt ešte len
+ * príde, vráti sa ten.
+ *
+ * Príklady pri dnešku 25. 9. (piatok):
+ *   denne, posledný 15. 9.            → 25. 9.
+ *   každý pondelok, posledný 1. 9.    → 21. 9. (posledný pondelok)
+ *   15. v mesiaci, posledný 15. 8.    → 15. 9.
+ *   15. v mesiaci, posledný 15. 9.    → 15. 10. (ďalší ešte len príde)
+ */
+export function catchUpOccurrence(
+  recurrence: Recurrence,
+  afterIso: string,
+  todayIso: string,
+): string | null {
+  const next = nextOccurrence(recurrence, afterIso);
+  if (next === null || next > todayIso) return next;
+
+  // Najnovší výskyt v intervale [next, dnes]. Strop v `occurrencesBetween`
+  // by pri dennom pravidle a rokoch výpadku skrátil zoznam — preto sa
+  // hľadá od dneška dozadu, kde je výsledok vždy najviac o týždeň/mesiac.
+  const from = afterIso > addDays(todayIso, -62) ? next : addDays(todayIso, -62);
+  const window = occurrencesBetween(recurrence, from, todayIso);
+  return window[window.length - 1] ?? next;
+}
+
+/**
  * Všetky výskyty v intervale vrátane oboch krajných dní.
  *
  * Strop je poistka proti pravidlu, ktoré by generovalo donekonečna — volajúci
