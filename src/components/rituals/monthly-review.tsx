@@ -15,7 +15,7 @@ import {
   type RitualStep,
   type RitualStepContext,
 } from "@/components/rituals/ritual-shell";
-import { deleteTask } from "@/server/actions/tasks";
+import { dropTask } from "@/server/actions/tasks";
 import type { ProjectWithCounts } from "@/server/queries/structure";
 import type { TaskWithRelations } from "@/server/queries/tasks";
 import { pluralSk } from "@/lib/sk";
@@ -195,7 +195,7 @@ export function MonthlyReview({
       };
 
       try {
-        const result = await deleteTask(entry.task.id);
+        const result = await dropTask(entry.task.id);
         if (!result.ok) revert(result.error || "Úlohu sa nepodarilo zahodiť.");
       } catch {
         revert("Úlohu sa nepodarilo zahodiť.");

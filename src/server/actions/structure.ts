@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { and, eq, isNull, sql } from "drizzle-orm";
+import { and, eq, inArray, isNull, ne, sql } from "drizzle-orm";
 import { z } from "zod";
 
 import { getDb, type Database } from "@/db";
@@ -324,6 +324,27 @@ export async function deleteProject(id: string): Promise<ActionResult> {
     if (!existing[0]) return { ok: false, error: "Projekt sa nenašiel." };
 
     await db.transaction(async (tx) => {
+      /*
+        Otvorené úlohy, ktorým bol projekt jediným miestom (nemajú deň ani
+        „niekedy" a nie sú podúlohou), idú do inboxu. Bez toho by po zmazaní
+        projektu ostali v `todo` a na žiadnej obrazovke. Rovnaké pravidlo
+        ako `isOrphaned` z `@/lib/task-placement`.
+      */
+      await tx
+        .update(tasks)
+        .set({ status: "inbox", updatedAt: new Date() })
+        .where(
+          and(
+            eq(tasks.userId, user.id),
+            eq(tasks.projectId, id),
+            inArray(tasks.status, ["todo", "doing"]),
+            isNull(tasks.plannedDate),
+            ne(tasks.horizon, "someday"),
+            isNull(tasks.parentTaskId),
+            isNull(tasks.deletedAt),
+          ),
+        );
+
       await tx
         .update(tasks)
         .set({ projectId: null, updatedAt: new Date() })

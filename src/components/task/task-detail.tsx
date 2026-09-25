@@ -47,7 +47,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
-  deleteTask,
+  dropTask,
   rescheduleTask,
   setFrog,
   toggleTaskDone,
@@ -542,7 +542,7 @@ export function TaskDetail({
     setError(null);
     startTransition(async () => {
       try {
-        const result = await deleteTask(task.id);
+        const result = await dropTask(task.id);
         if (!result.ok) {
           setError(result.error);
           return;

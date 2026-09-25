@@ -321,6 +321,8 @@ export function getProjects(userId: string): Promise<Project[]>;
 
 Všetky dotazy **musia** filtrovať `deletedAt IS NULL` a `userId`.
 
+**Otvorená úloha je vždy na nejakej obrazovke.** Miesto jej dáva deň, projekt, horizont „niekedy", rodič (podúloha) alebo stav `waiting`. Úloha v `todo`/`doing` bez toho všetkého je *osirotená* (`isOrphaned` v `src/lib/task-placement.ts`) a `getInboxTasks` ju zachytí — akcie ju už nevyrobia, ale staršie verzie appky áno. Úloha odložená na „niekedy" do inboxu nepatrí ani so stavom `inbox`; nájde sa len v `getSomedayTasks`, a tá berie len úlohy **bez dňa**. `getCounts` počíta podľa tých istých podmienok.
+
 ## `src/server/actions/tasks.ts`
 
 Súbor začína `"use server";`. Každá akcia:
@@ -349,6 +351,12 @@ export function reorderTasks(ids: string[]): Promise<ActionResult>;
 **Počítadlo odkladov** (`rescheduleTask`): `postponeCount` sa zvýši **iba** ak úloha už mala `plannedDate`, nový dátum je **neskorší** a stav nie je `done`/`dropped`. Posun dozadu ani prvé naplánovanie sa nerátajú. Zapíše sa `task_events` typu `postponed`.
 
 **Žaba** (`setFrog`): naraz môže byť žabou len jedna úloha na daný `plannedDate` — zapnutie zhasne ostatné v ten deň.
+
+**Horizont** počíta `horizonForDate` z `src/lib/task-placement.ts` — jediná kópia pre úlohy aj šablóny. Deň nikdy nie je „niekedy": dnes/zajtra → `day`, do 7 dní → `week`, neskôr → `month`.
+
+**Kam úloha ide po zmene.** `updateTask` a `rescheduleTask` pošlú úlohu, ktorá stratila posledné miesto (zrušený deň, odobratý projekt), do inboxu (`visibleStatus`). Na „niekedy" sa odkladá jedine cez `moveToSomeday(id)` — zruší deň, nastaví horizont, zhasne prioritu dňa a úlohu z inboxu presunie do `todo`.
+
+**Zahodiť ≠ zmazať.** `dropTask(id)` nastaví stav `dropped` a úloha ostane v archíve medzi zahodenými; pri opakovanej úlohe vznikne ďalší výskyt ako pri odškrtnutí. `deleteTask` je mäkké zmazanie a v rozhraní ho používa už len podúloha. `restoreTask(id)` vráti oboje: zmazanú odmaže, zahodenú znova otvorí.
 
 ## `src/components/ui/*` — primitívy
 
@@ -915,7 +923,11 @@ materializeDueRecurrences(todayIso)      // → { created: number }
 
 Slabina je zrejmá: čo sa nikdy nedokončí, sa nikdy nezopakuje. Preto `materializeDueRecurrences` dobehne zameškané výskyty až po dnešok a volá ju **ranný sprievodca z M6** — beží denne a je to presne ten moment, keď majú dnešné opakované veci pribudnúť.
 
-Dobiehanie **nesmie** založiť desiatky úloh naraz: ak od posledného výskytu ubehlo veľa času, vznikne **jeden** výskyt na najbližší platný deň. Sto prepadnutých faktúr v inboxe nikomu nepomôže.
+Dobiehanie **nesmie** založiť desiatky úloh naraz: ak od posledného výskytu ubehlo veľa času, vznikne **jeden** výskyt — ten, ktorý je práve na rade (`catchUpOccurrence`: najnovší výskyt, ktorý dnes nie je v budúcnosti). Sto prepadnutých faktúr v inboxe nikomu nepomôže. Rovnaké pravidlo platí pri odškrtnutí, takže nový výskyt nikdy nevznikne hlbšie v minulosti, než je nutné.
+
+Rozhoduje **najnovší živý člen reťazca** (aj budúci); keď má reťazec výskyt dnes alebo neskôr, niet čo dobiehať. Dni zmazaných výskytov sa rátajú ako obsadené — zmazaný výskyt sa nevzkriesi. Pravidlo patrí celému reťazcu: `setRecurrence` ho zapíše všetkým živým členom, inak by zmena na koreni nemala účinok.
+
+Nový výskyt dedí všetko, čo hovorí, **aká** je to práca — vrátane „viazaná na deň", celodennosti, návyku, lekcie, predmetu a štítkov. Nededí termín, odklady ani prioritu dňa.
 
 ## Win report
 
