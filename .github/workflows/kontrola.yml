@@ -30,22 +30,38 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
 
+    # Čistý Postgres len pre tento beh.
+    #
+    # Build púšťa bránu migrácií (`npm run kontrola:migracie`), ktorá sa pýta
+    # databázy, či v nej dobehlo všetko z repozitára. Kým tu žiadna databáza
+    # nebola, brána padala na „k databáze sa nedá pripojiť" — a tak bola
+    # kontrola červená na každom commite od 8. 9. Vypnúť bránu by bolo
+    # lacnejšie, ale CI by potom migrácie vôbec neoverilo. Takto sa všetky
+    # migrácie naozaj pustia na prázdnu databázu (chytí sa pokazené SQL aj
+    # zlé poradie) a brána potom overí, že sedia so žurnálom.
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
     env:
-      # Build nesiaha na databázu (všetky obrazovky sú dynamické), ale Next
-      # aj Auth.js chcú premenné vidieť. Náhradné hodnoty stačia — overené
-      # tým, že build s nimi lokálne prejde.
-      DATABASE_URL: postgresql://localhost:5432/ci
+      # Databáza zo služby vyššie. Samotný `next build` na ňu nesiaha (všetky
+      # obrazovky sú dynamické), potrebujú ju migrácie a brána.
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/ci
       AUTH_SECRET: ci-placeholder-nie-je-tajomstvo
       # Prázdny zoznam znamená v produkcii „nikto" (fail-closed). Tu na tom
       # nezáleží, lebo sa nikto neprihlasuje, ale nech je to výslovné.
       ALLOWED_EMAILS: ""
-      # Brána migrácií (`npm run kontrola:migracie`) sa pýta produkčnej
-      # databázy, či v nej dobehlo všetko z repozitára. Tu žiadna databáza
-      # nie je — `DATABASE_URL` vyššie je len náhradná hodnota — takže by sa
-      # build zastavil na „k databáze sa nedá pripojiť". Presne tak bola táto
-      # kontrola červená na každom commite od 8. 9. Stráži nasadenie na
-      # Verceli, nie tento beh.
-      SKIP_MIGRATION_CHECK: "1"
 
     steps:
       - uses: actions/checkout@v4
@@ -75,6 +91,14 @@ jobs:
       # prehľad, nie brána. Výstup má byť vidieť v zázname behu.
       - name: Dizajnový systém
         run: npm run kontrola:dizajn
+
+      # Ten istý skript, ktorý migruje produkciu pri nasadení na Verceli —
+      # `MIGROVAT_PRI_BUILDE` ho pustí aj mimo Vercelu. Build nižšie potom
+      # vlastnú migráciu preskočí a brána overí výsledok.
+      - name: Migrácie na čistej databáze
+        run: npm run db:migrate:nasadenie
+        env:
+          MIGROVAT_PRI_BUILDE: "1"
 
       - name: Produkčný build
         run: npm run build

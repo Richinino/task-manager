@@ -929,6 +929,8 @@ Dobiehanie **nesmie** založiť desiatky úloh naraz: ak od posledného výskytu
 
 Rozhoduje **najnovší živý člen reťazca** (aj budúci); keď má reťazec výskyt dnes alebo neskôr, niet čo dobiehať. Dni zmazaných výskytov sa rátajú ako obsadené — zmazaný výskyt sa nevzkriesi. Pravidlo patrí celému reťazcu: `setRecurrence` ho zapíše všetkým živým členom, inak by zmena na koreni nemala účinok.
 
+**Súbežné pokusy sa zoraďujú zámkom, nie indexom.** Zakladanie výskytu beží v transakcii pod `pg_advisory_xact_lock` na koreň reťazca — dva súbežné pokusy (dve karty s ranným rituálom, dvojklik) inak oba videli voľný deň a oba zapísali. Jedinečný index na (`recurrenceParentId`, `plannedDate`) nejde: človek smie výskyt ručne presunúť na deň iného. To isté platí pre prioritu dňa (zámok na používateľa a deň). Odškrtnutie aj zahodenie idú spolu so založením ďalšieho výskytu v jednej transakcii.
+
 Nový výskyt dedí všetko, čo hovorí, **aká** je to práca — vrátane „viazaná na deň", celodennosti, návyku, lekcie, predmetu a štítkov. Nededí termín, odklady ani prioritu dňa.
 
 ## Win report
