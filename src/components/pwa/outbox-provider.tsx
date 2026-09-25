@@ -140,8 +140,13 @@ export function OutboxProvider({ children }: { children: ReactNode }) {
       let sent = 0;
       for (const item of items) {
         try {
+          /*
+            `clientId` robí odoslanie idempotentným: keď server úlohu zapíše,
+            ale odpoveď sa stratí, ďalší pokus nezaloží druhú rovnakú.
+          */
           const result = await quickCapture(item.raw, {
             defaultPlannedDate: item.defaultPlannedDate,
+            clientId: item.id,
           });
           // `{ ok: false }` = neplatný vstup. Opakovanie by dopadlo rovnako,
           // takže položka ide preč, aby neupchala frontu.

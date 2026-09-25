@@ -338,7 +338,7 @@ export type ActionResult<T = void> =
   | { ok: false; error: string };
 
 export function createTask(input: CreateTaskInput): Promise<ActionResult<{ id: string }>>;
-export function quickCapture(raw: string, opts?: { forceInbox?: boolean }): Promise<ActionResult<{ id: string; title: string }>>;
+export function quickCapture(raw: string, opts?: { forceInbox?: boolean; clientId?: string }): Promise<ActionResult<{ id: string; title: string }>>;
 export function updateTask(id: string, patch: UpdateTaskPatch): Promise<ActionResult>;
 export function toggleTaskDone(id: string): Promise<ActionResult<{ done: boolean }>>;
 export function deleteTask(id: string): Promise<ActionResult>;      // mäkké zmazanie
@@ -350,7 +350,9 @@ export function reorderTasks(ids: string[]): Promise<ActionResult>;
 
 **Počítadlo odkladov** (`rescheduleTask`): `postponeCount` sa zvýši **iba** ak úloha už mala `plannedDate`, nový dátum je **neskorší** a stav nie je `done`/`dropped`. Posun dozadu ani prvé naplánovanie sa nerátajú. Zapíše sa `task_events` typu `postponed`.
 
-**Žaba** (`setFrog`): naraz môže byť žabou len jedna úloha na daný `plannedDate` — zapnutie zhasne ostatné v ten deň.
+**Žaba** (`setFrog`): naraz môže byť žabou len jedna úloha na daný `plannedDate` — zapnutie zhasne ostatné v ten deň. Platí aj pre pravidlo s `isFrog` v `quickCapture`: uplatní sa len na úlohu s dňom a ostatné v ten deň zhasne.
+
+**`clientId` v `quickCapture`** posiela offline fronta — id, ktoré položka dostala v prehliadači, sa stane id úlohy. Druhé odoslanie tej istej položky (odpoveď sa stratila, fronta to skúsi znova) vráti už existujúcu úlohu a nezaloží druhú.
 
 **Horizont** počíta `horizonForDate` z `src/lib/task-placement.ts` — jediná kópia pre úlohy aj šablóny. Deň nikdy nie je „niekedy": dnes/zajtra → `day`, do 7 dní → `week`, neskôr → `month`.
 
