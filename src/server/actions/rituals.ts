@@ -224,7 +224,9 @@ export async function saveJournalEntry(
 
     const trimmed = bodyParsed.data?.trim();
     const body = trimmed === undefined ? undefined : trimmed === "" ? null : trimmed;
-    const mood = moodParsed.data ?? null;
+    // `undefined` = náladu neposlal, nemení sa. Predtým sa zapísalo `null`,
+    // takže uloženie samotnej vety zmazalo náladu z toho istého dňa.
+    const mood = entry.mood === undefined ? undefined : (moodParsed.data ?? null);
 
     const db = await getDb();
     const existing = await db
@@ -239,7 +241,7 @@ export async function saveJournalEntry(
         .update(journal)
         .set({
           ...(body !== undefined ? { body } : {}),
-          mood,
+          ...(mood !== undefined ? { mood } : {}),
           updatedAt: new Date(),
         })
         .where(and(eq(journal.id, row.id), eq(journal.userId, user.id)));
@@ -249,7 +251,7 @@ export async function saveJournalEntry(
         userId: user.id,
         date: dateParsed.data,
         body: body ?? null,
-        mood,
+        mood: mood ?? null,
       });
     }
 

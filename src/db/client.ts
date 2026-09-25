@@ -11,6 +11,28 @@ import * as schema from "./schema";
 
 export type Database = Awaited<ReturnType<typeof createDb>>;
 
+/**
+ * Adresa databázy bez `sslmode`.
+ *
+ * Neon ju dáva so `sslmode=require` a `pg` pri nej do logov Vercelu píše
+ * pri každom studenom štarte „SECURITY WARNING: The SSL modes 'prefer',
+ * 'require', and 'verify-ca' are treated as aliases for 'verify-full'" —
+ * 75× za týždeň, najčastejšia „chyba" v prehľade. Šifrovanie aj overenie
+ * certifikátu tu nastavuje výslovne `ssl: { rejectUnauthorized: true }`,
+ * čo je presne `verify-full`; parameter v adrese je teda navyše a jeho
+ * význam sa má v ďalšej verzii `pg` zmeniť na slabší.
+ */
+export function withoutSslMode(url: string): string {
+  try {
+    const parsed = new URL(url);
+    if (!parsed.searchParams.has("sslmode")) return url;
+    parsed.searchParams.delete("sslmode");
+    return parsed.toString();
+  } catch {
+    return url;
+  }
+}
+
 async function createDb() {
   const url = process.env.DATABASE_URL;
 
@@ -19,7 +41,7 @@ async function createDb() {
     const { Pool } = await import("pg");
     const isLocal = url.includes("localhost") || url.includes("127.0.0.1");
     const pool = new Pool({
-      connectionString: url,
+      connectionString: withoutSslMode(url),
       ssl: isLocal ? false : { rejectUnauthorized: true },
       /*
         V serverless prostredí obsluhuje jedna inštancia funkcie jednu

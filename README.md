@@ -8,15 +8,23 @@ Návrh celého systému je v [PLAN.md](PLAN.md), záväzné rozhrania v [docs/CO
 
 ## Spustenie
 
+Potrebuješ **Node.js 24** (verzia je aj v `.nvmrc`). S Node 22 a npm 10
+`npm ci` padá na „lock file not in sync" — lockfile je z npm 11.
+
 ```bash
-npm install
+cp .env.example .env.local    # Windows: copy .env.example .env.local
+npm ci
 npm run db:seed
 npm run dev
 ```
 
 Otvor http://localhost:3000 a prihlás sa tlačidlom **Pokračovať vo vývojovom režime**.
 
-Google prihlásenie nie je na lokálny vývoj potrebné — `.env.local` má `AUTH_DEV_BYPASS=1`. Ako ho zapnúť, je popísané v [docs/NASADENIE.md](docs/NASADENIE.md).
+`.env.local` nie je v gite. Bez neho sa na čistej kópii (nový počítač, nový
+cloud) tlačidlo prihlásenia **nezobrazí vôbec** — vývojové prihlásenie
+zapína práve `AUTH_DEV_BYPASS=1` z `.env.example`. Google prihlásenie na
+lokálny vývoj potrebné nie je; ako ho zapnúť, je v
+[docs/NASADENIE.md](docs/NASADENIE.md).
 
 ## Databáza
 
@@ -41,7 +49,8 @@ npm run db:reset      # zmaže lokálnu databázu
 npm run dev         # vývojový server
 npm run build       # produkčný build
 npm run typecheck   # tsc --noEmit
-npm run test        # vitest (parser a dátumy)
+npm run test        # vitest (čisté funkcie v src/lib)
+npm run overit      # všetko naraz: preklad, testy, lint, kontrola dopytov a dizajnu
 npm run lint        # eslint
 ```
 
@@ -52,9 +61,17 @@ npm run lint        # eslint
 | `n` | rýchle zachytenie |
 | `Ctrl` `K` | command palette |
 | `t` / `w` / `m` / `i` | Dnes / Týždeň / Mesiac / Inbox |
+| ďalšie písmená | ostatné obrazovky — skratka je vypísaná pri každej položke v bočnom paneli |
+| `Ctrl` `Z` | vrátiť práve zahodenú úlohu (kým svieti hláška) |
+
+V inboxe navyše:
+
+| Skratka | Akcia |
+|---|---|
 | `j` / `k` | pohyb v zozname |
-| `x` | odškrtnúť |
-| `1`–`4` | triedenie v inboxe |
+| `1`–`4` | dnes / zajtra / tento týždeň / niekedy |
+| `x` | hotovo |
+| `⌫` | zahodiť |
 
 ## Syntax rýchleho zachytenia
 
