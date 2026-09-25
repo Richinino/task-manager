@@ -184,7 +184,9 @@ odovzdať priznanie do 31.3. !1 2h
 | `15m`, `2h` | odhad |
 
 **Klávesnica**
-`Ctrl+K` command palette · `n` nová úloha · `j/k` navigácia · `x` hotovo · `e` úprava · `1/2/3` priorita · `d` dátum · `t/w/m/i` prepínanie obrazoviek
+`Ctrl+K` command palette · `n` nová úloha · `t/w/m/i` a ďalšie písmená prepínanie obrazoviek · v inboxe `j/k` navigácia, `1–4` triedenie, `x` hotovo, `⌫` zahodiť
+
+*Z pôvodného návrhu nevzniklo:* `e` úprava, `1/2/3` priorita a `d` dátum mimo inboxu, a `j/k/x` na ostatných zoznamoch.
 
 > ⚠️ **Poznámka:** webová appka **nedokáže** zaregistrovať skutočnú globálnu klávesovú skratku mimo prehliadača. Riešenia: (a) PWA pripnutá na taskbar + skratka nastavená na `.lnk` súbore vo Windows, (b) neskôr tenký Tauri obal, ak to bude prekážať. V pláne je (a).
 
@@ -237,13 +239,13 @@ Každá z týchto vecí pridá réžiu a po troch týždňoch systém opustíš.
 | **M4** | Nápady | entita nápadov, kanban zrenia, povýšenie na projekt, inkubátor, zhnitie | 2 večery |
 | **M5** | Anti-prokrastinácia | počítadlo odkladov, WIP limit, rozpočet dňa, „Čo teraz?" | 2 večery |
 | **M6** | Rituály | 4 sprievodcovia (ráno, večer, týždeň, mesiac) + denník | 3 večery |
+| **M7** | Návyky a čísla | opakovanie, série, mriežka, štatistiky, win report | 2–3 večery |
+| **M8** | Kalendár | Google Calendar read-only, meetingy v dennom pláne a v rozpočte | 1 večer |
+| **M9** | Dolaďovanie | šablóny, `[[odkazy]]`, archív, export, fulltext | 2–3 večery |
 
 > **M0–M9 hotové a nasadené**, k tomu školský rozvrh a učenie.
 >
 > Čo zostáva, je v sekcii [Čo zostáva](#8-čo-zostáva) na konci.
-| **M7** | Návyky a čísla | opakovanie, série, mriežka, štatistiky, win report | 2–3 večery |
-| **M8** | Kalendár | Google Calendar read-only, meetingy v dennom pláne a v rozpočte | 1 večer |
-| **M9** | Dolaďovanie | šablóny, `[[odkazy]]`, archív, export, fulltext | 2–3 večery |
 
 **Po M1 systém reálne používaš.** Všetko ďalšie pribúda okolo živých dát, nie okolo prázdnej appky — to je zámer, lebo priority sa po týždni používania vždy zmenia.
 

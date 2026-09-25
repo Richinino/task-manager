@@ -2,7 +2,7 @@ import "server-only";
 
 import { and, eq, inArray, isNotNull, isNull } from "drizzle-orm";
 
-import { getDb } from "@/db";
+import { getDb, type Database } from "@/db";
 import { schoolLessons, schoolSubjects, schoolTeachers, tasks } from "@/db/schema";
 import { todayIn } from "@/lib/dates";
 import { filterByGroups, parseIcs } from "@/lib/ics";
@@ -28,6 +28,9 @@ import { lessonMatcher, slotKey } from "@/lib/school-pairing";
       včerajšiu hodinu by znamenalo zmazať aj poznámku k nej — a tá hodina sa
       už aj tak stala.
    ═══════════════════════════════════════════════════════════════════════════ */
+
+/** Transakcia z `db.transaction` — import zapisuje celý naraz. */
+type Queryable = Parameters<Parameters<Database["transaction"]>[0]>[0];
 
 /** Odber sa načítal, ale nie je v ňom ani jedna hodina. */
 export class PrazdnyKalendar extends Error {
@@ -86,14 +89,21 @@ export async function importScheduleFor(
 
   /*
     Import siaha len na dnešok a ďalej. Odber nesie aj minulosť, ale tá je
-      hotová — a keby sa prepísala, zmizli by s ňou poznámky k odučeným
-      hodinám.
-    */
-    const dnes = todayIn(timeZone);
-    const buduce = moje.filter((h) => todayIn(timeZone, h.start) >= dnes);
+    hotová — a keby sa prepísala, zmizli by s ňou poznámky k odučeným
+    hodinám.
+  */
+  const dnes = todayIn(timeZone);
+  const buduce = moje.filter((h) => todayIn(timeZone, h.start) >= dnes);
 
-    const db = await getDb();
-
+  /*
+    Celý zápis je jedna transakcia. Import robí stovky zápisov za sebou
+    (predmety, vyučujúci, hodiny, mazanie, upratovanie) a keby spadol
+    v polovici — časový limit funkcie, výpadok spojenia s Neonom — ostal by
+    rozvrh napoly nový a napoly starý. Takto sa buď zapíše celý, alebo
+    vôbec a ďalší beh to skúsi odznova.
+  */
+  const db = await getDb();
+  return db.transaction(async (tx) => {
     /* ── predmety a vyučujúci ───────────────────────────────────────────── */
     /*
       Pri suplovaní treba OBA predmety — ten, čo naozaj bude, aj ten, čo tu mal
@@ -112,7 +122,7 @@ export async function importScheduleFor(
     ];
     const ucitelia = [...new Set(buduce.map((h) => h.teacher).filter((t) => t !== ""))];
 
-    const existujucePredmety = await db
+    const existujucePredmety = await tx
       .select()
       .from(schoolSubjects)
       .where(eq(schoolSubjects.userId, userId));
@@ -125,7 +135,7 @@ export async function importScheduleFor(
       const farba = subjectColor(kod, pouziteFarby);
       pouziteFarby.push(farba);
       const id = uuidv7();
-      await db
+      await tx
         .insert(schoolSubjects)
         .values({ id, userId: userId, code: kod, color: farba });
       predmetPodlaKodu.set(kod, {
@@ -140,7 +150,7 @@ export async function importScheduleFor(
       });
     }
 
-    const existujuciUcitelia = await db
+    const existujuciUcitelia = await tx
       .select()
       .from(schoolTeachers)
       .where(eq(schoolTeachers.userId, userId));
@@ -149,7 +159,7 @@ export async function importScheduleFor(
 
     for (const kod of noviUcitelia) {
       const id = uuidv7();
-      await db.insert(schoolTeachers).values({ id, userId: userId, code: kod });
+      await tx.insert(schoolTeachers).values({ id, userId: userId, code: kod });
       ucitelPodlaKodu.set(kod, {
         id,
         userId: userId,
@@ -162,7 +172,7 @@ export async function importScheduleFor(
     }
 
     /* ── hodiny ─────────────────────────────────────────────────────────── */
-    const ulozene = await db
+    const ulozene = await tx
       .select()
       .from(schoolLessons)
       .where(eq(schoolLessons.userId, userId));
@@ -228,7 +238,7 @@ export async function importScheduleFor(
 
       if (stara === undefined) {
         const id = uuidv7();
-        await db.insert(schoolLessons).values({
+        await tx.insert(schoolLessons).values({
           id,
           userId: userId,
           date: datum,
@@ -279,7 +289,7 @@ export async function importScheduleFor(
         stara.originalSubjectId !== hodnoty.originalSubjectId;
 
       if (zmenene) {
-        await db
+        await tx
           .update(schoolLessons)
           .set({ ...hodnoty, updatedAt: new Date() })
           .where(eq(schoolLessons.id, stara.id));
@@ -298,26 +308,27 @@ export async function importScheduleFor(
       .map((h) => h.id);
 
     if (naZmazanie.length > 0) {
-      await db
+      await tx
         .delete(schoolLessons)
         .where(
           and(eq(schoolLessons.userId, userId), inArray(schoolLessons.id, naZmazanie)),
         );
     }
 
-  const upratanychPredmetov = await upracPredmety(userId);
+    const upratanychPredmetov = await upracPredmety(tx, userId);
 
-  return {
-    voFeede: vsetky.length,
-    mojich: moje.length,
-    pridanych,
-    upravenych,
-    zmazanych: naZmazanie.length,
-    ponechanych,
-    novychPredmetov: novePredmety.length,
-    novychUcitelov: noviUcitelia.length,
-    upratanychPredmetov,
-  };
+    return {
+      voFeede: vsetky.length,
+      mojich: moje.length,
+      pridanych,
+      upravenych,
+      zmazanych: naZmazanie.length,
+      ponechanych,
+      novychPredmetov: novePredmety.length,
+      novychUcitelov: noviUcitelia.length,
+      upratanychPredmetov,
+    };
+  });
 }
 
 /**
@@ -339,8 +350,7 @@ export async function importScheduleFor(
  * Predmet, ktorý človek pomenoval a prestal chodiť, tu teda ostane. Je to
  * lacnejšie než zmazať niečo, čo si niekto vypisoval ručne.
  */
-async function upracPredmety(userId: string): Promise<number> {
-  const db = await getDb();
+async function upracPredmety(db: Queryable, userId: string): Promise<number> {
 
   const kandidati = await db
     .select({ id: schoolSubjects.id })
@@ -429,13 +439,27 @@ export async function stiahniOdber(): Promise<string> {
   */
   const url = raw.replace(/^webcal:\/\//i, "https://");
 
-  let odpoved: Response;
-  try {
-    odpoved = await fetch(url, {
+  /*
+    Jeden opakovaný pokus, keď spojenie vôbec nevznikne. EduPage občas
+    neodpovie na prvé spojenie (25. 9. ráno `UND_ERR_CONNECT_TIMEOUT`) a
+    plánovač by inak ostal bez rozvrhu do ďalšieho behu. Chybový kód HTTP
+    sa neopakuje — to je odpoveď, nie výpadok.
+  */
+  const stiahni = () =>
+    fetch(url, {
       headers: { accept: "text/calendar, text/plain" },
       cache: "no-store",
       signal: AbortSignal.timeout(20_000),
     });
+
+  let odpoved: Response;
+  try {
+    try {
+      odpoved = await stiahni();
+    } catch {
+      await new Promise((hotovo) => setTimeout(hotovo, 2_000));
+      odpoved = await stiahni();
+    }
   } catch (chyba) {
     /*
       Spojenie vôbec nevzniklo — zlá adresa, spadnutý server, alebo sieť,

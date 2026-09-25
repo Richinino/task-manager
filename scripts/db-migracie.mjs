@@ -35,6 +35,17 @@ export function nacitajZurnal() {
   });
 }
 
+function bezSslMode(url) {
+  try {
+    const adresa = new URL(url);
+    if (!adresa.searchParams.has("sslmode")) return url;
+    adresa.searchParams.delete("sslmode");
+    return adresa.toString();
+  } catch {
+    return url;
+  }
+}
+
 /**
  * Jedno spojenie, nie fond.
  *
@@ -45,7 +56,9 @@ export async function vytvorPool(url) {
   const { Pool } = await import("pg");
   const lokalna = url.includes("localhost") || url.includes("127.0.0.1");
   return new Pool({
-    connectionString: url,
+    // Bez `sslmode` z adresy — rovnaký dôvod ako `withoutSslMode` v
+    // `src/db/client.ts`. Overenie certifikátu nastavuje `ssl` nižšie.
+    connectionString: bezSslMode(url),
     ssl: lokalna ? false : { rejectUnauthorized: true },
     max: 1,
     connectionTimeoutMillis: CAKANIE_MS,
