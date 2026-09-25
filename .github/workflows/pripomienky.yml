@@ -3,11 +3,18 @@
 # Web Push sa musí odoslať zo servera — naplánovať notifikáciu priamo
 # v telefóne by vedelo Notification Triggers API, ale to Google zastavil.
 # Vercel Hobby má vlastný cron obmedzený na jeden beh denne, čo je na
-# pripomienky nepoužiteľné; GitHub Actions dovolí každých 15 minút zadarmo.
+# pripomienky nepoužiteľné.
 #
-# Odtiaľ pochádza presnosť ±15 minút. GitHub navyše negarantuje presný
-# okamih — pri zaťažení beh odloží. Appka s tým ráta: berie len pripomienky,
-# ktoré už dozreli, takže môžu meškať, ale nikdy neprídu skôr.
+# TOTO JE LEN ZÁLOHA. Hlavný plánovač je externý cron (cron-job.org, každých
+# 5 minút) — návod v docs/NASADENIE.md. GitHub síce dovolí napísať „každých
+# 15 minút", ale naozaj to nepustí: 25. 9. 2026 bežal o 05:18, 10:15, 15:18
+# a 19:18, teda raz za štyri až päť hodín, a pripomienky chodili o hodiny
+# neskôr. Ako záloha je dobrý — keď externý cron vypadne, niečo aspoň príde.
+#
+# Dvaja plánovači naraz nič nezdvoja: riadok v `reminders` sa zapisuje pred
+# odoslaním a jedinečný index (task_id, at) druhý pokus zastaví. Appka berie
+# len pripomienky, ktoré už dozreli, takže môžu meškať, ale nikdy neprídu
+# skôr.
 #
 # ČO TREBA NASTAVIŤ (Settings → Secrets and variables → Actions):
 #   PRIPOMIENKY_URL   celá adresa, napr. https://tvoja-adresa.vercel.app/api/pripomienky
