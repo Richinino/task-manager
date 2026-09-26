@@ -1,10 +1,13 @@
+import type { CSSProperties } from "react";
 import type { UrlObject } from "url";
 
 import Link from "next/link";
 import { CalendarClock } from "lucide-react";
 
+import { AgendaShape } from "@/components/agenda/agenda-bits";
 import { AddTaskPopover } from "@/components/task/add-task-inline";
 import { PriorityDot } from "@/components/task/priority-dot";
+import { isAssessment, type AgendaKind, type AgendaType } from "@/lib/agenda";
 import { MONTHS_SHORT_SK, formatLongSk, parseIsoDate } from "@/lib/dates";
 import { cn } from "@/lib/utils";
 
@@ -54,6 +57,22 @@ export interface DayEntry {
   overdue: boolean;
 }
 
+/**
+ * Jednodňová udalosť alebo deadline v bunke. Viacdňové bunka nekreslí —
+ * tie idú cez celý týždeň ako pruh (`MonthGrid`).
+ */
+export interface DayAgendaEntry {
+  key: string;
+  /** Krátky názov („písomka MAT"), celý je v detaile. */
+  title: string;
+  kind: AgendaKind;
+  type: AgendaType;
+  cancelled: boolean;
+}
+
+/** Výška jedného pruhu viacdňovej udalosti aj s medzerou — bunka pod ne nechá miesto. */
+export const BAR_LANE_PX = { phone: 18, md: 22 } as const;
+
 export interface DayCellProps {
   iso: string;
   /** Patrí deň do zobrazeného mesiaca, alebo len dobieha zo susedného? */
@@ -63,6 +82,10 @@ export interface DayCellProps {
   isSelected: boolean;
   /** VŠETKY záznamy dňa, už zoradené. Orezanie si robí bunka. */
   entries: DayEntry[];
+  /** Jednodňové udalosti a deadliny, zoradené. Majú prednosť pred úlohami. */
+  agenda: DayAgendaEntry[];
+  /** Koľko pruhov viacdňových udalostí leží v tomto týždni na spodku bunky. */
+  barLanes: number;
   /**
    * Od `md` — týždeň, do ktorého deň patrí.
    * Objektový tvar, lebo `typedRoutes` neprijme zloženú adresu ako `string`.
@@ -70,6 +93,8 @@ export interface DayCellProps {
   weekHref: UrlObject;
   /** Telefón — rozbalí zoznam úloh dňa pod mriežkou (alebo ho zavrie). */
   dayHref: UrlObject;
+  /** Miesto v mriežke — pevné, lebo cez bunky ležia pruhy viacdňových udalostí. */
+  style?: CSSProperties;
 }
 
 /** „+ ďalšia 1" / „+ ďalšie 4" / „+ ďalších 7" — slovenské skloňovanie. */
@@ -111,6 +136,29 @@ interface DaySummary {
   plannedPriority: number;
 }
 
+interface AgendaSummary {
+  events: number;
+  /** Aspoň jedna písomka či skúšanie — kosoštvorec dostane `warn`. */
+  assessment: boolean;
+  deadlines: number;
+}
+
+function summarizeAgenda(agenda: DayAgendaEntry[]): AgendaSummary {
+  let events = 0;
+  let deadlines = 0;
+  let assessment = false;
+  for (const entry of agenda) {
+    if (entry.cancelled) continue;
+    if (entry.kind === "deadline") {
+      deadlines += 1;
+    } else {
+      events += 1;
+      if (isAssessment(entry.type)) assessment = true;
+    }
+  }
+  return { events, assessment, deadlines };
+}
+
 /** Jeden prechod cez záznamy; z neho žije celý signál na telefóne. */
 function summarize(entries: DayEntry[]): DaySummary {
   let dueCount = 0;
@@ -149,13 +197,39 @@ function entryPhrase(entry: DayEntry): string {
  * inak by čítačka v mriežke 42 rovnakých odkazov čítala len „Otvoriť týždeň".
  * Na telefóne tak čítačka dostane aj názvy úloh, hoci oko vidí len bodky.
  */
-function describeDay(iso: string, entries: DayEntry[]): string {
-  const shown = entries.slice(0, MAX_ENTRIES_PER_DAY);
+function describeDay(iso: string, entries: DayEntry[], agenda: DayAgendaEntry[]): string {
+  const shown = entries.slice(0, Math.max(0, MAX_ENTRIES_PER_DAY - agenda.length));
   const hidden = entries.length - shown.length;
 
-  const parts = [`${formatLongSk(iso)}.`, ...shown.map(entryPhrase)];
+  // Udalosti sa vymenujú vždy všetky — je ich málo a sú to pevné body dňa.
+  const parts = [`${formatLongSk(iso)}.`, ...agenda.map(agendaPhrase), ...shown.map(entryPhrase)];
   if (hidden > 0) parts.push(`${moreLabel(hidden)}.`);
   return parts.join(" ");
+}
+
+function agendaPhrase(entry: DayAgendaEntry): string {
+  const kind = entry.kind === "deadline" ? "deadline" : "udalosť";
+  return `${kind}: ${entry.title}${entry.cancelled ? ", zrušená" : ""}.`;
+}
+
+/**
+ * Udalosť v bunke — iba od `md`. Bez podkladu a pruhu: úlohy majú rámček,
+ * udalosť len tvar a tučné písmo. Je to pevný bod dňa, nie ďalšia vec na
+ * odškrtnutie.
+ */
+function DayAgendaChip({ entry }: { entry: DayAgendaEntry }) {
+  return (
+    <span
+      title={agendaPhrase(entry)}
+      className={cn(
+        "flex min-w-0 items-center gap-1 px-1 py-px text-micro font-semibold leading-tight text-fg",
+        entry.cancelled && "font-normal text-fg-subtle line-through",
+      )}
+    >
+      <AgendaShape kind={entry.kind} type={entry.type} className="size-2.5" />
+      <span className="min-w-0 truncate">{entry.title}</span>
+    </span>
+  );
 }
 
 /**
@@ -211,21 +285,27 @@ export function DayCell({
   isToday,
   isSelected,
   entries,
+  agenda,
+  barLanes,
   weekHref,
   dayHref,
+  style,
 }: DayCellProps) {
   const date = parseIsoDate(iso);
   const dayNumber = date.getDate();
   // Prvý deň dobiehajúceho mesiaca si pýta menovku, inak sa čísla zlievajú.
   const monthHint = !inMonth && dayNumber === 1 ? MONTHS_SHORT_SK[date.getMonth()] : undefined;
 
-  const shown = entries.slice(0, MAX_ENTRIES_PER_DAY);
-  const hiddenCount = entries.length - shown.length;
+  const agendaShown = agenda.slice(0, MAX_ENTRIES_PER_DAY);
+  const shown = entries.slice(0, MAX_ENTRIES_PER_DAY - agendaShown.length);
+  const hiddenCount = agenda.length + entries.length - agendaShown.length - shown.length;
   const summary = summarize(entries);
-  const description = describeDay(iso, entries);
+  const agendaSummary = summarizeAgenda(agenda);
+  const description = describeDay(iso, entries, agenda);
 
   return (
     <div
+      style={style}
       className={cn(
         /*
           Návrh („Mesiac") kreslí súvislú mriežku — bunky oddeľujú linky, nie
@@ -256,7 +336,17 @@ export function DayCell({
           // 5 × 6 px je z návrhu — v mriežke šiestich riadkov je každý ušetrený
           // pixel jeden riadok textu navyše.
           "md:min-h-0 md:gap-[3px] md:p-[5px_6px]",
+          // Pod pruhy viacdňových udalostí — tie ležia cez bunky na ich spodku.
+          barLanes > 0 && "pb-[var(--bars-phone)] md:pb-[var(--bars-md)]",
         )}
+        style={
+          barLanes > 0
+            ? ({
+                "--bars-phone": `${barLanes * BAR_LANE_PX.phone + 4}px`,
+                "--bars-md": `${barLanes * BAR_LANE_PX.md + 5}px`,
+              } as CSSProperties)
+            : undefined
+        }
       >
         {/* `md:pr-5` drží číslo mimo rohu, kde od `md` sedí „+". */}
         <span className="flex items-baseline justify-between gap-1 md:pr-5">
@@ -290,8 +380,42 @@ export function DayCell({
           ostal čistý. Dva signály + dve čísla majú ~34 px, čo sa do 47 px
           bunky zmestí bez zalomenia.
         */}
-        {summary.dueCount > 0 || summary.plannedCount > 0 ? (
+        {summary.dueCount > 0 ||
+        summary.plannedCount > 0 ||
+        agendaSummary.events > 0 ||
+        agendaSummary.deadlines > 0 ? (
           <span className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 md:hidden">
+            {agendaSummary.events > 0 ? (
+              <span className="inline-flex items-center gap-0.5">
+                <AgendaShape
+                  kind="event"
+                  type={agendaSummary.assessment ? "exam" : "other"}
+                  className="size-2"
+                />
+                {agendaSummary.events > 1 ? (
+                  <span
+                    className={cn(
+                      "text-micro font-semibold leading-none font-mono tabular-nums",
+                      agendaSummary.assessment ? "text-warn" : "text-fg-muted",
+                    )}
+                  >
+                    {agendaSummary.events}
+                  </span>
+                ) : null}
+              </span>
+            ) : null}
+
+            {agendaSummary.deadlines > 0 ? (
+              <span className="inline-flex items-center gap-0.5">
+                <AgendaShape kind="deadline" type="other" className="size-2" />
+                {agendaSummary.deadlines > 1 ? (
+                  <span className="text-micro font-semibold leading-none font-mono tabular-nums text-fg">
+                    {agendaSummary.deadlines}
+                  </span>
+                ) : null}
+              </span>
+            ) : null}
+
             {summary.dueCount > 0 ? (
               <span className="inline-flex items-center gap-0.5">
                 <DueMark quiet={summary.dueOpen === 0} />
@@ -326,8 +450,11 @@ export function DayCell({
         ) : null}
 
         {/* OD `md` — pôvodné riadky s názvami úloh. */}
-        {shown.length > 0 ? (
+        {agendaShown.length > 0 || shown.length > 0 ? (
           <span className="hidden min-w-0 flex-col items-stretch gap-0.5 md:flex">
+            {agendaShown.map((entry) => (
+              <DayAgendaChip key={entry.key} entry={entry} />
+            ))}
             {shown.map((entry) => (
               <DayEntryChip key={entry.key} entry={entry} />
             ))}

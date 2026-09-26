@@ -6,6 +6,7 @@ import { WeekNav } from "@/components/views/rozvrh/week-nav";
 import { NamesPanel } from "@/components/views/rozvrh/names-panel";
 import { ScheduleImport } from "@/components/views/rozvrh/schedule-import";
 import { WeekGrid } from "@/components/views/rozvrh/week-grid";
+import { agendaShortTitle, assessmentsOnLessons, compareAgenda, isOnDay } from "@/lib/agenda";
 import { addDays, formatDuration, minutesIn, todayIn, weekDays } from "@/lib/dates";
 import {
   drawnDays,
@@ -15,6 +16,7 @@ import {
 } from "@/lib/school";
 import { countSk } from "@/lib/sk";
 import { requireUser } from "@/server/auth-guard";
+import { getAgendaForRange, type AgendaItemRow } from "@/server/queries/agenda";
 import {
   getLessonsForRange,
   getSubjectTaskDays,
@@ -75,12 +77,13 @@ export default async function RozvrhPage({ searchParams }: RozvrhPageProps) {
   const posledny = dni[dni.length - 1] ?? todayIso;
   const predchadzajuci = addDays(prvy, -7);
   const nasledujuci = addDays(prvy, 7);
-  const [hodiny, predmety, ucitelia, volna, ulohyNaDen] = await Promise.all([
+  const [hodiny, predmety, ucitelia, volna, ulohyNaDen, udalosti] = await Promise.all([
     getLessonsForRange(user.id, prvy, posledny),
     listSubjects(user.id),
     listTeachers(user.id),
     listBreaks(user.id),
     getSubjectTaskDays(user.id, prvy, posledny),
+    getAgendaForRange(user.id, prvy, posledny),
   ]);
 
   /*
@@ -114,6 +117,23 @@ export default async function RozvrhPage({ searchParams }: RozvrhPageProps) {
   const dniSVyucbou = teachingDays(dni, hodinyMimoVolna);
   const dniSHodinami = drawnDays(dni, hodinyMimoVolna, volna);
   const tyzdenMin = schoolMinutes(hodinyMimoVolna);
+
+  /*
+    Udalosti v rozvrhu: len školské (s predmetom) — zubár do rozvrhu nepatrí.
+    Písomka sa kreslí na svoju hodinu; čo na žiadnu nesedí (deadline, písomka
+    v deň bez tej hodiny), ide k dňu.
+  */
+  const skolske = udalosti.filter((item) => item.subjectId !== null).sort(compareAgenda);
+  const naHodine = assessmentsOnLessons(skolske, hodinyMimoVolna);
+  const znackaHodiny = new Map(
+    [...naHodine].map(([lessonId, item]) => [lessonId, agendaShortTitle(item, null)]),
+  );
+  const polozeneIds = new Set([...naHodine.values()].map((item) => item.id));
+  const kDnu: Record<string, AgendaItemRow[]> = {};
+  for (const den of dni) {
+    const zvysne = skolske.filter((item) => !polozeneIds.has(item.id) && isOnDay(item, den));
+    if (zvysne.length > 0) kDnu[den] = zvysne;
+  }
 
   const meta =
     hodiny.length === 0
@@ -159,7 +179,9 @@ export default async function RozvrhPage({ searchParams }: RozvrhPageProps) {
                 h.note !== null ||
                 h.subjectNote !== null ||
                 ulohyNaDen.has(`${h.date}|${h.subjectId}`),
+              agendaLabel: znackaHodiny.get(h.id) ?? null,
             }))}
+            dayAgenda={kDnu}
             breaks={volna.map((v) => ({
               fromDate: v.fromDate,
               toDate: v.toDate,

@@ -21,6 +21,8 @@ import {
 } from "@/lib/dates";
 import { cn } from "@/lib/utils";
 import type { TaskWithRelations } from "@/server/queries/tasks";
+import type { AgendaItemRow } from "@/server/queries/agenda";
+import { AgendaChip } from "@/components/agenda/agenda-row";
 
 /**
  * Jeden deň týždňa.
@@ -50,6 +52,11 @@ export interface DayColumnProps {
   isLast?: boolean;
   /** Koľko minút je v dni k dispozícii; 0 = bez stropu. */
   capacityMin: number;
+  /**
+   * Udalosti a deadliny dňa. Navrchu stĺpca, oddelene od úloh — nie sú to
+   * úlohy, nedajú sa odškrtnúť ani potiahnuť (docs/UDALOSTI.md).
+   */
+  agenda?: AgendaItemRow[];
 }
 
 /** Stĺpec musí mať vlastné id droppable plochy, aby sa nepomiešalo s id úloh. */
@@ -188,6 +195,7 @@ export function DayColumn({
   isPastDay,
   isLast = false,
   capacityMin,
+  agenda = [],
 }: DayColumnProps) {
   const { setNodeRef, isOver } = useDroppable({ id: dayDroppableId(date) });
 
@@ -317,6 +325,19 @@ export function DayColumn({
           className={cn("-mr-2 md:mr-0 md:size-5", adding && "bg-surface-2 text-fg")}
         />
       </div>
+
+      {agenda.length > 0 ? (
+        <ul
+          aria-label="Udalosti dňa"
+          className="flex shrink-0 flex-col gap-1 border-b border-dashed border-border bg-bg px-4 py-1.5 md:px-1.5"
+        >
+          {agenda.map((item) => (
+            <li key={item.id}>
+              <AgendaChip item={item} />
+            </li>
+          ))}
+        </ul>
+      ) : null}
 
       <SortableContext
         items={tasks.map((task) => task.id)}

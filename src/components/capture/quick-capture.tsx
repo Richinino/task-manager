@@ -88,6 +88,8 @@ export interface QuickCaptureProps {
   tags?: readonly { name: string; taskCount: number }[];
   /** Pravidlá na automatické prideľovanie z nastavení. */
   autoTagRules?: readonly AutoTagRule[];
+  /** Prepínač pri otvorení — „+ Nová" na obrazovke Udalosti. */
+  defaultMode?: "event" | "deadline";
 }
 
 /**
@@ -121,6 +123,15 @@ const IDEA_HINT_SHORT = "nápad = možnosť · uloží sa len názov";
  */
 const IDEA_OFFLINE_ERROR = "Nápad sa bez pripojenia uložiť nedá, skús to znova online.";
 
+/**
+ * Nápoveda pri udalosti a deadline. Syntax úlohy (priorita, odhad) tu neplatí,
+ * takže sa neponúka — ostáva deň, čas a to, čo si písomka vezme sama.
+ */
+const EVENT_HINT = "piatok · 6.10. · o 18:00 · písomka MAT → deň a hodina z rozvrhu";
+const EVENT_HINT_SHORT = "piatok · 6.10. · o 18:00";
+const DEADLINE_HINT = "do piatku · do 30.9. · do 12:00 → deň a hodina, dokedy";
+const DEADLINE_HINT_SHORT = "do piatku · do 12:00";
+
 /** Viac než osem návrhov sa aj tak neprečíta a zoznam by zakryl náhľad. */
 const MAX_SUGGESTIONS = 8;
 
@@ -134,11 +145,18 @@ export function QuickCapture({
   contexts,
   tags,
   autoTagRules,
+  defaultMode,
 }: QuickCaptureProps) {
   const [value, setValue] = useState("");
   const [error, setError] = useState<string | null>(null);
   /** Úloha, alebo nápad. Predvolene úloha — to je to, čo sa zachytáva najčastejšie. */
   const [mode, setMode] = useState<CaptureMode>("task");
+  /**
+   * Zvolil človek cieľ sám? Kým nie, písomka a skúšanie v texte posunú
+   * prepínač na „Udalosť" samy. Keď si ho raz prepol, jeho voľba platí —
+   * aj keby chcel písomku naozaj ako úlohu.
+   */
+  const [modeChosen, setModeChosen] = useState(false);
   /**
    * `queued` = odložené do fronty, ešte to nevidel server. `mode` si hláška
    * nesie so sebou: prepnutie prepínača nesmie prepísať, čo sa pred chvíľou
@@ -196,6 +214,10 @@ export function QuickCapture({
     () => (trimmed === "" ? null : parseCapture(value, { weekStartsOn })),
     [value, trimmed, weekStartsOn],
   );
+
+  /** Čo sa naozaj uloží — prepínač, alebo písomka rozpoznaná v texte. */
+  const effectiveMode: CaptureMode =
+    !modeChosen && mode === "task" && parsed?.agendaType !== undefined ? "event" : mode;
 
   /* ── našepkávanie značiek ────────────────────────────────────────────────
      Zoznam sa neriadi tým, čo je v texte, ale tým, čo sa práve píše POD
@@ -327,8 +349,9 @@ export function QuickCapture({
     setSaved(null);
     // Aj režim je súčasťou čistého okna: `n` má vždy začať pri úlohe, inak by
     // sa raz prepnutý nápad ticho niesol do ďalšieho zachytenia.
-    setMode("task");
-  }, [open, defaultText]);
+    setMode(defaultMode ?? "task");
+    setModeChosen(defaultMode !== undefined);
+  }, [open, defaultText, defaultMode]);
 
   /*
     Po ťuknutí na čip sa fokus vracia do poľa a kurzor za vložený token — bez
@@ -375,6 +398,7 @@ export function QuickCapture({
    */
   function changeMode(next: CaptureMode): void {
     setMode(next);
+    setModeChosen(true);
     if (error !== null) setError(null);
   }
 
@@ -388,7 +412,8 @@ export function QuickCapture({
       názov. Bez tejto kontroly by sa odoslal a server by ho odmietol až potom;
       offline by dokonca ticho spadol do fronty a zahodil sa až pri odosielaní.
     */
-    if (parsed !== null && parsed.title.trim() === "") {
+    const agenda = effectiveMode === "event" || effectiveMode === "deadline";
+    if (parsed !== null && parsed.title.trim() === "" && !(agenda && parsed.agendaType !== undefined)) {
       setError(
         mode === "idea"
           ? "Napíš aj názov nápadu — zo samotných značiek nápad nevznikne."
@@ -399,10 +424,10 @@ export function QuickCapture({
     }
 
     /** Spoločný koniec pre uložené aj odložené — jedno miesto, jedno správanie. */
-    function finish(title: string, queued: boolean): void {
+    function finish(title: string, queued: boolean, savedMode: CaptureMode = effectiveMode): void {
       setValue("");
       if (keepOpen) {
-        setSaved({ title, queued, mode });
+        setSaved({ title, queued, mode: savedMode });
         inputRef.current?.focus();
       } else {
         onOpenChange(false);
@@ -416,7 +441,11 @@ export function QuickCapture({
     async function queue(): Promise<boolean> {
       if (outbox === null) return false;
       try {
-        await outbox.enqueueCapture(raw, defaultDate);
+        await outbox.enqueueCapture(
+          raw,
+          defaultDate,
+          agenda || modeChosen ? (effectiveMode as "task" | "event" | "deadline") : undefined,
+        );
         // Server ešte nič nevrátil, tak si názov odvodíme sami — je to ten
         // istý parser, ktorý beží aj v náhľade pod poľom.
         const title = parseCapture(raw, { weekStartsOn }).title.trim();
@@ -478,13 +507,19 @@ export function QuickCapture({
       try {
         const result = await quickCapture(raw, {
           defaultPlannedDate: defaultDate,
+          /*
+            Prepínač sa posiela, len keď hovorí niečo, čo text nevie povedať
+            sám: udalosť, deadline, alebo výslovne zvolenú úlohu. Inak
+            rozhoduje server z textu — rovnako ako pri položke z fronty.
+          */
+          ...(agenda || modeChosen ? { as: effectiveMode as "task" | "event" | "deadline" } : {}),
         });
         if (!result.ok) {
           // Chyba validácie — do fronty nepatrí, opakovanie by nepomohlo.
           setError(result.error);
           return;
         }
-        finish(result.data.title, false);
+        finish(result.data.title, false, result.data.kind === "agenda" ? (effectiveMode === "deadline" ? "deadline" : "event") : "task");
       } catch {
         // Výnimka je sieťová chyba. Signál mohol vypadnúť práve teraz, tak
         // úlohu zachránime do fronty namiesto hlásenia neúspechu.
@@ -495,6 +530,7 @@ export function QuickCapture({
   }
 
   const idea = mode === "idea";
+  const agendaMode = effectiveMode === "event" || effectiveMode === "deadline";
   /** Ikona pri poli je prvá vec, ktorú oko chytí — musí hovoriť, čo sa ukladá. */
   const LeadIcon = idea ? Lightbulb : Sparkles;
 
@@ -752,9 +788,19 @@ export function QuickCapture({
             </div>
           ) : null}
 
+          {agendaMode && parsed !== null ? (
+            <p className="pb-1 pl-9 pr-3 text-meta text-fg-muted">
+              {effectiveMode === "deadline"
+                ? "Vznikne deadline: deň a hodina „do“. Neuberá z času dňa, úlohy k nemu pridáš v detaile."
+                : parsed.agendaType !== undefined
+                  ? `Vznikne udalosť — ${parsed.agendaType === "oral" ? "skúšanie" : "písomka"} sa neodškrtáva, prebehne sama. Deň a hodinu doplní rozvrh, keď v texte chýbajú.`
+                  : "Vznikne udalosť: deň a voliteľne čas. Neodškrtáva sa, prebehne sama."}
+            </p>
+          ) : null}
+
           <ParsePreview
             parsed={parsed}
-            mode={mode}
+            mode={idea ? "idea" : "task"}
             projectNames={knownProjects}
             className="pb-1 pl-9 pr-3"
           />
@@ -766,7 +812,7 @@ export function QuickCapture({
           <CaptureChips
             text={value}
             onEdit={applyEdit}
-            mode={mode}
+            mode={effectiveMode}
             onModeChange={changeMode}
             weekStartsOn={weekStartsOn}
             className="pb-1 pl-9 pr-3"
@@ -782,8 +828,24 @@ export function QuickCapture({
                   idea ? "font-medium text-accent" : "text-fg-subtle",
                 )}
               >
-                <span className="sm:hidden">{idea ? IDEA_HINT_SHORT : SYNTAX_HINT_SHORT}</span>
-                <span className="hidden sm:inline">{idea ? IDEA_HINT : SYNTAX_HINT}</span>
+                <span className="sm:hidden">
+                  {idea
+                    ? IDEA_HINT_SHORT
+                    : effectiveMode === "event"
+                      ? EVENT_HINT_SHORT
+                      : effectiveMode === "deadline"
+                        ? DEADLINE_HINT_SHORT
+                        : SYNTAX_HINT_SHORT}
+                </span>
+                <span className="hidden sm:inline">
+                  {idea
+                    ? IDEA_HINT
+                    : effectiveMode === "event"
+                      ? EVENT_HINT
+                      : effectiveMode === "deadline"
+                        ? DEADLINE_HINT
+                        : SYNTAX_HINT}
+                </span>
               </p>
 
               <div className="flex shrink-0 items-center gap-2">
@@ -815,10 +877,20 @@ export function QuickCapture({
                   variant="primary"
                   // Prázdny názov po vybratí tokenov znamená, že uložiť sa nedá —
                   // tlačidlo to má povedať vopred, nie až server po odoslaní.
-                  disabled={trimmed === "" || parsed?.title.trim() === "" || isPending}
+                  disabled={
+                    trimmed === "" ||
+                    (parsed?.title.trim() === "" && !(agendaMode && parsed?.agendaType !== undefined)) ||
+                    isPending
+                  }
                   className="h-11 min-w-[5.5rem] px-4 sm:h-8 sm:min-w-0 sm:px-3 sm:text-body"
                 >
-                  {idea ? "Uložiť nápad" : "Uložiť"}
+                  {idea
+                    ? "Uložiť nápad"
+                    : effectiveMode === "event"
+                      ? "Uložiť udalosť"
+                      : effectiveMode === "deadline"
+                        ? "Uložiť deadline"
+                        : "Uložiť"}
                 </Button>
               </div>
             </div>
@@ -839,7 +911,11 @@ export function QuickCapture({
                   ? "Odošle sa po pripojení: "
                   : saved.mode === "idea"
                     ? "Nápad uložený: "
-                    : "Uložené: "}
+                    : saved.mode === "event"
+                      ? "Udalosť uložená: "
+                      : saved.mode === "deadline"
+                        ? "Deadline uložený: "
+                        : "Uložené: "}
                 {saved.title}
               </p>
             ) : null}

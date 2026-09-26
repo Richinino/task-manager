@@ -39,6 +39,11 @@ export interface OutboxItem {
   raw: string;
   /** Deň z tlačidla „+", ak úloha vznikla z neho (RRRR-MM-DD). */
   defaultPlannedDate?: string;
+  /**
+   * Cieľ z prepínača v zachytení — udalosť, deadline, alebo výslovne úloha.
+   * Chýba pri bežnom zachytení; vtedy rozhodne server z textu.
+   */
+  as?: "task" | "event" | "deadline";
   /** `Date.now()` v čase zaradenia — pre poradie a prípadné ladenie. */
   createdAt: number;
 }

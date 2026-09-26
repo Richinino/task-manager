@@ -7,6 +7,7 @@ import { OutboxProvider } from "@/components/pwa/outbox-provider";
 import { AppShell } from "@/components/shell/app-shell";
 import { PostponeGuardProvider } from "@/components/task/postpone-guard";
 import { TaskDetailProvider } from "@/components/task/task-detail-provider";
+import { AgendaDetailProvider } from "@/components/agenda/agenda-detail-provider";
 import { addDays, todayIn } from "@/lib/dates";
 import { requireUser } from "@/server/auth-guard";
 import {
@@ -112,6 +113,15 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
               rozhodnutí („rozdeliť alebo zmenšiť") panel otvára, takže musí
               vidieť jeho kontext.
             */}
+            {/*
+              Detail udalosti vedľa detailu úlohy — rovnaký rám, iný obsah.
+              Riadky udalostí sú na piatich obrazovkách a všetky ho otvárajú
+              odtiaľto.
+            */}
+            <AgendaDetailProvider
+              subjects={predmety.map((s) => ({ id: s.id, code: s.code, name: s.name, color: s.color }))}
+              todayIso={todayIso}
+            >
             <PostponeGuardProvider>
               {/*
                 Pruh o pripojení patrí NAD obsah obrazovky, nie do rohu.
@@ -125,6 +135,7 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
               <OfflineIndicator />
               {children}
             </PostponeGuardProvider>
+            </AgendaDetailProvider>
           </TaskDetailProvider>
         </CaptureProvider>
 

@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useRef, type ReactNode } from "react";
-import { CalendarClock, Lightbulb, ListTodo, X, type LucideIcon } from "lucide-react";
+import { CalendarClock, Diamond, Flag, Lightbulb, ListTodo, X, type LucideIcon } from "lucide-react";
 
 import {
   activeTokens,
@@ -42,8 +42,16 @@ import { cn } from "@/lib/utils";
  * dať odhaliť pohľadom, nie čítaním.
  */
 
-/** Kam smeruje rýchle zachytenie — do úloh, alebo do nápadov. */
-export type CaptureMode = "task" | "idea";
+/**
+ * Kam smeruje rýchle zachytenie.
+ *
+ * Udalosť a deadline sú výslovná voľba, nie odhad z textu — „do piatku"
+ * a „deadline 31.3." od M1 znamenajú termín ÚLOHY a to sa nemení. Jediná
+ * výnimka je písomka a skúšanie: tie text pozná sám a prepínač sa na
+ * „Udalosť" posunie bez pýtania (viď `QuickCapture`). Viac v
+ * `docs/UDALOSTI.md`.
+ */
+export type CaptureMode = "task" | "event" | "deadline" | "idea";
 
 export interface CaptureChipsProps {
   /** Aktuálny text poľa. Jediný zdroj pravdy pre aktívne čipy. */
@@ -191,6 +199,18 @@ const MODE_OPTIONS: ReadonlyArray<{
     Icon: ListTodo,
   },
   {
+    value: "event",
+    label: "Udalosť",
+    description: "Uložiť ako udalosť — niečo sa v ten deň stane, neodškrtáva sa",
+    Icon: Diamond,
+  },
+  {
+    value: "deadline",
+    label: "Deadline",
+    description: "Uložiť ako deadline — do toho dňa musí byť niečo hotové",
+    Icon: Flag,
+  },
+  {
     value: "idea",
     label: "Nápad",
     description: "Uložiť ako nápad — možnosť bez dátumu a priority",
@@ -302,7 +322,12 @@ export function CaptureChips({
         preto sa celý zvyšok radu v režime nápadu nevykreslí. Čo si človek
         napíše ručne, uvidí preškrtnuté v náhľade nad čipmi.
       */}
-      {mode === "idea" ? null : (
+      {/*
+        Udalosť ani deadline nemajú prioritu, odhad ani energiu — tie čipy by
+        vkladali značky, ktoré server pri udalosti zahodí. Deň a čas sa píšu
+        rovno do textu („piatok 18:00") a náhľad ich ukáže.
+      */}
+      {mode !== "task" ? null : (
         <>
           {/* Termín je prvý zámerne — práve ten sa v poli nedal nájsť. */}
           <ChipGroup label="Termín">
