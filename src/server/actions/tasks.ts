@@ -839,7 +839,7 @@ export async function quickCapture(
     */
     const wantsAs = opts?.as;
     const textAssessment: AgendaType | null = parsed.agendaType ?? null;
-    const target: "task" | "event" | "deadline" =
+    let target: "task" | "event" | "deadline" =
       wantsAs ?? (textAssessment !== null || opts?.defaultSchoolKind === "exam" ? "event" : "task");
     if (!title && target === "task") return { ok: false, error: "Úloha musí mať názov." };
 
@@ -917,6 +917,10 @@ export async function quickCapture(
     }
     if (subjectId === null && patch.subjectId !== undefined) {
       subjectId = patch.subjectId;
+    }
+    /* Písomka z pravidla (`skola:pisomka`) je tiež udalosť — ak si prepínačom nechcel inak. */
+    if (wantsAs === undefined && target === "task" && patch.schoolKind === "exam") {
+      target = "event";
     }
 
     /*
@@ -1040,7 +1044,6 @@ export async function quickCapture(
           context: sanitize(contextSchema, clampContext(parsed.context)),
           projectId,
           subjectId,
-          /* Bez predmetu je „domáca úloha vs písomka" rozlíšenie o ničom. */
           /*
             Bez predmetu je „domáca úloha vs písomka" rozlíšenie o ničom.
             Písomka sa ako druh úlohy už neukladá — je to udalosť. Sem sa

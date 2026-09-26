@@ -139,7 +139,15 @@ export async function updateAgendaItem(id: string, input: AgendaInput): Promise<
     const refError = await checkAgendaRefs(db, user.id, parsed.data);
     if (refError !== null) return { ok: false, error: refError };
 
-    const values = await resolveAgendaValues(user.id, parsed.data);
+    /*
+      Oblasť a projekt formulár neukazuje. Chýbajúce pole preto znamená
+      „nechaj, ako je“, nie „odpoj“ — inak by každá úprava ticho zmazala väzby.
+    */
+    const values = await resolveAgendaValues(user.id, {
+      ...parsed.data,
+      areaId: parsed.data.areaId === undefined ? current.areaId : parsed.data.areaId,
+      projectId: parsed.data.projectId === undefined ? current.projectId : parsed.data.projectId,
+    });
     await db
       .update(agendaItems)
       .set({ ...values, updatedAt: new Date() })

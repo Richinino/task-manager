@@ -268,14 +268,21 @@ export function lessonForSubject(
  *
  * Hodina s rovnakým predmetom a dňom; pri zapísanom poradí presne tá, bez
  * neho prvá z toho dňa (ako `lessonForSubject`). Zrušené sa na hodinu
- * nekreslia — hodina by svietila kvôli niečomu, čo sa nekoná. Čo sa na žiadnu
- * hodinu nezmestí, ostane volajúcemu, aby to ukázal pri dni.
+ * nekreslia — hodina by svietila kvôli niečomu, čo sa nekoná — a odpadnutá
+ * hodina písomku nenesie. Čo sa na žiadnu hodinu nezmestí, ostane
+ * volajúcemu, aby to ukázal pri dni.
  */
 export function assessmentsOnLessons<
   T extends Pick<AgendaLike, "kind" | "type" | "date" | "period" | "cancelledAt"> & { subjectId: string | null },
 >(
   items: readonly T[],
-  lessons: readonly { id: string; date: string; period: number; subjectId: string | null }[],
+  lessons: readonly {
+    id: string;
+    date: string;
+    period: number;
+    subjectId: string | null;
+    cancelled?: boolean;
+  }[],
 ): Map<string, T> {
   const out = new Map<string, T>();
   for (const item of items) {
@@ -283,7 +290,7 @@ export function assessmentsOnLessons<
     if (item.subjectId === null) continue;
     let hit: (typeof lessons)[number] | null = null;
     for (const l of lessons) {
-      if (l.date !== item.date || l.subjectId !== item.subjectId) continue;
+      if (l.date !== item.date || l.subjectId !== item.subjectId || l.cancelled === true) continue;
       if (item.period !== null) {
         if (l.period === item.period) hit = l;
       } else if (hit === null || l.period < hit.period) {

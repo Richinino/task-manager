@@ -191,6 +191,12 @@ describe("assessmentsOnLessons", () => {
     ];
     expect(assessmentsOnLessons(nic, hodiny).size).toBe(0);
   });
+
+  it("odpadnutá hodina písomku nenesie", () => {
+    const sOdpadnutou = [{ ...hodiny[0]!, cancelled: true }, hodiny[1]!, hodiny[2]!];
+    expect([...assessmentsOnLessons([pis({})], sOdpadnutou).keys()]).toEqual(["h6"]);
+    expect(assessmentsOnLessons([pis({ period: 5 })], sOdpadnutou).size).toBe(0);
+  });
 });
 
 describe("zoskupenie a poradie", () => {
