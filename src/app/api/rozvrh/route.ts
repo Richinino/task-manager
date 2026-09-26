@@ -18,15 +18,13 @@ import {
  * Volá to cron. Nikto tu nie je prihlásený, a preto cestu stráži to isté
  * tajomstvo ako plánovač pripomienok.
  *
- * ## Prečo netreba často
+ * ## Ako často
  *
- * Odber z EduPage je **rozvrh natiahnutý na dátumy, nie denný plán** —
- * suplovanie v ňom nie je. Meniť sa teda má čo raz za čas: nové okno troch
- * mesiacov dopredu, zmena rozvrhu na polrok. **Raz denne bohato stačí** a
- * častejšie behy by len ťahali ten istý súbor.
- *
- * (Keby raz suplovanie prišlo z iného zdroja, ten bude potrebovať vlastnú
- * kadenciu — nie túto.)
+ * Odber z EduPage je rozvrh natiahnutý na dátumy a **nesie aj suplovanie** —
+ * ako šípku v `SUMMARY` (`DEJ -> SJL`). Zmena na dnešok sa preto dá chytiť
+ * ešte v ten deň, keď sa odber stiahne aj cez vyučovanie. Hlavný plánovač
+ * (externý cron) volá túto cestu každú hodinu cez školský deň; GitHub
+ * workflow je záloha. Podrobnosti v `docs/NASADENIE.md`.
  *
  * ## Komu sa rozvrh načíta
  *

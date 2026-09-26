@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { FOLD_FROM, FOLD_TO, fold } from "@/lib/fold";
+import { FOLD_FROM, FOLD_TO, fold, likeContains } from "@/lib/fold";
 
 describe("tabuľka náhrad", () => {
   /*
@@ -57,5 +57,20 @@ describe("fold", () => {
   it("je idempotentné — poskladané ostane poskladané", () => {
     const once = fold("Ľudovít Štúr");
     expect(fold(once)).toBe(once);
+  });
+});
+
+describe("likeContains", () => {
+  it("obalí text zástupnými znakmi", () => {
+    expect(likeContains("stvrtok")).toBe("%stvrtok%");
+  });
+
+  it("percento a podčiarkovník sa hľadajú doslova", () => {
+    expect(likeContains("50%")).toBe("%50\\%%");
+    expect(likeContains("a_b")).toBe("%a\\_b%");
+  });
+
+  it("spätná lomka sa zdvojí", () => {
+    expect(likeContains("c:\\x")).toBe("%c:\\\\x%");
   });
 });

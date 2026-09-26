@@ -5,7 +5,7 @@ import type { AnyPgColumn } from "drizzle-orm/pg-core";
 
 import { getDb } from "@/db";
 import { areas, ideas, journal, projects, tasks } from "@/db/schema";
-import { FOLD_FROM, FOLD_TO, fold } from "@/lib/fold";
+import { FOLD_FROM, FOLD_TO, fold, likeContains } from "@/lib/fold";
 
 /* ═══════════════════════════════════════════════════════════════════════════
    FULLTEXT
@@ -40,9 +40,14 @@ function folded(column: AnyPgColumn): SQL {
   return sql`lower(translate(coalesce(${column}, ''), ${FOLD_FROM}, ${FOLD_TO}))`;
 }
 
-/** Zhoda kdekoľvek v stĺpci, po zložení diakritiky na oboch stranách. */
+/**
+ * Zhoda kdekoľvek v stĺpci, po zložení diakritiky na oboch stranách.
+ *
+ * `%` a `_` z dopytu sa hľadajú doslova (`likeContains`) — inak by „50%"
+ * našlo všetko s „50".
+ */
 function matches(column: AnyPgColumn, needle: string): SQL {
-  return sql`${folded(column)} like ${`%${needle}%`}`;
+  return sql`${folded(column)} like ${likeContains(needle)} escape '\\'`;
 }
 
 /**

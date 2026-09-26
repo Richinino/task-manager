@@ -286,14 +286,20 @@ function ArchiveRow({ entry, onRestore }: ArchiveRowProps) {
           </p>
         </div>
 
-        {entry.reason === "deleted" ? (
+        {/*
+          Vrátiť sa dá zmazané (úloha aj nápad) a zahodená úloha — tú
+          `restoreTask` znova otvorí. Zamietnutý nápad sa vracia na doske
+          nápadov, nie tu.
+        */}
+        {entry.reason === "deleted" || (entry.reason === "dropped" && entry.type === "task") ? (
           <Button
             type="button"
             size="sm"
             variant="secondary"
             onClick={onRestore}
             aria-label={`Vrátiť späť ${type.label.toLowerCase()} ${entry.title}`}
-            // Jediná záchrana zmazanej veci — na telefóne preto plných 44 px.
+            // Jediná záchrana zmazanej či zahodenej veci — na telefóne preto
+            // plných 44 px.
             className="h-11 shrink-0 px-3 sm:h-7 sm:px-2"
           >
             <Undo2 aria-hidden="true" size={14} />

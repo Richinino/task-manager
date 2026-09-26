@@ -120,8 +120,12 @@ export const users = pgTable("users", {
 });
 
 /**
- * OAuth tokeny (Google Calendar, M8). Zatiaľ sa nezapisuje —
- * prihlásenie beží na JWT session bez adaptéra.
+ * OAuth tokeny ku Google Kalendáru (M8).
+ *
+ * Prihlásenie beží na JWT session bez adaptéra, takže Auth.js sem nepíše
+ * samo. Zapisuje `storeGoogleAccount` zo `src/server/google-tokens.ts` — len
+ * vtedy, keď súhlas naozaj nesie kalendár. Refresh token v cookie nemá čo
+ * robiť, preto žije tu.
  */
 export const accounts = pgTable(
   "accounts",

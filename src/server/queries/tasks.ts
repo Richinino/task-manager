@@ -352,9 +352,48 @@ export async function listContexts(userId: string): Promise<ContextUsage[]> {
   return rows.map((row) => ({ name: row.name, taskCount: Number(row.taskCount) }));
 }
 
-/** Nespracované zachytenia. */
+/**
+ * Otvorená úloha, ktorá nemá kde byť — v stave `todo`/`doing`, bez dňa,
+ * bez projektu, mimo „niekedy" a bez rodiča.
+ *
+ * Akcie takú úlohu už nevyrobia (stráži to `visibleStatus` z
+ * `@/lib/task-placement`), ale staršie verzie appky áno: večerný shutdown
+ * pri „Niekedy" len zrušil deň, detail úlohy tiež, a zmazanie projektu
+ * odpojilo jeho úlohy bez ďalšieho. Takto stratené úlohy v databáze
+ * ostali — inbox ich preto zachytí, kým ich človek nezatriedi.
+ *
+ * Musí sa zhodovať s `isOrphaned` z `@/lib/task-placement`.
+ */
+function isOrphanedSql(): SQL {
+  return and(
+    inArray(tasks.status, ["todo", "doing"]),
+    isNull(tasks.plannedDate),
+    isNull(tasks.projectId),
+    ne(tasks.horizon, "someday"),
+    isNull(tasks.parentTaskId),
+  )!;
+}
+
+/**
+ * Čo patrí do inboxu: nespracované zachytenia, ktoré ešte nie sú odložené
+ * na „niekedy", a úlohy, ktoré nemajú kde byť.
+ *
+ * „Niekedy" je rozhodnutie. Úloha odložená na niekedy do inboxu nepatrí,
+ * aj keby jej stav ostal `inbox` — tak ju nechávalo staršie triedenie, a
+ * inbox sa preto nedal dotriediť na nulu. Nájde sa v zozname „Niekedy".
+ *
+ * Úloha bez dňa, projektu a „niekedy" naopak do inboxu patrí, aj keď jej
+ * stav hovorí `todo` — viď `isOrphanedSql`.
+ */
+function isInboxSql(): SQL {
+  return or(
+    and(eq(tasks.status, "inbox"), ne(tasks.horizon, "someday")),
+    isOrphanedSql(),
+  )!;
+}
+
 export function getInboxTasks(userId: string): Promise<TaskWithRelations[]> {
-  return selectTasks(userId, eq(tasks.status, "inbox"));
+  return selectTasks(userId, isInboxSql());
 }
 
 /**
@@ -417,14 +456,21 @@ export function getActionableTasks(
 /**
  * Odložené „niekedy" — zásobáreň, z ktorej sa ťahá pri plánovaní.
  *
- * Zámerne sem patria aj tie, ktoré ešte visia v stave `inbox` — triedenie
- * v inboxe pri voľbe „Niekedy" stav nemení práve preto, že úloha bez dátumu
- * a mimo inboxu by nebola na žiadnej obrazovke. Odkedy má „Niekedy" vlastný
- * zoznam, sú viditeľné na oboch miestach, čo je správne: v inboxe ako
- * nedotriedené, tu ako odložené.
+ * Patria sem aj úlohy, ktoré ešte visia v stave `inbox`: staršie triedenie
+ * pri voľbe „Niekedy" stav nemenilo. Odteraz ho mení (`moveToSomeday`),
+ * a inbox takéto úlohy vynecháva — sú len tu.
  */
 export function getSomedayTasks(userId: string): Promise<TaskWithRelations[]> {
-  return selectTasks(userId, and(eq(tasks.horizon, "someday"), isOpen()));
+  /*
+    Len BEZ dňa. Úloha s dňom na „niekedy" nepatrí, aj keby horizont tvrdil
+    opak — staršie `horizonForDate` dávalo „niekedy" každému dňu za hranicou
+    mesiaca, takže úloha naplánovaná na 9. 10. sa tu ukazovala ako vedome
+    odložená. Nové zápisy to už nerobia, podmienka chráni staré riadky.
+  */
+  return selectTasks(
+    userId,
+    and(eq(tasks.horizon, "someday"), isNull(tasks.plannedDate), isOpen()),
+  );
 }
 
 /**
@@ -496,9 +542,12 @@ export async function getCounts(
 
   const rows = await db
     .select({
-      inbox: sql<number>`cast(count(*) filter (where ${tasks.status} = 'inbox') as int)`,
+      // Tie isté podmienky ako `getInboxTasks` a `getSomedayTasks` — počet
+      // v bočnom paneli sa nesmie rozísť so zoznamom, na ktorý ukazuje.
+      inbox: sql<number>`cast(count(*) filter (where ${isInboxSql()}) as int)`,
       someday: sql<number>`cast(count(*) filter (
         where ${tasks.horizon} = 'someday'
+          and ${tasks.plannedDate} is null
           and ${tasks.status} not in ('done', 'dropped')
       ) as int)`,
       waiting: sql<number>`cast(count(*) filter (where ${tasks.status} = 'waiting') as int)`,
@@ -506,8 +555,12 @@ export async function getCounts(
         where ${tasks.plannedDate} = ${today}
           and ${tasks.status} not in ('done', 'dropped')
       ) as int)`,
+      // Rovnako ako `getOverdueTasks`: úloha viazaná na svoj deň medzi
+      // prepadnuté nepatrí. Bez toho svietilo v paneli číslo, ku ktorému
+      // zoznam na „Dnes" nič neukázal.
       overdue: sql<number>`cast(count(*) filter (
         where ${tasks.status} not in ('done', 'dropped')
+          and ${tasks.staysOnDay} = false
           and (
             ${tasks.plannedDate} < ${today}
             or (${tasks.plannedDate} is null and ${tasks.dueDate} < ${today})

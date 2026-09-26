@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { and, eq, inArray, isNotNull, isNull, lt, ne, notInArray, sql } from "drizzle-orm";
+import { and, eq, inArray, isNotNull, isNull, ne, or, sql } from "drizzle-orm";
 import { z } from "zod";
 
 import { getDb, type Database } from "@/db";
@@ -33,7 +33,8 @@ import {
   getTask as getTaskWithRelations,
   type TaskWithRelations,
 } from "@/server/queries/tasks";
-import { nextOccurrence, parseRecurrence } from "@/lib/recurrence";
+import { catchUpOccurrence, parseRecurrence } from "@/lib/recurrence";
+import { hasPlace, horizonForDate, visibleStatus } from "@/lib/task-placement";
 import { requireUser } from "@/server/auth-guard";
 
 /* ═══════════════════════════════════════════════════════════════════════════
@@ -219,6 +220,26 @@ async function loadTask(
   return rows[0];
 }
 
+/** Transakcia z `db.transaction` — rovnaké dotazy ako `Database`. */
+type Tx = Parameters<Parameters<Database["transaction"]>[0]>[0];
+
+/**
+ * Zámok na dobu transakcie, pomenovaný kľúčom.
+ *
+ * Niektoré pravidlá sa nedajú postaviť na jedinečný index: „jedna priorita
+ * dňa" (úloha sa na obsadený deň smie presunúť) a „jeden výskyt opakovania
+ * na deň" (človek smie výskyt ručne presunúť na deň iného). Kontrola
+ * „pozri sa, potom zapíš" je pri dvoch súbežných požiadavkách deravá — obe
+ * sa pozrú skôr, než jedna zapíše. Zámok ich zoradí za seba: druhá počká,
+ * kým prvá neskončí, a potom už jej zápis vidí.
+ *
+ * `pg_advisory_xact_lock` sa uvoľní sám koncom transakcie. Beží na Neone
+ * aj v PGlite — je to jadro Postgresu, nie rozšírenie.
+ */
+async function lockFor(tx: Tx, scope: string, key: string): Promise<void> {
+  await tx.execute(sql`select pg_advisory_xact_lock(hashtext(${scope}), hashtext(${key}))`);
+}
+
 /**
  * Cudzie kľúče musia patriť tomu istému používateľovi — inak by sa dalo
  * odkazom priviazať cudzí projekt či oblasť.
@@ -366,17 +387,6 @@ function lessonValues(data: {
   };
 }
 
-/**
- * Na ktorý horizont dátum patrí.
- * dnes/zajtra → deň · do 7 dní → týždeň · do konca mesiaca → mesiac · inak niekedy.
- */
-function horizonForDate(date: string, todayIso: string): Horizon {
-  if (date <= addDays(todayIso, 1)) return "day";
-  if (date <= addDays(todayIso, 7)) return "week";
-  if (date.slice(0, 7) === todayIso.slice(0, 7)) return "month";
-  return "someday";
-}
-
 /** Výstup parsera je len návrh — čo neprejde validáciou, ticho zahodíme. */
 function sanitize<T>(schema: z.ZodType<T>, value: unknown): T | null {
   if (value === undefined || value === null) return null;
@@ -498,11 +508,17 @@ export async function createTask(
     if (refError) return { ok: false, error: refError };
 
     const plannedDate = data.plannedDate ?? null;
-    // Bez dňa aj bez projektu úloha ešte nie je spracovaná — patrí do inboxu.
-    const isPlaced = plannedDate !== null || (data.projectId ?? null) !== null;
-    const status: TaskStatus = data.status ?? (isPlaced ? "todo" : "inbox");
     const horizon: Horizon =
       data.horizon ?? (plannedDate ? horizonForDate(plannedDate, todayIn(user.settings.timezone)) : "week");
+    // Bez miesta (dňa, projektu, „niekedy", rodiča) úloha ešte nie je
+    // spracovaná — patrí do inboxu.
+    const isPlaced = hasPlace({
+      plannedDate,
+      projectId: data.projectId ?? null,
+      horizon,
+      parentTaskId: data.parentTaskId ?? null,
+    });
+    const status: TaskStatus = data.status ?? (isPlaced ? "todo" : "inbox");
 
     const id = uuidv7();
     await db.insert(tasks).values({
@@ -686,6 +702,31 @@ export async function splitTask(
   }
 }
 
+/** Tvar uuid, aký vyrába `uuidv7` v prehliadači. Nič iné za id neprejde. */
+const CLIENT_ID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/**
+ * Už zachytená úloha podľa id z prehliadača — pre idempotentné `quickCapture`.
+ *
+ * Cudzia úloha s tým istým id (nemožné pri náhodnom uuid, ale id prichádza
+ * z prehliadača) sa za zhodu nepovažuje a zápis potom zlyhá na konflikte.
+ * Mäkko zmazaná sa za zhodu považuje: človek ju medzitým zmazal a druhý
+ * pokus fronty ju nemá vzkriesiť.
+ */
+async function findCapturedTask(
+  userId: string,
+  id: string,
+): Promise<{ ok: true; data: { id: string; title: string } } | null> {
+  const db = await getDb();
+  const rows = await db
+    .select({ id: tasks.id, title: tasks.title })
+    .from(tasks)
+    .where(and(eq(tasks.id, id), eq(tasks.userId, userId)))
+    .limit(1);
+  const row = rows[0];
+  return row ? { ok: true, data: { id: row.id, title: row.title } } : null;
+}
+
 export async function loadTaskDetail(
   id: string,
 ): Promise<ActionResult<TaskWithRelations>> {
@@ -714,6 +755,16 @@ export async function quickCapture(
     defaultSubjectId?: string;
     /** Druh školskej práce, keď ho text nepovie ani pravidlo. */
     defaultSchoolKind?: SchoolKind;
+    /**
+     * Identifikátor, ktorý úloha dostala už v prehliadači — z offline fronty.
+     *
+     * Robí z odoslania idempotentnú operáciu. Keď server úlohu zapíše, ale
+     * odpoveď sa cestou stratí (výpadok signálu presne v tej chvíli), fronta
+     * to berie ako sieťovú chybu a pošle položku znova. Bez spoločného id by
+     * vznikla druhá, rovnaká úloha; s ním sa druhý pokus pozná a vráti tú
+     * prvú.
+     */
+    clientId?: string;
   },
 ): Promise<ActionResult<{ id: string; title: string }>> {
   const user = await requireUser();
@@ -724,6 +775,15 @@ export async function quickCapture(
       .max(2000, "Text je príliš dlhý.")
       .safeParse(raw);
     if (!rawParsed.success) return invalid(rawParsed.error, "Neplatný text.");
+
+    const clientId =
+      opts?.clientId !== undefined && CLIENT_ID_RE.test(opts.clientId)
+        ? opts.clientId.toLowerCase()
+        : null;
+    if (clientId !== null) {
+      const already = await findCapturedTask(user.id, clientId);
+      if (already !== null) return already;
+    }
 
     /*
       Parser číta z `now` lokálne zložky dátumu. Keby sme mu podstrčili obyčajné
@@ -879,42 +939,92 @@ export async function quickCapture(
       ? horizonForDate(plannedDate, todayIn(user.settings.timezone))
       : (patch.horizon ?? "week");
 
-    const id = uuidv7();
-    await db.insert(tasks).values({
-      id,
-      userId: user.id,
-      title: title.slice(0, 500),
-      status,
-      priority: sanitize(prioritySchema, parsed.priority) ?? patch.priority ?? 3,
-      dueDate,
-      dueTime: sanitize(isoTimeSchema, parsed.dueTime),
-      plannedDate,
-      plannedTime,
-      horizon,
-      estimateMin:
-        sanitize(estimateSchema, clampEstimate(parsed.estimateMin)) ??
-        patch.estimateMin ??
-        null,
-      allDay: parsed.allDay === true,
-      energy: sanitize(energySchema, parsed.energy) ?? patch.energy ?? null,
-      context: sanitize(contextSchema, clampContext(parsed.context)),
-      projectId,
-      subjectId,
-      /* Bez predmetu je „domáca úloha vs písomka" rozlíšenie o ničom. */
-      schoolKind:
-        subjectId === null
-          ? null
-          : (parsed.schoolKind ??
-            patch.schoolKind ??
-            opts?.defaultSchoolKind ??
-            null),
-      areaId: patch.areaId ?? null,
-      lessonPillarId: patch.lessonPillarId ?? null,
-      lessonSkillId: patch.lessonSkillId ?? null,
-      habitId: patch.habitId ?? null,
-      isFrog: patch.isFrog === true,
-      staysOnDay: patch.staysOnDay === true,
+    /*
+      Priorita dňa z pravidla — len pre úlohu s dňom, a ako jediná v ten deň.
+      Bez dňa by vznikla priorita, ktorú `setFrog` vôbec nedovolí nastaviť,
+      a pri dvoch zachyteniach toho istého dňa by boli dve naraz.
+    */
+    const isFrog = patch.isFrog === true && plannedDate !== null;
+
+    const id = clientId ?? uuidv7();
+    /*
+      Zápis a zhasnutie ostatných priorít dňa v jednej transakcii pod
+      zámkom dňa. Bez zámku by dve súbežné zachytenia na ten istý deň mohli
+      zhasnúť jedno druhé a neostala by žiadna priorita.
+    */
+    const inserted = await db.transaction(async (tx) => {
+      if (isFrog && plannedDate !== null) {
+        await lockFor(tx, "frog", `${user.id}:${plannedDate}`);
+      }
+
+      const rows = await tx
+        .insert(tasks)
+        .values({
+          id,
+          userId: user.id,
+          title: title.slice(0, 500),
+          status,
+          priority: sanitize(prioritySchema, parsed.priority) ?? patch.priority ?? 3,
+          dueDate,
+          dueTime: sanitize(isoTimeSchema, parsed.dueTime),
+          plannedDate,
+          plannedTime,
+          horizon,
+          estimateMin:
+            sanitize(estimateSchema, clampEstimate(parsed.estimateMin)) ??
+            patch.estimateMin ??
+            null,
+          allDay: parsed.allDay === true,
+          energy: sanitize(energySchema, parsed.energy) ?? patch.energy ?? null,
+          context: sanitize(contextSchema, clampContext(parsed.context)),
+          projectId,
+          subjectId,
+          /* Bez predmetu je „domáca úloha vs písomka" rozlíšenie o ničom. */
+          schoolKind:
+            subjectId === null
+              ? null
+              : (parsed.schoolKind ??
+                patch.schoolKind ??
+                opts?.defaultSchoolKind ??
+                null),
+          areaId: patch.areaId ?? null,
+          lessonPillarId: patch.lessonPillarId ?? null,
+          lessonSkillId: patch.lessonSkillId ?? null,
+          habitId: patch.habitId ?? null,
+          isFrog,
+          staysOnDay: patch.staysOnDay === true,
+        })
+        .onConflictDoNothing()
+        // Bez výberu stĺpcov: `Database` je zjednotenie dvoch ovládačov a
+        // `returning({ … })` na ňom typovo nejde. Stačí vedieť, či riadok vznikol.
+        .returning();
+
+      // Ostatné priority zhasnúť LEN keď riadok naozaj vznikol — opakované
+      // odoslanie tej istej položky fronty nesmie zhasnúť prioritu, ktorú
+      // založilo prvé.
+      if (rows.length > 0 && isFrog && plannedDate !== null) {
+        await tx
+          .update(tasks)
+          .set({ isFrog: false, updatedAt: new Date() })
+          .where(
+            and(
+              eq(tasks.userId, user.id),
+              eq(tasks.plannedDate, plannedDate),
+              eq(tasks.isFrog, true),
+              ne(tasks.id, id),
+              isNull(tasks.deletedAt),
+            ),
+          );
+      }
+      return rows;
     });
+
+    // Konflikt znamená, že tú istú položku fronty práve zapísal súbežný
+    // pokus. Nič druhýkrát nezakladáme — vrátime tú, ktorá už je.
+    if (inserted.length === 0) {
+      const already = await findCapturedTask(user.id, id);
+      return already ?? { ok: false, error: "Úlohu sa nepodarilo zachytiť." };
+    }
 
     // Štítky sú samostatné riadky — bez tohto kroku by `#tag` z náhľadu
     // aj z titulku zmizol a nikde by sa neuložil.
@@ -1112,6 +1222,27 @@ export async function updateTask(
       }
     }
 
+    /*
+      Otvorená úloha musí ostať na nejakej obrazovke. Zrušenie dňa alebo
+      odobratie projektu z nej inak spraví úlohu, ktorá existuje, ale nie je
+      nikde — inbox filtruje podľa stavu, ostatné obrazovky podľa dňa či
+      projektu. Keď človek stav výslovne neposlal, úloha sa vráti do inboxu.
+    */
+    if (data.status === undefined) {
+      const next = visibleStatus({
+        status: task.status,
+        plannedDate: values.plannedDate !== undefined ? values.plannedDate : task.plannedDate,
+        projectId: values.projectId !== undefined ? values.projectId : task.projectId,
+        horizon: values.horizon ?? task.horizon,
+        parentTaskId:
+          values.parentTaskId !== undefined ? values.parentTaskId : task.parentTaskId,
+      });
+      if (next !== task.status) {
+        values.status = next;
+        statusEvent = "status_changed";
+      }
+    }
+
     if (changed.length === 0 && !didReschedule && statusEvent === null) {
       return { ok: true };
     }
@@ -1130,7 +1261,7 @@ export async function updateTask(
         taskId: id,
         type: statusEvent,
         fromValue: task.status,
-        toValue: data.status ?? task.status,
+        toValue: values.status ?? task.status,
       });
     }
     if (didReschedule) {
@@ -1174,44 +1305,45 @@ export async function toggleTaskDone(
     if (!task) return { ok: false, error: "Úloha sa nenašla." };
 
     const wasDone = task.status === "done";
-    // Odškrtnutá úloha sa vracia do „todo"; ak nemá deň ani projekt, patrí do inboxu.
-    const isPlaced = task.plannedDate !== null || task.projectId !== null;
-    const nextStatus: TaskStatus = wasDone ? (isPlaced ? "todo" : "inbox") : "done";
-
-    await db
-      .update(tasks)
-      .set({
-        status: nextStatus,
-        completedAt: wasDone ? null : new Date(),
-        updatedAt: new Date(),
-      })
-      .where(and(eq(tasks.id, id), eq(tasks.userId, user.id), isNull(tasks.deletedAt)));
-
-    await db.insert(taskEvents).values({
-      id: uuidv7(),
-      userId: user.id,
-      taskId: id,
-      type: wasDone ? "reopened" : "completed",
-      fromValue: task.status,
-      toValue: nextStatus,
-    });
+    // Odškrtnutá úloha sa vracia do „todo" — ak má kde byť. Bez dňa, projektu,
+    // „niekedy" a rodiča patrí do inboxu. Podúloha sa predtým vracala do
+    // inboxu tiež, lebo pravidlo nevedelo, že jej miestom je rodič.
+    const nextStatus: TaskStatus = wasDone ? (hasPlace(task) ? "todo" : "inbox") : "done";
 
     /*
-      Opakovanie: dokončenie zakladá ďalší výskyt. Appka nemá cron a zavádzať
-      ho kvôli tomuto je neúmerné — rovnaká úvaha ako pri zhnití nápadov v M4.
-
-      Zakladá sa len pri ZAŠKRTNUTÍ, nie pri vrátení späť: odškrtnutie omylom
-      by inak nechalo v zozname sirotu, ktorú by nikto nečakal.
+      Zmena stavu a ďalší výskyt v jednej transakcii. Keby založenie výskytu
+      zlyhalo po odškrtnutí, ďalší pokus by už videl hotovú úlohu a výskyt by
+      nevznikol.
     */
-    let spawned: string | null = null;
-    if (!wasDone) {
-      spawned = await spawnNextOccurrence(
-        db,
-        user.id,
-        task,
-        todayIn(user.settings.timezone),
-      );
-    }
+    const spawned = await db.transaction(async (tx) => {
+      await tx
+        .update(tasks)
+        .set({
+          status: nextStatus,
+          completedAt: wasDone ? null : new Date(),
+          updatedAt: new Date(),
+        })
+        .where(and(eq(tasks.id, id), eq(tasks.userId, user.id), isNull(tasks.deletedAt)));
+
+      await tx.insert(taskEvents).values({
+        id: uuidv7(),
+        userId: user.id,
+        taskId: id,
+        type: wasDone ? "reopened" : "completed",
+        fromValue: task.status,
+        toValue: nextStatus,
+      });
+
+      /*
+        Opakovanie: dokončenie zakladá ďalší výskyt. Appka nemá cron a zavádzať
+        ho kvôli tomuto je neúmerné — rovnaká úvaha ako pri zhnití nápadov v M4.
+
+        Zakladá sa len pri ZAŠKRTNUTÍ, nie pri vrátení späť: odškrtnutie omylom
+        by inak nechalo v zozname sirotu, ktorú by nikto nečakal.
+      */
+      if (wasDone) return null;
+      return spawnNextOccurrence(tx, user.id, task, todayIn(user.settings.timezone));
+    });
 
     revalidateViews();
     return { ok: true, data: { done: !wasDone, ...(spawned ? { nextDate: spawned } : {}) } };
@@ -1252,8 +1384,72 @@ export async function deleteTask(id: string): Promise<ActionResult> {
 }
 
 /**
- * Vrátenie mäkko zmazanej úlohy. Jediné miesto, ktoré sa zámerne pozerá
- * na riadky s vyplneným `deletedAt` — inak by sa vrátiť nedali.
+ * Zahodenie — vedomé rozhodnutie, že sa úloha robiť nebude.
+ *
+ * Nie je to zmazanie. Zahodená úloha ostáva v archíve v priehradke
+ * „Zahodené" — aby si o pol roka vedel, že si ju nakoniec nerobil, a nie
+ * že zmizla. Predtým každé „Zahodiť" v appke úlohu mäkko zmazalo a stav
+ * `dropped` nenastavovalo nič; priehradka „Zahodené" bola preto vždy
+ * prázdna.
+ *
+ * Opakovaná úloha sa zahodením neukončí — zahodí sa tento výskyt a ďalší
+ * vznikne ako pri odškrtnutí. Opakovanie sa vypína v detaile úlohy.
+ */
+export async function dropTask(
+  id: string,
+): Promise<ActionResult<{ nextDate?: string }>> {
+  const user = await requireUser();
+  try {
+    const idParsed = idSchema.safeParse(id);
+    if (!idParsed.success) return invalid(idParsed.error, "Chýba identifikátor úlohy.");
+
+    const db = await getDb();
+    const task = await loadTask(db, user.id, id);
+    if (!task) return { ok: false, error: "Úloha sa nenašla." };
+    if (task.status === "dropped") return { ok: true, data: {} };
+
+    /*
+      Zahodenie a ďalší výskyt v jednej transakcii. Keby výskyt zlyhal až po
+      zahodení, opakovaný pokus by skončil na „už je zahodená" a výskyt by
+      vznikol až pri rannom dobiehaní.
+    */
+    const spawned = await db.transaction(async (tx) => {
+      await tx
+        .update(tasks)
+        .set({ status: "dropped", isFrog: false, updatedAt: new Date() })
+        .where(and(eq(tasks.id, id), eq(tasks.userId, user.id), isNull(tasks.deletedAt)));
+
+      await tx.insert(taskEvents).values({
+        id: uuidv7(),
+        userId: user.id,
+        taskId: id,
+        type: "status_changed",
+        fromValue: task.status,
+        toValue: "dropped",
+      });
+
+      return task.status === "done"
+        ? null
+        : spawnNextOccurrence(tx, user.id, task, todayIn(user.settings.timezone));
+    });
+
+    revalidateViews();
+    return { ok: true, data: spawned ? { nextDate: spawned } : {} };
+  } catch (error) {
+    return fail(error, "Úlohu sa nepodarilo zahodiť.");
+  }
+}
+
+/**
+ * Vrátenie úlohy z archívu — zmazanej aj zahodenej.
+ *
+ * Zmazaná (`deletedAt`) sa odmaže. Zahodená sa znova otvorí: s miestom
+ * (deň, projekt, „niekedy", rodič) do `todo`, bez neho do inboxu. Predtým
+ * vedelo `restoreTask` len prvé, takže „Vrátiť" pri zahodenej úlohe v
+ * archíve hlásilo „Zmazaná úloha sa nenašla".
+ *
+ * Jediné miesto, ktoré sa zámerne pozerá na riadky s vyplneným
+ * `deletedAt` — inak by sa vrátiť nedali.
  */
 export async function restoreTask(id: string): Promise<ActionResult> {
   const user = await requireUser();
@@ -1265,28 +1461,42 @@ export async function restoreTask(id: string): Promise<ActionResult> {
     const rows = await db
       .select()
       .from(tasks)
-      .where(
-        and(
-          eq(tasks.id, id),
-          eq(tasks.userId, user.id),
-          isNotNull(tasks.deletedAt),
-        ),
-      )
+      .where(and(eq(tasks.id, id), eq(tasks.userId, user.id)))
       .limit(1);
-    if (!rows[0]) return { ok: false, error: "Zmazaná úloha sa nenašla." };
+    const task = rows[0];
+    if (!task || (task.deletedAt === null && task.status !== "dropped")) {
+      return { ok: false, error: "Zmazaná ani zahodená úloha sa nenašla." };
+    }
 
-    await db
-      .update(tasks)
-      .set({ deletedAt: null, updatedAt: new Date() })
-      .where(and(eq(tasks.id, id), eq(tasks.userId, user.id)));
+    if (task.deletedAt !== null) {
+      await db
+        .update(tasks)
+        .set({ deletedAt: null, updatedAt: new Date() })
+        .where(and(eq(tasks.id, id), eq(tasks.userId, user.id)));
 
-    await db.insert(taskEvents).values({
-      id: uuidv7(),
-      userId: user.id,
-      taskId: id,
-      type: "edited",
-      toValue: "restored",
-    });
+      await db.insert(taskEvents).values({
+        id: uuidv7(),
+        userId: user.id,
+        taskId: id,
+        type: "edited",
+        toValue: "restored",
+      });
+    } else {
+      const reopened: TaskStatus = hasPlace({ ...task, status: "todo" }) ? "todo" : "inbox";
+      await db
+        .update(tasks)
+        .set({ status: reopened, completedAt: null, updatedAt: new Date() })
+        .where(and(eq(tasks.id, id), eq(tasks.userId, user.id)));
+
+      await db.insert(taskEvents).values({
+        id: uuidv7(),
+        userId: user.id,
+        taskId: id,
+        type: "reopened",
+        fromValue: "dropped",
+        toValue: reopened,
+      });
+    }
 
     revalidateViews();
     return { ok: true };
@@ -1394,20 +1604,42 @@ export async function rescheduleTask(
     // platiť — prioritu nového dňa si treba vybrať vedome.
     if (task.isFrog) values.isFrog = false;
 
+    /*
+      Zrušený deň nesmie úlohu stratiť. Bez dňa, projektu a „niekedy" by
+      ostala v `todo` a na žiadnej obrazovke — preto ide do inboxu. Kto ju
+      chce odložiť na neurčito, volá `moveToSomeday`.
+    */
+    const nextStatus = visibleStatus({ ...task, plannedDate: nextDate });
+    if (nextStatus !== task.status) values.status = nextStatus;
+
     await db
       .update(tasks)
       .set(values)
       .where(and(eq(tasks.id, id), eq(tasks.userId, user.id), isNull(tasks.deletedAt)));
 
-    await db.insert(taskEvents).values({
-      id: uuidv7(),
-      userId: user.id,
-      taskId: id,
-      type: isPostpone ? "postponed" : "rescheduled",
-      fromValue: previousDate,
-      toValue: nextDate,
-      note: reason,
-    });
+    await db.insert(taskEvents).values([
+      {
+        id: uuidv7(),
+        userId: user.id,
+        taskId: id,
+        type: isPostpone ? "postponed" : "rescheduled",
+        fromValue: previousDate,
+        toValue: nextDate,
+        note: reason,
+      },
+      ...(values.status !== undefined
+        ? [
+            {
+              id: uuidv7(),
+              userId: user.id,
+              taskId: id,
+              type: "status_changed" as const,
+              fromValue: task.status,
+              toValue: values.status,
+            },
+          ]
+        : []),
+    ]);
 
     revalidateViews();
     return { ok: true, data: { postponeCount } };
@@ -1469,6 +1701,9 @@ export async function setFrog(id: string, on: boolean): Promise<ActionResult> {
     }
 
     await db.transaction(async (tx) => {
+      // Dve súbežné zapnutia na ten istý deň by sa inak navzájom zhasli.
+      await lockFor(tx, "frog", `${user.id}:${day}`);
+
       await tx
         .update(tasks)
         .set({ isFrog: false, updatedAt: new Date() })
@@ -1739,7 +1974,7 @@ export async function setWaiting(
 
     const next: TaskStatus = flagParsed.data
       ? "waiting"
-      : task.plannedDate
+      : hasPlace({ ...task, status: "todo" })
         ? "todo"
         : "inbox";
 
@@ -1766,6 +2001,92 @@ export async function setWaiting(
   }
 }
 
+/**
+ * Odloží úlohu na „niekedy" — bez dňa, na vlastný zoznam.
+ *
+ * Jediná cesta, ktorou sa na „niekedy" odkladá: z menu úlohy, z triedenia
+ * v inboxe aj z večerného shutdownu. Predtým to každé miesto robilo inak
+ * a večerný shutdown len zrušil deň (`rescheduleTask(id, null)`) — horizont
+ * ostal „deň", stav `todo`, a úloha nebola na žiadnej obrazovke.
+ *
+ * Úloha z inboxu odíde (`todo`): „niekedy" je rozhodnutie, a inbox je na
+ * veci, o ktorých ešte rozhodnuté nie je. Priorita dňa zhasne — patrí
+ * konkrétnemu dňu, a ten úloha práve stratila. Odklad sa nepočíta: odložiť
+ * na neurčito je vedomé rozhodnutie, nie útek o deň.
+ */
+export async function moveToSomeday(id: string): Promise<ActionResult> {
+  const user = await requireUser();
+  try {
+    const idParsed = idSchema.safeParse(id);
+    if (!idParsed.success) return invalid(idParsed.error, "Chýba identifikátor úlohy.");
+
+    const db = await getDb();
+    const task = await loadTask(db, user.id, id);
+    if (!task) return { ok: false, error: "Úloha sa nenašla." };
+
+    if (task.status === "done" || task.status === "dropped") {
+      return { ok: false, error: "Uzavretá úloha sa na niekedy neodkladá." };
+    }
+
+    const nextStatus: TaskStatus = task.status === "inbox" ? "todo" : task.status;
+    const alreadyThere =
+      task.horizon === "someday" &&
+      task.plannedDate === null &&
+      task.plannedTime === null &&
+      !task.isFrog &&
+      nextStatus === task.status;
+    if (alreadyThere) return { ok: true };
+
+    await db
+      .update(tasks)
+      .set({
+        horizon: "someday",
+        plannedDate: null,
+        plannedTime: null,
+        isFrog: false,
+        status: nextStatus,
+        updatedAt: new Date(),
+      })
+      .where(and(eq(tasks.id, id), eq(tasks.userId, user.id), isNull(tasks.deletedAt)));
+
+    const events: (typeof taskEvents.$inferInsert)[] = [
+      {
+        id: uuidv7(),
+        userId: user.id,
+        taskId: id,
+        type: "edited",
+        toValue: "horizon:someday",
+      },
+    ];
+    if (task.plannedDate !== null) {
+      events.push({
+        id: uuidv7(),
+        userId: user.id,
+        taskId: id,
+        type: "rescheduled",
+        fromValue: task.plannedDate,
+        toValue: null,
+      });
+    }
+    if (nextStatus !== task.status) {
+      events.push({
+        id: uuidv7(),
+        userId: user.id,
+        taskId: id,
+        type: "status_changed",
+        fromValue: task.status,
+        toValue: nextStatus,
+      });
+    }
+    await db.insert(taskEvents).values(events);
+
+    revalidateViews();
+    return { ok: true };
+  } catch (error) {
+    return fail(error, "Úlohu sa nepodarilo odložiť na niekedy.");
+  }
+}
+
 /* ═══════════════════════════════════════════════════════════════════════════
    OPAKOVANIE
 
@@ -1781,15 +2102,46 @@ function recurrenceRootId(task: Task): string {
 }
 
 /**
+ * Dni, na ktoré už reťazec výskyt má — vrátane zmazaných.
+ *
+ * Zmazaný výskyt sa počíta zámerne: kto ho zmazal, nechcel ho, a dobiehanie
+ * ho nesmie vzkriesiť. Predtým sa zmazané nerátali a ranný sprievodca
+ * zmazaný výskyt na druhý deň založil znova.
+ */
+async function chainDates(tx: Tx, userId: string, rootId: string): Promise<Set<string>> {
+  const rows = await tx
+    .select({ plannedDate: tasks.plannedDate })
+    .from(tasks)
+    .where(
+      and(
+        eq(tasks.userId, userId),
+        or(eq(tasks.id, rootId), eq(tasks.recurrenceParentId, rootId)),
+      ),
+    );
+  return new Set(
+    rows.map((row) => row.plannedDate).filter((date): date is string => date !== null),
+  );
+}
+
+/**
  * Založí ďalší výskyt opakovanej úlohy. Vráti jeho deň, alebo `null`.
  *
- * Kopírujú sa len vlastnosti, ktoré má zmysel zopakovať: názov, poznámka,
- * priorita, odhad, energia, kontext, zaradenie. NEKOPÍRUJE sa `postponeCount`
- * ani `isFrog` — nový výskyt začína s čistým štítom a odklady predošlého
- * nie sú jeho vina.
+ * **Deň** počíta `catchUpOccurrence`: ďalší podľa pravidla, a keď ten už
+ * prešiel, najnovší, ktorý je práve na rade. Predtým vznikal holý ďalší
+ * výskyt — pri úlohe zameškanej o tri týždne teda zase v minulosti.
+ *
+ * **Kopíruje sa všetko, čo hovorí, AKÁ je to práca**: názov, poznámka,
+ * priorita, odhad, energia, kontext, zaradenie, predmet a druh školskej
+ * práce, lekcia (pilier, zručnosť), návyk, celodennosť, viazanosť na deň
+ * a štítky. Predtým sa „viazaná na deň" nekopírovala — a tá je pri
+ * opakovaných veciach najčastejšia („tréning je buď v utorok, alebo nebol").
+ * Ani návyk: druhý tréning sa už návyku nezarátal.
+ *
+ * NEKOPÍRUJE sa `postponeCount`, `isFrog` ani termín — nový výskyt začína
+ * s čistým štítom a termín patrí konkrétnemu výskytu.
  */
 async function spawnNextOccurrence(
-  db: Database,
+  tx: Tx,
   userId: string,
   task: Task,
   todayIso: string,
@@ -1798,31 +2150,25 @@ async function spawnNextOccurrence(
   if (rule === null) return null;
 
   // Základom je deň, na ktorý bola úloha naplánovaná; keď žiadny nemala,
-  // počíta sa od dnešku, inak by výskyt spadol do minulosti.
+  // počíta sa od dnešku.
   const base = task.plannedDate ?? todayIso;
-  const next = nextOccurrence(rule, base);
+  const next = catchUpOccurrence(rule, base, todayIso);
   if (next === null) return null;
 
   const rootId = recurrenceRootId(task);
 
-  // Poistka proti dvojitému založeniu: dve rýchle odškrtnutia za sebou by inak
-  // vyrobili dva rovnaké výskyty na ten istý deň.
-  const existing = await db
-    .select({ id: tasks.id })
-    .from(tasks)
-    .where(
-      and(
-        eq(tasks.userId, userId),
-        eq(tasks.recurrenceParentId, rootId),
-        eq(tasks.plannedDate, next),
-        isNull(tasks.deletedAt),
-      ),
-    )
-    .limit(1);
-  if (existing[0]) return null;
+  /*
+    Poistka proti dvojitému založeniu: dve rýchle odškrtnutia, ranný
+    sprievodca aj odškrtnutie staršieho výskytu mieria na ten istý deň.
+    Zámok reťazca zoradí súbežné pokusy za seba, takže druhý už prvý výskyt
+    vidí. Jedinečný index tu nejde — človek smie výskyt ručne presunúť na
+    deň, ktorý už iný výskyt má.
+  */
+  await lockFor(tx, "recurrence", rootId);
+  if ((await chainDates(tx, userId, rootId)).has(next)) return null;
 
   const id = uuidv7();
-  await db.insert(tasks).values({
+  await tx.insert(tasks).values({
     id,
     userId,
     title: task.title,
@@ -1837,11 +2183,43 @@ async function spawnNextOccurrence(
     context: task.context,
     projectId: task.projectId,
     areaId: task.areaId,
+    subjectId: task.subjectId,
+    schoolKind: task.schoolKind,
+    lessonPillarId: task.lessonPillarId,
+    lessonSkillId: task.lessonSkillId,
+    habitId: task.habitId,
+    allDay: task.allDay,
+    staysOnDay: task.staysOnDay,
     recurrenceRule: task.recurrenceRule,
     recurrenceParentId: rootId,
   });
 
-  await db.insert(taskEvents).values({
+  /* Štítky sú samostatné riadky, preto sa kopírujú zvlášť. */
+  const sourceTags = await tx
+    .select({ tagId: taggables.tagId })
+    .from(taggables)
+    .innerJoin(tags, eq(taggables.tagId, tags.id))
+    .where(
+      and(
+        eq(tags.userId, userId),
+        eq(taggables.entityType, "task"),
+        eq(taggables.entityId, task.id),
+      ),
+    );
+  if (sourceTags.length > 0) {
+    await tx
+      .insert(taggables)
+      .values(
+        sourceTags.map((row) => ({
+          tagId: row.tagId,
+          entityType: "task" as const,
+          entityId: id,
+        })),
+      )
+      .onConflictDoNothing();
+  }
+
+  await tx.insert(taskEvents).values({
     id: uuidv7(),
     userId,
     taskId: id,
@@ -1853,7 +2231,15 @@ async function spawnNextOccurrence(
   return next;
 }
 
-/** Nastaví alebo zruší pravidlo opakovania. `null` opakovanie vypne. */
+/**
+ * Nastaví alebo zruší pravidlo opakovania. `null` opakovanie vypne.
+ *
+ * Pravidlo patrí **celému reťazcu**, nie jednej úlohe. Ďalší výskyt sa
+ * počíta z najnovšieho výskytu a berie JEHO pravidlo — takže keď sa na
+ * `/opakovane` zmenilo alebo vyplo pravidlo na koreňovej úlohe, reťazec
+ * ho ignoroval a ďalej zakladal podľa starého. Preto sa zapisuje všetkým
+ * živým členom naraz.
+ */
 export async function setRecurrence(
   id: string,
   rule: string | null,
@@ -1871,10 +2257,26 @@ export async function setRecurrence(
     const task = await loadTask(db, user.id, id);
     if (!task) return { ok: false, error: "Úloha sa nenašla." };
 
+    const rootId = recurrenceRootId(task);
     await db
       .update(tasks)
       .set({ recurrenceRule: rule, updatedAt: new Date() })
-      .where(and(eq(tasks.id, id), eq(tasks.userId, user.id), isNull(tasks.deletedAt)));
+      .where(
+        and(
+          eq(tasks.userId, user.id),
+          isNull(tasks.deletedAt),
+          or(eq(tasks.id, rootId), eq(tasks.recurrenceParentId, rootId), eq(tasks.id, id)),
+        ),
+      );
+
+    await db.insert(taskEvents).values({
+      id: uuidv7(),
+      userId: user.id,
+      taskId: id,
+      type: "edited",
+      fromValue: task.recurrenceRule,
+      toValue: rule === null ? "recurrence:off" : `recurrence:${rule}`,
+    });
 
     revalidateViews();
     return { ok: true };
@@ -1890,9 +2292,15 @@ export async function setRecurrence(
  * nedokončí, sa nikdy nezopakuje — mesačná faktúra by po jednom vynechaní
  * zmizla navždy.
  *
- * Zakladá sa VŽDY LEN JEDEN výskyt na reťazec, na najbližší platný deň od
- * posledného známeho. Sto prepadnutých faktúr v inboxe nikomu nepomôže a
- * z rituálu by spravilo trest.
+ * Na reťazec vznikne **najviac jeden** výskyt — ten, ktorý je práve na rade
+ * (`catchUpOccurrence`). Sto prepadnutých faktúr v inboxe nikomu nepomôže
+ * a z rituálu by spravilo trest.
+ *
+ * Rozhoduje **najnovší živý člen reťazca**, nie len tie v minulosti.
+ * Predtým sa brali iba výskyty pred dneškom, takže keď si budúci výskyt
+ * presunul z pondelka na stredu, sprievodca v pondelok „dobehol" pondelok
+ * a úloha bola dvakrát. Keď má reťazec výskyt dnes alebo neskôr, niet čo
+ * dobiehať.
  */
 export async function materializeDueRecurrences(
   todayIso: string,
@@ -1905,33 +2313,45 @@ export async function materializeDueRecurrences(
 
     const db = await getDb();
 
-    // Kandidáti: otvorené úlohy s pravidlom, ktorých deň už prešiel.
-    const candidates = await db
+    // Všetci členovia všetkých reťazcov vrátane zmazaných — tie sa rátajú
+    // ako obsadené dni, nie ako živé výskyty.
+    const members = await db
       .select()
       .from(tasks)
       .where(
         and(
           eq(tasks.userId, user.id),
-          isNull(tasks.deletedAt),
-          isNotNull(tasks.recurrenceRule),
-          lt(tasks.plannedDate, today),
-          notInArray(tasks.status, ["dropped"]),
+          or(isNotNull(tasks.recurrenceRule), isNotNull(tasks.recurrenceParentId)),
         ),
       );
 
-    // Na reťazec stačí najnovší výskyt — od neho sa počíta ďalší.
-    const newestByRoot = new Map<string, Task>();
-    for (const task of candidates) {
+    const chains = new Map<string, Task[]>();
+    for (const task of members) {
       const rootId = recurrenceRootId(task);
-      const current = newestByRoot.get(rootId);
-      if (current === undefined || (task.plannedDate ?? "") > (current.plannedDate ?? "")) {
-        newestByRoot.set(rootId, task);
-      }
+      const chain = chains.get(rootId);
+      if (chain === undefined) chains.set(rootId, [task]);
+      else chain.push(task);
     }
 
     let created = 0;
-    for (const task of newestByRoot.values()) {
-      const next = await spawnNextOccurrence(db, user.id, task, today);
+    for (const chain of chains.values()) {
+      let newest: Task | undefined;
+      for (const task of chain) {
+        if (task.deletedAt !== null || task.plannedDate === null) continue;
+        if (newest === undefined || task.plannedDate > (newest.plannedDate ?? "")) {
+          newest = task;
+        }
+      }
+      if (newest === undefined || newest.plannedDate === null) continue;
+      // Pravidlo najnovšieho výskytu platí — vypnuté opakovanie reťazec zastaví.
+      if (newest.recurrenceRule === null) continue;
+      // Reťazec má výskyt dnes alebo neskôr: niet čo dobiehať.
+      if (newest.plannedDate >= today) continue;
+
+      const source = newest;
+      const next = await db.transaction((tx) =>
+        spawnNextOccurrence(tx, user.id, source, today),
+      );
       if (next !== null) created += 1;
     }
 

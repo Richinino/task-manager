@@ -17,9 +17,8 @@ export const metadata: Metadata = {
  * ostala navždy, takže sa inbox nikdy nedostal na nulu — čo je jeho jediný
  * cieľ. Odteraz má vlastné miesto a inbox sa dá dotriediť do prázdna.
  *
- * Úlohy v stave `inbox` sa zámerne zobrazujú na oboch miestach: v inboxe ako
- * nedotriedené, tu ako odložené. Je to vedomé rozhodnutie serverovej vrstvy
- * (`getSomedayTasks`) — úloha bez dňa a mimo inboxu by nebola nikde.
+ * Úloha odložená na „niekedy" je len tu, nie v inboxe — aj keď ju staršie
+ * triedenie nechalo v stave `inbox`. Inak by sa inbox nedal dotriediť na nulu.
  */
 export default async function NiekedyPage() {
   const user = await requireUser();

@@ -14,7 +14,12 @@ import {
   type RitualStep,
 } from "@/components/rituals/ritual-shell";
 import { saveJournalEntry } from "@/server/actions/rituals";
-import { deleteTask, rescheduleTask, toggleTaskDone } from "@/server/actions/tasks";
+import {
+  dropTask,
+  moveToSomeday,
+  rescheduleTask,
+  toggleTaskDone,
+} from "@/server/actions/tasks";
 import type { TaskWithRelations } from "@/server/queries/tasks";
 
 /* ═══════════════════════════════════════════════════════════════════════════
@@ -116,13 +121,17 @@ export function EveningShutdown({
       };
 
       try {
+        /*
+          „Niekedy" ide cez `moveToSomeday`, nie cez zrušenie dňa. Holé
+          `rescheduleTask(id, null)` nechalo horizont „deň" a stav `todo`,
+          takže úloha po shutdowne nebola na žiadnej obrazovke.
+        */
         const result =
           decision === "dropped"
-            ? await deleteTask(task.id)
-            : await rescheduleTask(
-                task.id,
-                decision === "tomorrow" ? addDays(todayIso, 1) : null,
-              );
+            ? await dropTask(task.id)
+            : decision === "someday"
+              ? await moveToSomeday(task.id)
+              : await rescheduleTask(task.id, addDays(todayIso, 1));
         if (!result.ok) revert(result.error || "Rozhodnutie sa nepodarilo uložiť.");
       } catch {
         revert("Rozhodnutie sa nepodarilo uložiť.");
