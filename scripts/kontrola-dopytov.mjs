@@ -48,6 +48,7 @@ const TABULKY_POUZIVATELA = new Set([
   "settings",
   /* Udalosti a deadliny (docs/UDALOSTI.md). */
   "agendaItems",
+  "agendaReminders",
   /* Aj samotná tabuľka ľudí. `db.select().from(users)` bez filtra vypíše
      všetkých — a odkedy sú v appke dvaja, je to únik ako každý iný. */
   "users",
