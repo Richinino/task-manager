@@ -201,6 +201,7 @@ export interface AgendaTask {
   title: string;
   status: string;
   plannedDate: string | null;
+  dueDate: string | null;
   estimateMin: number | null;
   schoolKind: string | null;
 }
@@ -214,6 +215,7 @@ export async function getAgendaTasks(userId: string, itemId: string): Promise<Ag
       title: tasks.title,
       status: tasks.status,
       plannedDate: tasks.plannedDate,
+      dueDate: tasks.dueDate,
       estimateMin: tasks.estimateMin,
       schoolKind: tasks.schoolKind,
     })

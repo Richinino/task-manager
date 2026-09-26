@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { and, eq, isNull, isNotNull, ne } from "drizzle-orm";
+import { and, eq, isNull, isNotNull, ne, or } from "drizzle-orm";
 import { z } from "zod";
 
 import { getDb } from "@/db";
@@ -218,6 +218,10 @@ export async function moveAgendaItem(
       })
       .where(and(eq(agendaItems.id, current.id), eq(agendaItems.userId, user.id)));
 
+    /*
+      Nehotové úlohy, ktoré sa s udalosťou môžu posunúť: naplánované na deň,
+      alebo s termínom rovným pôvodnému dňu udalosti (ten dostali od nej).
+    */
     const pending = await db
       .select({ id: tasks.id })
       .from(tasks)
@@ -226,7 +230,7 @@ export async function moveAgendaItem(
           eq(tasks.userId, user.id),
           eq(tasks.agendaItemId, current.id),
           isNull(tasks.deletedAt),
-          isNotNull(tasks.plannedDate),
+          or(isNotNull(tasks.plannedDate), eq(tasks.dueDate, current.date)),
           ne(tasks.status, "done"),
           ne(tasks.status, "dropped"),
         ),

@@ -195,6 +195,8 @@ const AFFECTED_PATHS = [
   // Zmena úlohy mení počty aj postup projektu, takže sa dotýka aj štruktúry.
   "/projekty",
   "/oblasti",
+  // Udalosti ukazujú postup prípravy (2/3) — odškrtnutie ho mení.
+  "/udalosti",
 ] as const;
 
 function revalidateViews(): void {
@@ -745,6 +747,8 @@ export interface CapturedItem {
   id: string;
   title: string;
   kind: "task" | "agenda";
+  /** Písomka či skúšanie — zachytenie po uložení ponúkne prípravu. */
+  assessment?: boolean;
 }
 
 export async function loadTaskDetail(
@@ -793,6 +797,14 @@ export async function quickCapture(
      * NEROBIA — tie od M1 znamenajú termín úlohy (docs/UDALOSTI.md).
      */
     as?: "task" | "event" | "deadline";
+    /**
+     * Úloha pod udalosťou — z detailu písomky či deadlinu („Pridať úlohu").
+     *
+     * Vznikne vždy úloha (aj keď v texte stojí „písomka"), zdedí predmet
+     * udalosti a bez napísaného termínu dostane za termín jej deň: úloha
+     * k deadlinu má byť hotová do deadlinu, príprava do písomky.
+     */
+    agendaItemId?: string;
   },
 ): Promise<ActionResult<CapturedItem>> {
   const user = await requireUser();
@@ -837,7 +849,7 @@ export async function quickCapture(
       pravidlo s `skola:pisomka` a písanie z detailu hodiny s druhom písomky
       sú tá istá informácia, len prišla inou cestou.
     */
-    const wantsAs = opts?.as;
+    const wantsAs = opts?.agendaItemId !== undefined ? "task" : opts?.as;
     const textAssessment: AgendaType | null = parsed.agendaType ?? null;
     let target: "task" | "event" | "deadline" =
       wantsAs ?? (textAssessment !== null || opts?.defaultSchoolKind === "exam" ? "event" : "task");
@@ -845,6 +857,24 @@ export async function quickCapture(
 
     const forceInbox = opts?.forceInbox === true;
     const db = await getDb();
+
+    /* Udalosť, pod ktorú úloha patrí — overená proti používateľovi, id prišlo z prehliadača. */
+    let linked: { id: string; date: string; subjectId: string | null } | null = null;
+    if (opts?.agendaItemId !== undefined) {
+      const [row] = await db
+        .select({ id: agendaItems.id, date: agendaItems.date, subjectId: agendaItems.subjectId })
+        .from(agendaItems)
+        .where(
+          and(
+            eq(agendaItems.id, opts.agendaItemId),
+            eq(agendaItems.userId, user.id),
+            isNull(agendaItems.deletedAt),
+          ),
+        )
+        .limit(1);
+      if (row === undefined) return { ok: false, error: "Udalosť sa nenašla." };
+      linked = row;
+    }
 
     // Projekt sa priraďuje podľa názvu bez ohľadu na veľkosť písmen.
     // Nový projekt sa zámerne nezakladá — na to je samostatný krok.
@@ -933,7 +963,7 @@ export async function quickCapture(
       z prehliadača a bez tejto kontroly by sa dala úlohe prilepiť cudzia
       hodnota.
     */
-    const zHodiny = opts?.defaultSubjectId;
+    const zHodiny = opts?.defaultSubjectId ?? linked?.subjectId ?? undefined;
     if (subjectId === null && zHodiny !== undefined) {
       subjectId = predmety.some((p) => p.id === zHodiny) ? zHodiny : null;
     }
@@ -970,7 +1000,7 @@ export async function quickCapture(
       `predmet:MAT`) a taká úloha si termín zaslúži rovnako ako tá, ktorej
       predmet vypadol z názvu.
     */
-    let dueDate = sanitize(isoDateSchema, parsed.dueDate);
+    let dueDate = sanitize(isoDateSchema, parsed.dueDate) ?? linked?.date ?? null;
     if (dueDate === null && subjectId !== null) {
       const todayIsoPreTermin = todayIn(user.settings.timezone);
       const [hodiny, volna] = await Promise.all([
@@ -1060,6 +1090,7 @@ export async function quickCapture(
           habitId: patch.habitId ?? null,
           isFrog,
           staysOnDay: patch.staysOnDay === true,
+          agendaItemId: linked?.id ?? null,
         })
         .onConflictDoNothing()
         // Bez výberu stĺpcov: `Database` je zjednotenie dvoch ovládačov a
@@ -1198,7 +1229,10 @@ async function captureAgenda(input: {
   });
 
   for (const path of ["/dnes", "/tyzden", "/mesiac", "/rozvrh", "/udalosti"]) revalidatePath(path);
-  return { ok: true, data: { id: row.id, title: row.title, kind: "agenda" } };
+  return {
+    ok: true,
+    data: { id: row.id, title: row.title, kind: "agenda", assessment: input.kind === "event" && assessment },
+  };
 }
 
 export async function updateTask(

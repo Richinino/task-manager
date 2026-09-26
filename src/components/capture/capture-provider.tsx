@@ -6,6 +6,7 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from "react";
@@ -57,6 +58,13 @@ export interface CaptureContextValue {
   openCapture: (options?: OpenCaptureOptions) => void;
   closeCapture: () => void;
   openPalette: () => void;
+  /**
+   * Detail udalosti sa sem prihlási, aby ho zachytenie po uložení písomky
+   * vedelo otvoriť s ponukou prípravy. Detail žije pod týmto providerom,
+   * takže ho zachytenie priamo nevidí — prihlásenie obráti smer. Vráti
+   * odhlásenie.
+   */
+  registerAgendaOpener: (open: (id: string) => void) => () => void;
 }
 
 const CaptureContext = createContext<CaptureContextValue | null>(null);
@@ -133,6 +141,14 @@ export function CaptureProvider({
   const [captureDate, setCaptureDate] = useState<string | null>(null);
   const [captureText, setCaptureText] = useState<string | null>(null);
   const [captureMode, setCaptureMode] = useState<"event" | "deadline" | null>(null);
+  const agendaOpenerRef = useRef<((id: string) => void) | null>(null);
+
+  const registerAgendaOpener = useCallback((open: (id: string) => void) => {
+    agendaOpenerRef.current = open;
+    return () => {
+      if (agendaOpenerRef.current === open) agendaOpenerRef.current = null;
+    };
+  }, []);
 
   // Dve okná naraz by si kradli fokus — otvorenie jedného zatvorí druhé.
   const openCapture = useCallback((options?: OpenCaptureOptions) => {
@@ -189,8 +205,8 @@ export function CaptureProvider({
   }, []);
 
   const contextValue = useMemo<CaptureContextValue>(
-    () => ({ openCapture, closeCapture, openPalette }),
-    [openCapture, closeCapture, openPalette],
+    () => ({ openCapture, closeCapture, openPalette, registerAgendaOpener }),
+    [openCapture, closeCapture, openPalette, registerAgendaOpener],
   );
 
   /* ── globálne skratky ─────────────────────────────────────────────────── */
@@ -272,6 +288,7 @@ export function CaptureProvider({
         defaultDate={captureDate ?? undefined}
         defaultText={captureText ?? undefined}
         defaultMode={captureMode ?? undefined}
+        onAssessmentSaved={(id) => agendaOpenerRef.current?.(id)}
       />
 
       <CommandPalette
