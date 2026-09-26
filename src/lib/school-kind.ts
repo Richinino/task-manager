@@ -23,6 +23,16 @@ export const SCHOOL_KINDS: readonly SchoolKind[] = [
   "review",
 ];
 
+/**
+ * Druhy, ktoré môže mať ÚLOHA — bez písomky.
+ *
+ * Písomka je od udalostí (docs/UDALOSTI.md) udalosť: nerobí sa, zažije sa.
+ * Hodnota `exam` v databáze ostáva (staré riadky ju nesú, Postgres ju zo
+ * enumu zmazať nevie), ale v detaile úlohy sa už neponúka. Úloha, ktorá ju
+ * ešte má, ju ukáže, kým ju človek nezmení.
+ */
+export const TASK_SCHOOL_KINDS: readonly SchoolKind[] = ["homework", "study", "review"];
+
 interface Popis {
   /** Do výberu v detaile úlohy. */
   label: string;

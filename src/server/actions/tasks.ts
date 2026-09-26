@@ -6,6 +6,7 @@ import { z } from "zod";
 
 import { getDb, type Database } from "@/db";
 import {
+  agendaItems,
   areas,
   habits,
   learningPillars,
@@ -23,6 +24,8 @@ import {
 } from "@/db/schema";
 import { addDays, minutesIn, todayIn } from "@/lib/dates";
 import { uuidv7 } from "@/lib/id";
+import { assessmentTitle, type AgendaType } from "@/lib/agenda";
+import { fold } from "@/lib/fold";
 import { parseCapture } from "@/lib/parse";
 import { matchSubject } from "@/lib/subject-match";
 import { applyRules } from "@/server/apply-rules";
@@ -36,6 +39,7 @@ import {
 import { catchUpOccurrence, parseRecurrence } from "@/lib/recurrence";
 import { hasPlace, horizonForDate, visibleStatus } from "@/lib/task-placement";
 import { requireUser } from "@/server/auth-guard";
+import { insertAgendaItem } from "@/server/agenda-write";
 
 /* ═══════════════════════════════════════════════════════════════════════════
    VÝSLEDOK AKCIE
@@ -716,7 +720,7 @@ const CLIENT_ID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{
 async function findCapturedTask(
   userId: string,
   id: string,
-): Promise<{ ok: true; data: { id: string; title: string } } | null> {
+): Promise<{ ok: true; data: CapturedItem } | null> {
   const db = await getDb();
   const rows = await db
     .select({ id: tasks.id, title: tasks.title })
@@ -724,7 +728,23 @@ async function findCapturedTask(
     .where(and(eq(tasks.id, id), eq(tasks.userId, userId)))
     .limit(1);
   const row = rows[0];
-  return row ? { ok: true, data: { id: row.id, title: row.title } } : null;
+  if (row) return { ok: true, data: { id: row.id, title: row.title, kind: "task" } };
+
+  /* Z rovnakej položky fronty mohla vzniknúť aj udalosť (písomka). */
+  const agenda = await db
+    .select({ id: agendaItems.id, title: agendaItems.title })
+    .from(agendaItems)
+    .where(and(eq(agendaItems.id, id), eq(agendaItems.userId, userId)))
+    .limit(1);
+  const item = agenda[0];
+  return item ? { ok: true, data: { id: item.id, title: item.title, kind: "agenda" } } : null;
+}
+
+/** Čo z rýchleho zachytenia vzniklo — úloha, alebo udalosť. */
+export interface CapturedItem {
+  id: string;
+  title: string;
+  kind: "task" | "agenda";
 }
 
 export async function loadTaskDetail(
@@ -765,8 +785,16 @@ export async function quickCapture(
      * prvú.
      */
     clientId?: string;
+    /**
+     * Čo má vzniknúť — z prepínača v zachytení.
+     *
+     * Bez neho rozhoduje text: písomka a skúšanie sú udalosť, všetko ostatné
+     * úloha. Udalosť ani deadline sa zo slov „do piatku" či „deadline 31.3."
+     * NEROBIA — tie od M1 znamenajú termín úlohy (docs/UDALOSTI.md).
+     */
+    as?: "task" | "event" | "deadline";
   },
-): Promise<ActionResult<{ id: string; title: string }>> {
+): Promise<ActionResult<CapturedItem>> {
   const user = await requireUser();
   try {
     const rawParsed = z
@@ -804,7 +832,16 @@ export async function quickCapture(
     });
 
     const title = parsed.title.trim();
-    if (!title) return { ok: false, error: "Úloha musí mať názov." };
+    /*
+      Cieľ: úloha, udalosť, alebo deadline. Písomku a skúšanie pozná parser;
+      pravidlo s `skola:pisomka` a písanie z detailu hodiny s druhom písomky
+      sú tá istá informácia, len prišla inou cestou.
+    */
+    const wantsAs = opts?.as;
+    const textAssessment: AgendaType | null = parsed.agendaType ?? null;
+    let target: "task" | "event" | "deadline" =
+      wantsAs ?? (textAssessment !== null || opts?.defaultSchoolKind === "exam" ? "event" : "task");
+    if (!title && target === "task") return { ok: false, error: "Úloha musí mať názov." };
 
     const forceInbox = opts?.forceInbox === true;
     const db = await getDb();
@@ -881,6 +918,10 @@ export async function quickCapture(
     if (subjectId === null && patch.subjectId !== undefined) {
       subjectId = patch.subjectId;
     }
+    /* Písomka z pravidla (`skola:pisomka`) je tiež udalosť — ak si prepínačom nechcel inak. */
+    if (wantsAs === undefined && target === "task" && patch.schoolKind === "exam") {
+      target = "event";
+    }
 
     /*
       Predmet podľa miesta, odkiaľ sa písalo — z detailu hodiny.
@@ -895,6 +936,30 @@ export async function quickCapture(
     const zHodiny = opts?.defaultSubjectId;
     if (subjectId === null && zHodiny !== undefined) {
       subjectId = predmety.some((p) => p.id === zHodiny) ? zHodiny : null;
+    }
+
+    if (target !== "task") {
+      const assessment: AgendaType | null =
+        target === "event"
+          ? (textAssessment ??
+            (patch.schoolKind === "exam" || opts?.defaultSchoolKind === "exam" ? "exam" : null))
+          : null;
+      return await captureAgenda({
+        userId: user.id,
+        timezone: user.settings.timezone,
+        id: clientId ?? uuidv7(),
+        kind: target === "deadline" ? "deadline" : "event",
+        type:
+          assessment ??
+          (target === "deadline" && /(^|\s)odovzd/u.test(fold(rawParsed.data)) ? "submit" : "other"),
+        rest: title,
+        subject: predmety.find((p) => p.id === subjectId) ?? null,
+        date: sanitize(isoDateSchema, parsed.dueDate) ?? sanitize(isoDateSchema, parsed.plannedDate),
+        defaultDate: forceInbox ? null : sanitize(isoDateSchema, opts?.defaultPlannedDate),
+        time: sanitize(isoTimeSchema, parsed.plannedTime) ?? sanitize(isoTimeSchema, parsed.dueTime),
+        projectId,
+        areaId: patch.areaId ?? null,
+      });
     }
 
     /*
@@ -979,14 +1044,16 @@ export async function quickCapture(
           context: sanitize(contextSchema, clampContext(parsed.context)),
           projectId,
           subjectId,
-          /* Bez predmetu je „domáca úloha vs písomka" rozlíšenie o ničom. */
-          schoolKind:
-            subjectId === null
-              ? null
-              : (parsed.schoolKind ??
-                patch.schoolKind ??
-                opts?.defaultSchoolKind ??
-                null),
+          /*
+            Bez predmetu je „domáca úloha vs písomka" rozlíšenie o ničom.
+            Písomka sa ako druh úlohy už neukladá — je to udalosť. Sem sa
+            dostane len vtedy, keď človek prepínačom výslovne chcel úlohu.
+          */
+          schoolKind: (() => {
+            if (subjectId === null) return null;
+            const kind = parsed.schoolKind ?? patch.schoolKind ?? opts?.defaultSchoolKind ?? null;
+            return kind === "exam" ? null : kind;
+          })(),
           areaId: patch.areaId ?? null,
           lessonPillarId: patch.lessonPillarId ?? null,
           lessonSkillId: patch.lessonSkillId ?? null,
@@ -1039,10 +1106,99 @@ export async function quickCapture(
     });
 
     revalidateViews();
-    return { ok: true, data: { id, title } };
+    return { ok: true, data: { id, title, kind: "task" } };
   } catch (error) {
     return fail(error, "Úlohu sa nepodarilo zachytiť.");
   }
+}
+
+/**
+ * Udalosť alebo deadline z rýchleho zachytenia.
+ *
+ * Deň je napísaný deň (plán aj termín — pri udalosti znamenajú to isté),
+ * inak deň z tlačidla „+", inak pri písomke najbližšia hodina predmetu.
+ * Čas písomky doplní rozvrh (`insertAgendaItem`). Bez dňa udalosť nevznikne
+ * — radšej chyba s radou, než udalosť, ktorá sa nikde neukáže.
+ */
+async function captureAgenda(input: {
+  userId: string;
+  timezone: string;
+  id: string;
+  kind: "event" | "deadline";
+  type: AgendaType;
+  rest: string;
+  subject: { id: string; code: string; name: string | null } | null;
+  /** Deň napísaný v texte. */
+  date: string | null;
+  /** Predvyplnený deň obrazovky (Dnes, „+" na dni) — slabší než text. */
+  defaultDate: string | null;
+  time: string | null;
+  projectId: string | null;
+  areaId: string | null;
+}): Promise<ActionResult<CapturedItem>> {
+  const assessment = input.type === "exam" || input.type === "oral";
+  let date = input.date;
+
+  /*
+    Písomka bez dňa v texte ide na hodinu predmetu. Predvyplnený deň je pri
+    nej len ODKIAĽ hľadať: „písomka MAT" napísaná na Dnes v sobotu patrí na
+    pondelkovú matiku, nie na sobotu. Keď má predvyplnený deň hodinu toho
+    predmetu, padne presne naň.
+  */
+  if (date === null && assessment && input.subject !== null) {
+    const todayIso = todayIn(input.timezone);
+    const from = input.defaultDate !== null && input.defaultDate > todayIso ? input.defaultDate : todayIso;
+    const [hodiny, volna] = await Promise.all([
+      getLessonsForRange(input.userId, from, addDays(from, 183)),
+      listBreaks(input.userId),
+    ]);
+    date = nextLessonDate(
+      hodiny.map((h) => ({
+        date: h.date,
+        startTime: h.startTime,
+        endTime: h.endTime,
+        cancelled: h.cancelled,
+        subjectId: h.subjectId,
+      })),
+      input.subject.id,
+      todayIso,
+      minutesIn(input.timezone),
+      volna.map((v) => ({ fromDate: v.fromDate, toDate: v.toDate })),
+    );
+  }
+  date ??= input.defaultDate;
+
+  if (date === null) {
+    return {
+      ok: false,
+      error:
+        input.kind === "deadline"
+          ? "Deadline potrebuje deň — napíš napr. „do piatku“ alebo „30.9.“."
+          : assessment
+            ? "Písomka potrebuje deň alebo predmet — napíš napr. „písomka MAT piatok“."
+            : "Udalosť potrebuje deň — napíš napr. „v piatok“ alebo „6.10.“.",
+    };
+  }
+
+  const title = assessment ? assessmentTitle(input.type, input.rest, input.subject) : input.rest;
+  if (title.trim() === "") return { ok: false, error: "Napíš, o čo ide." };
+
+  const db = await getDb();
+  const row = await insertAgendaItem(db, input.userId, {
+    id: input.id,
+    kind: input.kind,
+    type: input.type,
+    title: title.slice(0, 500),
+    date,
+    startTime: input.kind === "event" ? input.time : null,
+    endTime: input.kind === "deadline" ? input.time : null,
+    subjectId: input.subject?.id ?? null,
+    projectId: input.projectId,
+    areaId: input.areaId,
+  });
+
+  for (const path of ["/dnes", "/tyzden", "/mesiac", "/rozvrh", "/udalosti"]) revalidatePath(path);
+  return { ok: true, data: { id: row.id, title: row.title, kind: "agenda" } };
 }
 
 export async function updateTask(

@@ -91,6 +91,26 @@ export const taskEventType = pgEnum("task_event_type", [
   "deleted",
 ]);
 
+/**
+ * Udalosť sa STANE, deadline sa musí STIHNÚŤ.
+ *
+ * Rozdiel nie je v tom, či je v kalendári, ale čo s ním človek robí: na
+ * písomke je, referát odovzdá. Preto sa inak správajú v rozpočte času aj po
+ * tom, čo prejdú. Podrobne v `docs/UDALOSTI.md`.
+ */
+export const agendaKind = pgEnum("agenda_kind", ["event", "deadline"]);
+
+/**
+ * Druh udalosti. Školské sa správajú inak než ostatné: berú si čas
+ * z rozvrhu, ponúkajú prípravu a po prebehnutí sa k nim zapisuje známka.
+ *
+ * - `exam` — písomka, test, previerka
+ * - `oral` — ústne skúšanie
+ * - `submit` — odovzdanie (pri deadline)
+ * - `other` — všetko ostatné
+ */
+export const agendaType = pgEnum("agenda_type", ["exam", "oral", "submit", "other"]);
+
 /** Na čo odkaz ukazuje — pre [[obojsmerné odkazy]] a tagy. */
 export const entityType = pgEnum("entity_type", [
   "task",
@@ -335,6 +355,20 @@ export const tasks = pgTable(
      */
     staysOnDay: boolean("stays_on_day").notNull().default(false),
 
+    /**
+     * Udalosť alebo deadline, ku ktorému úloha patrí.
+     *
+     * Pri písomke je to príprava („učiť sa", „zopakovať"), pri deadline
+     * kroky, ktoré ho treba stihnúť. Úloha ostáva úlohou — zaberá čas dňa,
+     * presúva sa a odškrtáva ako každá iná. Väzba len hovorí, na čo je.
+     *
+     * `set null` pri zmazaní udalosti: práca, ktorú si naplánoval, nemá
+     * zmiznúť len preto, že písomka odpadla.
+     */
+    agendaItemId: text("agenda_item_id").references(() => agendaItems.id, {
+      onDelete: "set null",
+    }),
+
     /** Koľkokrát bola úloha odložená. Pohon anti-prokrastinácie. */
     postponeCount: integer("postpone_count").notNull().default(0),
 
@@ -352,6 +386,7 @@ export const tasks = pgTable(
     index("tasks_status_idx").on(t.userId, t.status),
     index("tasks_project_idx").on(t.projectId),
     index("tasks_parent_idx").on(t.parentTaskId),
+    index("tasks_agenda_idx").on(t.agendaItemId),
   ],
 );
 
@@ -717,6 +752,81 @@ export const schoolBreaks = pgTable(
   (t) => [index("school_breaks_user_idx").on(t.userId, t.fromDate)],
 );
 
+/* ═══════════════════════════════════════════════════════════════════════════
+   UDALOSTI A DEADLINY
+
+   Písomka, lekár, výlet, odovzdanie referátu. Nie je to úloha: nedá sa
+   odškrtnúť a keď prejde, nie je „po termíne" — je prebehnutá. Stav sa
+   odvodí z dátumu, rovnako ako hotová hodina v rozvrhu. Viac v
+   `docs/UDALOSTI.md`.
+
+   Tabuľka sa nevolá `events`, lebo `task_events` je auditný log úloh a dve
+   rôzne „udalosti" v kóde by sa plietli pri každom čítaní.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+export const agendaItems = pgTable(
+  "agenda_items",
+  {
+    id: text("id").primaryKey(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    kind: agendaKind("kind").notNull().default("event"),
+    type: agendaType("type").notNull().default("other"),
+    title: text("title").notNull(),
+    note: text("note"),
+
+    /** Deň udalosti; pri viacdňovej prvý deň. */
+    date: date("date").notNull(),
+    /** Posledný deň viacdňovej udalosti vrátane. `null` = jednodňová. */
+    endDate: date("end_date"),
+    /** Začiatok. `null` = celý deň. Deadline ho nemá. */
+    startTime: time("start_time"),
+    /** Pri udalosti koniec, pri deadline hodina „do". */
+    endTime: time("end_time"),
+    /**
+     * Poradie hodiny, keď je udalosť na vyučovaní.
+     *
+     * Podľa neho ju rozvrh aj pruh na „Dnes" nakreslia priamo v okienku
+     * hodiny a rozpočet ju neodráta druhýkrát — už je v „škole".
+     */
+    period: integer("period"),
+    place: text("place"),
+
+    subjectId: text("subject_id").references(() => schoolSubjects.id, {
+      onDelete: "set null",
+    }),
+    areaId: text("area_id").references(() => areas.id, { onDelete: "set null" }),
+    projectId: text("project_id").references(() => projects.id, { onDelete: "set null" }),
+
+    /**
+     * Udalosť zaberá celý deň — výlet, sústredenie.
+     *
+     * Tá istá myšlienka ako `tasks.allDay`: nie „trvá dlho", ale „tento
+     * deň je zabraný". Narodeniny sú celodenné, ale deň nezaberú.
+     */
+    blocksDay: boolean("blocks_day").notNull().default(false),
+
+    /** Kedy pripomenúť: `eve` deň vopred o 19:00, `morn` ráno o 7:00, `hour` hodinu vopred. */
+    remind: text("remind"),
+
+    /** Známka 1–5 po písomke alebo skúšaní. */
+    grade: integer("grade"),
+    gradeNote: text("grade_note"),
+
+    /** Zrušená udalosť ostáva v zozname prečiarknutá — nemaže sa. */
+    cancelledAt: timestamp("cancelled_at", { withTimezone: true }),
+
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+    deletedAt: timestamp("deleted_at", { withTimezone: true }),
+  },
+  (t) => [
+    index("agenda_items_user_date_idx").on(t.userId, t.date),
+    index("agenda_items_subject_idx").on(t.subjectId),
+  ],
+);
+
 export const habits = pgTable(
   "habits",
   {
@@ -923,6 +1033,22 @@ export const tasksRelations = relations(tasks, ({ one, many }) => ({
   }),
   subtasks: many(tasks, { relationName: "subtasks" }),
   events: many(taskEvents),
+  /* Písomka alebo deadline, na ktorý úloha je. */
+  agendaItem: one(agendaItems, {
+    fields: [tasks.agendaItemId],
+    references: [agendaItems.id],
+  }),
+}));
+
+export const agendaItemsRelations = relations(agendaItems, ({ one, many }) => ({
+  subject: one(schoolSubjects, {
+    fields: [agendaItems.subjectId],
+    references: [schoolSubjects.id],
+  }),
+  area: one(areas, { fields: [agendaItems.areaId], references: [areas.id] }),
+  project: one(projects, { fields: [agendaItems.projectId], references: [projects.id] }),
+  /* Príprava k písomke, kroky k deadlinu. */
+  tasks: many(tasks),
 }));
 
 export const taskEventsRelations = relations(taskEvents, ({ one }) => ({
@@ -1010,6 +1136,10 @@ export type SkillMilestone = typeof skillMilestones.$inferSelect;
 export type JournalEntry = typeof journal.$inferSelect;
 export type Review = typeof reviews.$inferSelect;
 export type TaskEvent = typeof taskEvents.$inferSelect;
+export type AgendaItem = typeof agendaItems.$inferSelect;
+export type NewAgendaItem = typeof agendaItems.$inferInsert;
+export type AgendaKind = AgendaItem["kind"];
+export type AgendaType = AgendaItem["type"];
 export type User = typeof users.$inferSelect;
 
 export type TaskStatus = Task["status"];

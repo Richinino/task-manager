@@ -14,14 +14,26 @@ import { DayPriorityCard } from "@/components/views/dnes/day-priority-card";
 import { OverdueSection } from "@/components/views/dnes/overdue-section";
 import { LiveTimeBudget } from "@/components/views/dnes/live-time-budget";
 import { WhatNow } from "@/components/views/dnes/what-now";
+import { DayAgenda, UpcomingAgenda } from "@/components/views/dnes/day-agenda";
 import { RitualHost } from "@/components/rituals/ritual-host";
 import {
+  addDays,
+  diffDays,
   minutesIn,
   parseIsoDate,
   startOfWeek,
   todayIn,
   toIsoDate,
 } from "@/lib/dates";
+import {
+  agendaBlockingDay,
+  agendaBusyMinutes,
+  agendaShortTitle,
+  assessmentsOnLessons,
+  compareAgenda,
+  isOnDay,
+} from "@/lib/agenda";
+import { getAgendaForRange } from "@/server/queries/agenda";
 import { listHabits } from "@/server/queries/habits";
 import { ritualPeriod } from "@/lib/rituals";
 import { requireUser } from "@/server/auth-guard";
@@ -93,6 +105,7 @@ export default async function DnesPage({ searchParams }: DnesPageProps) {
     schoolBreaks,
     skolskeUlohyNaDen,
     habits,
+    agenda,
   ] = await Promise.all([
       getTasksForDay(user.id, date),
       /*
@@ -142,6 +155,11 @@ export default async function DnesPage({ searchParams }: DnesPageProps) {
             },
           )
         : Promise.resolve([]),
+      /*
+        Udalosti zobrazeného dňa a dvoch týždňov po ňom — do „Udalostí dňa"
+        a „Blíži sa". Jeden dotaz na obe; delia sa až tu.
+      */
+      getAgendaForRange(user.id, date, addDays(date, 14)),
     ]);
 
   // Zahodené úlohy do dnešného záväzku nepatria — v zozname by sa tvárili
@@ -178,7 +196,23 @@ export default async function DnesPage({ searchParams }: DnesPageProps) {
   // Minúty porád idú do rozpočtu surové, hodiny dňa sa o ne neskracujú tu:
   // odpočet si robí `TimeBudget` sám, aby vedel ukázať aj to, koľko z dňa
   // porady zjedli. Celodenné udalosti sa do súčtu nerátajú.
-  const meetingMin = meetingMinutes(events);
+  /*
+    Udalosti dňa uberajú z času rovnako ako porady: zubár o 16:30 je pol
+    hodina, ktorá na prácu neostane. Písomka na hodine sa neráta — je už
+    v škole (`agendaBusyMinutes`).
+  */
+  const agendaDay = agenda.filter((item) => isOnDay(item, date)).sort(compareAgenda);
+  const agendaUpcoming = agenda
+    .filter((item) => item.date > date && diffDays(date, item.date) <= 14)
+    .sort(compareAgenda);
+  const eventMin = agendaBusyMinutes(agendaDay, date);
+  /* Výlet či sústredenie zaberá celý deň — rozpočet sa vtedy neráta, len oznámi prečo. */
+  const blokujuca = agendaBlockingDay(agendaDay, date)?.title ?? null;
+  const meetingMin = meetingMinutes(events) + eventMin;
+  /* Písomky a skúšania dňa podľa hodiny — do značky v školskom pruhu. */
+  const agendaNaHodine = new Map(
+    [...assessmentsOnLessons(agendaDay, schoolLessons)].map(([id, item]) => [id, agendaShortTitle(item, null)]),
+  );
 
   /*
     Podklad pre rozpočet: hodiny dňa a čas zo servera.
@@ -239,6 +273,7 @@ export default async function DnesPage({ searchParams }: DnesPageProps) {
           <LiveTimeBudget
             plannedMin={plannedMin}
             allDay={jeCelodenny}
+            blockedBy={blokujuca}
             dateIso={date}
             todayIso={todayIso}
             timeZone={user.settings.timezone}
@@ -246,6 +281,7 @@ export default async function DnesPage({ searchParams }: DnesPageProps) {
             dayEndHour={user.settings.dayEndHour}
             withoutEstimate={withoutEstimate}
             meetingMin={meetingMin}
+            eventMin={eventMin}
             lessons={hodinyPreRozpocet}
             nowMin={nowMin}
           />
@@ -339,6 +375,12 @@ export default async function DnesPage({ searchParams }: DnesPageProps) {
           ) : null}
 
           {/*
+            Udalosti dňa hneď pod prioritou: čím je deň pevne daný. Nad
+            školou, lebo písomka je dôvod, prečo sa na ten pruh pozeráš.
+          */}
+          <DayAgenda items={agendaDay} todayIso={todayIso} />
+
+          {/*
             Škola sedí MEDZI prioritou dňa a naplánovanými úlohami. Nie hore:
             priorita dňa ostáva prvá vec, ktorú človek ráno vidí, a rozvrh je
             kontext k nej — „toto chcem spraviť a takto mám zabratý deň".
@@ -360,6 +402,7 @@ export default async function DnesPage({ searchParams }: DnesPageProps) {
                 lesson.note !== null ||
                 lesson.subjectNote !== null ||
                 skolskeUlohyNaDen.has(`${lesson.date}|${lesson.subjectId}`),
+              agendaLabel: agendaNaHodine.get(lesson.id) ?? null,
             }))}
             /*
               SKUTOČNÝ dnešok, nie zobrazený deň. Stav hodiny sa odvodzuje
@@ -392,6 +435,12 @@ export default async function DnesPage({ searchParams }: DnesPageProps) {
             />
           ) : null}
 
+          {/*
+            Blíži sa — pred zoznamom úloh, lebo z neho sa rozhoduje, čo do
+            dnešného zoznamu ešte pribudne (príprava na písomku o štyri dni).
+          */}
+          <UpcomingAgenda items={agendaUpcoming} todayIso={todayIso} />
+
           <DayList
             tasks={listTasks}
             frogInCard={frogInCard}
@@ -418,10 +467,12 @@ export default async function DnesPage({ searchParams }: DnesPageProps) {
                 tasks={dayTasks}
                 plannedMin={plannedMin}
                 allDay={jeCelodenny}
+                blockedBy={blokujuca}
                 dateIso={date}
                 todayIso={todayIso}
                 timeZone={user.settings.timezone}
                 meetingMin={meetingMin}
+                eventMin={eventMin}
                 lessons={hodinyPreRozpocet}
                 nowMin={nowMin}
                 withoutEstimate={withoutEstimate}
