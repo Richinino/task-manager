@@ -7,6 +7,7 @@ import {
   Archive,
   CalendarCheck,
   CalendarDays,
+  CalendarHeart,
   CalendarRange,
   CalendarClock,
   FolderKanban,
@@ -120,6 +121,18 @@ export const NAV_ITEMS: readonly NavItem[] = [
     bar: true,
   },
   { href: "/mesiac", label: "Mesiac", shortcut: "m", Icon: CalendarDays, group: "day" },
+  /*
+    Udalosti hneď za mesiacom: písomky a deadliny sú fakt o dňoch, rovnako
+    ako rozvrh. Skratka `d` z uDalosti — `u` má Učenie a prvé voľné písmeno
+    slova je druhé, rovnako ako pri Nápadoch a Návykoch.
+  */
+  {
+    href: "/udalosti",
+    label: "Udalosti",
+    shortcut: "d",
+    Icon: CalendarHeart,
+    group: "day",
+  },
   {
     href: "/inbox",
     label: "Inbox",

@@ -3,6 +3,7 @@
 import { useEffect, useState, useTransition } from "react";
 import { CalendarX2, LoaderCircle, Plus, RotateCcw, Replace } from "lucide-react";
 
+import { AgendaRow } from "@/components/agenda/agenda-row";
 import { areaColorValue } from "@/components/task/area-dot";
 import { useTaskDetail } from "@/components/task/task-detail-provider";
 import { loadTaskDetail, quickCapture } from "@/server/actions/tasks";
@@ -266,6 +267,38 @@ export function LessonDetail({ lessonId, onClose, todayIso }: LessonDetailProps)
                 spoločný pre obe kôpky.
               */}
               <div className="flex flex-col gap-3">
+                {/*
+                  Písomky a deadliny z predmetu idú prvé: sú to pevné body,
+                  okolo ktorých sa úlohy z predmetu točia. Riadok otvorí detail
+                  udalosti — hodina sa predtým zavrie.
+                */}
+                {(data?.agenda.length ?? 0) > 0 ? (
+                  <section className="flex flex-col gap-1.5">
+                    <h3
+                      className={cn(
+                        "label",
+                        data?.agenda.some((item) => item.date === lesson.date)
+                          ? "text-warn"
+                          : "text-fg-subtle",
+                      )}
+                    >
+                      Čaká ťa z predmetu
+                    </h3>
+                    <div className="overflow-hidden rounded border border-border [&>button:last-child]:border-b-0">
+                      {data?.agenda.map((item) => (
+                        <AgendaRow
+                          key={item.id}
+                          item={item}
+                          todayIso={todayIso}
+                          variant="upcoming"
+                          beforeOpen={onClose}
+                          className="px-3 md:px-3"
+                        />
+                      ))}
+                    </div>
+                  </section>
+                ) : null}
+
                 {naTutoHodinu.length > 0 ? (
                   <ZoznamUloh
                     nadpis="Na túto hodinu"

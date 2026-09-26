@@ -29,8 +29,10 @@ export interface BudgetPanelProps {
   plannedMin: number;
   /** Koľko minút má deň k dispozícii po odrátaní porád. */
   availableMin: number;
-  /** Minúty zabraté poradami z kalendára. */
+  /** Minúty zabraté poradami z kalendára — spolu s udalosťami. */
   meetingMin: number;
+  /** Koľko z `meetingMin` sú udalosti, nie porady. Podrobne v `TimeBudget`. */
+  eventMin?: number;
   /**
    * Minúty, ktoré si z dňa ešte vezme škola — ZVYŠOK, nie celá.
    * Podrobne v `TimeBudget`.
@@ -38,6 +40,8 @@ export interface BudgetPanelProps {
   schoolMin?: number;
   /** Je v dni celodenná úloha? Vtedy sa rozpočet neráta, ale oznamuje. */
   allDay?: boolean;
+  /** Názov viacdňovej udalosti, ktorá deň celý zaberá — ako celodenná úloha. */
+  blockedBy?: string | null;
   /** Koľko dnešných úloh odhad nemá. */
   withoutEstimate: number;
   /** Hodiny dňa z nastavení — do vysvetľujúcej vety pod pruhom. */
@@ -56,7 +60,9 @@ export function BudgetPanel({
   plannedMin,
   availableMin,
   allDay = false,
+  blockedBy = null,
   meetingMin,
+  eventMin = 0,
   schoolMin = 0,
   withoutEstimate,
   dayStartHour,
@@ -79,6 +85,8 @@ export function BudgetPanel({
   );
 
   const skola = Math.max(0, Math.round(schoolMin));
+  const udalostiMin = Math.min(meetingMin, Math.max(0, Math.round(eventMin)));
+  const poradyMin = meetingMin - udalostiMin;
   const celkom = availableMin + meetingMin;
   const volne = Math.max(0, availableMin - skola - plannedMin);
 
@@ -91,8 +99,11 @@ export function BudgetPanel({
         minutes: area.minutes,
         color: areaColorValue(area.color),
       })),
-    ...(meetingMin > 0
-      ? [{ key: "porady", minutes: meetingMin, color: "var(--border-strong)" }]
+    ...(poradyMin > 0
+      ? [{ key: "porady", minutes: poradyMin, color: "var(--border-strong)" }]
+      : []),
+    ...(udalostiMin > 0
+      ? [{ key: "udalosti", minutes: udalostiMin, color: "var(--fg-subtle)" }]
       : []),
     /*
       Škola má vlastný segment a nesplýva s poradami. Sú to dva rôzne druhy
@@ -137,10 +148,16 @@ export function BudgetPanel({
           <span>úlohy</span>
           <span className="ml-auto text-fg">{formatDuration(plannedMin)}</span>
         </p>
-        {meetingMin > 0 ? (
+        {poradyMin > 0 ? (
           <p className="flex">
             <span>porady</span>
-            <span className="ml-auto text-fg">{formatDuration(meetingMin)}</span>
+            <span className="ml-auto text-fg">{formatDuration(poradyMin)}</span>
+          </p>
+        ) : null}
+        {udalostiMin > 0 ? (
+          <p className="flex">
+            <span>udalosti</span>
+            <span className="ml-auto text-fg">{formatDuration(udalostiMin)}</span>
           </p>
         ) : null}
         {skola > 0 ? (
@@ -167,7 +184,9 @@ export function BudgetPanel({
         vyhradený, nie preťažený.
       */}
       <p className="mt-2.5 border-t border-border pt-2.5 text-meta leading-relaxed text-fg-muted">
-        {allDay ? (
+        {blockedBy !== null ? (
+          <span className="font-medium text-fg">Deň zaberá „{blockedBy}“.</span>
+        ) : allDay ? (
           <span className="font-medium text-fg">Deň je zabraný celodennou úlohou.</span>
         ) : (
           <>Zostáva z dňa {dayStartHour}:00 – {dayEndHour}:00.</>

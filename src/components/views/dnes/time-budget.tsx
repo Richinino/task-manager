@@ -24,6 +24,11 @@ export interface TimeBudgetProps {
    * človek deň nepreplánoval, len ho celý vyhradil na jednu vec.
    */
   allDay?: boolean;
+  /**
+   * Názov viacdňovej udalosti, ktorá deň celý zaberá (výlet, sústredenie).
+   * Správa sa ako celodenná úloha — deň je vyhradený, nie preplánovaný.
+   */
+  blockedBy?: string | null;
   /** Koľko dnešných nedokončených úloh nemá odhad — číslo je o ne neúplné. */
   withoutEstimate: number;
   /**
@@ -31,6 +36,14 @@ export interface TimeBudgetProps {
    * kalendár je doplnok — rozpočet musí dávať zmysel aj bez pripojeného účtu.
    */
   meetingMin?: number;
+  /**
+   * Koľko z `meetingMin` sú udalosti (lekár, koncert), nie porady.
+   *
+   * V súčte sú spolu — obe sa od dostupného času odpočítavajú rovnako —
+   * ale veta ich musí pomenovať zvlášť: „porady 30 min" pri zubárovi by
+   * klamala o tom, čo ten čas zobralo.
+   */
+  eventMin?: number;
   /**
    * Minúty, ktoré si z dňa ešte vezme škola.
    *
@@ -55,8 +68,10 @@ export function TimeBudget({
   plannedMin,
   availableMin,
   allDay = false,
+  blockedBy = null,
   withoutEstimate,
   meetingMin = 0,
+  eventMin = 0,
   schoolMin = 0,
 }: TimeBudgetProps) {
   const missing = withoutEstimate > 0 ? `${taskCountSk(withoutEstimate)} bez odhadu` : null;
@@ -70,6 +85,8 @@ export function TimeBudget({
     už nemá kedy siahnuť.
   */
   const meetings = Math.max(0, Math.round(meetingMin));
+  const udalosti = Math.min(meetings, Math.max(0, Math.round(eventMin)));
+  const porady = meetings - udalosti;
   /* Škola sa odpočítava z rovnakého dôvodu ako porady — len sa nedá presunúť. */
   const skola = Math.max(0, Math.round(schoolMin));
   const workMin = availableMin - meetings - skola;
@@ -91,7 +108,7 @@ export function TimeBudget({
             "Rozpočet času sa nedá spočítať — hodiny dňa v nastaveniach nedávajú žiadny čas."
           ) : (
             <>
-              Na prácu neostáva nič — celý deň zaberajú porady (
+              Na prácu neostáva nič — celý deň zaberajú {udalosti > 0 ? (porady > 0 ? "porady a udalosti" : "udalosti") : "porady"} (
               <span className="font-mono tabular-nums">{formatDuration(meetings)}</span>).
             </>
           )}
@@ -103,10 +120,12 @@ export function TimeBudget({
     );
   }
 
-  if (allDay) {
+  if (allDay || blockedBy !== null) {
     return (
       <p className="text-body leading-relaxed text-fg-muted sm:text-xs">
-        <span className="font-medium text-fg">Deň je zabraný celodennou úlohou.</span>{" "}
+        <span className="font-medium text-fg">
+          {blockedBy !== null ? `Deň zaberá „${blockedBy}“.` : "Deň je zabraný celodennou úlohou."}
+        </span>{" "}
         Rozpočet sa neráta — na nič iné dnes miesto nie je.
       </p>
     );
@@ -145,7 +164,8 @@ export function TimeBudget({
         <span className={over ? "text-danger" : undefined}>
           úlohy {formatDuration(plannedMin)}
         </span>
-        {meetings > 0 ? <span>· porady {formatDuration(meetings)}</span> : null}
+        {porady > 0 ? <span>· porady {formatDuration(porady)}</span> : null}
+        {udalosti > 0 ? <span>· udalosti {formatDuration(udalosti)}</span> : null}
         {!over ? <span>· voľné {formatDuration(workMin - plannedMin)}</span> : null}
       </p>
 

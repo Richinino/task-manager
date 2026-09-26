@@ -36,6 +36,13 @@ export interface SchoolStripLesson {
   cancelled: boolean;
   /** Má na tú hodinu niečo visieť? Poznámka, úloha alebo písomka. */
   hasNote: boolean;
+  /**
+   * Písomka alebo skúšanie na tejto hodine — „písomka", „skúšanie".
+   *
+   * Nie je to bodka ako pri poznámke: písomka je udalosť dňa a musí byť
+   * vidieť aj bez čítania (docs/UDALOSTI.md). `null`, keď nič také nie je.
+   */
+  agendaLabel?: string | null;
 }
 
 export interface SchoolStripProps {
@@ -154,7 +161,9 @@ export function SchoolStrip({
                   "transition-colors duration-100 ease-out hover:border-border-strong hover:bg-surface-2",
                   stav === "now"
                     ? "border-accent bg-accent-soft"
-                    : "border-border bg-surface",
+                    : lesson.agendaLabel
+                      ? "border-warn bg-surface"
+                      : "border-border bg-surface",
                   stav === "past" && "opacity-55",
                 )}
               >
@@ -183,6 +192,11 @@ export function SchoolStrip({
                   {stav === "past" ? "✓ " : stav === "now" ? "▶ " : ""}
                   {lesson.startTime}
                 </span>
+                {lesson.agendaLabel ? (
+                  <span className="w-full truncate font-mono text-micro font-semibold uppercase tracking-[0.08em] text-warn">
+                    {lesson.agendaLabel}
+                  </span>
+                ) : null}
               </button>
             </li>
           );
@@ -210,6 +224,7 @@ function popis(lesson: SchoolStripLesson, stav: "past" | "now" | "future"): stri
   if (lesson.cancelled) casti.push("odpadla");
   else if (stav === "past") casti.push("prebehla");
   else if (stav === "now") casti.push("práve prebieha");
+  if (lesson.agendaLabel) casti.push(lesson.agendaLabel);
   if (lesson.hasNote) casti.push("má poznámku alebo úlohu");
 
   return casti.join(", ");

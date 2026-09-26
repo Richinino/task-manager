@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 
 import { ScreenFooter } from "@/components/shell/screen-chrome";
-import type { DayEntry } from "@/components/views/mesiac/day-cell";
+import type { DayAgendaEntry, DayEntry } from "@/components/views/mesiac/day-cell";
 import {
   MONTH_DAY_PANEL_ID,
   MonthDayPanel,
@@ -13,6 +13,7 @@ import {
   formatMonthTitleSk,
 } from "@/components/views/mesiac/month-header";
 import { MonthSidebar } from "@/components/views/mesiac/month-sidebar";
+import { agendaShortTitle, compareAgenda, isMultiDay, isOnDay } from "@/lib/agenda";
 import {
   addDays,
   addMonths,
@@ -24,7 +25,9 @@ import {
 } from "@/lib/dates";
 import { MonthlyReviewLauncher } from "@/components/rituals/review-launcher";
 import { ritualPeriod } from "@/lib/rituals";
+import { pluralSk } from "@/lib/sk";
 import { requireUser } from "@/server/auth-guard";
+import { getAgendaForRange } from "@/server/queries/agenda";
 import {
   getCompletedCount,
   getJournalRange,
@@ -129,7 +132,10 @@ export default async function MesiacPage({ searchParams }: MesiacPageProps) {
    * zachytenia). Týždenný pohľad si ten istý dotaz pýta bez tohto prepínača,
    * lebo úlohu bez `plannedDate` nemá kam zaradiť.
    */
-  const tasks = await getTasksForRange(user.id, from, to, { includeDue: true });
+  const [tasks, agendaItems] = await Promise.all([
+    getTasksForRange(user.id, from, to, { includeDue: true }),
+    getAgendaForRange(user.id, from, to),
+  ]);
 
   /* ── Rozsev úloh do dní ──────────────────────────────────────────────────
      Úloha sa v bunke objaví, ak sa na daný deň zhoduje `plannedDate` ALEBO
@@ -176,6 +182,26 @@ export default async function MesiacPage({ searchParams }: MesiacPageProps) {
     bucket.sort((a, b) => entryRank(a) - entryRank(b));
   }
 
+  /* ── Udalosti ────────────────────────────────────────────────────────────
+     Jednodňové idú do bunky svojho dňa, viacdňové kreslí mriežka ako pruh
+     cez celý týždeň — v bunke by sa opakovali na každom dni.              */
+  const sortedAgenda = [...agendaItems].sort(compareAgenda);
+  const multiDay = sortedAgenda.filter(isMultiDay);
+  const agendaByDay = new Map<string, DayAgendaEntry[]>();
+  for (const item of sortedAgenda) {
+    if (isMultiDay(item)) continue;
+    const entry: DayAgendaEntry = {
+      key: item.id,
+      title: agendaShortTitle(item, item.subject?.code ?? null),
+      kind: item.kind,
+      type: item.type,
+      cancelled: item.cancelledAt !== null,
+    };
+    const bucket = agendaByDay.get(item.date);
+    if (bucket === undefined) agendaByDay.set(item.date, [entry]);
+    else bucket.push(entry);
+  }
+
   /* ── Rozbalený deň ───────────────────────────────────────────────────────
      Na telefóne sa do bunky nezmestí názov úlohy, takže ťuknutie na deň
      vypíše jeho úlohy do panela POD mriežkou. Stav drží adresa, nie React:
@@ -196,6 +222,7 @@ export default async function MesiacPage({ searchParams }: MesiacPageProps) {
       isSelected,
       // Bez orezania — `DayCell` potrebuje úplný počet pre signál na telefóne.
       entries: bucket,
+      agenda: agendaByDay.get(iso) ?? [],
       weekHref: { pathname: "/tyzden", query: { od: startOfWeek(iso, weekStartsOn) } },
       // Ťuknutie na už rozbalený deň ho zavrie; kotva pošle stránku na panel.
       dayHref: isSelected
@@ -216,6 +243,8 @@ export default async function MesiacPage({ searchParams }: MesiacPageProps) {
             (task) => task.plannedDate === selectedIso || task.dueDate === selectedIso,
           )
           .sort((a, b) => dayTaskRank(a, selectedIso) - dayTaskRank(b, selectedIso));
+  const selectedAgenda =
+    selectedIso === null ? [] : sortedAgenda.filter((item) => isOnDay(item, selectedIso));
 
   /* ── Bočný panel ─────────────────────────────────────────────────────────
      `flatMap` namiesto `filter` preto, aby sa `dueDate` zúžil na `string`
@@ -284,7 +313,16 @@ export default async function MesiacPage({ searchParams }: MesiacPageProps) {
     (sum, day) => sum + day.entries.filter((entry) => entry.kind !== "due").length,
     0,
   );
-  const headerMeta = `${dueTotal} ${dueTotal === 1 ? "termín" : dueTotal >= 2 && dueTotal <= 4 ? "termíny" : "termínov"} · ${plannedTotal} naplánovaných`;
+  // Udalosti mesiaca bez zrušených — tie v mriežke ostávajú prečiarknuté, ale nerátajú sa.
+  const agendaTotal = agendaItems.filter(
+    (item) =>
+      item.cancelledAt === null && item.date <= lastOfMonth && (item.endDate ?? item.date) >= firstOfMonth,
+  ).length;
+  const headerMeta = [
+    `${dueTotal} ${pluralSk(dueTotal, "termín", "termíny", "termínov")}`,
+    `${plannedTotal} naplánovaných`,
+    ...(agendaTotal > 0 ? [`${agendaTotal} ${pluralSk(agendaTotal, "udalosť", "udalosti", "udalostí")}`] : []),
+  ].join(" · ");
 
   return (
     /*
@@ -321,12 +359,13 @@ export default async function MesiacPage({ searchParams }: MesiacPageProps) {
 
       <div className="flex min-h-0 flex-1 flex-col lg:flex-row">
         <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-          <MonthGrid days={days} />
+          <MonthGrid days={days} multiDay={multiDay} />
 
           {selectedIso !== null ? (
             <MonthDayPanel
               iso={selectedIso}
               tasks={selectedTasks}
+              agenda={selectedAgenda}
               todayIso={todayIso}
               postponeWarnAt={user.settings.postponeWarnAt}
               postponeBlockAt={user.settings.postponeBlockAt}

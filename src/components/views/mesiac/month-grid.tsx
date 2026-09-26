@@ -1,12 +1,16 @@
+import type { CSSProperties } from "react";
 import type { UrlObject } from "url";
 
 import Link from "next/link";
 import { ArrowRight, CalendarClock, X } from "lucide-react";
 
+import { AgendaShape } from "@/components/agenda/agenda-bits";
+import { AgendaBar, AgendaRow } from "@/components/agenda/agenda-row";
 import { AddTaskPopover } from "@/components/task/add-task-inline";
 import { PriorityDot } from "@/components/task/priority-dot";
 import { TaskEmpty } from "@/components/task/task-empty";
 import { TaskItem } from "@/components/task/task-item";
+import { agendaLastDay, weekSpans } from "@/lib/agenda";
 import {
   WEEKDAYS_SHORT_SK,
   WEEKDAYS_SK,
@@ -14,9 +18,10 @@ import {
   parseIsoDate,
 } from "@/lib/dates";
 import { cn } from "@/lib/utils";
+import type { AgendaItemRow } from "@/server/queries/agenda";
 import type { TaskWithRelations } from "@/server/queries/tasks";
 
-import { DayCell, DueMark, type DayEntry } from "./day-cell";
+import { BAR_LANE_PX, DayCell, DueMark, type DayAgendaEntry, type DayEntry } from "./day-cell";
 
 /** Kotva rozbaleného dňa — bunka na ňu odkazuje, aby po ťuknutí panel neostal pod okrajom. */
 export const MONTH_DAY_PANEL_ID = "den";
@@ -30,6 +35,8 @@ export interface MonthDay {
   isSelected: boolean;
   /** VŠETKY záznamy dňa; orezanie pre `md` si robí `DayCell`. */
   entries: DayEntry[];
+  /** Jednodňové udalosti a deadliny dňa, zoradené. */
+  agenda: DayAgendaEntry[];
   /** Od `md` — týždeň, do ktorého deň patrí. */
   weekHref: UrlObject;
   /** Telefón — rozbalenie (alebo zavretie) zoznamu úloh dňa. */
@@ -39,6 +46,8 @@ export interface MonthDay {
 export interface MonthGridProps {
   /** Dĺžka je vždy násobok 7 — presne to, čo vracia `monthGrid()`. */
   days: MonthDay[];
+  /** Viacdňové udalosti, ktoré zasahujú do mriežky — kreslia sa ako pruhy cez dni. */
+  multiDay: AgendaItemRow[];
 }
 
 /**
@@ -68,6 +77,22 @@ function GridLegendWide() {
           plán
         </span>
         ktorý deň to idem robiť
+      </span>
+
+      <span className="inline-flex items-center gap-1.5">
+        <span aria-hidden="true" className="inline-flex items-center gap-1 px-1 py-px font-semibold text-fg">
+          <AgendaShape kind="event" type="exam" className="size-2.5" />
+          udalosť
+        </span>
+        stane sa — písomka, lekár
+      </span>
+
+      <span className="inline-flex items-center gap-1.5">
+        <span aria-hidden="true" className="inline-flex items-center gap-1 px-1 py-px font-semibold text-fg">
+          <AgendaShape kind="deadline" type="other" className="size-2.5" />
+          deadline
+        </span>
+        treba stihnúť
       </span>
     </p>
   );
@@ -99,6 +124,24 @@ function GridLegendPhone() {
             <span className="font-semibold text-fg">bodka</span> = plán
           </span>
         </span>
+
+        <span className="inline-flex items-center gap-1.5">
+          <span aria-hidden="true" className="inline-flex items-center">
+            <AgendaShape kind="event" type="exam" className="size-2" />
+          </span>
+          <span>
+            <span className="font-semibold text-fg">kosoštvorec</span> = udalosť
+          </span>
+        </span>
+
+        <span className="inline-flex items-center gap-1.5">
+          <span aria-hidden="true" className="inline-flex items-center">
+            <AgendaShape kind="deadline" type="other" className="size-2" />
+          </span>
+          <span>
+            <span className="font-semibold text-fg">vlajka</span> = deadline
+          </span>
+        </span>
       </p>
       <p className="text-fg-subtle">Číslo pri značke je počet. Ťuknutie na deň otvorí jeho úlohy.</p>
     </div>
@@ -116,8 +159,20 @@ function GridLegendPhone() {
  * `days` prichádzajú zo servera a musia ostať serializovateľné: adresy sú
  * preto obyčajné objekty `{ pathname, query }`, nie hotové `<Link>`.
  */
-export function MonthGrid({ days }: MonthGridProps) {
+export function MonthGrid({ days, multiDay }: MonthGridProps) {
   const firstWeek = days.slice(0, 7);
+
+  /*
+    Pruhy viacdňových udalostí, týždeň po týždni. Ležia v tej istej mriežke
+    ako bunky (rovnaký riadok, stĺpce od–do), preto majú bunky pevné miesto:
+    automatické umiestnenie by sa pruhom vyhýbalo a posunulo dni.
+  */
+  const weeks = Array.from({ length: Math.ceil(days.length / 7) }, (_, w) => {
+    const weekStart = days[w * 7]?.iso ?? "";
+    const spans = weekSpans(multiDay, weekStart);
+    const lanes = spans.reduce((max, span) => Math.max(max, span.lane + 1), 0);
+    return { weekStart, spans, lanes };
+  });
 
   return (
     <section aria-label="Kalendár mesiaca" className="flex min-h-0 min-w-0 flex-1 flex-col">
@@ -151,7 +206,7 @@ export function MonthGrid({ days }: MonthGridProps) {
         Na telefóne si riadky určujú výšku samy, inak by bunky boli 40 px.
       */}
       <div className="grid min-h-0 flex-1 grid-cols-7 md:grid-rows-6">
-        {days.map((day) => (
+        {days.map((day, i) => (
           <DayCell
             key={day.iso}
             iso={day.iso}
@@ -159,10 +214,33 @@ export function MonthGrid({ days }: MonthGridProps) {
             isToday={day.isToday}
             isSelected={day.isSelected}
             entries={day.entries}
+            agenda={day.agenda}
+            barLanes={weeks[Math.floor(i / 7)]?.lanes ?? 0}
             weekHref={day.weekHref}
             dayHref={day.dayHref}
+            style={{ gridRow: Math.floor(i / 7) + 1, gridColumn: (i % 7) + 1 }}
           />
         ))}
+
+        {weeks.flatMap((week, w) =>
+          week.spans.map((span) => (
+            <AgendaBar
+              key={`${span.item.id}-${week.weekStart}`}
+              item={span.item}
+              continuesBefore={span.item.date < week.weekStart}
+              continuesAfter={agendaLastDay(span.item) > (days[w * 7 + 6]?.iso ?? "")}
+              className="mx-0.5 mb-[var(--lane-phone)] md:mx-[5px] md:mb-[var(--lane-md)]"
+              style={
+                {
+                  gridRow: w + 1,
+                  gridColumn: `${span.from + 1} / ${span.to + 2}`,
+                  "--lane-phone": `${3 + span.lane * BAR_LANE_PX.phone}px`,
+                  "--lane-md": `${4 + span.lane * BAR_LANE_PX.md}px`,
+                } as CSSProperties
+              }
+            />
+          )),
+        )}
       </div>
 
       <GridLegendPhone />
@@ -179,6 +257,8 @@ export interface MonthDayPanelProps {
   iso: string;
   /** Úlohy dňa — naplánované aj s termínom, už zoradené. */
   tasks: TaskWithRelations[];
+  /** Udalosti a deadliny dňa vrátane viacdňových, už zoradené. */
+  agenda: AgendaItemRow[];
   /** Dnešok z pásma používateľa — aby sa server a klient nerozišli pri hydratácii. */
   todayIso: string;
   postponeWarnAt: number;
@@ -208,6 +288,7 @@ export interface MonthDayPanelProps {
 export function MonthDayPanel({
   iso,
   tasks,
+  agenda,
   todayIso,
   postponeWarnAt,
   postponeBlockAt,
@@ -244,7 +325,16 @@ export function MonthDayPanel({
         </Link>
       </div>
 
-      {tasks.length === 0 ? (
+      {/* Udalosti nad úlohami — sú to pevné body, okolo ktorých sa deň skladá. */}
+      {agenda.length > 0 ? (
+        <div className="-mx-3 border-t border-border">
+          {agenda.map((item) => (
+            <AgendaRow key={item.id} item={item} todayIso={todayIso} variant="today" />
+          ))}
+        </div>
+      ) : null}
+
+      {tasks.length === 0 && agenda.length > 0 ? null : tasks.length === 0 ? (
         <TaskEmpty
           title="Voľný deň"
           description="Nič naplánované ani s termínom. Úlohu pridáš plusom v hlavičke panela."

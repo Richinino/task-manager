@@ -83,6 +83,14 @@ export interface ParsedCapture {
    * zoznam predmetov už aj tak drží.
    */
   schoolKind?: SchoolKind;
+  /**
+   * Písomka alebo skúšanie — z takého textu vznikne udalosť, nie úloha.
+   *
+   * Písomka sa nerobí, ale zažije: nedá sa odškrtnúť a keď prejde, nie je
+   * „po termíne". Rozhoduje o tom server (`quickCapture`), parser len
+   * povie, čo v texte stojí. Viac v `docs/UDALOSTI.md`.
+   */
+  agendaType?: "exam" | "oral";
   tokens: ParsedToken[];
 }
 
@@ -378,7 +386,16 @@ const RE_PROJECT = /(?<![\p{L}\p{N}])\+([\p{L}\p{N}_]+(?:-[\p{L}\p{N}_]+)*)/gu;
  */
 const RE_HOMEWORK = /(?<![\p{L}\p{N}])(du|domaca uloha|domacu ulohu|dom\. uloha)(?![\p{L}\p{N}])/gu;
 
-const RE_EXAM = /(?<![\p{L}\p{N}])(pisomka|pisomku|pisomna|test|skusanie|skuska|skusku)(?![\p{L}\p{N}])/gu;
+const RE_EXAM = /(?<![\p{L}\p{N}])(pisomka|pisomku|pisomna|test|previerka|previerku|skuska|skusku)(?![\p{L}\p{N}])/gu;
+
+/**
+ * Ústne skúšanie — samostatne od písomky.
+ *
+ * Obe vytvoria udalosť, nie úlohu (docs/UDALOSTI.md), ale skúšanie je iný
+ * večer prípravy aj iný riadok v rozvrhu. „Skúška" ostáva písomkou: tak sa
+ * volá aj písomná skúška a ústna sa tak nehovorí.
+ */
+const RE_ORAL = /(?<![\p{L}\p{N}])(ustne skusanie|skusanie|skusania|odpovedanie)(?![\p{L}\p{N}])/gu;
 
 /**
  * Učiť sa novú látku verzus len si ju prebehnúť.
@@ -935,6 +952,18 @@ function parseInner(
     });
   });
 
+  eachMatch(RE_ORAL, folded, (m) => {
+    const end = m.index + m[0].length;
+    candidates.push({
+      kind: "schoolKind",
+      start: m.index,
+      end,
+      weight: W_MARKER,
+      label: "skúšanie",
+      text: "oral",
+    });
+  });
+
   /* ── hranice tokenov ────────────────────────────────────────────────── */
 
   // Token sa zvýrazňuje priamo v inpute, takže jeho rozsah nesmie obsahovať
@@ -1026,13 +1055,22 @@ function parseInner(
           dve úlohy naraz, a hádať, ktorá z nich to je, by znamenalo nastaviť
           niečo, čo človek nenapísal.
         */
-        if (out.schoolKind !== undefined) continue;
+        if (out.schoolKind !== undefined || out.agendaType !== undefined) continue;
         /*
           `c.text` je už presný druh — vzory sú štyri a každý si ho nesie sám.
           Pôvodné „exam, inak homework" by po pridaní učenia a opakovania
           ticho spravilo z oboch domácu úlohu.
+
+          Skúšanie nie je druh školskej PRÁCE (úloha ho nikdy nemá), preto ide
+          len do `agendaType`. Písomka ide do oboch: `schoolKind` kvôli
+          doterajším volajúcim, `agendaType` hovorí, že vznikne udalosť.
         */
-        out.schoolKind = c.text as SchoolKind;
+        if (c.text === "oral") {
+          out.agendaType = "oral";
+        } else {
+          out.schoolKind = c.text as SchoolKind;
+          if (c.text === "exam") out.agendaType = "exam";
+        }
         /*
           Slovo sa z názvu vystrihne, ako každý iný token. Nechať ho tam by
           znamenalo, že tá istá informácia je v názve aj v poli — a riadok

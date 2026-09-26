@@ -24,6 +24,8 @@ import { usePostponeGuard } from "@/components/task/postpone-guard";
 import type { TaskWithRelations } from "@/server/queries/tasks";
 
 import { DayColumn, WeekTaskOverlay, dayFromDroppableId } from "./day-column";
+import type { AgendaItemRow } from "@/server/queries/agenda";
+import { compareAgenda, isOnDay } from "@/lib/agenda";
 
 /**
  * Doska týždňa: sedem stĺpcov, presúvanie úloh medzi dňami a ručné poradie
@@ -44,6 +46,8 @@ export interface WeekBoardProps {
   capacityMin: number;
   /** Od koľkých odkladov po presune upozorniť. */
   postponeWarnAt: number;
+  /** Udalosti týždňa — každý stĺpec si vezme tie, ktoré naň pripadajú. */
+  agenda?: AgendaItemRow[];
 }
 
 /**
@@ -93,6 +97,7 @@ export function WeekBoard({
   todayIso,
   capacityMin,
   postponeWarnAt,
+  agenda = [],
 }: WeekBoardProps) {
   const [optimisticTasks, applyChange] = useOptimistic(
     tasks,
@@ -321,6 +326,7 @@ export function WeekBoard({
             isPastDay={day < todayIso}
             isLast={index === days.length - 1}
             capacityMin={capacityMin}
+            agenda={agenda.filter((item) => isOnDay(item, day)).sort(compareAgenda)}
           />
         ))}
       </div>
