@@ -44,3 +44,14 @@ export function fold(text: string): string {
   }
   return result.toLowerCase();
 }
+
+/**
+ * Vzor pre SQL `LIKE … ESCAPE '\'` — hľadaný text kdekoľvek v stĺpci.
+ *
+ * `%` a `_` sú v `LIKE` zástupné znaky. Bez escapovania hľadanie „50%"
+ * našlo všetko, čo obsahuje „50", a „a_b" aj „axb". Spätná lomka sa
+ * zdvojuje, lebo je to znak, ktorým sa escapuje.
+ */
+export function likeContains(needle: string): string {
+  return `%${needle.replace(/[\\%_]/g, (znak) => `\\${znak}`)}%`;
+}

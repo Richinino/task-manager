@@ -328,6 +328,40 @@ nikdy neprídu skôr. Kto chce mať náskok, nastaví si v appke predstih.
 > (cron-job.org a podobné sú zadarmo a spoľahlivé na minútu) a workflow
 > nechaj len ako zálohu. Appka sa nemení — je jedno, kto na tú adresu
 > zavolá, dôležitá je hlavička s tajomstvom.
+>
+> **25. 9. 2026 to už málo bolo:** za posledný deň bežal plánovač o 05:18,
+> 10:15, 15:18, 19:18 a 00:34 — medzery štyri až päť hodín. Pripomienka
+> tak chodila v priemere o dve hodiny neskôr. Externý cron je odteraz
+> hlavný plánovač, GitHub len záloha.
+
+### Externý cron (cron-job.org) — hlavný plánovač
+
+Zadarmo, bez karty, spoľahlivý na minútu. Na [cron-job.org](https://cron-job.org)
+sa zaregistruj a založ **dve** úlohy (*Create cronjob*):
+
+| | Pripomienky | Rozvrh |
+|---|---|---|
+| **URL** | `https://TVOJA-ADRESA.vercel.app/api/pripomienky` | `https://TVOJA-ADRESA.vercel.app/api/rozvrh` |
+| **Execution schedule** | každých 5 minút | každú hodinu, 6:00–20:00, pondelok–piatok |
+| **Advanced → Request method** | `POST` | `POST` |
+| **Advanced → Headers** | `Authorization: Bearer TAJOMSTVO` | `Authorization: Bearer TAJOMSTVO` |
+| **Advanced → Timeout** | 30 s | 30 s |
+
+`TAJOMSTVO` je hodnota `CRON_SECRET` z Vercelu. Časové pásmo úlohy nastav
+na `Europe/Bratislava`, nech „6:00–20:00" znamená tvoj deň.
+
+**Prečo rozvrh každú hodinu cez deň:** suplovanie chodí v odbere ako šípka
+v `SUMMARY` (`DEJ -> SJL`), takže zmena na dnešok sa dá chytiť ešte
+v ten deň. Nočný beh by ju ukázal až zajtra.
+
+**GitHub workflowy nechaj bežať.** Keď externý cron vypadne, pokryjú to
+aspoň po svojom. Dvojité odoslanie nehrozí: riadok v `reminders` sa
+zapisuje pred odoslaním a jedinečný index (`task_id`, `at`) druhý pokus
+zastaví.
+
+**Overenie:** v cron-job.org → *History* má byť odpoveď `200`
+a v tele `"ok":true`. Kód `401` znamená nezhodu tajomstva, `503` chýbajúce
+kľúče VAPID (pripomienky) alebo `SKOLA_ICS_URL` (rozvrh).
 
 ### 1. Migrácia
 
@@ -354,13 +388,17 @@ má, vidí, kde si kedy.
 Adresa odberu do GitHubu NEPATRÍ — appka si ju vytiahne sama z premenných
 a nikdy ju nevydá von, ani do chybovej hlášky.
 
-### Prečo raz denne
+### Ako často
 
-Odber je rozvrh natiahnutý na dátumy, **nie denný plán**: suplovanie v ňom
-nie je a prázdniny tiež nie (overené — 15. 9. aj 17. 11. sú štátne sviatky
-a feed na nich má plných osem hodín). Meniť sa má čo raz za čas, takže
-nočný beh stačí. Cez tlačidlo *Stiahnuť z EduPage* na obrazovke rozvrhu sa
-dá pustiť kedykoľvek ručne.
+Pôvodne stačil nočný beh — tvrdili sme, že suplovanie v odbere nie je.
+**Je**, len ako šípka v `SUMMARY` (`DEJ -> SJL`). Prázdniny v ňom naozaj
+nie sú (15. 9. aj 17. 11. sú štátne sviatky a feed na nich má plných osem
+hodín), tie sa zapisujú ručne.
+
+Aby sa suplovanie na dnešok ukázalo ešte v ten deň, hlavný plánovač je
+externý cron každú hodinu cez školský deň (viď „Externý cron" vyššie).
+GitHub workflow ostáva ako záloha. Cez tlačidlo *Stiahnuť z EduPage* na
+obrazovke rozvrhu sa dá pustiť kedykoľvek ručne.
 
 ### Prvý import treba spraviť ručne
 

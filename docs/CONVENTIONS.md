@@ -321,6 +321,8 @@ export function getProjects(userId: string): Promise<Project[]>;
 
 Všetky dotazy **musia** filtrovať `deletedAt IS NULL` a `userId`.
 
+**Otvorená úloha je vždy na nejakej obrazovke.** Miesto jej dáva deň, projekt, horizont „niekedy", rodič (podúloha) alebo stav `waiting`. Úloha v `todo`/`doing` bez toho všetkého je *osirotená* (`isOrphaned` v `src/lib/task-placement.ts`) a `getInboxTasks` ju zachytí — akcie ju už nevyrobia, ale staršie verzie appky áno. Úloha odložená na „niekedy" do inboxu nepatrí ani so stavom `inbox`; nájde sa len v `getSomedayTasks`, a tá berie len úlohy **bez dňa**. `getCounts` počíta podľa tých istých podmienok.
+
 ## `src/server/actions/tasks.ts`
 
 Súbor začína `"use server";`. Každá akcia:
@@ -336,7 +338,7 @@ export type ActionResult<T = void> =
   | { ok: false; error: string };
 
 export function createTask(input: CreateTaskInput): Promise<ActionResult<{ id: string }>>;
-export function quickCapture(raw: string, opts?: { forceInbox?: boolean }): Promise<ActionResult<{ id: string; title: string }>>;
+export function quickCapture(raw: string, opts?: { forceInbox?: boolean; clientId?: string }): Promise<ActionResult<{ id: string; title: string }>>;
 export function updateTask(id: string, patch: UpdateTaskPatch): Promise<ActionResult>;
 export function toggleTaskDone(id: string): Promise<ActionResult<{ done: boolean }>>;
 export function deleteTask(id: string): Promise<ActionResult>;      // mäkké zmazanie
@@ -348,7 +350,15 @@ export function reorderTasks(ids: string[]): Promise<ActionResult>;
 
 **Počítadlo odkladov** (`rescheduleTask`): `postponeCount` sa zvýši **iba** ak úloha už mala `plannedDate`, nový dátum je **neskorší** a stav nie je `done`/`dropped`. Posun dozadu ani prvé naplánovanie sa nerátajú. Zapíše sa `task_events` typu `postponed`.
 
-**Žaba** (`setFrog`): naraz môže byť žabou len jedna úloha na daný `plannedDate` — zapnutie zhasne ostatné v ten deň.
+**Žaba** (`setFrog`): naraz môže byť žabou len jedna úloha na daný `plannedDate` — zapnutie zhasne ostatné v ten deň. Platí aj pre pravidlo s `isFrog` v `quickCapture`: uplatní sa len na úlohu s dňom a ostatné v ten deň zhasne.
+
+**`clientId` v `quickCapture`** posiela offline fronta — id, ktoré položka dostala v prehliadači, sa stane id úlohy. Druhé odoslanie tej istej položky (odpoveď sa stratila, fronta to skúsi znova) vráti už existujúcu úlohu a nezaloží druhú.
+
+**Horizont** počíta `horizonForDate` z `src/lib/task-placement.ts` — jediná kópia pre úlohy aj šablóny. Deň nikdy nie je „niekedy": dnes/zajtra → `day`, do 7 dní → `week`, neskôr → `month`.
+
+**Kam úloha ide po zmene.** `updateTask` a `rescheduleTask` pošlú úlohu, ktorá stratila posledné miesto (zrušený deň, odobratý projekt), do inboxu (`visibleStatus`). Na „niekedy" sa odkladá jedine cez `moveToSomeday(id)` — zruší deň, nastaví horizont, zhasne prioritu dňa a úlohu z inboxu presunie do `todo`.
+
+**Zahodiť ≠ zmazať.** `dropTask(id)` nastaví stav `dropped` a úloha ostane v archíve medzi zahodenými; pri opakovanej úlohe vznikne ďalší výskyt ako pri odškrtnutí. `deleteTask` je mäkké zmazanie a v rozhraní ho používa už len podúloha. `restoreTask(id)` vráti oboje: zmazanú odmaže, zahodenú znova otvorí.
 
 ## `src/components/ui/*` — primitívy
 
@@ -915,7 +925,13 @@ materializeDueRecurrences(todayIso)      // → { created: number }
 
 Slabina je zrejmá: čo sa nikdy nedokončí, sa nikdy nezopakuje. Preto `materializeDueRecurrences` dobehne zameškané výskyty až po dnešok a volá ju **ranný sprievodca z M6** — beží denne a je to presne ten moment, keď majú dnešné opakované veci pribudnúť.
 
-Dobiehanie **nesmie** založiť desiatky úloh naraz: ak od posledného výskytu ubehlo veľa času, vznikne **jeden** výskyt na najbližší platný deň. Sto prepadnutých faktúr v inboxe nikomu nepomôže.
+Dobiehanie **nesmie** založiť desiatky úloh naraz: ak od posledného výskytu ubehlo veľa času, vznikne **jeden** výskyt — ten, ktorý je práve na rade (`catchUpOccurrence`: najnovší výskyt, ktorý dnes nie je v budúcnosti). Sto prepadnutých faktúr v inboxe nikomu nepomôže. Rovnaké pravidlo platí pri odškrtnutí, takže nový výskyt nikdy nevznikne hlbšie v minulosti, než je nutné.
+
+Rozhoduje **najnovší živý člen reťazca** (aj budúci); keď má reťazec výskyt dnes alebo neskôr, niet čo dobiehať. Dni zmazaných výskytov sa rátajú ako obsadené — zmazaný výskyt sa nevzkriesi. Pravidlo patrí celému reťazcu: `setRecurrence` ho zapíše všetkým živým členom, inak by zmena na koreni nemala účinok.
+
+**Súbežné pokusy sa zoraďujú zámkom, nie indexom.** Zakladanie výskytu beží v transakcii pod `pg_advisory_xact_lock` na koreň reťazca — dva súbežné pokusy (dve karty s ranným rituálom, dvojklik) inak oba videli voľný deň a oba zapísali. Jedinečný index na (`recurrenceParentId`, `plannedDate`) nejde: človek smie výskyt ručne presunúť na deň iného. To isté platí pre prioritu dňa (zámok na používateľa a deň). Odškrtnutie aj zahodenie idú spolu so založením ďalšieho výskytu v jednej transakcii.
+
+Nový výskyt dedí všetko, čo hovorí, **aká** je to práca — vrátane „viazaná na deň", celodennosti, návyku, lekcie, predmetu a štítkov. Nededí termín, odklady ani prioritu dňa.
 
 ## Win report
 
@@ -987,6 +1003,8 @@ export function getDayEvents(userId: string, dateIso: string, timeZone: string):
 
 Vylúčené sú udalosti, ktoré používateľ **odmietol** (`responseStatus: "declined"`), a zrušené (`status: "cancelled"`). Pozvánka, ktorú si odmietol, nie je tvoj čas.
 
+**`timeMin` a `timeMax` nesú posun pásma.** Počítajú sa v `src/lib/calendar-day.ts` ako polnoc dňa a polnoc ďalšieho v pásme používateľa a posielajú sa cez `toISOString()`. Zápis bez posunu (`2026-09-25T00:00:00`) Google odmieta kódom 400 — kalendár tak týždne nevrátil nič. Minúty udalosti sa orezávajú na deň (`minutesWithin`), takže porada cez polnoc nezje z rozpočtu aj včerajšok.
+
 ## Rozpočet času
 
 **Meetingy UBERAJÚ z dostupného času, nepripočítavajú sa k naplánovanému.**
@@ -1057,13 +1075,17 @@ export function getArchivedIdeas(userId: string): Promise<IdeaWithRelations[]>;
 
 Archív **nemaže natvrdo**. Jediné miesto, kde sa v celej appke maže naozaj, ostáva návyk — a aj ten sa pýta dvakrát. Vracia sa cez existujúce `restoreTask` / `restoreIdea`.
 
+Druh sa filtruje **v SQL pred limitom** — obrazovka načíta len otvorenú priehradku a čísla v prepínači počíta `countArchive(userId)`. Filtrovanie v pamäti za limitom skrývalo staršie zmazané úlohy, keď bolo hotových viac než 200.
+
 ## Export — `src/app/api/export/route.ts`
 
 Jeden JSON so všetkým, cez `GET` s `Content-Disposition: attachment`.
 
 **Nie CSV.** Úlohy majú podúlohy, štítky, históriu a vzťahy, ktoré tabuľka nezachytí. Cieľ nie je otvoriť to v Exceli, ale mať dáta von, keby appka zajtra zhorela.
 
-Export obsahuje **aj mäkko zmazané** riadky — je to záloha, nie prehľad. Neobsahuje tokeny z `accounts`: poverenie ku Googlu do zálohy nepatrí.
+Export obsahuje **aj mäkko zmazané** riadky — je to záloha, nie prehľad. Neobsahuje tokeny z `accounts`: poverenie ku Googlu do zálohy nepatrí. Ani `push_subscriptions`: kľúče prehliadača platia pre jedno zariadenie.
+
+**Nová tabuľka s `userId` patrí do exportu.** Formát 1 vynechával školský rozvrh a učenie, hoci úlohy na ne odkazujú. Formát 2 ich má pod kľúčmi `school` a `learning`, k tomu `reminders`.
 
 ## Šablóny — `src/server/actions/templates.ts`
 

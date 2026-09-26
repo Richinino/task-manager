@@ -29,8 +29,8 @@ export function ExportCard() {
 
       <p className="mt-1 text-body leading-relaxed text-fg-muted">
         Jeden súbor JSON so všetkým, čo v appke máš: úlohy aj s históriou a podúlohami,
-        nápady, projekty, oblasti, štítky, návyky, denník, revízie, šablóny a odkazy —
-        vrátane mäkko zmazaných.
+        nápady, projekty, oblasti, štítky, návyky, denník, revízie, šablóny, odkazy,
+        školský rozvrh, učenie a pripomienky — vrátane mäkko zmazaných.
       </p>
       <p className="mt-1 text-meta leading-relaxed text-fg-subtle">
         Je to záloha pre prípad, že by appka zajtra zhorela, nie prehľad na čítanie.

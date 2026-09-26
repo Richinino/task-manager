@@ -35,6 +35,17 @@ export function nacitajZurnal() {
   });
 }
 
+function bezSslMode(url) {
+  try {
+    const adresa = new URL(url);
+    if (!adresa.searchParams.has("sslmode")) return url;
+    adresa.searchParams.delete("sslmode");
+    return adresa.toString();
+  } catch {
+    return url;
+  }
+}
+
 /**
  * Jedno spojenie, nie fond.
  *
@@ -45,7 +56,9 @@ export async function vytvorPool(url) {
   const { Pool } = await import("pg");
   const lokalna = url.includes("localhost") || url.includes("127.0.0.1");
   return new Pool({
-    connectionString: url,
+    // Bez `sslmode` z adresy — rovnaký dôvod ako `withoutSslMode` v
+    // `src/db/client.ts`. Overenie certifikátu nastavuje `ssl` nižšie.
+    connectionString: bezSslMode(url),
     ssl: lokalna ? false : { rejectUnauthorized: true },
     max: 1,
     connectionTimeoutMillis: CAKANIE_MS,
@@ -73,4 +86,25 @@ export async function nacitajAplikovane(pool) {
 
 export function vypis(riadky) {
   process.stdout.write(`${riadky.join("\n")}\n`);
+}
+
+/**
+ * Čitateľný dôvod chyby spojenia.
+ *
+ * Odmietnuté spojenie vráti `pg` ako `AggregateError` — jeden pokus na IPv4
+ * a jeden na IPv6 — a ten má **prázdne** `message`. Výpis potom končil holým
+ * „Dôvod:" bez ničoho, presne v situácii, keď je dôvod to jediné, čo treba
+ * vedieť. Preto sa siaha aj do vnorených chýb a na ich kód (`ECONNREFUSED`).
+ */
+export function popisChyby(chyba) {
+  if (!(chyba instanceof Error)) return String(chyba);
+  if (chyba.message.trim() !== "") return chyba.message;
+
+  const vnorene = Array.isArray(chyba.errors) ? chyba.errors : [];
+  const casti = vnorene
+    .map((e) => (e instanceof Error ? e.message || e.code || e.name : String(e)))
+    .filter((text) => text !== "");
+  if (casti.length > 0) return [...new Set(casti)].join("; ");
+
+  return chyba.code ?? chyba.name;
 }

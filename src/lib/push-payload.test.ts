@@ -26,6 +26,14 @@ describe("buildPushPayload", () => {
     expect(buildPushPayload(ZAKLAD).body).toBe("O 10 min — o 14:30 · odhad 30 min.");
   });
 
+  it("čas z databázy so sekundami sa píše bez nich", () => {
+    // Postgres vracia `time` ako „14:30:00" a plánovač ho posiela tak, ako je.
+    expect(buildPushPayload({ ...ZAKLAD, time: "14:30:00" }).body).toBe(
+      "O 10 min — o 14:30 · odhad 30 min.",
+    );
+    expect(buildPushPayload({ ...ZAKLAD, time: "9:05:00" }).body).toContain("o 09:05");
+  });
+
   it("nulový predstih znamená „teraz“", () => {
     const out = buildPushPayload({ ...ZAKLAD, leadMin: 0 });
     expect(out.body).toBe("Začína teraz, o 14:30 · odhad 30 min.");

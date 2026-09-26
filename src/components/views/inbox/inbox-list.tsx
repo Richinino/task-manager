@@ -119,8 +119,6 @@ export function InboxList({
       const named = found ? `Úloha „${found}“` : "Úloha";
 
       startTransition(async () => {
-        // „Niekedy" úlohu v inboxe vedome necháva — skryť ju optimisticky by
-        // znamenalo, že po revalidácii zase preblikne späť.
         if (meta.leavesInbox) markTriaged(taskId);
         setError(null);
         setFlash(null);
@@ -138,7 +136,7 @@ export function InboxList({
             });
           } else if (action === "someday") {
             setFlash({
-              message: `${named} je odložená na niekedy. Ostáva v inboxe, kým jej nedáš konkrétny deň.`,
+              message: `${named} je odložená na niekedy. Nájdeš ju v zozname Niekedy.`,
             });
           }
         } catch {

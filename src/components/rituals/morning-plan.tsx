@@ -16,7 +16,7 @@ import {
 } from "@/components/rituals/ritual-shell";
 import { TimeBudget } from "@/components/views/dnes/time-budget";
 import {
-  deleteTask,
+  dropTask,
   materializeDueRecurrences,
   rescheduleTask,
   setFrog,
@@ -187,7 +187,7 @@ export function MorningPlan({
       try {
         const result =
           decision === "dropped"
-            ? await deleteTask(task.id)
+            ? await dropTask(task.id)
             : await rescheduleTask(task.id, todayIso);
         /*
           Presun prepadnutej úlohy na dnes je z pohľadu servera odklad, takže

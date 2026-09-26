@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  catchUpOccurrence,
   describeRecurrence,
   formatRecurrence,
   nextOccurrence,
@@ -260,5 +261,41 @@ describe("describeRecurrence — rod dňa", () => {
     expect(describeRecurrence(parseRecurrence("FREQ=WEEKLY;BYDAY=SU,MO")!)).toBe(
       "každú nedeľu a pondelok",
     );
+  });
+});
+
+describe("catchUpOccurrence — dobiehanie zameškaného reťazca", () => {
+  const TODAY = "2026-09-25"; // piatok
+
+  it("bežne vráti obyčajný ďalší výskyt", () => {
+    expect(catchUpOccurrence({ freq: "daily" }, "2026-09-25", TODAY)).toBe("2026-09-26");
+  });
+
+  it("denná úloha zameškaná desať dní dobehne rovno dnešok", () => {
+    // Predtým vznikol 16. 9. — a na druhý deň 17. 9., a tak ďalej.
+    expect(catchUpOccurrence({ freq: "daily" }, "2026-09-15", TODAY)).toBe(TODAY);
+  });
+
+  it("týždenná dobehne posledný deň, ktorý už bol na rade", () => {
+    const pondelok = { freq: "weekly" as const, byDay: [1] };
+    expect(catchUpOccurrence(pondelok, "2026-09-01", TODAY)).toBe("2026-09-21");
+  });
+
+  it("mesačná, ktorej ďalší výskyt ešte len príde, sa neposúva dozadu", () => {
+    const pätnásteho = { freq: "monthly" as const, byMonthDay: 15 };
+    expect(catchUpOccurrence(pätnásteho, "2026-09-15", TODAY)).toBe("2026-10-15");
+    expect(catchUpOccurrence(pätnásteho, "2026-08-15", TODAY)).toBe("2026-09-15");
+  });
+
+  it("aj po rokoch výpadku vráti jediný výskyt, nie najstarší", () => {
+    expect(catchUpOccurrence({ freq: "daily" }, "2023-01-01", TODAY)).toBe(TODAY);
+    const koniecMesiaca = { freq: "monthly" as const, byMonthDay: 31 };
+    expect(catchUpOccurrence(koniecMesiaca, "2024-02-29", TODAY)).toBe("2026-08-31");
+  });
+
+  it("výsledok nikdy nie je starší než posledný známy výskyt", () => {
+    const streda = { freq: "weekly" as const, byDay: [3] };
+    const result = catchUpOccurrence(streda, "2026-09-23", TODAY);
+    expect(result).toBe("2026-09-30");
   });
 });

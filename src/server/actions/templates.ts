@@ -5,8 +5,9 @@ import { and, eq } from "drizzle-orm";
 import { z } from "zod";
 
 import { getDb } from "@/db";
-import { taskEvents, tasks, templates, type Horizon } from "@/db/schema";
+import { taskEvents, tasks, templates } from "@/db/schema";
 import { addDays, todayIn } from "@/lib/dates";
+import { horizonForDate } from "@/lib/task-placement";
 import { uuidv7 } from "@/lib/id";
 import { requireUser } from "@/server/auth-guard";
 import {
@@ -115,21 +116,6 @@ function fail(error: unknown, message: string): { ok: false; error: string } {
   return { ok: false, error: message };
 }
 
-/**
- * Na ktorý horizont dátum patrí.
- *
- * Je to úmyselná dvojička rovnakej funkcie z `@/server/actions/tasks`: zo
- * súboru s `"use server"` sa pomocná funkcia vyviezť nedá, takže sa importovať
- * nedala. Keď sa pravidlo horizontov zmení, musia sa zmeniť obe kópie — inak
- * by úloha zo šablóny skončila v inom horizonte než tá istá úloha napísaná
- * ručne.
- */
-function horizonForDate(date: string, todayIso: string): Horizon {
-  if (date <= addDays(todayIso, 1)) return "day";
-  if (date <= addDays(todayIso, 7)) return "week";
-  if (date.slice(0, 7) === todayIso.slice(0, 7)) return "month";
-  return "someday";
-}
 
 /** Prázdny reťazec znamená „bez popisu", nie „ulož prázdno". */
 function orNull(value: string | null | undefined): string | null | undefined {

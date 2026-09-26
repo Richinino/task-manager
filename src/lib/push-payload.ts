@@ -32,7 +32,7 @@ export interface PushPayload {
 export interface ReminderTask {
   id: string;
   title: string;
-  /** Hodina, na ktorú je úloha naplánovaná, ako „HH:MM". */
+  /** Hodina, na ktorú je úloha naplánovaná — „HH:MM" aj „HH:MM:SS" z databázy. */
   time: string | null;
   estimateMin: number | null;
   /** Koľko minút pred časom notifikácia odchádza. */
@@ -48,14 +48,27 @@ const BEZ_NAZVU = "Úloha bez názvu";
  * Predstih sa píše slovami („o 10 minút"), nie hodinou — človek pri
  * notifikácii nepočíta. Nulový predstih znamená „teraz".
  */
+/**
+ * „HH:MM" bez sekúnd.
+ *
+ * Databáza vracia stĺpec `time` ako `14:30:00` a plánovač ho posielal
+ * rovno sem — notifikácia potom hlásila „o 14:30:00". Obrazovky si čas
+ * orezávajú samy, tu to chýbalo.
+ */
+function bezSekund(time: string): string {
+  const zhoda = /^(\d{1,2}):(\d{2})(?::\d{2}(?:\.\d+)?)?$/.exec(time.trim());
+  return zhoda === null ? time : `${zhoda[1]!.padStart(2, "0")}:${zhoda[2]}`;
+}
+
 function telo(task: ReminderTask): string {
   const casti: string[] = [];
 
   if (task.time !== null) {
+    const cas = bezSekund(task.time);
     casti.push(
       task.leadMin <= 0
-        ? `Začína teraz, o ${task.time}`
-        : `O ${formatDuration(task.leadMin)} — o ${task.time}`,
+        ? `Začína teraz, o ${cas}`
+        : `O ${formatDuration(task.leadMin)} — o ${cas}`,
     );
   }
 
