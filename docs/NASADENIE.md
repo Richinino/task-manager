@@ -477,8 +477,8 @@ a notebook sa prihlasujú zvlášť.
 | Sekcia „Pripomienky" v nastaveniach nie je | chýbajú `VAPID_*` na Verceli, alebo nebol Redeploy |
 | Workflow hlási `503` | to isté |
 | Workflow hlási `401` | `CRON_SECRET` na GitHube ≠ na Verceli |
-| `preverenych: 0` | žiadna úloha nemá **hodinu** — bez nej sa nepripomína nič |
-| `odoslanych: 0`, ale `preverenych` > 0 | pripomienka už raz odišla (`reminders` si to pamätá), alebo sa na ňu ešte len čaká |
+| `preverenych: 0` | žiadna úloha nemá **hodinu** a žiadna blízka udalosť nemá zapnutú pripomienku — bez toho sa nepripomína nič |
+| `odoslanych: 0`, ale `preverenych` > 0 | pripomienka už raz odišla (`reminders` a `agenda_reminders` si to pamätajú), alebo sa na ňu ešte len čaká |
 | **`zahodenychStarych` > 0** | plánovač nebežal dosť dlho — tieto pripomienky už nikdy neprídu. Keď sa to opakuje, GitHub cron nestíha a treba externý (viď vyššie) |
 | `500` a v logu `relation "reminders" does not exist` | nedobehla migrácia `0002_pripomienky` v Neone (krok 1) |
 | `zmazanychPrihlaseni` > 0 | prihlásenie zaniklo (odinštalovaná appka, vymazané dáta stránky) — treba sa prihlásiť znova |

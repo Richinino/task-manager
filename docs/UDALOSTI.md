@@ -61,15 +61,82 @@ k nemu patria. Deadline sám len prejde.
 
 ## Príprava
 
-Pri zakladaní písomky appka **ponúkne** plán prípravy: 2× *učiť sa*
-a 1× *zopakovať* v dňoch pred ňou (pri skúšaní 1× a 1×). Dni vyberá tak, aby
-sa vyhla dňu s inou písomkou a dňu so siedmimi hodinami — keď musí posunúť,
-povie prečo.
+Pri zakladaní písomky appka **ponúkne** plán prípravy: 2× *učiť sa* (45 min)
+a 1× *zopakovať* (20 min) 4, 2 a 1 deň pred ňou; pri skúšaní 1× *učiť sa*
+(30 min) a 1× *zopakovať*. Je to **ponuka, nie príkaz** — všetko je
+zaškrtnuté, človek odškrtne, čo nechce, a až potom úlohy vzniknú.
 
-Je to **ponuka, nie príkaz**. Príprava sú obyčajné úlohy s predmetom,
-druhom a väzbou na udalosť (`tasks.agenda_item_id`). Zaberajú čas dňa, dajú
-sa presúvať a s pilierom sa počítajú ako lekcie. Keď sa písomka presunie,
-appka ponúkne posunúť aj nehotovú prípravu o rovnaký počet dní.
+**Výber dní** (`planPrep` v `src/lib/agenda-prep.ts`):
+
+- Deň sa nehodí, keď je v ňom iná písomka či skúšanie, sedem a viac hodín,
+  alebo ho celý zaberá viacdňová udalosť (výlet). Vtedy sa skúsi deň pred,
+  deň po a ešte o deň skôr; pri posunutom dni ponuka povie prečo
+  („posunuté, lebo v ut 29. 9. je skúšanie FYZ").
+- Keď nesedí nič, ostane pôvodný deň — lepšie učiť sa v plný deň než vôbec.
+- **Dni sa vyberajú odzadu**, od zopakovania deň pred písomkou. Ten krok má
+  najmenej náhradných dní; keby sa vyberal posledný, učenie by mu deň
+  zobralo a zopakovanie by vypadlo. Každý krok padne pred ten nasledujúci,
+  takže učenie nikdy nie je až po zopakovaní.
+- Nikdy nie v minulosti ani v deň písomky. Písomka zajtra dostane len
+  zopakovanie dnes, písomka dnes nič.
+
+**Úlohy prípravy** sú obyčajné úlohy s predmetom, druhom (*učiť sa* /
+*zopakovať*), odhadom, dňom a väzbou `tasks.agenda_item_id`; oblasť
+a projekt zdedia z písomky. Názov je „Učiť sa na písomku", pri písomke
+s témou „Učiť sa na písomku — funkcie", aby sa dve písomky z matiky
+v jednom týždni dali rozlíšiť. **Termín nedostanú** — deň prípravy je plán,
+záväzok je písomka sama.
+
+**Kedy sa ponuka ukáže:** hneď po zachytení písomky (zachytenie sa zavrie
+a otvorí sa detail s návrhom), a kedykoľvek neskôr tlačidlom *Navrhnúť
+prípravu* v detaile, kým k písomke nič nie je. Pri dávkovom písaní
+(Ctrl+Enter) ani z offline fronty nevyskočí — prerušila by písanie.
+
+**Vlastná úloha** sa pridá priamo v detaile udalosti (pri písomke aj pri
+deadline). Je to rýchle zachytenie so všetkým, čo vie; vždy vznikne úloha,
+zdedí predmet a bez napísaného termínu dostane za termín deň udalosti.
+
+**Posun s udalosťou.** Keď sa písomka presunie, detail ponúkne posunúť aj
+nehotové úlohy pod ňou: naplánovaný deň o rovnaký počet dní (nie do
+minulosti, nie na deň písomky či za ňu) a termín len vtedy, keď bol rovný
+pôvodnému dňu udalosti — ten úloha dostala od nej, vlastný termín ostane.
+Zapisuje sa to ako preplánovanie, **nie ako odklad**: počítadlo odkladov
+nerastie, lebo prípravu nepresunul človek, presunula sa písomka.
+
+## Pripomienky
+
+Udalosť má **najviac jednu pripomienku** (`agenda_items.remind`):
+
+| voľba | kedy | nadpis notifikácie |
+|---|---|---|
+| večer vopred | deň pred o 19:00 | „Zajtra: písomka MAT" / „Zajtra končí: …" |
+| ráno | v ten deň o 7:00 | „Dnes: …" / „Dnes končí: …" |
+| hodinu vopred | hodinu pred začiatkom (pri deadline pred hodinou „do") | „O hodinu: …" / „O hodinu končí: …" |
+
+- **Písomka a skúšanie majú predvolene „večer vopred"** — zo zachytenia aj
+  tie, ktoré vznikli pred pripomienkami (migrácia `0012` ich doplnila len
+  budúcim, nezrušeným). Ostatné udalosti a deadliny predvolene nič.
+- **Hodinu vopred** sa dá len udalosti s časom. Keď úprava čas zoberie,
+  pripomienka prejde na ráno — inak by ticho nikdy neprišla.
+- **Telo** povie hodinu a buď postup prípravy („príprava 2/3" — otázka,
+  ktorú si človek večer pred písomkou kladie), alebo miesto. Ťuknutie otvorí
+  detail udalosti (`/udalosti?udalost=<id>`).
+- **Ukážka v detaile** sa skladá tou istou funkciou ako skutočná notifikácia
+  (`src/lib/agenda-reminders.ts`) — čo vidíš v detaile, príde do telefónu.
+
+**Deň prípravy.** Keď má udalosť pripomienku zapnutú, ráno o 7:00 v deň
+naplánovanej úlohy pod ňou príde aj „Dnes: Učiť sa na písomku" s odpočtom
+(„písomka MAT o 2 dni · odhad 45 min"). Úloha s vlastnou hodinou ju
+nedostane — tú pripomenie jej hodina.
+
+**Čo sa nepošle:** zrušená a zmazaná udalosť, hotová či zahodená úloha, a nič,
+čo vzniklo až po čase svojej pripomienky (písomka na zajtra zapísaná o deviatej
+večer, príprava pridaná dnes doobeda) — o tom človek práve vie.
+
+**Plánovač** je ten istý ako pri úlohách (`/api/pripomienky`, každých päť
+minút z cron-job.org). Záznam o odoslanom je v `agenda_reminders` (unikát
+udalosť + okamih), pri dni prípravy v `reminders` ako pri každej úlohe —
+presunutá udalosť má nový okamih, takže pripomienka na nový čas príde.
 
 ## Zachytenie
 
@@ -121,9 +188,11 @@ ale v rozhraní sa už ponúkajú len tri druhy školskej práce.
 
 1. **Základ** — tabuľka, migrácia, akcie, obrazovka Udalosti s detailom,
    Dnes/Týždeň/Mesiac/Rozvrh, zachytenie, známka, viacdňové udalosti.
-2. **Príprava** — väzba úloh na udalosť, ponuka plánu, posun prípravy.
-3. **Pripomienky** — push večer vopred / ráno / hodinu vopred, aj začiatok
-   prípravy; export a vyhľadávanie.
+2. **Príprava** — väzba úloh na udalosť, ponuka plánu, posun prípravy,
+   vlastné úlohy k písomke a deadlinu.
+3. **Pripomienky** — push večer vopred / ráno / hodinu vopred, aj ráno
+   v deň prípravy; preklik z notifikácie do detailu.
+4. **Neskôr** — udalosti v exporte a vo vyhľadávaní.
 
 Zápis do Google Kalendára zatiaľ nie — potreboval by nový súhlas s právom
 zápisu a appka stojí na tom, že kalendár je doplnok, nie podmienka.

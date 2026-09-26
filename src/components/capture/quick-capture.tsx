@@ -90,6 +90,11 @@ export interface QuickCaptureProps {
   autoTagRules?: readonly AutoTagRule[];
   /** Prepínač pri otvorení — „+ Nová" na obrazovke Udalosti. */
   defaultMode?: "event" | "deadline";
+  /**
+   * Uložila sa písomka či skúšanie. Zachytenie sa zavrie a detail udalosti
+   * sa otvorí s ponukou prípravy — rovnako ako v schválenom náhľade.
+   */
+  onAssessmentSaved?: (id: string) => void;
 }
 
 /**
@@ -146,6 +151,7 @@ export function QuickCapture({
   tags,
   autoTagRules,
   defaultMode,
+  onAssessmentSaved,
 }: QuickCaptureProps) {
   const [value, setValue] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -520,6 +526,11 @@ export function QuickCapture({
           return;
         }
         finish(result.data.title, false, result.data.kind === "agenda" ? (effectiveMode === "deadline" ? "deadline" : "event") : "task");
+        // Pri dávkovom písaní (Ctrl+Enter) ponuka nevyskočí — prerušila by
+        // písanie. Príprava sa dá navrhnúť neskôr z detailu písomky.
+        if (!keepOpen && result.data.kind === "agenda" && result.data.assessment === true) {
+          onAssessmentSaved?.(result.data.id);
+        }
       } catch {
         // Výnimka je sieťová chyba. Signál mohol vypadnúť práve teraz, tak
         // úlohu zachránime do fronty namiesto hlásenia neúspechu.

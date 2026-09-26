@@ -1,8 +1,10 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import { CalendarHeart, Plus } from "lucide-react";
 
+import { useAgendaDetail } from "@/components/agenda/agenda-detail-provider";
 import { AgendaRow } from "@/components/agenda/agenda-row";
 import { useCaptureOptional } from "@/components/capture/capture-provider";
 import { ScreenFooter, ScreenHeader } from "@/components/shell/screen-chrome";
@@ -53,14 +55,31 @@ export function AgendaList({
   items,
   todayIso,
   weekStartsOn,
+  openId = null,
 }: {
   items: AgendaItemRow[];
   todayIso: string;
   weekStartsOn: number;
+  /** Otvoriť detail tejto udalosti — prišlo z ťuknutia na pripomienku. */
+  openId?: string | null;
 }) {
   const [filter, setFilter] = useState<Filter>("all");
   const [pastOpen, setPastOpen] = useState(true);
   const capture = useCaptureOptional();
+  const detail = useAgendaDetail();
+  const router = useRouter();
+  const openedRef = useRef<string | null>(null);
+
+  /*
+    Detail z notifikácie sa otvorí raz a adresa sa vyčistí — inak by ho
+    obnovenie stránky alebo návrat späť otváral znova.
+  */
+  useEffect(() => {
+    if (openId === null || detail === null || openedRef.current === openId) return;
+    openedRef.current = openId;
+    detail.openById(openId);
+    router.replace("/udalosti", { scroll: false });
+  }, [openId, detail, router]);
 
   // Zrušená v zozname ostáva prečiarknutá, ale „pred tebou“ už nie je.
   const counts = useMemo(() => {
