@@ -7,7 +7,8 @@ import { z } from "zod";
 import { getDb } from "@/db";
 import { agendaItems, tasks, type AgendaItem } from "@/db/schema";
 import { addDays, diffDays } from "@/lib/dates";
-import { AGENDA_REMINDERS, isAssessment, isValidGrade } from "@/lib/agenda";
+import { AGENDA_REMINDERS, isAssessment, isValidGrade, type AgendaReminder } from "@/lib/agenda";
+import { reminderOptions } from "@/lib/agenda-reminders";
 import { checkAgendaRefs, insertAgendaItem, resolveAgendaValues } from "@/server/agenda-write";
 import { requireUser } from "@/server/auth-guard";
 import type { ActionResult } from "@/server/action-result";
@@ -240,6 +241,38 @@ export async function moveAgendaItem(
     return { ok: true, data: { delta, pendingTaskIds: pending.map((p) => p.id) } };
   } catch (error) {
     return fail(error, "Udalosť sa nepodarilo presunúť.");
+  }
+}
+
+/**
+ * Pripomienka udalosti — jedna voľba alebo nič.
+ *
+ * „Hodinu vopred" pri udalosti bez hodiny neprejde: plánovač by nemal od
+ * čoho rátať a pripomienka by ticho nikdy neprišla.
+ */
+export async function setAgendaRemind(
+  id: string,
+  remind: AgendaReminder | null,
+): Promise<ActionResult> {
+  const user = await requireUser();
+  const idOk = idSchema.safeParse(id);
+  const remindOk = z.enum(AGENDA_REMINDERS).nullable().safeParse(remind);
+  if (!idOk.success || !remindOk.success) return { ok: false, error: "Neplatná pripomienka." };
+  try {
+    const current = await loadItem(user.id, idOk.data);
+    if (!current) return { ok: false, error: "Udalosť sa nenašla." };
+    if (remindOk.data !== null && !reminderOptions(current).includes(remindOk.data)) {
+      return { ok: false, error: "Hodinu vopred sa dá pripomenúť len udalosti s časom." };
+    }
+    const db = await getDb();
+    await db
+      .update(agendaItems)
+      .set({ remind: remindOk.data, updatedAt: new Date() })
+      .where(and(eq(agendaItems.id, current.id), eq(agendaItems.userId, user.id)));
+    revalidateViews();
+    return { ok: true };
+  } catch (error) {
+    return fail(error, "Pripomienku sa nepodarilo nastaviť.");
   }
 }
 

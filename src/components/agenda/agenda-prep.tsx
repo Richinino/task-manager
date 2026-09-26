@@ -53,6 +53,7 @@ export function AgendaPrep({
   reloadKey,
   onChanged,
   onCloseDetail,
+  onTasks,
 }: {
   item: AgendaItemRow;
   todayIso: string;
@@ -64,6 +65,8 @@ export function AgendaPrep({
   onChanged: () => void;
   /** Zavrie detail udalosti pred otvorením detailu úlohy. */
   onCloseDetail: () => void;
+  /** Načítané úlohy — detail z nich píše vetu o rannej pripomienke prípravy. */
+  onTasks?: (tasks: AgendaTask[]) => void;
 }) {
   const [tasks, setTasks] = useState<AgendaTask[] | null>(null);
   const [offer, setOffer] = useState<OfferRow[] | null>(null);
@@ -80,10 +83,14 @@ export function AgendaPrep({
 
   const reload = useCallback(async () => {
     const result = await loadAgendaPrep(item.id);
-    if (result.ok) setTasks(result.data);
-    else setError(result.error);
+    if (result.ok) {
+      setTasks(result.data);
+      onTasks?.(result.data);
+    } else {
+      setError(result.error);
+    }
     return result.ok ? result.data : null;
-  }, [item.id]);
+  }, [item.id, onTasks]);
 
   function ask(): void {
     setError(null);

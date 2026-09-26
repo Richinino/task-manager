@@ -1226,6 +1226,8 @@ async function captureAgenda(input: {
     subjectId: input.subject?.id ?? null,
     projectId: input.projectId,
     areaId: input.areaId,
+    // Písomka a skúšanie sa pripomenú večer vopred — vypnúť sa dá v detaile.
+    remind: assessment ? "eve" : null,
   });
 
   for (const path of ["/dnes", "/tyzden", "/mesiac", "/rozvrh", "/udalosti"]) revalidatePath(path);

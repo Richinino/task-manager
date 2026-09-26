@@ -992,6 +992,38 @@ export const reminders = pgTable(
   ],
 );
 
+/**
+ * Odoslané pripomienky udalostí — rovnaký vzor ako `reminders` pri úlohách.
+ *
+ * Nie je to fronta, ale **záznam o odoslanom**: čas sa počíta z udalosti pri
+ * každom behu plánovača a riadok vznikne až vo chvíli, keď notifikácia
+ * odíde. Keď sa udalosť presunie, zmení sa `at` — nová dvojica (udalosť,
+ * okamih) v tabuľke nie je, takže pripomienka na nový čas príde.
+ *
+ * Vlastná tabuľka, lebo `reminders.task_id` je povinný odkaz na úlohu
+ * a udalosť úlohou nie je.
+ */
+export const agendaReminders = pgTable(
+  "agenda_reminders",
+  {
+    id: text("id").primaryKey(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    agendaItemId: text("agenda_item_id")
+      .notNull()
+      .references(() => agendaItems.id, { onDelete: "cascade" }),
+    at: timestamp("at", { withTimezone: true }).notNull(),
+    sentAt: timestamp("sent_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    index("agenda_reminders_user_idx").on(t.userId),
+    /* Poistka proti dvom behom plánovača naraz — jedna pripomienka na udalosť a okamih. */
+    uniqueIndex("agenda_reminders_item_at_idx").on(t.agendaItemId, t.at),
+  ],
+);
+
 /* ═══════════════════════════════════════════════════════════════════════════
    RELÁCIE
    ═══════════════════════════════════════════════════════════════════════════ */

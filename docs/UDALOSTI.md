@@ -103,6 +103,41 @@ pôvodnému dňu udalosti — ten úloha dostala od nej, vlastný termín ostane
 Zapisuje sa to ako preplánovanie, **nie ako odklad**: počítadlo odkladov
 nerastie, lebo prípravu nepresunul človek, presunula sa písomka.
 
+## Pripomienky
+
+Udalosť má **najviac jednu pripomienku** (`agenda_items.remind`):
+
+| voľba | kedy | nadpis notifikácie |
+|---|---|---|
+| večer vopred | deň pred o 19:00 | „Zajtra: písomka MAT" / „Zajtra končí: …" |
+| ráno | v ten deň o 7:00 | „Dnes: …" / „Dnes končí: …" |
+| hodinu vopred | hodinu pred začiatkom (pri deadline pred hodinou „do") | „O hodinu: …" / „O hodinu končí: …" |
+
+- **Písomka a skúšanie majú predvolene „večer vopred"** — zo zachytenia aj
+  tie, ktoré vznikli pred pripomienkami (migrácia `0012` ich doplnila len
+  budúcim, nezrušeným). Ostatné udalosti a deadliny predvolene nič.
+- **Hodinu vopred** sa dá len udalosti s časom. Keď úprava čas zoberie,
+  pripomienka prejde na ráno — inak by ticho nikdy neprišla.
+- **Telo** povie hodinu a buď postup prípravy („príprava 2/3" — otázka,
+  ktorú si človek večer pred písomkou kladie), alebo miesto. Ťuknutie otvorí
+  detail udalosti (`/udalosti?udalost=<id>`).
+- **Ukážka v detaile** sa skladá tou istou funkciou ako skutočná notifikácia
+  (`src/lib/agenda-reminders.ts`) — čo vidíš v detaile, príde do telefónu.
+
+**Deň prípravy.** Keď má udalosť pripomienku zapnutú, ráno o 7:00 v deň
+naplánovanej úlohy pod ňou príde aj „Dnes: Učiť sa na písomku" s odpočtom
+(„písomka MAT o 2 dni · odhad 45 min"). Úloha s vlastnou hodinou ju
+nedostane — tú pripomenie jej hodina.
+
+**Čo sa nepošle:** zrušená a zmazaná udalosť, hotová či zahodená úloha, a nič,
+čo vzniklo až po čase svojej pripomienky (písomka na zajtra zapísaná o deviatej
+večer, príprava pridaná dnes doobeda) — o tom človek práve vie.
+
+**Plánovač** je ten istý ako pri úlohách (`/api/pripomienky`, každých päť
+minút z cron-job.org). Záznam o odoslanom je v `agenda_reminders` (unikát
+udalosť + okamih), pri dni prípravy v `reminders` ako pri každej úlohe —
+presunutá udalosť má nový okamih, takže pripomienka na nový čas príde.
+
 ## Zachytenie
 
 **Písomka, test, previerka a skúšanie vytvoria udalosť sami.** Parser tieto
@@ -155,8 +190,9 @@ ale v rozhraní sa už ponúkajú len tri druhy školskej práce.
    Dnes/Týždeň/Mesiac/Rozvrh, zachytenie, známka, viacdňové udalosti.
 2. **Príprava** — väzba úloh na udalosť, ponuka plánu, posun prípravy,
    vlastné úlohy k písomke a deadlinu.
-3. **Pripomienky** — push večer vopred / ráno / hodinu vopred, aj začiatok
-   prípravy; export a vyhľadávanie.
+3. **Pripomienky** — push večer vopred / ráno / hodinu vopred, aj ráno
+   v deň prípravy; preklik z notifikácie do detailu.
+4. **Neskôr** — udalosti v exporte a vo vyhľadávaní.
 
 Zápis do Google Kalendára zatiaľ nie — potreboval by nový súhlas s právom
 zápisu a appka stojí na tom, že kalendár je doplnok, nie podmienka.
