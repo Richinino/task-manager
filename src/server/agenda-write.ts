@@ -5,6 +5,7 @@ import { and, eq, isNull } from "drizzle-orm";
 import type { Database } from "@/db";
 import { agendaItems, areas, projects, schoolSubjects, type AgendaItem } from "@/db/schema";
 import { hhmm, isAssessment, lessonForSubject, type AgendaKind, type AgendaType } from "@/lib/agenda";
+import { reminderOptions } from "@/lib/agenda-reminders";
 import { uuidv7 } from "@/lib/id";
 import { getLessonsForDay } from "@/server/queries/school";
 
@@ -138,7 +139,16 @@ export async function resolveAgendaValues(
     areaId: draft.areaId ?? null,
     projectId: draft.projectId ?? null,
     blocksDay: draft.blocksDay ?? endDate !== null,
-    remind: draft.remind ?? null,
+    /*
+      „Hodinu vopred" potrebuje hodinu. Keď ju úprava zobrala (písomka sa
+      presunula na deň bez hodiny predmetu, čas sa vymazal), pripomienka
+      prejde na ráno — inak by ticho nikdy neprišla.
+    */
+    remind:
+      draft.remind === "hour" &&
+      !reminderOptions({ kind: draft.kind, startTime, endTime }).includes("hour")
+        ? "morn"
+        : (draft.remind ?? null),
   };
 }
 

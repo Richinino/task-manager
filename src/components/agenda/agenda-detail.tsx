@@ -5,6 +5,7 @@ import { ArrowLeft, LoaderCircle, X } from "lucide-react";
 
 import { AgendaShape, Countdown, SubjectChip } from "@/components/agenda/agenda-bits";
 import { AgendaPrep } from "@/components/agenda/agenda-prep";
+import { AgendaReminderSection } from "@/components/agenda/agenda-reminder";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogClose, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -31,11 +32,12 @@ import {
   moveAgendaItem,
   setAgendaCancelled,
   setAgendaGrade,
+  setAgendaRemind,
   updateAgendaItem,
   type AgendaInput,
 } from "@/server/actions/agenda";
 import { shiftPrep } from "@/server/actions/agenda-prep";
-import type { AgendaItemRow } from "@/server/queries/agenda";
+import type { AgendaItemRow, AgendaTask } from "@/server/queries/agenda";
 
 export interface AgendaSubjectOption {
   id: string;
@@ -91,6 +93,7 @@ export function AgendaDetail({
   const [shift, setShift] = useState<{ delta: number; ids: string[] } | null>(null);
   /** Zvýši sa, keď sa úlohy pod udalosťou zmenili zvonka (posun prípravy). */
   const [prepKey, setPrepKey] = useState(0);
+  const [prepTasks, setPrepTasks] = useState<AgendaTask[]>([]);
   const [isPending, startTransition] = useTransition();
 
   const past = isAgendaPast(item, todayIso);
@@ -360,6 +363,17 @@ export function AgendaDetail({
                     });
                   }}
                   onCloseDetail={() => onOpenChange(false)}
+                  onTasks={setPrepTasks}
+                />
+              ) : null}
+
+              {!past && !cancelled ? (
+                <AgendaReminderSection
+                  item={item}
+                  tasks={prepTasks}
+                  todayIso={todayIso}
+                  pending={isPending}
+                  onChange={(remind) => run(() => setAgendaRemind(item.id, remind))}
                 />
               ) : null}
 

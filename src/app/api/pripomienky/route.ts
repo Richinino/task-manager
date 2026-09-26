@@ -1,9 +1,24 @@
-import { and, eq, gte, isNotNull, lte, ne, or, sql } from "drizzle-orm";
+import { and, eq, gte, isNotNull, isNull, lte, ne, or, sql } from "drizzle-orm";
 
 import { getDb } from "@/db";
-import { pushSubscriptions, reminders, tasks, users } from "@/db/schema";
+import {
+  agendaItems,
+  agendaReminders,
+  pushSubscriptions,
+  reminders,
+  schoolSubjects,
+  tasks,
+  users,
+} from "@/db/schema";
+import { isAgendaReminder } from "@/lib/agenda";
+import {
+  agendaReminderAt,
+  agendaReminderPayload,
+  prepReminderAt,
+  prepReminderPayload,
+} from "@/lib/agenda-reminders";
 import { addDays, todayIn } from "@/lib/dates";
-import { buildPushPayload } from "@/lib/push-payload";
+import { buildPushPayload, type PushPayload } from "@/lib/push-payload";
 import {
   MAX_MESKANIE_MIN,
   MAX_NA_BEH,
@@ -33,6 +48,16 @@ import { isPushConfigured, sendPush } from "@/server/push";
  * jedno zabudnuté miesto by znamenalo notifikáciu na starý čas.
  *
  * Jedinečný index na (`task_id`, `at`) je poistka proti dvom behom naraz.
+ *
+ * ## Tri druhy pripomienok
+ *
+ * 1. **Úloha s hodinou** — naplánovaný čas alebo termín mínus predstih.
+ * 2. **Udalosť** so zapnutou pripomienkou — večer vopred, ráno, alebo
+ *    hodinu vopred (`src/lib/agenda-reminders.ts`). Záznam o odoslanom je
+ *    v `agenda_reminders`.
+ * 3. **Deň prípravy** — ráno v deň, na ktorý je naplánovaná úloha pod
+ *    udalosťou so zapnutou pripomienkou. Je to pripomienka úlohy, takže
+ *    záznam ide do `reminders` ako pri bode 1.
  *
  * ## Radšej neskoro než skoro
  *
@@ -148,6 +173,53 @@ export async function POST(request: Request): Promise<Response> {
     { endpoint: string; p256dh: string; auth: string }[]
   >();
 
+  /**
+   * Pošle notifikáciu na všetky prihlásenia človeka.
+   *
+   * Prihlásenia sa pýtajú raz na človeka, nie na pripomienku. Mŕtve
+   * prihlásenie ide von — bez toho by si ho plánovač vypýtal pri každom behu
+   * a pri každom behu by mu push služba odpovedala 410.
+   */
+  async function dorucit(userId: string, payload: PushPayload): Promise<void> {
+    let prihlasenia = prihlaseniaPodlaLudi.get(userId);
+    if (prihlasenia === undefined) {
+      prihlasenia = await db
+        .select({
+          endpoint: pushSubscriptions.endpoint,
+          p256dh: pushSubscriptions.p256dh,
+          auth: pushSubscriptions.auth,
+        })
+        .from(pushSubscriptions)
+        .where(eq(pushSubscriptions.userId, userId));
+      prihlaseniaPodlaLudi.set(userId, prihlasenia);
+    }
+
+    for (const prihlasenie of prihlasenia) {
+      const vysledok = await sendPush(prihlasenie, payload);
+
+      if (vysledok.ok) {
+        suhrn.odoslanych += 1;
+        await db
+          .update(pushSubscriptions)
+          .set({ lastSeenAt: teraz })
+          .where(eq(pushSubscriptions.endpoint, prihlasenie.endpoint));
+        continue;
+      }
+
+      suhrn.zlyhani += 1;
+      if (vysledok.gone) {
+        await db
+          .delete(pushSubscriptions)
+          .where(eq(pushSubscriptions.endpoint, prihlasenie.endpoint));
+        suhrn.zmazanychPrihlaseni += 1;
+        prihlaseniaPodlaLudi.set(
+          userId,
+          (prihlaseniaPodlaLudi.get(userId) ?? []).filter((p) => p.endpoint !== prihlasenie.endpoint),
+        );
+      }
+    }
+  }
+
   for (const uloha of kandidati) {
     if (suhrn.odoslanych >= MAX_NA_BEH) break;
 
@@ -202,58 +274,198 @@ export async function POST(request: Request): Promise<Response> {
 
     if (vlozene.length === 0) continue;
 
-    let prihlasenia = prihlaseniaPodlaLudi.get(uloha.userId);
-    if (prihlasenia === undefined) {
-      prihlasenia = await db
-        .select({
-          endpoint: pushSubscriptions.endpoint,
-          p256dh: pushSubscriptions.p256dh,
-          auth: pushSubscriptions.auth,
-        })
-        .from(pushSubscriptions)
-        .where(eq(pushSubscriptions.userId, uloha.userId));
-      prihlaseniaPodlaLudi.set(uloha.userId, prihlasenia);
+    await dorucit(
+      uloha.userId,
+      buildPushPayload({
+        id: uloha.id,
+        title: uloha.title,
+        time: uloha.plannedTime ?? uloha.dueTime,
+        estimateMin: uloha.estimateMin,
+        leadMin: settings.reminderLeadMin,
+      }),
+    );
+  }
+
+  /* ── Udalosti ────────────────────────────────────────────────────────────
+     Okno o deň širšie dopredu: „večer vopred" zvoní deň pred udalosťou.   */
+  const doDnaUdalosti = addDays(doDna, 1);
+
+  /*
+    bez-filtra: plánovač obsluhuje všetkých; notifikácia ide výhradne na
+    prihlásenia vlastníka udalosti (`userId` z toho istého riadka).
+  */
+  const udalosti = await db
+    .select({
+      id: agendaItems.id,
+      userId: agendaItems.userId,
+      kind: agendaItems.kind,
+      type: agendaItems.type,
+      title: agendaItems.title,
+      date: agendaItems.date,
+      endDate: agendaItems.endDate,
+      startTime: agendaItems.startTime,
+      endTime: agendaItems.endTime,
+      period: agendaItems.period,
+      place: agendaItems.place,
+      remind: agendaItems.remind,
+      createdAt: agendaItems.createdAt,
+      subjectCode: schoolSubjects.code,
+      settings: users.settings,
+    })
+    .from(agendaItems)
+    .innerJoin(users, eq(agendaItems.userId, users.id))
+    .leftJoin(schoolSubjects, eq(schoolSubjects.id, agendaItems.subjectId))
+    .where(
+      and(
+        isNotNull(agendaItems.remind),
+        isNull(agendaItems.cancelledAt),
+        isNull(agendaItems.deletedAt),
+        gte(agendaItems.date, odDna),
+        lte(agendaItems.date, doDnaUdalosti),
+      ),
+    )
+    .limit(500);
+  suhrn.preverenych += udalosti.length;
+
+  for (const udalost of udalosti) {
+    if (suhrn.odoslanych >= MAX_NA_BEH) break;
+    if (!isAgendaReminder(udalost.remind)) continue;
+
+    const settings = parseSettings(udalost.settings);
+    const at = agendaReminderAt(udalost, udalost.remind, settings.timezone);
+    if (at === null || !jeNaOdoslanie({ id: udalost.id, at, sentAt: null }, teraz, MAX_MESKANIE_MIN)) {
+      continue;
     }
+    /*
+      Udalosť zapísaná až po čase pripomienky (písomka na zajtra zapísaná
+      o deviatej večer) ju nedostane — človek o nej práve vie, notifikácia
+      o päť minút by bola len šum.
+    */
+    if (udalost.createdAt.getTime() > at.getTime()) continue;
 
-    if (prihlasenia.length === 0) continue;
+    const vlozene = await db
+      .insert(agendaReminders)
+      .values({ id: uuidv7(), userId: udalost.userId, agendaItemId: udalost.id, at, sentAt: teraz })
+      .onConflictDoNothing()
+      .returning();
+    if (vlozene.length === 0) continue;
 
-    const payload = buildPushPayload({
-      id: uloha.id,
-      title: uloha.title,
-      time: uloha.plannedTime ?? uloha.dueTime,
-      estimateMin: uloha.estimateMin,
-      leadMin: settings.reminderLeadMin,
-    });
+    const [postup] = await db
+      .select({
+        total: sql<number>`cast(count(*) as int)`,
+        done: sql<number>`cast(count(*) filter (where ${tasks.status} = 'done') as int)`,
+      })
+      .from(tasks)
+      .where(
+        and(
+          eq(tasks.userId, udalost.userId),
+          eq(tasks.agendaItemId, udalost.id),
+          isNull(tasks.deletedAt),
+          ne(tasks.status, "dropped"),
+        ),
+      );
 
-    for (const prihlasenie of prihlasenia) {
-      const vysledok = await sendPush(prihlasenie, payload);
+    await dorucit(
+      udalost.userId,
+      agendaReminderPayload(udalost, udalost.remind, {
+        id: udalost.id,
+        subjectCode: udalost.subjectCode,
+        place: udalost.place,
+        progress: { done: Number(postup?.done ?? 0), total: Number(postup?.total ?? 0) },
+      }),
+    );
+  }
 
-      if (vysledok.ok) {
-        suhrn.odoslanych += 1;
-        await db
-          .update(pushSubscriptions)
-          .set({ lastSeenAt: teraz })
-          .where(eq(pushSubscriptions.endpoint, prihlasenie.endpoint));
-        continue;
-      }
+  /* ── Dni prípravy ────────────────────────────────────────────────────────
+     Ráno v deň úlohy pod udalosťou so zapnutou pripomienkou. Úloha s vlastnou
+     hodinou ju nedostane — tú pripomenie jej hodina (bod 1).              */
 
-      suhrn.zlyhani += 1;
+  /*
+    bez-filtra: plánovač obsluhuje všetkých; úloha a udalosť patria tomu
+    istému človeku (podmienka nižšie) a notifikácia ide len jemu.
+  */
+  const priprava = await db
+    .select({
+      id: tasks.id,
+      userId: tasks.userId,
+      title: tasks.title,
+      plannedDate: tasks.plannedDate,
+      estimateMin: tasks.estimateMin,
+      createdAt: tasks.createdAt,
+      itemId: agendaItems.id,
+      kind: agendaItems.kind,
+      type: agendaItems.type,
+      itemTitle: agendaItems.title,
+      date: agendaItems.date,
+      endDate: agendaItems.endDate,
+      startTime: agendaItems.startTime,
+      endTime: agendaItems.endTime,
+      period: agendaItems.period,
+      subjectCode: schoolSubjects.code,
+      settings: users.settings,
+    })
+    .from(tasks)
+    .innerJoin(agendaItems, eq(tasks.agendaItemId, agendaItems.id))
+    .innerJoin(users, eq(tasks.userId, users.id))
+    .leftJoin(schoolSubjects, eq(schoolSubjects.id, agendaItems.subjectId))
+    .where(
+      and(
+        eq(tasks.userId, agendaItems.userId),
+        isNotNull(agendaItems.remind),
+        isNull(agendaItems.cancelledAt),
+        isNull(agendaItems.deletedAt),
+        isNull(tasks.deletedAt),
+        ne(tasks.status, "done"),
+        ne(tasks.status, "dropped"),
+        isNull(tasks.plannedTime),
+        gte(tasks.plannedDate, odDna),
+        lte(tasks.plannedDate, doDna),
+        sql`${tasks.plannedDate} < ${agendaItems.date}`,
+      ),
+    )
+    .limit(500);
+  suhrn.preverenych += priprava.length;
 
-      /*
-        Mŕtve prihlásenie ide von. Bez toho by si ho plánovač vypýtal pri
-        každom behu a pri každom behu by mu push služba odpovedala 410.
-      */
-      if (vysledok.gone) {
-        await db
-          .delete(pushSubscriptions)
-          .where(eq(pushSubscriptions.endpoint, prihlasenie.endpoint));
-        suhrn.zmazanychPrihlaseni += 1;
-        prihlaseniaPodlaLudi.set(
-          uloha.userId,
-          prihlasenia.filter((p) => p.endpoint !== prihlasenie.endpoint),
-        );
-      }
+  for (const uloha of priprava) {
+    if (suhrn.odoslanych >= MAX_NA_BEH) break;
+    if (uloha.plannedDate === null) continue;
+
+    const settings = parseSettings(uloha.settings);
+    const at = prepReminderAt(uloha.plannedDate, settings.timezone);
+    if (at === null || !jeNaOdoslanie({ id: uloha.id, at, sentAt: null }, teraz, MAX_MESKANIE_MIN)) {
+      continue;
     }
+    // Prípravu pridanú až dnes doobeda netreba ohlasovať — človek ju práve pridal.
+    if (uloha.createdAt.getTime() > at.getTime()) continue;
+
+    const vlozene = await db
+      .insert(reminders)
+      .values({ id: uuidv7(), userId: uloha.userId, taskId: uloha.id, at, sentAt: teraz })
+      .onConflictDoNothing()
+      .returning();
+    if (vlozene.length === 0) continue;
+
+    await dorucit(
+      uloha.userId,
+      prepReminderPayload({
+        taskId: uloha.id,
+        taskTitle: uloha.title,
+        estimateMin: uloha.estimateMin,
+        plannedDate: uloha.plannedDate,
+        item: {
+          id: uloha.itemId,
+          kind: uloha.kind,
+          type: uloha.type,
+          title: uloha.itemTitle,
+          date: uloha.date,
+          endDate: uloha.endDate,
+          startTime: uloha.startTime,
+          endTime: uloha.endTime,
+          period: uloha.period,
+        },
+        subjectCode: uloha.subjectCode,
+      }),
+    );
   }
 
   return Response.json(
