@@ -365,22 +365,25 @@ async function upracPredmety(db: Queryable, userId: string): Promise<number> {
 
   if (kandidati.length === 0) return 0;
 
-  const [pouziteHodinami, pouzitePovodne, pouziteUlohami] = await Promise.all([
-    db
-      .selectDistinct({ id: schoolLessons.subjectId })
-      .from(schoolLessons)
-      .where(eq(schoolLessons.userId, userId)),
-    db
-      .selectDistinct({ id: schoolLessons.originalSubjectId })
-      .from(schoolLessons)
-      .where(
-        and(eq(schoolLessons.userId, userId), isNotNull(schoolLessons.originalSubjectId)),
-      ),
-    db
-      .selectDistinct({ id: tasks.subjectId })
-      .from(tasks)
-      .where(and(eq(tasks.userId, userId), isNotNull(tasks.subjectId))),
-  ]);
+  /*
+    Za sebou, nie cez `Promise.all`: beží to v transakcii importu, teda na
+    JEDNOM spojení. `pg` súbežné dotazy na jednom klientovi zatiaľ len radí
+    za seba a v logoch varuje (DeprecationWarning), v pg@9 to už padne.
+  */
+  const pouziteHodinami = await db
+    .selectDistinct({ id: schoolLessons.subjectId })
+    .from(schoolLessons)
+    .where(eq(schoolLessons.userId, userId));
+  const pouzitePovodne = await db
+    .selectDistinct({ id: schoolLessons.originalSubjectId })
+    .from(schoolLessons)
+    .where(
+      and(eq(schoolLessons.userId, userId), isNotNull(schoolLessons.originalSubjectId)),
+    );
+  const pouziteUlohami = await db
+    .selectDistinct({ id: tasks.subjectId })
+    .from(tasks)
+    .where(and(eq(tasks.userId, userId), isNotNull(tasks.subjectId)));
 
   const pouzite = new Set(
     [...pouziteHodinami, ...pouzitePovodne, ...pouziteUlohami]
