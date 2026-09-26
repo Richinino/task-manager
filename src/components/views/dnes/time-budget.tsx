@@ -92,6 +92,22 @@ export function TimeBudget({
   const workMin = availableMin - meetings - skola;
 
   /*
+    Vyhradený deň ide pred všetkým ostatným — aj keď ho škola či porady
+    zjedia celý, dôvod, prečo sa rozpočet neráta, je výlet alebo celodenná
+    úloha, nie plný kalendár.
+  */
+  if (allDay || blockedBy !== null) {
+    return (
+      <p className="text-body leading-relaxed text-fg-muted sm:text-xs">
+        <span className="font-medium text-fg">
+          {blockedBy !== null ? `Deň zaberá „${blockedBy}“.` : "Deň je zabraný celodennou úlohou."}
+        </span>{" "}
+        Rozpočet sa neráta — na nič iné dnes miesto nie je.
+      </p>
+    );
+  }
+
+  /*
     Na prácu nemusí zostať nič z dvoch celkom rôznych dôvodov: buď hodiny dňa
     v nastaveniach nedávajú žiadny čas (koniec ≤ začiatok), alebo sú hodiny
     v poriadku a do posledného ich zjedli porady. Pruh v oboch prípadoch nemá
@@ -117,17 +133,6 @@ export function TimeBudget({
           <p className="text-body text-fg-subtle sm:text-xs">{missing}.</p>
         ) : null}
       </div>
-    );
-  }
-
-  if (allDay || blockedBy !== null) {
-    return (
-      <p className="text-body leading-relaxed text-fg-muted sm:text-xs">
-        <span className="font-medium text-fg">
-          {blockedBy !== null ? `Deň zaberá „${blockedBy}“.` : "Deň je zabraný celodennou úlohou."}
-        </span>{" "}
-        Rozpočet sa neráta — na nič iné dnes miesto nie je.
-      </p>
     );
   }
 

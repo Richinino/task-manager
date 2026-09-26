@@ -46,7 +46,21 @@ CREATE INDEX "tasks_agenda_idx" ON "tasks" USING btree ("agenda_item_id");--> st
   Pôvodná úloha sa mäkko zmaže a do jej histórie pribudne dôvod — nič sa
   nemaže natvrdo.
 */
-WITH presun AS (
+WITH pasmo AS (
+  /*
+    Deň vzniku v pásme používateľa, nie v UTC — dátumy v appke sú miestne
+    a písomka zapísaná tesne pred polnocou by inak skočila o deň. Neznáme
+    pásmo (nemalo by nastať, nastavenia ho overujú) nesmie zhodiť migráciu.
+  */
+  SELECT
+    u.id AS user_id,
+    CASE
+      WHEN EXISTS (SELECT 1 FROM pg_timezone_names z WHERE z.name = u.settings->>'timezone')
+        THEN u.settings->>'timezone'
+      ELSE 'Europe/Bratislava'
+    END AS tz
+  FROM users u
+), presun AS (
   SELECT
     t.id AS task_id,
     t.user_id,
@@ -57,8 +71,13 @@ WITH presun AS (
     t.project_id,
     t.status,
     coalesce(t.due_time, t.planned_time) AS cas,
-    coalesce(t.due_date, t.planned_date, (t.created_at AT TIME ZONE 'UTC')::date) AS den
+    coalesce(
+      t.due_date,
+      t.planned_date,
+      (t.created_at AT TIME ZONE coalesce(pz.tz, 'Europe/Bratislava'))::date
+    ) AS den
   FROM tasks t
+  LEFT JOIN pasmo pz ON pz.user_id = t.user_id
   WHERE t.school_kind = 'exam' AND t.deleted_at IS NULL
 ), vlozene AS (
   INSERT INTO agenda_items (
@@ -89,6 +108,7 @@ WITH presun AS (
     SELECT l.period, l.start_time, l.end_time
     FROM school_lessons l
     WHERE l.user_id = p.user_id AND l.date = p.den AND l.subject_id = p.subject_id
+      AND NOT l.cancelled
     ORDER BY l.period
     LIMIT 1
   ) h ON true

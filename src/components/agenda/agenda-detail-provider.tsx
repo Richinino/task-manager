@@ -55,6 +55,8 @@ export function AgendaDetailProvider({
   const [seq, setSeq] = useState(0);
   const [isOpen, setIsOpen] = useState(false);
   const [flash, setFlash] = useState<AgendaItemRow | null>(null);
+  /* Vrátenie zlyhalo — hláška ostane, aby človek vedel, že udalosť je stále preč. */
+  const [restoreError, setRestoreError] = useState<string | null>(null);
   const [, startTransition] = useTransition();
   const openerRef = useRef<HTMLElement | null>(null);
 
@@ -62,6 +64,7 @@ export function AgendaDetailProvider({
     const active = document.activeElement;
     openerRef.current = active instanceof HTMLElement ? active : null;
     setFlash(null);
+    setRestoreError(null);
     setItem(next);
     setSeq((n) => n + 1);
     setIsOpen(true);
@@ -86,7 +89,10 @@ export function AgendaDetailProvider({
 
   useEffect(() => {
     if (flash === null) return;
-    const timer = window.setTimeout(() => setFlash(null), FLASH_MS);
+    const timer = window.setTimeout(() => {
+      setFlash(null);
+      setRestoreError(null);
+    }, FLASH_MS);
     return () => window.clearTimeout(timer);
   }, [flash]);
 
@@ -102,6 +108,7 @@ export function AgendaDetailProvider({
           onOpenChange={setIsOpen}
           onDeleted={(deleted) => {
             setIsOpen(false);
+            setRestoreError(null);
             setFlash(deleted);
           }}
           onRestoreFocus={restoreFocus}
@@ -123,16 +130,27 @@ export function AgendaDetailProvider({
               "border border-border bg-surface px-3 py-2 text-body text-fg-muted shadow-md",
             )}
           >
-            <span className="min-w-0 truncate">„{flash.title}“ je zmazaná.</span>
+            {restoreError !== null ? (
+              <span className="min-w-0 text-danger">
+                „{flash.title}“ sa nepodarilo vrátiť: {restoreError}
+              </span>
+            ) : (
+              <span className="min-w-0 truncate">„{flash.title}“ je zmazaná.</span>
+            )}
             <Button
               type="button"
               size="sm"
               variant="secondary"
               onClick={() => {
-                const id = flash.id;
+                const deleted = flash;
                 setFlash(null);
+                setRestoreError(null);
                 startTransition(async () => {
-                  await restoreAgendaItem(id);
+                  const result = await restoreAgendaItem(deleted.id);
+                  if (!result.ok) {
+                    setRestoreError(result.error);
+                    setFlash(deleted);
+                  }
                 });
               }}
             >
