@@ -14,6 +14,7 @@ import {
 import { Undo2 } from "lucide-react";
 
 import { AgendaDetail, type AgendaSubjectOption } from "@/components/agenda/agenda-detail";
+import { useCaptureOptional } from "@/components/capture/capture-provider";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { loadAgendaItem, restoreAgendaItem } from "@/server/actions/agenda";
@@ -28,9 +29,14 @@ import type { AgendaItemRow } from "@/server/queries/agenda";
    má), alebo len id (po založení z rýchleho zachytenia).
    ═══════════════════════════════════════════════════════════════════════════ */
 
+export interface AgendaOpenOptions {
+  /** Hneď ukázať návrh prípravy — po zachytení písomky. */
+  offer?: boolean;
+}
+
 export interface AgendaDetailContextValue {
-  open: (item: AgendaItemRow) => void;
-  openById: (id: string) => void;
+  open: (item: AgendaItemRow, options?: AgendaOpenOptions) => void;
+  openById: (id: string, options?: AgendaOpenOptions) => void;
 }
 
 const AgendaDetailContext = createContext<AgendaDetailContextValue | null>(null);
@@ -52,6 +58,7 @@ export function AgendaDetailProvider({
   children: ReactNode;
 }) {
   const [item, setItem] = useState<AgendaItemRow | null>(null);
+  const [autoOffer, setAutoOffer] = useState(false);
   const [seq, setSeq] = useState(0);
   const [isOpen, setIsOpen] = useState(false);
   const [flash, setFlash] = useState<AgendaItemRow | null>(null);
@@ -60,25 +67,33 @@ export function AgendaDetailProvider({
   const [, startTransition] = useTransition();
   const openerRef = useRef<HTMLElement | null>(null);
 
-  const open = useCallback((next: AgendaItemRow) => {
+  const open = useCallback((next: AgendaItemRow, options?: AgendaOpenOptions) => {
     const active = document.activeElement;
     openerRef.current = active instanceof HTMLElement ? active : null;
     setFlash(null);
     setRestoreError(null);
+    setAutoOffer(options?.offer === true);
     setItem(next);
     setSeq((n) => n + 1);
     setIsOpen(true);
   }, []);
 
   const openById = useCallback(
-    (id: string) => {
+    (id: string, options?: AgendaOpenOptions) => {
       startTransition(async () => {
         const result = await loadAgendaItem(id);
-        if (result.ok) open(result.data);
+        if (result.ok) open(result.data, options);
       });
     },
     [open],
   );
+
+  /* Zachytenie po uložení písomky otvorí detail s návrhom prípravy. */
+  const capture = useCaptureOptional();
+  useEffect(() => {
+    if (capture === null) return;
+    return capture.registerAgendaOpener((id) => openById(id, { offer: true }));
+  }, [capture, openById]);
 
   const value = useMemo(() => ({ open, openById }), [open, openById]);
 
@@ -112,6 +127,7 @@ export function AgendaDetailProvider({
             setFlash(deleted);
           }}
           onRestoreFocus={restoreFocus}
+          autoOffer={autoOffer}
           subjects={subjects}
           todayIso={todayIso}
         />

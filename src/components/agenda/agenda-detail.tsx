@@ -4,6 +4,7 @@ import { useId, useState, useTransition, type ReactNode } from "react";
 import { ArrowLeft, LoaderCircle, X } from "lucide-react";
 
 import { AgendaShape, Countdown, SubjectChip } from "@/components/agenda/agenda-bits";
+import { AgendaPrep } from "@/components/agenda/agenda-prep";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogClose, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -33,6 +34,7 @@ import {
   updateAgendaItem,
   type AgendaInput,
 } from "@/server/actions/agenda";
+import { shiftPrep } from "@/server/actions/agenda-prep";
 import type { AgendaItemRow } from "@/server/queries/agenda";
 
 export interface AgendaSubjectOption {
@@ -49,6 +51,8 @@ export interface AgendaDetailProps {
   /** Po zmazaní — panel sa zavrie a volajúci ponúkne vrátenie. */
   onDeleted: (item: AgendaItemRow) => void;
   onRestoreFocus: () => void;
+  /** Hneď ukázať návrh prípravy — detail otvorilo zachytenie písomky. */
+  autoOffer?: boolean;
   subjects: readonly AgendaSubjectOption[];
   todayIso: string;
 }
@@ -75,6 +79,7 @@ export function AgendaDetail({
   onOpenChange,
   onDeleted,
   onRestoreFocus,
+  autoOffer = false,
   subjects,
   todayIso,
 }: AgendaDetailProps) {
@@ -82,6 +87,10 @@ export function AgendaDetail({
   const [mode, setMode] = useState<"view" | "edit" | "move" | "confirmDelete">("view");
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  /** Po presune: o koľko dní a ktoré nehotové úlohy prípravy ponúknuť posunúť. */
+  const [shift, setShift] = useState<{ delta: number; ids: string[] } | null>(null);
+  /** Zvýši sa, keď sa úlohy pod udalosťou zmenili zvonka (posun prípravy). */
+  const [prepKey, setPrepKey] = useState(0);
   const [isPending, startTransition] = useTransition();
 
   const past = isAgendaPast(item, todayIso);
@@ -205,6 +214,55 @@ export function AgendaDetail({
                 </p>
               ) : null}
 
+              {shift !== null ? (
+                <div
+                  role="status"
+                  className="flex flex-col gap-2 rounded border border-accent bg-accent-soft px-3 py-2.5 text-meta text-fg"
+                >
+                  <p>
+                    {assessment ? agendaTypeLabel(item.type) : "Udalosť"} sa posunula o{" "}
+                    {shift.delta > 0 ? "+" : "−"}
+                    {Math.abs(shift.delta)} {pluralSk(Math.abs(shift.delta), "deň", "dni", "dní")}. Posunúť aj{" "}
+                    {shift.ids.length} {pluralSk(shift.ids.length, "úlohu", "úlohy", "úloh")}
+                    {assessment ? " prípravy" : ""},{" "}
+                    {shift.ids.length === 1 ? "ktorá ešte nie je hotová" : "ktoré ešte nie sú hotové"}?
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    <Button
+                      variant="primary"
+                      size="sm"
+                      disabled={isPending}
+                      onClick={() => {
+                        const { delta, ids } = shift;
+                        run(
+                          async () => {
+                            const result = await shiftPrep(item.id, delta, ids);
+                            if (result.ok) {
+                              const n = result.data.moved;
+                              setNotice(
+                                n > 0
+                                  ? `Posunuté aj ${n} ${pluralSk(n, "úloha", "úlohy", "úloh")}.`
+                                  : "Úlohy už ležia pred udalosťou, netreba ich hýbať.",
+                              );
+                            }
+                            return result;
+                          },
+                          () => {
+                            setShift(null);
+                            setPrepKey((k) => k + 1);
+                          },
+                        );
+                      }}
+                    >
+                      {assessment ? "Posunúť aj prípravu" : "Posunúť aj úlohy"}
+                    </Button>
+                    <Button variant="ghost" size="sm" disabled={isPending} onClick={() => setShift(null)}>
+                      Nechať, kde sú
+                    </Button>
+                  </div>
+                </div>
+              ) : null}
+
               {mode === "move" ? (
                 <MoveForm
                   date={item.date}
@@ -215,13 +273,13 @@ export function AgendaDetail({
                     run(
                       async () => {
                         const result = await moveAgendaItem(item.id, date);
-                        if (result.ok && result.data.pendingTaskIds.length > 0) {
-                          const n = result.data.pendingTaskIds.length;
-                          setNotice(
-                            `Presunuté. ${n} ${pluralSk(n, "úloha", "úlohy", "úloh")} k tomu ostali na pôvodných dňoch.`,
-                          );
-                        } else if (result.ok) {
+                        if (result.ok) {
                           setNotice(null);
+                          setShift(
+                            result.data.pendingTaskIds.length > 0
+                              ? { delta: result.data.delta, ids: result.data.pendingTaskIds }
+                              : null,
+                          );
                         }
                         return result;
                       },
@@ -288,6 +346,21 @@ export function AgendaDetail({
                 <p className="rounded bg-surface-2 px-3 py-2 text-meta text-fg-muted">
                   Zaberá celé dni. Rozpočet ich ukáže ako obsadené.
                 </p>
+              ) : null}
+
+              {(assessment && !isMultiDay(item)) || item.kind === "deadline" || item.progress.total > 0 ? (
+                <AgendaPrep
+                  item={item}
+                  todayIso={todayIso}
+                  autoOffer={autoOffer}
+                  reloadKey={prepKey}
+                  onChanged={() => {
+                    void loadAgendaItem(item.id).then((fresh) => {
+                      if (fresh.ok) setItem(fresh.data);
+                    });
+                  }}
+                  onCloseDetail={() => onOpenChange(false)}
+                />
               ) : null}
 
               {past && assessment ? (
