@@ -57,7 +57,7 @@ import { nextLessonForSubject } from "@/server/actions/school";
 import { syncLinks } from "@/server/actions/links";
 import { usePostponeGuard } from "@/components/task/postpone-guard";
 import {
-  SCHOOL_KINDS,
+  TASK_SCHOOL_KINDS,
   schoolKindLabel,
   type SchoolKind,
 } from "@/lib/school-kind";
@@ -1234,7 +1234,10 @@ export function TaskDetail({
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        {SCHOOL_KINDS.map((kind) => (
+                        {(task.schoolKind === "exam"
+                          ? [...TASK_SCHOOL_KINDS, "exam" as const]
+                          : TASK_SCHOOL_KINDS
+                        ).map((kind) => (
                           <SelectItem key={kind} value={kind}>
                             {schoolKindLabel(kind)}
                           </SelectItem>

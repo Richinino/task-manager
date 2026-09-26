@@ -34,6 +34,7 @@ import {
   type ImportSummary,
 } from "@/server/school-import";
 import { requireUser } from "@/server/auth-guard";
+import { getSubjectAgenda, type AgendaItemRow } from "@/server/queries/agenda";
 
 /* ═══════════════════════════════════════════════════════════════════════════
    ŠKOLSKÝ ROZVRH — IMPORT
@@ -141,8 +142,10 @@ export async function readGroups(
 
 export interface LessonDetail {
   lesson: LessonRow;
-  /** Otvorené úlohy a písomky z toho predmetu. */
+  /** Otvorené úlohy z toho predmetu. */
   tasks: SubjectTask[];
+  /** Písomky, skúšania a deadliny z predmetu, ktoré ešte len prídu. */
+  agenda: AgendaItemRow[];
   /** Predmety a vyučujúci do výberu pri suplovaní. */
   subjects: { id: string; code: string; name: string | null }[];
   teachers: { id: string; code: string; name: string | null }[];
@@ -162,8 +165,9 @@ export async function loadLessonDetail(
       a pätnásť učiteľov — druhé kolo na server by pri otvorení panela znamenalo
       len to, že sa výber na chvíľu tvári prázdny.
     */
-    const [tasks, subjects, teachers] = await Promise.all([
+    const [tasks, agenda, subjects, teachers] = await Promise.all([
       getSubjectTasks(user.id, lesson.subjectId),
+      getSubjectAgenda(user.id, lesson.subjectId, todayIn(user.settings.timezone)),
       db
         .select({
           id: schoolSubjects.id,
@@ -184,7 +188,7 @@ export async function loadLessonDetail(
         .orderBy(asc(schoolTeachers.code)),
     ]);
 
-    return { ok: true, data: { lesson, tasks, subjects, teachers } };
+    return { ok: true, data: { lesson, tasks, agenda, subjects, teachers } };
   } catch (error) {
     return fail(error, "Detail hodiny sa nepodarilo načítať.");
   }

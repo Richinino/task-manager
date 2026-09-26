@@ -49,6 +49,8 @@ export interface OpenCaptureOptions {
   defaultDate?: string;
   /** Text, ktorý už používateľ napísal inde (napríklad do poľa v dni). */
   defaultText?: string;
+  /** Cieľ prepínača — „+ Nová" na obrazovke Udalosti otvorí rovno udalosť. */
+  defaultMode?: "event" | "deadline";
 }
 
 export interface CaptureContextValue {
@@ -130,6 +132,7 @@ export function CaptureProvider({
   /** Predvyplnenia platia vždy len pre jedno otvorenie — pri zatvorení sa mažú. */
   const [captureDate, setCaptureDate] = useState<string | null>(null);
   const [captureText, setCaptureText] = useState<string | null>(null);
+  const [captureMode, setCaptureMode] = useState<"event" | "deadline" | null>(null);
 
   // Dve okná naraz by si kradli fokus — otvorenie jedného zatvorí druhé.
   const openCapture = useCallback((options?: OpenCaptureOptions) => {
@@ -158,6 +161,8 @@ export function CaptureProvider({
     const text = options?.defaultText;
     setCaptureDate(typeof date === "string" && ISO_DATE_RE.test(date) ? date : null);
     setCaptureText(typeof text === "string" && text.trim() !== "" ? text : null);
+    const mode = options?.defaultMode;
+    setCaptureMode(mode === "event" || mode === "deadline" ? mode : null);
 
     setPaletteOpen(false);
     setCaptureOpen(true);
@@ -179,6 +184,7 @@ export function CaptureProvider({
     if (!next) {
       setCaptureDate(null);
       setCaptureText(null);
+      setCaptureMode(null);
     }
   }, []);
 
@@ -265,6 +271,7 @@ export function CaptureProvider({
         {...(autoTagRules ? { autoTagRules } : {})}
         defaultDate={captureDate ?? undefined}
         defaultText={captureText ?? undefined}
+        defaultMode={captureMode ?? undefined}
       />
 
       <CommandPalette

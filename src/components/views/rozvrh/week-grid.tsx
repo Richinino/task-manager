@@ -2,10 +2,12 @@
 
 import { useState } from "react";
 
+import { AgendaChip } from "@/components/agenda/agenda-row";
 import { areaColorValue } from "@/components/task/area-dot";
 import { WEEKDAYS_SK } from "@/lib/dates";
 import { lessonState, schoolBreakOn } from "@/lib/school";
 import { cn } from "@/lib/utils";
+import type { AgendaItemRow } from "@/server/queries/agenda";
 
 import { LessonDetail } from "./lesson-detail";
 import { useNowMinutes } from "./use-now-minutes";
@@ -37,6 +39,8 @@ export interface GridLesson {
   room: string | null;
   cancelled: boolean;
   hasNote: boolean;
+  /** „písomka" / „skúšanie", keď na tejto hodine je — hodina sa zvýrazní. */
+  agendaLabel?: string | null;
 }
 
 export interface WeekGridProps {
@@ -50,6 +54,12 @@ export interface WeekGridProps {
   timeZone: string;
   /** Čo napísať, keď v týždni nie je nič — vie to len volajúci. */
   emptyHint: string;
+  /**
+   * Školské udalosti a deadliny podľa dňa, ktoré na žiadnej hodine neležia.
+   * Deadline k hodine nepatrí (odovzdáva sa „do piatku", nie „na 3. hodine"),
+   * preto je pri dni.
+   */
+  dayAgenda?: Readonly<Record<string, readonly AgendaItemRow[]>>;
 }
 
 export function WeekGrid({
@@ -60,6 +70,7 @@ export function WeekGrid({
   nowMin,
   timeZone,
   emptyHint,
+  dayAgenda = {},
 }: WeekGridProps) {
   const [openId, setOpenId] = useState<string | null>(null);
   const teraz = useNowMinutes(nowMin, timeZone);
@@ -80,6 +91,9 @@ export function WeekGrid({
     return <p className="px-5 py-6 text-body text-fg-muted">{emptyHint}</p>;
   }
 
+  // Stĺpec dní sa rozšíri, len keď má čo niesť — inak ostane úzky ako doteraz.
+  const siroky = days.some((den) => (dayAgenda[den]?.length ?? 0) > 0);
+
   const casy = new Map<number, string>();
   for (const l of lessons) if (!casy.has(l.period)) casy.set(l.period, l.startTime);
 
@@ -90,7 +104,7 @@ export function WeekGrid({
         <table className="w-full min-w-[38rem] border-collapse">
           <thead>
             <tr className="border-b border-border">
-              <th scope="col" className="w-14 px-2 py-1.5 text-left">
+              <th scope="col" className={cn("px-2 py-1.5 text-left", siroky ? "w-36" : "w-14")}>
                 <span className="sr-only">Deň</span>
               </th>
               {periods.map((p) => (
@@ -126,6 +140,13 @@ export function WeekGrid({
                     <span className="block font-mono text-micro tabular-nums text-fg-subtle">
                       {den.slice(8)}.{den.slice(5, 7)}.
                     </span>
+                    {(dayAgenda[den]?.length ?? 0) > 0 ? (
+                      <span className="mt-1 flex flex-col gap-0.5 font-normal">
+                        {dayAgenda[den]?.map((item) => (
+                          <AgendaChip key={item.id} item={item} />
+                        ))}
+                      </span>
+                    ) : null}
                   </th>
 
                   {volno !== null ? (
@@ -165,7 +186,9 @@ export function WeekGrid({
                             "transition-colors duration-100 ease-out hover:border-border-strong hover:bg-surface-2",
                             stav === "now"
                               ? "border-accent bg-accent-soft"
-                              : "border-border bg-surface",
+                              : hodina.agendaLabel
+                                ? "border-warn bg-surface"
+                                : "border-border bg-surface",
                             stav === "past" && "opacity-55",
                           )}
                         >
@@ -213,6 +236,12 @@ export function WeekGrid({
                               {hodina.room}
                             </span>
                           ) : null}
+
+                          {hodina.agendaLabel ? (
+                            <span className="w-full truncate font-mono text-micro font-semibold uppercase tracking-[0.08em] text-warn">
+                              {hodina.agendaLabel}
+                            </span>
+                          ) : null}
                         </button>
                       </td>
                     );
@@ -245,6 +274,7 @@ function popis(lesson: GridLesson, stav: "past" | "now" | "future"): string {
     casti.push(`namiesto ${lesson.originalSubjectCode}`);
   }
   if (lesson.room) casti.push(lesson.room);
+  if (lesson.agendaLabel) casti.push(lesson.agendaLabel);
   if (lesson.cancelled) casti.push("odpadla");
   else if (stav === "past") casti.push("prebehla");
   else if (stav === "now") casti.push("práve prebieha");

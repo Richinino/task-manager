@@ -722,7 +722,25 @@ describe("domáca úloha a písomka", () => {
   it("rozpozná písomku", () => {
     expect(parseCapture("písomka z matiky").schoolKind).toBe("exam");
     expect(parseCapture("test z dejepisu").schoolKind).toBe("exam");
-    expect(parseCapture("skúšanie zo slovenčiny").schoolKind).toBe("exam");
+    expect(parseCapture("previerka z fyziky").schoolKind).toBe("exam");
+    expect(parseCapture("písomka z matiky").agendaType).toBe("exam");
+  });
+
+  /*
+    Skúšanie je udalosť, nie druh školskej práce — úloha ho nikdy nemá.
+    Preto `schoolKind` ostáva prázdny a hovorí len `agendaType`.
+  */
+  it("skúšanie je udalosť, nie druh úlohy", () => {
+    const p = parseCapture("skúšanie zo slovenčiny");
+    expect(p.agendaType).toBe("oral");
+    expect(p.schoolKind).toBeUndefined();
+    expect(p.title).not.toMatch(/skúšanie/i);
+    expect(parseCapture("ústne skúšanie z dejepisu").agendaType).toBe("oral");
+  });
+
+  it("domáca úloha udalosťou nie je", () => {
+    expect(parseCapture("DU z matiky").agendaType).toBeUndefined();
+    expect(parseCapture("učiť sa na písomku").schoolKind).toBe("study");
   });
 
   /*

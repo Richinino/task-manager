@@ -52,7 +52,11 @@ export interface OutboxContextValue {
    * Odloží text do fronty. Odmietne, ak úložisko nie je dostupné — volajúci
    * to musí povedať používateľovi, nie prehltnúť.
    */
-  enqueueCapture: (raw: string, defaultPlannedDate?: string) => Promise<void>;
+  enqueueCapture: (
+    raw: string,
+    defaultPlannedDate?: string,
+    as?: "task" | "event" | "deadline",
+  ) => Promise<void>;
 }
 
 const OutboxContext = createContext<OutboxContextValue | null>(null);
@@ -147,6 +151,7 @@ export function OutboxProvider({ children }: { children: ReactNode }) {
           const result = await quickCapture(item.raw, {
             defaultPlannedDate: item.defaultPlannedDate,
             clientId: item.id,
+            ...(item.as !== undefined ? { as: item.as } : {}),
           });
           // `{ ok: false }` = neplatný vstup. Opakovanie by dopadlo rovnako,
           // takže položka ide preč, aby neupchala frontu.
@@ -210,7 +215,11 @@ export function OutboxProvider({ children }: { children: ReactNode }) {
   /* ── zaraďovanie ──────────────────────────────────────────────────────── */
 
   const enqueueCapture = useCallback(
-    async (raw: string, defaultPlannedDate?: string): Promise<void> => {
+    async (
+      raw: string,
+      defaultPlannedDate?: string,
+      as?: "task" | "event" | "deadline",
+    ): Promise<void> => {
       const text = raw.trim();
       if (text === "") return;
 
@@ -222,6 +231,7 @@ export function OutboxProvider({ children }: { children: ReactNode }) {
       if (defaultPlannedDate !== undefined && defaultPlannedDate !== "") {
         item.defaultPlannedDate = defaultPlannedDate;
       }
+      if (as !== undefined) item.as = as;
 
       // Chyba tu ide von k volajúcemu zámerne: keď sa nedá odložiť, používateľ
       // sa to musí dozvedieť, kým má text ešte na obrazovke.
