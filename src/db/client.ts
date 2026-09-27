@@ -56,6 +56,17 @@ async function createDb() {
       */
       connectionTimeoutMillis: 8000,
     });
+    /*
+      Neon nečinné spojenia sám zatvára — pri uspatí výpočtu aj pri údržbe
+      (57P01 „terminating connection due to administrator command"). Pool
+      takého klienta zahodí sám, ale chybu vyšle ako udalosť `error` — a
+      udalosť bez poslucháča v Node zhodí celý proces. Na Verceli to bola
+      spadnutá funkcia uprostred behu plánovača. Stačí ju zachytiť: ďalší
+      dopyt si otvorí nové spojenie.
+    */
+    pool.on("error", (error) => {
+      console.warn("[db] Nečinné spojenie zaniklo, pool ho nahradí:", error.message);
+    });
     return drizzle(pool, { schema, casing: "snake_case" });
   }
 
