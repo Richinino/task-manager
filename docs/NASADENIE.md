@@ -249,9 +249,13 @@ druhý pokus zastaví.
 | `ROZVRH_URL` | `https://TVOJA-ADRESA.vercel.app/api/rozvrh` *(len s rozvrhom)* |
 | `CRON_SECRET` | **to isté** tajomstvo, aké je na Verceli |
 
-Potom workflowy povoľ v záložke **Actions** (sekcia 1). **Kým tajomstvá nie sú
-nastavené, beh zlyhá** — nech je na prvý pohľad vidno, že sa pripomienky
-neodosielajú.
+Zálohu **zapni premennou** — tamže, záložka **Variables → New repository
+variable**: `ZALOZNY_PLANOVAC` = `1`. Bez nej sa naplánované behy preskočia,
+aby kópia repozitára, ktorá nič nenastavila, neposielala každých 15 minút
+e-mail o zlyhaní. Potom workflowy povoľ v záložke **Actions** (sekcia 1).
+**Keď je záloha zapnutá a tajomstvá chýbajú, beh zlyhá** — nech je na prvý
+pohľad vidno, že sa pripomienky neodosielajú. Ručné spustenie
+(*Run workflow*) beží aj bez premennej, takže sa nastavenie dá overiť vopred.
 
 > Vo **verejnom** repozitári GitHub naplánované workflowy sám vypne, keď sa
 > v repozitári 60 dní nič nedeje. Záloha tak môže potichu zaspať — ďalší

@@ -59,6 +59,7 @@ v ktorom si ju môže nasadiť aj niekto iný.
   migrácie dobehnú samy pri produkčnom nasadení a brána nepustí von kód,
   ktorému chýba migrácia. Návod v [docs/NASADENIE.md](docs/NASADENIE.md)
   a [docs/DEPLOY.md](docs/DEPLOY.md).
+- **Licencia MIT.**
 
 ### Známe obmedzenia
 
@@ -132,6 +133,7 @@ is the state in which someone else can deploy it too.
   automatically on production deploys and a gate blocks code whose migration
   hasn't been applied. Guides: [docs/DEPLOY.md](docs/DEPLOY.md) (English),
   [docs/NASADENIE.md](docs/NASADENIE.md) (Slovak).
+- **MIT license.**
 
 ### Known limitations
 
@@ -142,6 +144,6 @@ is the state in which someone else can deploy it too.
 - Offline you can only capture new tasks and view recently loaded screens;
   edits need a connection.
 
-[Nevydané]: https://github.com/Richinino/task-manager/compare/v1.0.0...HEAD
-[Unreleased]: https://github.com/Richinino/task-manager/compare/v1.0.0...HEAD
-[1.0.0]: https://github.com/Richinino/task-manager/releases/tag/v1.0.0
+[Nevydané]: https://github.com/Richinino/task-manazer/compare/v1.0.0...HEAD
+[Unreleased]: https://github.com/Richinino/task-manazer/compare/v1.0.0...HEAD
+[1.0.0]: https://github.com/Richinino/task-manazer/releases/tag/v1.0.0

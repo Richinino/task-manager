@@ -12,6 +12,13 @@
 # z EduPage samo" aj číta. Zmena na dnešok sa teda dá chytiť ešte v ten
 # deň, ak sa odber stiahne aj cez deň, nie len v noci.
 #
+# ZAPÍNA SA premennou repozitára (Settings → Secrets and variables → Actions
+# → Variables): ZALOZNY_PLANOVAC = 1. Bez nej sa naplánované behy preskočia.
+# Kópia repozitára, ktorá nič nenastavila, by inak niekoľkokrát denne zlyhala
+# a posielala e-maily o zlyhaní — a to je presne ten šum, pre ktorý sa
+# skutočné varovanie prestane čítať. Keď je záloha zapnutá, platí pravidlo
+# nižšie: chýbajúce tajomstvo je červený beh, nie zelený.
+#
 # ČO TREBA NASTAVIŤ (Settings → Secrets and variables → Actions):
 #   ROZVRH_URL     celá adresa, napr. https://tvoja-adresa.vercel.app/api/rozvrh
 #   CRON_SECRET    to isté tajomstvo, aké je v premenných na Verceli
@@ -41,6 +48,8 @@ concurrency:
 
 jobs:
   synchronizovat:
+    # Ručné spustenie beží vždy — nech sa dá nastavenie overiť aj pred zapnutím.
+    if: vars.ZALOZNY_PLANOVAC == '1' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     timeout-minutes: 5
 

@@ -170,7 +170,10 @@ notifications.
 **Optional backup via GitHub Actions:** add repository secrets
 `PRIPOMIENKY_URL` (`https://YOUR-DOMAIN/api/pripomienky`), `ROZVRH_URL`
 (`https://YOUR-DOMAIN/api/rozvrh`) and `CRON_SECRET` (same value as on
-Vercel), then enable the workflows. Running both schedulers can't send a
+Vercel), set the repository **variable** `ZALOZNY_PLANOVAC` to `1`, then
+enable the workflows. Without the variable the scheduled runs are skipped, so
+a fresh copy doesn't email you a failure every 15 minutes; a manual *Run
+workflow* runs regardless. Running both schedulers can't send a
 reminder twice — a unique index stops the second attempt. Note that GitHub
 disables scheduled workflows in *public* repos after 60 days without
 activity.
