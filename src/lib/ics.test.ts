@@ -24,7 +24,7 @@ const FEED = [
   "DTEND:20260907T064500Z",
   "SUMMARY:ANJ",
   "LOCATION:J2 (T)",
-  "DESCRIPTION:2B j1.sk\\nLIN",
+  "DESCRIPTION:2B j1.sk\\nNOV",
   "END:VEVENT",
   "BEGIN:VEVENT",
   "UID:2026-09-07:85977977_1@skola.edupage.org",
@@ -32,7 +32,7 @@ const FEED = [
   "DTEND:20260907T064500Z",
   "SUMMARY:NEJ",
   "LOCATION:sep b",
-  "DESCRIPTION:2B j2.sk\\nMIE",
+  "DESCRIPTION:2B j2.sk\\nVAR",
   "END:VEVENT",
   "BEGIN:VEVENT",
   "UID:2026-09-07:11111111_5@skola.edupage.org",
@@ -40,7 +40,7 @@ const FEED = [
   "DTEND:20260907T103500Z",
   "SUMMARY:DEJ",
   "LOCATION:U1 (T)",
-  "DESCRIPTION:2B\\nŠUT",
+  "DESCRIPTION:2B\\nŠIM",
   "END:VEVENT",
   "END:VCALENDAR",
 ].join("\r\n");
@@ -52,7 +52,7 @@ describe("parseIcs", () => {
       subject: "ANJ",
       room: "J2 (T)",
       group: "2B j1.sk",
-      teacher: "LIN",
+      teacher: "NOV",
       period: 1,
     });
     expect(prva?.start.toISOString()).toBe("2026-09-07T06:00:00.000Z");
@@ -67,7 +67,7 @@ describe("parseIcs", () => {
   it("rozbalí escapované `\\n` na skupinu a vyučujúceho", () => {
     const hodiny = parseIcs(FEED);
     expect(hodiny.map((h) => h.group)).toContain("2B j2.sk");
-    expect(hodiny.map((h) => h.teacher)).toContain("MIE");
+    expect(hodiny.map((h) => h.teacher)).toContain("VAR");
     expect(hodiny.every((h) => !h.group.includes("\\"))).toBe(true);
   });
 
@@ -89,7 +89,7 @@ describe("parseIcs", () => {
       "SUMMARY:MAT",
       "LOCATION:Veľmi dlhá učeb",
       " ňa číslo 209",
-      "DESCRIPTION:2B\\nREI",
+      "DESCRIPTION:2B\\nKOV",
       "END:VEVENT",
     ].join("\r\n");
     expect(parseIcs(zalomeny)[0]?.room).toBe("Veľmi dlhá učebňa číslo 209");
@@ -241,7 +241,7 @@ describe("suplovanie v SUMMARY", () => {
         "DTSTART:20260902T075000Z",
         "DTEND:20260902T083500Z",
         `SUMMARY:${summary}`,
-        "DESCRIPTION:2B\nBEU",
+        "DESCRIPTION:2B\nHOR",
         "END:VEVENT",
       ].join("\n"),
     )[0];

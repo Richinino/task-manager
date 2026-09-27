@@ -18,7 +18,7 @@
  * DTEND:20260902T083500Z
  * SUMMARY:SJL
  * LOCATION:sep b
- * DESCRIPTION:2B\nBEU
+ * DESCRIPTION:2B\nHOR
  * END:VEVENT
  * ```
  *
@@ -65,7 +65,7 @@ export interface IcsLesson {
   room: string;
   /** Skupina z prvého riadku `DESCRIPTION`, napr. `2B j1.sk`. */
   group: string;
-  /** Skratka vyučujúceho z druhého riadku `DESCRIPTION`, napr. `LIN`. */
+  /** Skratka vyučujúceho z druhého riadku `DESCRIPTION`, napr. `NOV`. */
   teacher: string;
   /** Poradie hodiny z `UID`; `null`, keď sa nedá prečítať. */
   period: number | null;

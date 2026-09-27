@@ -427,7 +427,7 @@ async function overPredmet(userId: string, subjectId: string): Promise<string | 
  *
  * Skratky sa hľadajú v OBOCH tabuľkách naraz, takže sa dá vložiť jeden zoznam
  * s predmetmi aj učiteľmi zmiešane. Skratky sa medzi nimi neprekrývajú
- * (`ANJ` vs `LIN`) a keby raz áno, doplní sa oboje — čo je stále lepšie než
+ * (`ANJ` vs `NOV`) a keby raz áno, doplní sa oboje — čo je stále lepšie než
  * nútiť človeka vkladať dvakrát.
  *
  * **Prepisuje aj vyplnené mená.** Vloženie zoznamu je vedomý úkon; keby sa
@@ -563,7 +563,7 @@ export async function setTeacherName(
 /**
  * Predmety a vyučujúci na doplnenie mien — skratka a to, čo už je vyplnené.
  *
- * Zdroj dodáva len skratky (`ANJ`, `LIN`), celé názvy v ňom nie sú vôbec.
+ * Zdroj dodáva len skratky (`ANJ`, `NOV`), celé názvy v ňom nie sú vôbec.
  * Doplnia sa raz a ďalší import sa ich nedotkne.
  */
 export async function listNameable(): Promise<
