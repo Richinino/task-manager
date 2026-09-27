@@ -92,7 +92,7 @@ export function AgendaDetailProvider({
   const capture = useCaptureOptional();
   useEffect(() => {
     if (capture === null) return;
-    return capture.registerAgendaOpener((id) => openById(id, { offer: true }));
+    return capture.registerAgendaOpener((id, options) => openById(id, options));
   }, [capture, openById]);
 
   const value = useMemo(() => ({ open, openById }), [open, openById]);

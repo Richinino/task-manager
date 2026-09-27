@@ -1,4 +1,5 @@
 import {
+  CalendarHeart,
   FolderKanban,
   Layers,
   Lightbulb,
@@ -34,4 +35,7 @@ export const KIND_MARKS: Record<SearchKind, KindMark> = {
   project: { Icon: FolderKanban, label: "Projekt" },
   area: { Icon: Layers, label: "Oblasť" },
   journal: { Icon: NotebookPen, label: "Denník" },
+  /* Udalosť aj deadline nesú ikonu obrazovky Udalosti — slovo ich rozlíši. */
+  event: { Icon: CalendarHeart, label: "Udalosť" },
+  deadline: { Icon: CalendarHeart, label: "Deadline" },
 };

@@ -22,6 +22,7 @@ import { listTags } from "@/server/queries/structure";
 import { listPillars, listSkills } from "@/server/queries/learning";
 import { listHabits } from "@/server/queries/habits";
 import { listSubjects } from "@/server/queries/school";
+import { getAgendaForPalette } from "@/server/queries/agenda";
 
 export default async function AppLayout({ children }: { children: ReactNode }) {
   const user = await requireUser();
@@ -55,11 +56,17 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
     listSubjects(user.id),
   ]);
 
-  // Zásoba pre vyhľadávanie v Ctrl+K palete: naplánované okolo dneška + inbox.
+  // Zásoba pre vyhľadávanie v Ctrl+K palete: naplánované okolo dneška + inbox,
+  // udalosti v tom istom okne. Staršie nájde hľadanie v Archíve.
   const searchTasks = [
     ...(await getTasksForRange(user.id, addDays(todayIso, -60), addDays(todayIso, 180))),
     ...(await getInboxTasks(user.id)),
   ];
+  const searchEvents = await getAgendaForPalette(
+    user.id,
+    addDays(todayIso, -60),
+    addDays(todayIso, 180),
+  );
 
   async function signOutAction(): Promise<void> {
     "use server";
@@ -79,6 +86,7 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
       <OutboxProvider>
         <CaptureProvider
           tasks={searchTasks}
+          events={searchEvents}
           weekStartsOn={user.settings.weekStartsOn}
           projectNames={projects.map((project) => project.name)}
           contexts={contexts}

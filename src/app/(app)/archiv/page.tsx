@@ -13,9 +13,12 @@ import { ArchiveList, type ArchiveEntry } from "@/components/views/archiv/archiv
 import { ExportCard } from "@/components/views/archiv/export-card";
 import { SearchField } from "@/components/views/archiv/search-field";
 import { SearchResults } from "@/components/views/archiv/search-results";
+import { agendaDateSk } from "@/lib/agenda";
+import { todayIn } from "@/lib/dates";
 import { requireUser } from "@/server/auth-guard";
 import {
   countArchive,
+  getArchivedAgenda,
   getArchivedIdeas,
   getArchivedTasks,
 } from "@/server/queries/archive";
@@ -79,11 +82,12 @@ export default async function ArchivPage({ searchParams }: ArchivPageProps) {
   const filter = readArchiveFilter(params.druh);
 
   const kinds = archiveKindsFor(filter);
+  const todayIso = todayIn(user.settings.timezone);
 
-  const [hits, archivedTasks, archivedIdeas, byKind] = await Promise.all([
+  const [hits, archivedTasks, archivedIdeas, archivedAgenda, byKind] = await Promise.all([
     // Prázdny aj jednoznakový dopyt vráti `search()` prázdny sám — nemá zmysel
     // to obchádzať tu druhým `if`.
-    search(user.id, query),
+    search(user.id, query, { todayIso }),
     /*
       Len druhy otvorenej priehradky — filtrované v SQL pred limitom. Predtým
       sa načítalo 200 najnovších riadkov všetkých druhov a filtrovalo sa až
@@ -92,6 +96,7 @@ export default async function ArchivPage({ searchParams }: ArchivPageProps) {
     */
     getArchivedTasks(user.id, { kinds }),
     getArchivedIdeas(user.id, { kinds }),
+    getArchivedAgenda(user.id, { kinds }),
     countArchive(user.id),
   ]);
 
@@ -110,7 +115,7 @@ export default async function ArchivPage({ searchParams }: ArchivPageProps) {
   });
 
   /*
-    Úlohy a nápady do jedného zoznamu, od naposledy zmenených. Čas radenia sa
+    Úlohy, nápady a udalosti do jedného zoznamu, od naposledy zmenených. Čas radenia sa
     nesie zvlášť a ku klientovi sa neposiela — tam už netreba nič dopočítavať.
   */
   const rows: { at: number; entry: ArchiveEntry }[] = [
@@ -136,6 +141,20 @@ export default async function ArchivPage({ searchParams }: ArchivPageProps) {
         changedLabel: dateFormat.format(idea.updatedAt),
       } satisfies ArchiveEntry,
     })),
+    ...archivedAgenda.map((item) => ({
+      at: item.updatedAt.getTime(),
+      entry: {
+        type: item.kind,
+        id: item.id,
+        title: item.title,
+        reason: item.archiveKind,
+        // Pri udalosti je deň dôležitejší než poznámka — podľa neho ju človek spozná.
+        excerpt: [agendaDateSk(item, todayIso), item.subjectCode, excerpt(item.note)]
+          .filter(Boolean)
+          .join(" · "),
+        changedLabel: dateFormat.format(item.updatedAt),
+      } satisfies ArchiveEntry,
+    })),
   ].sort((a, b) => b.at - a.at);
 
   const visible = rows.map((row) => row.entry);
@@ -147,8 +166,8 @@ export default async function ArchivPage({ searchParams }: ArchivPageProps) {
 
       <p className="shrink-0 border-b border-border px-5 py-[11px] text-pretty text-body leading-normal text-fg-muted">
         Miesto, kde sa dá nájsť to, čo už nie je na žiadnej obrazovke. Hľadá naprieč
-        úlohami, nápadmi, projektmi, oblasťami aj denníkom — vrátane uzavretých
-        a zmazaných.
+        úlohami, nápadmi, projektmi, oblasťami, denníkom aj udalosťami — vrátane
+        uzavretých, prebehnutých a zmazaných.
       </p>
 
       <div className="flex min-h-0 flex-1 flex-col gap-5 overflow-y-auto px-5 py-4">

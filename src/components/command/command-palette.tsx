@@ -11,6 +11,7 @@ import {
   CommandList,
 } from "cmdk";
 import {
+  CalendarHeart,
   Circle,
   CircleCheck,
   FolderPlus,
@@ -29,15 +30,18 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Kbd } from "@/components/ui/kbd";
+import { agendaDateSk, agendaLastDay, matchAgenda } from "@/lib/agenda";
 import { addDays, formatRelativeSk, startOfWeek, today } from "@/lib/dates";
 import { cn } from "@/lib/utils";
+import type { PaletteAgendaItem } from "@/server/queries/agenda";
 
 /**
  * Paleta príkazov (Ctrl+K / Cmd+K).
  *
- * Skupiny: Navigácia · Akcie · Úlohy. Úlohy prichádzajú ako prop zhora
- * (`CaptureProvider` ich dostáva z layoutu) — paleta nič nedotahuje zo servera,
- * filtruje si ich sama podľa názvu, bez ohľadu na diakritiku.
+ * Skupiny: Navigácia · Akcie · Úlohy · Udalosti. Úlohy aj udalosti prichádzajú
+ * ako prop zhora (`CaptureProvider` ich dostáva z layoutu) — paleta nič
+ * nedotahuje zo servera, filtruje si ich sama podľa názvu, bez ohľadu na
+ * diakritiku.
  */
 
 /**
@@ -60,10 +64,19 @@ export interface CommandTask {
   projectName: string | null;
 }
 
+/** Udalosť tak, ako ju paleta potrebuje — tvar priamo z dotazu. */
+export type CommandEvent = PaletteAgendaItem;
+
 export interface CommandPaletteProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   tasks: readonly CommandTask[];
+  /** Udalosti okolo dneška. Chýbajúce = skupina sa neukáže. */
+  events?: readonly CommandEvent[];
+  /** Otvorí detail udalosti. Zatvorenie palety si rieši volajúci. */
+  onOpenEvent?: (id: string) => void;
+  /** Dnešok v pásme používateľa — podľa neho sú udalosti pred nami a za nami. */
+  todayIso?: string;
   /** Otvorí rýchle zachytenie. Zatvorenie palety si rieši volajúci. */
   onCreateTask: () => void;
   /** Prvý deň týždňa — podľa neho sa rozhoduje, či úloha patrí do týždňa. */
@@ -98,10 +111,11 @@ function isSubsequence(needle: string, haystack: string): boolean {
 
 /** Prefix hodnoty položky s úlohou — podľa neho filter pozná, že už je vyfiltrovaná. */
 const TASK_VALUE_PREFIX = "uloha:";
+const EVENT_VALUE_PREFIX = "udalost:";
 
 function commandFilter(value: string, search: string, keywords?: string[]): number {
-  // Úlohy si preosievame sami nižšie — cmdk ich už nemá čo zahadzovať.
-  if (value.startsWith(TASK_VALUE_PREFIX)) return 1;
+  // Úlohy a udalosti si preosievame sami nižšie — cmdk ich už nemá čo zahadzovať.
+  if (value.startsWith(TASK_VALUE_PREFIX) || value.startsWith(EVENT_VALUE_PREFIX)) return 1;
 
   const needle = fold(search.trim());
   if (needle === "") return 1;
@@ -130,6 +144,12 @@ function hrefForTask(task: CommandTask, weekStartsOn: number): string {
 
   const weekEnd = addDays(startOfWeek(todayIso, weekStartsOn), 6);
   return task.plannedDate <= weekEnd ? "/tyzden" : "/mesiac";
+}
+
+/** Pravý stĺpček riadku udalosti — kedy, a pri škole predmet. */
+function eventHint(event: CommandEvent, todayIso: string): string {
+  const when = agendaDateSk(event, todayIso);
+  return event.subjectCode !== null ? `${when} · ${event.subjectCode}` : when;
 }
 
 /** Pravý stĺpček riadku úlohy — čo najužitočnejšia jedna informácia. */
@@ -174,6 +194,9 @@ export function CommandPalette({
   open,
   onOpenChange,
   tasks,
+  events,
+  onOpenEvent,
+  todayIso,
   onCreateTask,
   weekStartsOn = 1,
 }: CommandPaletteProps) {
@@ -200,6 +223,13 @@ export function CommandPalette({
       })
       .slice(0, 8);
   }, [search, tasks]);
+
+  // Dnešok zo servera; bez neho (mimo layoutu) aspoň z prehliadača.
+  const todayForEvents = todayIso ?? today();
+  const matchedEvents = useMemo<CommandEvent[]>(
+    () => (events === undefined || onOpenEvent === undefined ? [] : matchAgenda(events, search, todayForEvents)),
+    [events, onOpenEvent, search, todayForEvents],
+  );
 
   function runAndClose(action: () => void): void {
     onOpenChange(false);
@@ -244,7 +274,7 @@ export function CommandPalette({
             <CommandInput
               value={search}
               onValueChange={setSearch}
-              placeholder="Hľadaj úlohu alebo príkaz…"
+              placeholder="Hľadaj úlohu, udalosť alebo príkaz…"
               className={cn(
                 // 16 px písmo pod `sm` — menšie si mobilný prehliadač pri
                 // fokuse priblíži a stránka ostane zväčšená.
@@ -372,6 +402,45 @@ export function CommandPalette({
                       </span>
                       <span className="max-w-32 shrink-0 truncate text-mini text-fg-subtle">
                         {taskHint(task)}
+                      </span>
+                    </CommandItem>
+                  );
+                })}
+              </CommandGroup>
+            ) : null}
+
+            {matchedEvents.length > 0 && onOpenEvent !== undefined ? (
+              <CommandGroup heading="Udalosti">
+                {matchedEvents.map((event) => {
+                  const past = agendaLastDay(event) < todayForEvents;
+                  return (
+                    <CommandItem
+                      key={event.id}
+                      value={`${EVENT_VALUE_PREFIX}${event.id}`}
+                      onSelect={() => runAndClose(() => onOpenEvent(event.id))}
+                      className={ITEM_CLASS}
+                    >
+                      <CalendarHeart
+                        aria-hidden="true"
+                        className={cn("size-4 shrink-0", (past || event.cancelled) && "opacity-45")}
+                      />
+                      <span
+                        className={cn(
+                          "min-w-0 flex-1 truncate",
+                          past && "text-fg-subtle",
+                          event.cancelled && "text-fg-subtle line-through",
+                        )}
+                      >
+                        {event.title}
+                        {/* Druh slovom pre čítačku — ikona je pre oko rovnaká. */}
+                        <span className="sr-only">
+                          {event.kind === "deadline"
+                            ? `, deadline${event.cancelled ? ", zrušený" : ""}`
+                            : `, udalosť${event.cancelled ? ", zrušená" : ""}`}
+                        </span>
+                      </span>
+                      <span className="max-w-40 shrink-0 truncate font-mono text-mini tabular-nums text-fg-subtle">
+                        {eventHint(event, todayForEvents)}
                       </span>
                     </CommandItem>
                   );
