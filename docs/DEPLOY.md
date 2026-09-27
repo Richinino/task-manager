@@ -39,8 +39,9 @@ GitHub doesn't run workflows in a fork until you enable them in the
 - **Kontrola** (CI: typecheck, tests, lint, migrations on a clean Postgres,
   build) — recommended, needs no secrets.
 - **Pripomienky** and **Rozvrh** — an optional *backup* scheduler (step 6).
-  Without their secrets they **fail on purpose** on every run, and GitHub
-  emails you each time. Leave them disabled if you don't use them.
+  Their scheduled runs start only once you set the repository variable
+  `ZALOZNY_PLANOVAC` to `1`; until then they're skipped, so enabling them
+  does no harm.
 
 ## 2. Database — Neon
 

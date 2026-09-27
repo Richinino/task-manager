@@ -144,6 +144,6 @@ is the state in which someone else can deploy it too.
 - Offline you can only capture new tasks and view recently loaded screens;
   edits need a connection.
 
-[Nevydané]: https://github.com/Richinino/task-manazer/compare/v1.0.0...HEAD
-[Unreleased]: https://github.com/Richinino/task-manazer/compare/v1.0.0...HEAD
-[1.0.0]: https://github.com/Richinino/task-manazer/releases/tag/v1.0.0
+[Nevydané]: https://github.com/Richinino/task-manager/compare/v1.0.0...HEAD
+[Unreleased]: https://github.com/Richinino/task-manager/compare/v1.0.0...HEAD
+[1.0.0]: https://github.com/Richinino/task-manager/releases/tag/v1.0.0
