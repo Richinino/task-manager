@@ -664,7 +664,7 @@ export const schoolTeachers = pgTable(
     userId: text("user_id")
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
-    /** Skratka z rozvrhu, napr. `LIN`. */
+    /** Skratka z rozvrhu, napr. `NOV`. */
     code: text("code").notNull(),
     name: text("name"),
     note: text("note"),

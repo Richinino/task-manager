@@ -157,6 +157,11 @@ v [PLAN.md](PLAN.md). Podprojekty majú vlastné dokumenty:
 
 Čo ešte nie je hotové, je v PLAN.md v sekcii **Čo zostáva**.
 
+## Licencia
+
+[MIT](LICENSE) — appku si môžeš nasadiť, upraviť aj šíriť ďalej, len nechaj
+v kópii pôvodné upozornenie o autorských právach.
+
 ---
 
 # English
@@ -326,3 +331,8 @@ documents: [docs/ROZVRH.md](docs/ROZVRH.md) (school timetable) and
 [docs/UDALOSTI.md](docs/UDALOSTI.md) (events and deadlines).
 
 What's still missing is listed in PLAN.md under **Čo zostáva** (what's left).
+
+## License
+
+[MIT](LICENSE) — you may run, modify and redistribute the app; just keep the
+original copyright notice in your copy.
