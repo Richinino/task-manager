@@ -492,6 +492,23 @@ export function getRecurringTasks(userId: string): Promise<TaskWithRelations[]> 
 }
 
 /**
+ * Otvorené výskyty jedného opakovania — koreň aj všetky jeho deti.
+ *
+ * Pre MCP `reopen_task`: znovuotvorenie výskytu nezruší ďalší výskyt, ktorý
+ * vznikol pri odškrtnutí či zahodení. Obidva ostanú otvorené a Claude to má
+ * povedať nahlas, nie nechať človeka nájsť dvojicu v zozname.
+ */
+export function getOpenOccurrences(
+  userId: string,
+  rootId: string,
+): Promise<TaskWithRelations[]> {
+  return selectTasks(
+    userId,
+    and(isOpen(), or(eq(tasks.id, rootId), eq(tasks.recurrenceParentId, rootId))),
+  );
+}
+
+/**
  * Úlohy, ktoré blokuje niekto iný. Stav `waiting` doteraz v aplikácii
  * nemal žiadne miesto, hoci v schéme je od začiatku.
  */
