@@ -16,6 +16,13 @@
 # len pripomienky, ktoré už dozreli, takže môžu meškať, ale nikdy neprídu
 # skôr.
 #
+# ZAPÍNA SA premennou repozitára (Settings → Secrets and variables → Actions
+# → Variables): ZALOZNY_PLANOVAC = 1. Bez nej sa naplánované behy preskočia.
+# Kópia repozitára, ktorá nič nenastavila, by inak každých 15 minút zlyhala
+# a posielala e-maily o zlyhaní — a to je presne ten šum, pre ktorý sa
+# skutočné varovanie prestane čítať. Keď je záloha zapnutá, platí pravidlo
+# nižšie: chýbajúce tajomstvo je červený beh, nie zelený.
+#
 # ČO TREBA NASTAVIŤ (Settings → Secrets and variables → Actions):
 #   PRIPOMIENKY_URL   celá adresa, napr. https://tvoja-adresa.vercel.app/api/pripomienky
 #   CRON_SECRET       to isté tajomstvo, aké je v premenných na Verceli
@@ -43,6 +50,8 @@ concurrency:
 
 jobs:
   odoslat:
+    # Ručné spustenie beží vždy — nech sa dá nastavenie overiť aj pred zapnutím.
+    if: vars.ZALOZNY_PLANOVAC == '1' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     timeout-minutes: 5
 
