@@ -130,7 +130,7 @@ export function SearchField({ query, filter }: SearchFieldProps) {
           autoComplete="off"
           spellCheck={false}
           aria-label="Hľadať naprieč appkou"
-          placeholder="Hľadaj v úlohách, nápadoch, projektoch…"
+          placeholder="Hľadaj v úlohách, udalostiach, nápadoch…"
           className={cn(
             "h-11 pl-9 text-base sm:h-9 sm:text-sm",
             // Miesto pre vlastné tlačidlo na vymazanie vpravo.

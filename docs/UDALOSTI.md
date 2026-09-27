@@ -165,6 +165,7 @@ preto výslovný a slová sa nemenia.
 - **Udalosti** (`/udalosti`, skratka `d` z uDalosti — `u` má Učenie) —
   zoznam dopredu po týždňoch, filter Všetko / Udalosti / Deadliny / Škola,
   prebehnuté zbalené dole so známkami.
+- **Archív a hľadanie** a **paleta Ctrl+K** — pozri [Hľadanie a export](#hľadanie-a-export).
 
 **Viacdňová udalosť, ktorá zaberá dni** (`blocks_day` — výlet, sústredenie),
 vypne v tie dni rozpočet času rovnako ako celodenná úloha: „Deň zaberá
@@ -174,6 +175,35 @@ vyhradený.
 Farba písomky je `warn` — tá istá, akou sa písomka zvýrazňovala v riadku
 úlohy. Jantárová (`frog`) ostáva výhradne priorite dňa a červená (`danger`)
 „po termíne".
+
+## Hľadanie a export
+
+Zoznam Udalostí ukazuje prebehnuté len pol roka dozadu. Otázka „kedy sme
+mali tú písomku z funkcií a čo som dostal?" je preto otázka na hľadanie.
+
+- **Hľadanie v Archíve** hľadá v názve, poznámke, mieste, poznámke ku
+  známke **aj v predmete**. Názov písomky predmet nenesie — „z fyziky" sa
+  pri zachytení vystrihne do `subject_id` — takže bez spojenia s predmetom
+  by „fyzika" písomku z fyziky nenašla.
+- Vo výsledku je pri udalosti **deň a predmet** (`po 28. 9. · MAT`, rok len
+  keď nie je tento). Písomiek s názvom „Písomka" je za rok dvadsať; bez dňa
+  by výsledok nič nepovedal. Rovnomenné sú zoradené od najbližšej, prebehnuté
+  od najnovšej.
+- Prebehnutá a zrušená sa stlmia so štítkom **prebehla / zrušená** (pri
+  deadline *uplynul / zrušený*), nie „v archíve" — nie sú v archíve, sú len
+  za nami. Ťuknutie otvorí detail (`/udalosti?udalost=<id>`), aj keď je
+  udalosť dávno mimo zoznamu.
+- **Zmazaná udalosť patrí do archívu** (priehradka Zmazané), odkiaľ sa dá
+  vrátiť. Dovtedy sa dala vrátiť len z hlášky hneď po zmazaní — presne tá
+  nedosiahnuteľnosť, kvôli ktorej archív vznikol. Prebehnuté ani zrušené
+  tam nie sú: prvé nájde hľadanie, druhé ostávajú prečiarknuté na mieste.
+- **Paleta Ctrl+K** ponúka udalosti v rovnakom okne ako úlohy (60 dní
+  dozadu, 180 dopredu) — najbližšie budúce prvé. Výber otvorí detail bez
+  ponuky prípravy; tú otvára len uloženie novej písomky.
+- **Export** (formát 3) má udalosti pod kľúčom `agenda` — `items` vrátane
+  zrušených a zmazaných a `reminders`, záznam odoslaných pripomienok. Formát
+  2 ich vynechal, hoci na ne úlohy prípravy odkazujú. Aby sa to nestalo
+  tretíkrát, test `export-coverage.test.ts` berie tabuľky priamo zo schémy.
 
 ## Presun existujúcich písomiek
 
@@ -192,7 +222,8 @@ ale v rozhraní sa už ponúkajú len tri druhy školskej práce.
    vlastné úlohy k písomke a deadlinu.
 3. **Pripomienky** — push večer vopred / ráno / hodinu vopred, aj ráno
    v deň prípravy; preklik z notifikácie do detailu.
-4. **Neskôr** — udalosti v exporte a vo vyhľadávaní.
+4. **Hľadanie a export** — udalosti v hľadaní v Archíve aj v palete
+   Ctrl+K, zmazané v archíve s vrátením, export formátu 3.
 
 Zápis do Google Kalendára zatiaľ nie — potreboval by nový súhlas s právom
 zápisu a appka stojí na tom, že kalendár je doplnok, nie podmienka.

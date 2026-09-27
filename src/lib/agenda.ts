@@ -165,6 +165,21 @@ export function shortDaySk(iso: string): string {
 }
 
 /**
+ * Deň udalosti tam, kde nie je kalendár okolo (hľadanie, archív):
+ * `pi 2. 10.`, viacdňová `pi 2. 10. – ne 4. 10.`.
+ *
+ * Rok len keď nie je tento. V hľadaní sa stretnú písomky z minulého
+ * školského roka a samo „2. 10." by bolo dvojznačné; tohtoročný rok by bol
+ * v každom riadku len šum.
+ */
+export function agendaDateSk(item: Pick<AgendaLike, "date" | "endDate">, todayIso: string): string {
+  const last = agendaLastDay(item);
+  const range = last === item.date ? shortDaySk(item.date) : `${shortDaySk(item.date)} – ${shortDaySk(last)}`;
+  const year = last.slice(0, 4);
+  return year === todayIso.slice(0, 4) ? range : `${range} ${year}`;
+}
+
+/**
  * Odpočet: `dnes`, `zajtra`, `o 3 dni`, `o 12 dní`, `včera`, `pred 5 dňami`.
  *
  * Nie „pozajtra" ani meno dňa ako pri úlohách: pri udalosti sa pýtaš
@@ -177,6 +192,32 @@ export function countdownSk(iso: string, todayIso: string): string {
   if (n === -1) return "včera";
   if (n > 1) return `o ${n} ${pluralSk(n, "deň", "dni", "dní")}`;
   return `pred ${-n} dňami`;
+}
+
+/**
+ * Udalosti, ktoré sedia na hľadaný výraz — najbližšie budúce prvé, potom
+ * nedávno prebehnuté. Vstup je zoradený podľa dňa.
+ *
+ * Hľadá sa aj v predmete a mieste: názov písomky predmet nenesie (pri
+ * zachytení sa vystrihne do vlastného poľa), takže „fyzika" by inak písomku
+ * z fyziky nenašla. Diakritika sa skladá na oboch stranách (`@/lib/fold`).
+ */
+export function matchAgenda<
+  T extends Pick<AgendaLike, "title" | "date" | "endDate"> & {
+    subjectCode: string | null;
+    subjectName: string | null;
+    place: string | null;
+  },
+>(items: readonly T[], search: string, todayIso: string, limit = 6): T[] {
+  const needle = fold(search.trim());
+  if (needle === "") return [];
+  const hit = (text: string | null): boolean => text !== null && fold(text).includes(needle);
+  const matched = items.filter(
+    (i) => hit(i.title) || hit(i.subjectCode) || hit(i.subjectName) || hit(i.place),
+  );
+  const ahead = matched.filter((i) => agendaLastDay(i) >= todayIso);
+  const behind = matched.filter((i) => agendaLastDay(i) < todayIso).reverse();
+  return [...ahead, ...behind].slice(0, limit);
 }
 
 /** Krátky názov do úzkych miest (mesiac, týždeň): `písomka MAT`, inak názov. */

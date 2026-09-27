@@ -15,7 +15,11 @@ import { Plus } from "lucide-react";
 
 import { QuickCapture } from "@/components/capture/quick-capture";
 import type { AutoTagRule } from "@/lib/rules";
-import { CommandPalette, type CommandTask } from "@/components/command/command-palette";
+import {
+  CommandPalette,
+  type CommandEvent,
+  type CommandTask,
+} from "@/components/command/command-palette";
 import { NAV_ITEMS } from "@/components/shell/sidebar";
 import { registerShortcuts, type Shortcut } from "@/lib/keyboard";
 import { cn } from "@/lib/utils";
@@ -60,12 +64,15 @@ export interface CaptureContextValue {
   openPalette: () => void;
   /**
    * Detail udalosti sa sem prihlási, aby ho zachytenie po uložení písomky
-   * vedelo otvoriť s ponukou prípravy. Detail žije pod týmto providerom,
-   * takže ho zachytenie priamo nevidí — prihlásenie obráti smer. Vráti
-   * odhlásenie.
+   * vedelo otvoriť s ponukou prípravy a paleta po výbere udalosti. Detail
+   * žije pod týmto providerom, takže ho zachytenie ani paleta priamo
+   * nevidia — prihlásenie obráti smer. Vráti odhlásenie.
    */
-  registerAgendaOpener: (open: (id: string) => void) => () => void;
+  registerAgendaOpener: (open: AgendaOpener) => () => void;
 }
+
+/** Otvorenie detailu udalosti; `offer` rovno ukáže ponuku prípravy. */
+export type AgendaOpener = (id: string, options?: { offer?: boolean }) => void;
 
 const CaptureContext = createContext<CaptureContextValue | null>(null);
 
@@ -93,6 +100,8 @@ export function useCaptureOptional(): CaptureContextValue | null {
 export interface CaptureProviderProps {
   /** Úlohy, v ktorých paleta hľadá podľa názvu. */
   tasks?: readonly TaskWithRelations[];
+  /** Udalosti okolo dneška, v ktorých paleta hľadá podľa názvu, predmetu a miesta. */
+  events?: readonly CommandEvent[];
   /** Prvý deň týždňa z nastavení používateľa. */
   weekStartsOn?: number;
   /**
@@ -124,6 +133,7 @@ function denZAdresy(raw: string | null): string | undefined {
 
 export function CaptureProvider({
   tasks,
+  events,
   weekStartsOn = 1,
   projectNames,
   contexts,
@@ -141,9 +151,9 @@ export function CaptureProvider({
   const [captureDate, setCaptureDate] = useState<string | null>(null);
   const [captureText, setCaptureText] = useState<string | null>(null);
   const [captureMode, setCaptureMode] = useState<"event" | "deadline" | null>(null);
-  const agendaOpenerRef = useRef<((id: string) => void) | null>(null);
+  const agendaOpenerRef = useRef<AgendaOpener | null>(null);
 
-  const registerAgendaOpener = useCallback((open: (id: string) => void) => {
+  const registerAgendaOpener = useCallback((open: AgendaOpener) => {
     agendaOpenerRef.current = open;
     return () => {
       if (agendaOpenerRef.current === open) agendaOpenerRef.current = null;
@@ -288,13 +298,23 @@ export function CaptureProvider({
         defaultDate={captureDate ?? undefined}
         defaultText={captureText ?? undefined}
         defaultMode={captureMode ?? undefined}
-        onAssessmentSaved={(id) => agendaOpenerRef.current?.(id)}
+        onAssessmentSaved={(id) => agendaOpenerRef.current?.(id, { offer: true })}
       />
 
       <CommandPalette
         open={paletteOpen}
         onOpenChange={setPaletteOpen}
         tasks={commandTasks}
+        {...(events ? { events } : {})}
+        onOpenEvent={(id) => {
+          /*
+            Detail je prihlásený, kým je appka nakreslená. Keby nebol (chyba
+            pri jeho načítaní), obrazovka Udalosti ho otvorí z adresy sama.
+          */
+          if (agendaOpenerRef.current !== null) agendaOpenerRef.current(id);
+          else router.push(`/udalosti?udalost=${encodeURIComponent(id)}` as RouterHref);
+        }}
+        {...(todayIso ? { todayIso } : {})}
         onCreateTask={() => openCapture()}
         weekStartsOn={weekStartsOn}
       />
