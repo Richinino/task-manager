@@ -72,8 +72,13 @@ npm run lint        # eslint
 
 ## Nasadenie
 
-Vercel + Neon + cron-job.org, všetko v bezplatných plánoch. Postup krok za
-krokom aj riešenie častých problémov je v [docs/NASADENIE.md](docs/NASADENIE.md).
+Vercel + Neon + Google + cron-job.org, všetko v bezplatných plánoch — na
+vlastných účtoch si appku rozbehne ktokoľvek. Postup krok za krokom aj riešenie
+častých problémov je v [docs/NASADENIE.md](docs/NASADENIE.md), anglicky
+v [docs/DEPLOY.md](docs/DEPLOY.md).
+
+Čo pribudlo v ktorej verzii, je v [CHANGELOG.md](CHANGELOG.md); ako nahlásiť
+chybu alebo poslať zmenu, v [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## Klávesové skratky
 
@@ -194,7 +199,7 @@ Open http://localhost:3000 and sign in with the **Pokračovať vo vývojovom re�
 cloud) **doesn't show** the sign-in button at all — development sign-in is
 enabled by `AUTH_DEV_BYPASS=1` from `.env.example`. Google sign-in is not
 needed for local development; how to enable it is described in
-[docs/NASADENIE.md](docs/NASADENIE.md).
+[docs/DEPLOY.md](docs/DEPLOY.md).
 
 ## Database
 
@@ -224,10 +229,20 @@ npm run overit      # everything at once: typecheck, tests, lint, query and desi
 npm run lint        # eslint
 ```
 
-## Deployment
+## Self-hosting
 
-Vercel + Neon + cron-job.org, all on free plans. The step-by-step guide and
-troubleshooting are in [docs/NASADENIE.md](docs/NASADENIE.md).
+Vercel + Neon + Google + cron-job.org, all on free plans — anyone can run their
+own copy on their own accounts. The step-by-step guide is
+[docs/DEPLOY.md](docs/DEPLOY.md); the more detailed Slovak one, with
+troubleshooting, is [docs/NASADENIE.md](docs/NASADENIE.md).
+
+Known limitations: the UI is Slovak only, and the app is built for one person
+(or a few people on an email allowlist, `ALLOWED_EMAILS`), not as a public
+multi-user service. The school timetable import targets Slovak schools on
+EduPage.
+
+Release history is in [CHANGELOG.md](CHANGELOG.md); how to report a bug or
+send a change is in [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## Keyboard shortcuts
 

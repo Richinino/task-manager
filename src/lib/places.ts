@@ -12,7 +12,7 @@ export interface Place {
   /** Kontext bez `@`. */
   context: string;
   /**
-   * Adresa tak, ako ju človek napísal — `Trnavská cesta 100, Bratislava`.
+   * Adresa tak, ako ju človek napísal — `Hlavné námestie 1, Bratislava`.
    *
    * Toto je to, čo sa zadáva a vidí; súradnice sú z nej **odvodené** a nikto
    * ich neprepisuje ručne. Chýba len pri miestach zadaných ešte súradnicami,
@@ -110,7 +110,7 @@ export function formatDistance(meters: number): string {
 
    Miesta sa v nastaveniach zadávajú ako text, riadok na miesto:
 
-       domino = Trnavská cesta 100, Bratislava
+       domino = Hlavné námestie 1, Bratislava
 
    Súradnice sa píšu len výnimočne — kto ich má, môže:
 

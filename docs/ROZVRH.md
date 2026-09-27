@@ -66,8 +66,8 @@ miesto na to isté by znamenalo, že ani jedno nebude úplné.
 
 ## Zdroj dát: EduPage
 
-Škola `gmet.edupage.org`, odber cez **Webcal** (ICS). Overené na skutočnom
-súbore z 31. 8. 2026:
+Odber cez **Webcal** (ICS) — v EduPage ho má každý žiak vo svojom profile.
+Overené na skutočnom súbore jednej školy z 31. 8. 2026:
 
 **Vo feede JE:** predmet (skratka), učebňa, skupina, vyučujúci (skratka),
 poradie hodiny, presný čas. 560 hodín na tri mesiace dopredu, každý deň
@@ -116,8 +116,10 @@ treba vedieť, je prečo.
 mal v pondelok 11 hodín namiesto šiestich a rozpočet dňa by bol dvojnásobne
 zožratý.
 
-Richardove skupiny: **`sepB j1.sk`**, **`sepB lab 1.sk`**, **`sepB Chlapci`**
-(plus `sepB` bez prívlastku, čo má celá trieda).
+Skupiny jedného žiaka môžu vyzerať napríklad takto: **`sepB j1.sk`**,
+**`sepB lab 1.sk`**, **`sepB Chlapci`** (plus `sepB` bez prívlastku, čo má
+celá trieda). Každá škola ich pomenúva inak, preto sa vyberajú v appke, nie
+v kóde.
 
 ### Import neprepisuje ručné zmeny
 

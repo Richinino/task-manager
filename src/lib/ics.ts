@@ -6,14 +6,14 @@
  *
  * ## Čo v tom feede naozaj je
  *
- * Overené na odbere zo `gmet.edupage.org` (31. 8. 2026, 560 udalostí na tri
+ * Overené na skutočnom odbere školy (31. 8. 2026, 560 udalostí na tri
  * mesiace dopredu). Každá hodina je **vypísaná na konkrétny dátum**, nie ako
  * opakujúce sa pravidlo — vďaka tomu sa dá uložiť riadok na deň a suplovanie
  * potom nie je zvláštny prípad, ale zmenený riadok.
  *
  * ```
  * BEGIN:VEVENT
- * UID:2026-09-02:6bb02a0f_3@gmet.edupage.org
+ * UID:2026-09-02:6bb02a0f_3@skola.edupage.org
  * DTSTART:20260902T075000Z
  * DTEND:20260902T083500Z
  * SUMMARY:SJL
@@ -242,7 +242,7 @@ function zloz(polia: Record<string, string>): IcsLesson | null {
 /**
  * Skupiny, ktoré sa v odbere vyskytujú.
  *
- * Odber je **celej triedy**, nie jedného žiaka: v odbere z `gmet` malo 153
+ * Odber je **celej triedy**, nie jedného žiaka: v skutočnom odbere malo 153
  * okienok zo 407 dve hodiny naraz (delené jazyky, laboratóriá, telesná).
  */
 export function groupsInFeed(hodiny: readonly IcsLesson[]): string[] {
@@ -268,7 +268,7 @@ function okienko(h: IcsLesson): string {
  * — nie podľa názvu. Podľa názvu by to bolo hádanie: `sepB Chlapci` sa síce
  * začína na `sepB`, ale `lab 1.sk` už nie a ďalšia škola to bude písať inak.
  *
- * Vďaka tomu sa človeka pýtame **len na skutočné voľby**: pri odbere z `gmet`
+ * Vďaka tomu sa človeka pýtame **len na skutočné voľby**: pri skutočnom odbere
  * na tri dvojice namiesto siedmich skupín.
  */
 export function competingGroups(hodiny: readonly IcsLesson[]): string[] {
