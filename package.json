@@ -4,9 +4,9 @@
   "description": "Osobný task manažér na deň, týždeň a mesiac — úlohy, udalosti, školský rozvrh a pripomienky.",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/Richinino/task-manazer.git"
+    "url": "git+https://github.com/Richinino/task-manager.git"
   },
-  "homepage": "https://github.com/Richinino/task-manazer#readme",
+  "homepage": "https://github.com/Richinino/task-manager#readme",
   "scripts": {
     "dev": "next dev",
     "build": "npm run db:migrate:nasadenie && npm run kontrola:migracie && next build",

@@ -36,9 +36,10 @@ Vo forku GitHub workflowy nespúšťa, kým ich v záložke **Actions** nepovol�
 | **Kontrola** | preklad, testy, lint, migrácie na čistom Postgrese a build pri každom pushi | odporúčané — tajomstvá nepotrebuje |
 | **Pripomienky**, **Rozvrh** | záložný plánovač (sekcia 5) | nie — hlavný plánovač je cron-job.org |
 
-Záložné workflowy bez tajomstiev **zámerne zlyhajú** pri každom behu (prečo, je
-v sekcii 5) a GitHub ti o každom zlyhaní pošle e-mail. Kto ich nechce, nech ich
-nechá vypnuté: **Actions → workflow → ⋯ → Disable workflow**.
+Záložné workflowy sa naplánovane spúšťajú, až keď nastavíš premennú repozitára
+`ZALOZNY_PLANOVAC` = `1` (sekcia 5.4). Dovtedy sa behy preskočia, takže ich
+povolenie nič nepokazí. Kto ich nechce vôbec, vypne ich cez
+**Actions → workflow → ⋯ → Disable workflow**.
 
 ---
 
