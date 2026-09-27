@@ -256,6 +256,11 @@ neodosielajú.
 > Vo **verejnom** repozitári GitHub naplánované workflowy sám vypne, keď sa
 > v repozitári 60 dní nič nedeje. Záloha tak môže potichu zaspať — ďalší
 > dôvod, prečo je hlavný plánovač inde.
+>
+> V **súkromnom** repozitári sa každý beh počíta ako aspoň celá minúta
+> z 2 000 bezplatných minút mesačne. Štvrťhodinový plán by ich vyčerpal, keby
+> ho GitHub naozaj dodržal. Fork verejného repozitára je verejný, tam minúty
+> nič nestoja.
 
 ### Overenie
 
