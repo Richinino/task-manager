@@ -244,6 +244,24 @@ stops the build. Escape hatches: `SKIP_MIGRATION=1`, `SKIP_MIGRATION_CHECK=1`.
 All environment variables, with comments, are listed in
 [`.env.example`](../.env.example).
 
+## Local development with Google sign-in
+
+Locally you don't need Google at all — `AUTH_DEV_BYPASS=1` from
+`.env.example` enables a development sign-in button. To test real Google
+sign-in locally, set in `.env.local`:
+
+```
+AUTH_SECRET=<output of npx auth secret>
+AUTH_GOOGLE_ID=...
+AUTH_GOOGLE_SECRET=...
+AUTH_DEV_BYPASS=0
+```
+
+and keep `http://localhost:3000/api/auth/callback/google` among the redirect
+URIs (step 3). Leave `DATABASE_URL` empty locally — the embedded PGlite is
+faster, works offline and doesn't touch production. The service worker is off
+in dev mode; test it with `npm run build && npm run start`.
+
 ## Costs
 
 Everything fits the free tiers: Vercel Hobby, Neon Free, cron-job.org and
