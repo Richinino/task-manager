@@ -477,7 +477,7 @@ export function SettingsForm({ settings, pushSetup }: SettingsFormProps) {
             onBlur={commitPlaces}
             rows={3}
             spellCheck={false}
-            placeholder={"domino = Hlavné námestie 1, Bratislava\npraca = Námestie SNP 1, Bratislava"}
+            placeholder={"domino = Hlavné námestie 1, Bratislava\npraca = Námestie SNP 1, Banská Bystrica"}
             // Strojopis nie je ozdoba: riadky „kľúč = hodnota" sa pod sebou
             // zarovnajú a preklep je vidieť na prvý pohľad.
             className="font-mono"

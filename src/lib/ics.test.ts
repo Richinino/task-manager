@@ -8,9 +8,9 @@ import {
 } from "./ics";
 
 /*
-  Ukážka je doslova z odberu `skola.edupage.org` (31. 8. 2026) — vrátane toho,
-  že `DESCRIPTION` nesie skupinu a vyučujúceho oddelených escapovaným `\n`
-  a že časy sú v UTC.
+  Ukážka je zo skutočného odberu z EduPage (31. 8. 2026) — vrátane toho, že
+  `DESCRIPTION` nesie skupinu a vyučujúceho oddelených escapovaným `\n` a že
+  časy sú v UTC. Vymyslené sú len doména školy a číslo kalendára.
 */
 const FEED = [
   "BEGIN:VCALENDAR",
