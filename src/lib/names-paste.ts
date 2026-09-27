@@ -1,7 +1,7 @@
 /**
  * Čítanie dvojíc „skratka — celé meno" z vloženého textu.
  *
- * Rozvrh z EduPage dodáva len skratky (`ANJ`, `LIN`). Celé názvy v ňom nie sú
+ * Rozvrh z EduPage dodáva len skratky (`ANJ`, `NOV`). Celé názvy v ňom nie sú
  * vôbec, takže sa dopĺňajú ručne — a pri pätnástich predmetoch a pätnástich
  * vyučujúcich je vypisovanie po jednom políčku tridsať zbytočných krokov.
  *

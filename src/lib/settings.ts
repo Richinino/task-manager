@@ -150,7 +150,7 @@ export const settingsSchema = z.object({
   reminderLeadMin: z.number().int().min(0).max(120).default(10),
 
   /**
-   * Školské skupiny, do ktorých človek patrí — napr. `sepB j1.sk`.
+   * Školské skupiny, do ktorých človek patrí — napr. `2B j1.sk`.
    *
    * Odber rozvrhu je celej triedy, nie jedného žiaka: delené jazyky,
    * laboratóriá a telesná stoja v jednom okienku dvakrát. Bez výberu by mal

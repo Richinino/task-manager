@@ -297,9 +297,9 @@ describe("značky", () => {
   });
 
   it("e-mail nie je kontext", () => {
-    const r = p("napísať richard@gmail.com");
+    const r = p("napísať peter@gmail.com");
     expect(r.context).toBeUndefined();
-    expect(r.title).toBe("napísať richard@gmail.com");
+    expect(r.title).toBe("napísať peter@gmail.com");
   });
 
   it("odhad", () => {

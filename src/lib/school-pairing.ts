@@ -5,7 +5,7 @@
  *
  * Jedinečný index v schéme je `(user, dátum, poradie, predmet)` — predmet je
  * jeho súčasťou, lebo delené skupiny dávajú na tú istú hodinu dva rôzne
- * predmety naraz (`sepB Chlapci` a `lab 1.sk`).
+ * predmety naraz (`2B Chlapci` a `lab 1.sk`).
  *
  * Lenže ručné suplovanie **prepíše predmet** na ten, čo naozaj bude. Hodina,
  * ktorú si opravil, tým z pohľadu slotu zmizne: import ju nenájde, založí ju

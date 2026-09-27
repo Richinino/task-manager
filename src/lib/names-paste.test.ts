@@ -29,18 +29,18 @@ describe("parseNamePairs", () => {
   });
 
   it("berie tabulátor aj čiarku", () => {
-    expect(parseNamePairs("LIN\tAgáta Lintnerová")).toEqual([
-      { code: "LIN", name: "Agáta Lintnerová" },
+    expect(parseNamePairs("NOV\tAnna Nováková")).toEqual([
+      { code: "NOV", name: "Anna Nováková" },
     ]);
-    expect(parseNamePairs("REI,Monika Reiterová")).toEqual([
-      { code: "REI", name: "Monika Reiterová" },
+    expect(parseNamePairs("KOV,Mária Kováčová")).toEqual([
+      { code: "KOV", name: "Mária Kováčová" },
     ]);
   });
 
   /* Delí sa na PRVOM oddeľovači — meno môže mať čiarku, skratka nikdy. */
   it("neroztrhne meno s titulom za čiarkou", () => {
-    expect(parseNamePairs("BEU,Robert Beutelhauser, PhD.")).toEqual([
-      { code: "BEU", name: "Robert Beutelhauser, PhD." },
+    expect(parseNamePairs("HOR,Peter Horváth, PhD.")).toEqual([
+      { code: "HOR", name: "Peter Horváth, PhD." },
     ]);
   });
 

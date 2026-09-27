@@ -18,7 +18,7 @@
  * DTEND:20260902T083500Z
  * SUMMARY:SJL
  * LOCATION:sep b
- * DESCRIPTION:sepB\nBEU
+ * DESCRIPTION:2B\nHOR
  * END:VEVENT
  * ```
  *
@@ -63,9 +63,9 @@ export interface IcsLesson {
   originalSubject: string | null;
   /** Učebňa z `LOCATION`. Prázdny reťazec, keď chýba. */
   room: string;
-  /** Skupina z prvého riadku `DESCRIPTION`, napr. `sepB j1.sk`. */
+  /** Skupina z prvého riadku `DESCRIPTION`, napr. `2B j1.sk`. */
   group: string;
-  /** Skratka vyučujúceho z druhého riadku `DESCRIPTION`, napr. `LIN`. */
+  /** Skratka vyučujúceho z druhého riadku `DESCRIPTION`, napr. `NOV`. */
   teacher: string;
   /** Poradie hodiny z `UID`; `null`, keď sa nedá prečítať. */
   period: number | null;
@@ -260,13 +260,13 @@ function okienko(h: IcsLesson): string {
  * Toto je celý vtip filtrovania. V odbere sú dva druhy skupín a vyzerajú
  * rovnako:
  *
- * - **`sepB`** — celá trieda. Keď má trieda dejepis, je v tom okienku sama.
- * - **`sepB j1.sk` / `sepB j2.sk`** — delenie. V jednom okienku stoja obe
+ * - **`2B`** — celá trieda. Keď má trieda dejepis, je v tom okienku sama.
+ * - **`2B j1.sk` / `2B j2.sk`** — delenie. V jednom okienku stoja obe
  *   a človek chodí práve na jednu.
  *
  * Rozoznajú sa podľa toho, či sa v niektorom okienku stretnú s inou skupinou
- * — nie podľa názvu. Podľa názvu by to bolo hádanie: `sepB Chlapci` sa síce
- * začína na `sepB`, ale `lab 1.sk` už nie a ďalšia škola to bude písať inak.
+ * — nie podľa názvu. Podľa názvu by to bolo hádanie: `2B Chlapci` sa síce
+ * začína na `2B`, ale `lab 1.sk` už nie a ďalšia škola to bude písať inak.
  *
  * Vďaka tomu sa človeka pýtame **len na skutočné voľby**: pri skutočnom odbere
  * na tri dvojice namiesto siedmich skupín.
@@ -293,7 +293,7 @@ export function competingGroups(hodiny: readonly IcsLesson[]): string[] {
  * Nechá len hodiny, na ktoré človek naozaj chodí.
  *
  * Hodina prejde, keď je jej skupina vybraná — alebo keď sa **o nič
- * nedelí**. To druhé je dôležité: celotriedne hodiny (`sepB`) by inak
+ * nedelí**. To druhé je dôležité: celotriedne hodiny (`2B`) by inak
  * vypadli, hoci na ne chodia všetci, a človek by musel medzi „svoje
  * skupiny" tikať aj vlastnú triedu.
  *

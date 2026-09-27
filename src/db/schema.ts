@@ -664,7 +664,7 @@ export const schoolTeachers = pgTable(
     userId: text("user_id")
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
-    /** Skratka z rozvrhu, napr. `LIN`. */
+    /** Skratka z rozvrhu, napr. `NOV`. */
     code: text("code").notNull(),
     name: text("name"),
     note: text("note"),
@@ -694,7 +694,7 @@ export const schoolLessons = pgTable(
       onDelete: "set null",
     }),
     room: text("room"),
-    /** Skupina zo zdroja, napr. `sepB j1.sk`. Podľa nej sa filtruje delenie. */
+    /** Skupina zo zdroja, napr. `2B j1.sk`. Podľa nej sa filtruje delenie. */
     groupName: text("group_name"),
     /** Poznámka k tejto jednej hodine — „doniesť zošit". */
     note: text("note"),

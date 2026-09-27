@@ -24,7 +24,7 @@ const FEED = [
   "DTEND:20260907T064500Z",
   "SUMMARY:ANJ",
   "LOCATION:J2 (T)",
-  "DESCRIPTION:sepB j1.sk\\nLIN",
+  "DESCRIPTION:2B j1.sk\\nNOV",
   "END:VEVENT",
   "BEGIN:VEVENT",
   "UID:2026-09-07:85977977_1@skola.edupage.org",
@@ -32,7 +32,7 @@ const FEED = [
   "DTEND:20260907T064500Z",
   "SUMMARY:NEJ",
   "LOCATION:sep b",
-  "DESCRIPTION:sepB j2.sk\\nMIE",
+  "DESCRIPTION:2B j2.sk\\nVAR",
   "END:VEVENT",
   "BEGIN:VEVENT",
   "UID:2026-09-07:11111111_5@skola.edupage.org",
@@ -40,7 +40,7 @@ const FEED = [
   "DTEND:20260907T103500Z",
   "SUMMARY:DEJ",
   "LOCATION:U1 (T)",
-  "DESCRIPTION:sepB\\nŠUT",
+  "DESCRIPTION:2B\\nŠIM",
   "END:VEVENT",
   "END:VCALENDAR",
 ].join("\r\n");
@@ -51,8 +51,8 @@ describe("parseIcs", () => {
     expect(prva).toMatchObject({
       subject: "ANJ",
       room: "J2 (T)",
-      group: "sepB j1.sk",
-      teacher: "LIN",
+      group: "2B j1.sk",
+      teacher: "NOV",
       period: 1,
     });
     expect(prva?.start.toISOString()).toBe("2026-09-07T06:00:00.000Z");
@@ -66,8 +66,8 @@ describe("parseIcs", () => {
   */
   it("rozbalí escapované `\\n` na skupinu a vyučujúceho", () => {
     const hodiny = parseIcs(FEED);
-    expect(hodiny.map((h) => h.group)).toContain("sepB j2.sk");
-    expect(hodiny.map((h) => h.teacher)).toContain("MIE");
+    expect(hodiny.map((h) => h.group)).toContain("2B j2.sk");
+    expect(hodiny.map((h) => h.teacher)).toContain("VAR");
     expect(hodiny.every((h) => !h.group.includes("\\"))).toBe(true);
   });
 
@@ -89,7 +89,7 @@ describe("parseIcs", () => {
       "SUMMARY:MAT",
       "LOCATION:Veľmi dlhá učeb",
       " ňa číslo 209",
-      "DESCRIPTION:sepB\\nREI",
+      "DESCRIPTION:2B\\nKOV",
       "END:VEVENT",
     ].join("\r\n");
     expect(parseIcs(zalomeny)[0]?.room).toBe("Veľmi dlhá učebňa číslo 209");
@@ -165,26 +165,26 @@ describe("parseIcs", () => {
 describe("groupsInFeed", () => {
   it("vymenuje skupiny bez prázdnych a bez opakovania", () => {
     expect(groupsInFeed(parseIcs(FEED))).toEqual([
-      "sepB",
-      "sepB j1.sk",
-      "sepB j2.sk",
+      "2B",
+      "2B j1.sk",
+      "2B j2.sk",
     ]);
   });
 });
 
 describe("competingGroups", () => {
   /*
-    Toto je jadro celého filtrovania. `sepB` je celá trieda a v okienku stojí
-    sama; `sepB j1.sk` a `sepB j2.sk` stoja v jednom okienku oproti sebe.
-    Rozoznať sa to musí podľa okienok, nie podľa názvu — `sepB Chlapci` sa
-    síce začína na `sepB`, ale `lab 1.sk` už nie.
+    Toto je jadro celého filtrovania. `2B` je celá trieda a v okienku stojí
+    sama; `2B j1.sk` a `2B j2.sk` stoja v jednom okienku oproti sebe.
+    Rozoznať sa to musí podľa okienok, nie podľa názvu — `2B Chlapci` sa
+    síce začína na `2B`, ale `lab 1.sk` už nie.
   */
   it("nájde len tie skupiny, medzi ktorými sa vyberá", () => {
-    expect(competingGroups(parseIcs(FEED))).toEqual(["sepB j1.sk", "sepB j2.sk"]);
+    expect(competingGroups(parseIcs(FEED))).toEqual(["2B j1.sk", "2B j2.sk"]);
   });
 
   it("keď sa nič nedelí, netreba sa na nič pýtať", () => {
-    const bezDelenia = parseIcs(FEED).filter((h) => h.group === "sepB");
+    const bezDelenia = parseIcs(FEED).filter((h) => h.group === "2B");
     expect(competingGroups(bezDelenia)).toEqual([]);
   });
 });
@@ -198,7 +198,7 @@ describe("filterByGroups", () => {
     namiesto šiestich a škola by mu rozpočet dňa zožrala dvakrát.
   */
   it("nechá vybranú skupinu a zahodí tú druhú", () => {
-    const moje = filterByGroups(hodiny, ["sepB j1.sk"]);
+    const moje = filterByGroups(hodiny, ["2B j1.sk"]);
     expect(moje.map((h) => h.subject).sort()).toEqual(["ANJ", "DEJ"]);
   });
 
@@ -208,7 +208,7 @@ describe("filterByGroups", () => {
     rozumnú odpoveď — a to nie je otázka.
   */
   it("celotriednu hodinu nechá aj bez tikania", () => {
-    const moje = filterByGroups(hodiny, ["sepB j2.sk"]);
+    const moje = filterByGroups(hodiny, ["2B j2.sk"]);
     expect(moje.map((h) => h.subject).sort()).toEqual(["DEJ", "NEJ"]);
   });
 
@@ -221,7 +221,7 @@ describe("filterByGroups", () => {
   });
 
   it("neznámu skupinu vo výbere znesie a delené zahodí", () => {
-    const moje = filterByGroups(hodiny, ["sepB nic-take"]);
+    const moje = filterByGroups(hodiny, ["2B nic-take"]);
     expect(moje.map((h) => h.subject)).toEqual(["DEJ"]);
   });
 });
@@ -241,7 +241,7 @@ describe("suplovanie v SUMMARY", () => {
         "DTSTART:20260902T075000Z",
         "DTEND:20260902T083500Z",
         `SUMMARY:${summary}`,
-        "DESCRIPTION:sepB\nBEU",
+        "DESCRIPTION:2B\nHOR",
         "END:VEVENT",
       ].join("\n"),
     )[0];

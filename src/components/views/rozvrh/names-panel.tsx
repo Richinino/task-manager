@@ -10,7 +10,7 @@ import { importNames, setSubjectName, setTeacherName } from "@/server/actions/sc
 /* ═══════════════════════════════════════════════════════════════════════════
    CELÉ NÁZVY
 
-   Zdroj dodáva len skratky — `ANJ`, `LIN`. Celé názvy v ňom nie sú vôbec,
+   Zdroj dodáva len skratky — `ANJ`, `NOV`. Celé názvy v ňom nie sú vôbec,
    takže sa doplnia raz a **ďalší import sa ich nedotkne**: import píše len
    to, čo z odberu naozaj prišlo.
 
@@ -19,7 +19,7 @@ import { importNames, setSubjectName, setTeacherName } from "@/server/actions/sc
    ═══════════════════════════════════════════════════════════════════════════ */
 
 /** Ukážka tvaru v prázdnom poli. Dva riadky — predmet a vyučujúci. */
-const PRIKLAD = ["ANJ;Anglický jazyk", "LIN;Agáta Lintnerová"].join("\n");
+const PRIKLAD = ["ANJ;Anglický jazyk", "NOV;Anna Nováková"].join("\n");
 
 export interface NameItem {
   id: string;
@@ -138,7 +138,7 @@ export function NamesPanel({ subjects, teachers }: NamesPanelProps) {
           polozky={teachers}
           onSave={setTeacherName}
           onError={setError}
-          placeholder="Napríklad: Monika Reiterová"
+          placeholder="Napríklad: Mária Kováčová"
         />
       </div>
     </div>

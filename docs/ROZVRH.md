@@ -116,8 +116,8 @@ treba vedieť, je prečo.
 mal v pondelok 11 hodín namiesto šiestich a rozpočet dňa by bol dvojnásobne
 zožratý.
 
-Skupiny jedného žiaka môžu vyzerať napríklad takto: **`sepB j1.sk`**,
-**`sepB lab 1.sk`**, **`sepB Chlapci`** (plus `sepB` bez prívlastku, čo má
+Skupiny jedného žiaka môžu vyzerať napríklad takto: **`2B j1.sk`**,
+**`2B lab 1.sk`**, **`2B Chlapci`** (plus `2B` bez prívlastku, čo má
 celá trieda). Každá škola ich pomenúva inak, preto sa vyberajú v appke, nie
 v kóde.
 
