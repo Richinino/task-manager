@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   agendaBlockingDay,
   agendaBusyMinutes,
+  agendaDateSk,
   agendaGroup,
   agendaKindLabel,
   agendaShortTitle,
@@ -17,6 +18,7 @@ import {
   isOnDay,
   isValidGrade,
   lessonForSubject,
+  matchAgenda,
   shortDaySk,
   weekSpans,
   type AgendaLike,
@@ -87,6 +89,16 @@ describe("čas do riadku", () => {
   it("shortDaySk", () => {
     expect(shortDaySk("2026-10-02")).toBe("pi 2. 10.");
     expect(shortDaySk("2026-10-01")).toBe("št 1. 10.");
+  });
+
+  it("agendaDateSk — rok len keď nie je tento", () => {
+    const dnes = "2026-09-27";
+    expect(agendaDateSk({ date: "2026-10-02", endDate: null }, dnes)).toBe("pi 2. 10.");
+    expect(agendaDateSk({ date: "2026-10-02", endDate: "2026-10-04" }, dnes)).toBe("pi 2. 10. – ne 4. 10.");
+    // Písomka z minulého školského roka.
+    expect(agendaDateSk({ date: "2025-10-02", endDate: null }, dnes)).toBe("št 2. 10. 2025");
+    // Koniec pred začiatkom je jednodňová — rovnako ako všade inde.
+    expect(agendaDateSk({ date: "2026-10-02", endDate: "2026-10-01" }, dnes)).toBe("pi 2. 10.");
   });
 });
 
@@ -293,5 +305,41 @@ describe("assessmentTitle", () => {
 
   it("skratka vnútri slova sa nevyberie", () => {
     expect(assessmentTitle("exam", "automat", mat)).toBe("Písomka — automat");
+  });
+});
+
+describe("matchAgenda", () => {
+  const dnes = "2026-09-27";
+  const u = (id: string, date: string, extra: Partial<{ title: string; subjectCode: string; subjectName: string; place: string }> = {}) => ({
+    id,
+    title: extra.title ?? "Písomka",
+    date,
+    endDate: null,
+    subjectCode: extra.subjectCode ?? null,
+    subjectName: extra.subjectName ?? null,
+    place: extra.place ?? null,
+  });
+  const zoznam = [
+    u("stara", "2026-09-10", { subjectCode: "FYZ", subjectName: "Fyzika" }),
+    u("vcera", "2026-09-26", { subjectCode: "MAT", subjectName: "Matematika" }),
+    u("dnes", "2026-09-27", { title: "Zubár", place: "Poliklinika" }),
+    u("buduca", "2026-10-02", { title: "Písomka — funkcie", subjectCode: "MAT", subjectName: "Matematika" }),
+    u("neskor", "2026-11-20", { subjectCode: "FYZ", subjectName: "Fyzika" }),
+  ];
+
+  it("najbližšie budúce prvé, potom nedávno prebehnuté", () => {
+    expect(matchAgenda(zoznam, "pisomka", dnes).map((i) => i.id)).toEqual(["buduca", "neskor", "vcera", "stara"]);
+  });
+
+  it("nájde podľa predmetu a miesta, bez ohľadu na diakritiku", () => {
+    expect(matchAgenda(zoznam, "fyzika", dnes).map((i) => i.id)).toEqual(["neskor", "stara"]);
+    expect(matchAgenda(zoznam, "mat", dnes).map((i) => i.id)).toEqual(["buduca", "vcera"]);
+    expect(matchAgenda(zoznam, "poliklinika", dnes).map((i) => i.id)).toEqual(["dnes"]);
+    expect(matchAgenda(zoznam, "ZUBAR", dnes).map((i) => i.id)).toEqual(["dnes"]);
+  });
+
+  it("prázdny dopyt nič, limit platí", () => {
+    expect(matchAgenda(zoznam, "  ", dnes)).toEqual([]);
+    expect(matchAgenda(zoznam, "a", dnes, 2)).toHaveLength(2);
   });
 });

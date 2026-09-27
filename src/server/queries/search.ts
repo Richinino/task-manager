@@ -1,18 +1,21 @@
 import "server-only";
 
-import { and, eq, or, sql, type SQL } from "drizzle-orm";
+import { and, desc, eq, or, sql, type SQL } from "drizzle-orm";
 import type { AnyPgColumn } from "drizzle-orm/pg-core";
 
 import { getDb } from "@/db";
-import { areas, ideas, journal, projects, tasks } from "@/db/schema";
+import { agendaItems, areas, ideas, journal, projects, schoolSubjects, tasks } from "@/db/schema";
+import { agendaDateSk, isAgendaPast } from "@/lib/agenda";
 import { FOLD_FROM, FOLD_TO, fold, likeContains } from "@/lib/fold";
 
 /* ═══════════════════════════════════════════════════════════════════════════
    FULLTEXT
 
-   Hľadá naprieč úlohami, nápadmi, projektmi, oblasťami a denníkom — vrátane
-   toho, čo je uzavreté alebo mäkko zmazané. Práve staré veci sa hľadajú
-   najčastejšie; to, čo je na obrazovke, netreba hľadať.
+   Hľadá naprieč úlohami, nápadmi, projektmi, oblasťami, denníkom a udalosťami
+   — vrátane toho, čo je uzavreté alebo mäkko zmazané. Práve staré veci sa
+   hľadajú najčastejšie; to, čo je na obrazovke, netreba hľadať. Pri
+   udalostiach doslova: „kedy sme mali tú písomku z funkcií?" je otázka na
+   hľadanie, nie na zoznam, ktorý ukazuje, čo príde.
 
    Skladá sa `translate()`, nie `unaccent`: to je rozšírenie, ktoré Neon má
    a PGlite nemusí. Dvojice písmen prichádzajú z `@/lib/fold`, aby paleta
@@ -22,7 +25,7 @@ import { FOLD_FROM, FOLD_TO, fold, likeContains } from "@/lib/fold";
    stemming aj tak nefungoval, a pri osobnej appke ide o tisíce riadkov.
    ═══════════════════════════════════════════════════════════════════════════ */
 
-export type SearchKind = "task" | "idea" | "project" | "area" | "journal";
+export type SearchKind = "task" | "idea" | "project" | "area" | "journal" | "event" | "deadline";
 
 export interface SearchHit {
   kind: SearchKind;
@@ -31,8 +34,30 @@ export interface SearchHit {
   /** Kúsok textu, v ktorom sa zhoda našla. `null`, keď je zhoda v názve. */
   snippet: string | null;
   href: string;
+  /**
+   * Krátky kontext za druhom — pri udalosti deň a predmet (`pi 2. 10. · MAT`).
+   * Udalosť bez dňa vo výsledku nič nepovie: písomiek „Písomka" je v roku
+   * dvadsať.
+   */
+  meta: string | null;
   /** Uzavreté, zahodené alebo mäkko zmazané — v zozname sa stlmí. */
   archived: boolean;
+  /**
+   * Štítok stlmeného zásahu, keď „v archíve" nesedí. Prebehnutá písomka nie
+   * je v archíve — je len za nami.
+   */
+  archivedLabel?: string;
+  /** Deň udalosti — len na poradie rovnomenných („Písomka" je ich dvadsať). */
+  date?: string;
+}
+
+export interface SearchOptions {
+  /**
+   * Dnešok v pásme používateľa — podľa neho je udalosť prebehnutá. Povinný:
+   * server beží v UTC a večer by inak dnešnú písomku ukázal ako včerajšiu.
+   */
+  todayIso: string;
+  limit?: number;
 }
 
 /** `lower(translate(stĺpec, …))` — presne to, čo robí `fold()` v JavaScripte. */
@@ -77,7 +102,7 @@ function snippetAround(text: string | null, needle: string, radius = 40): string
 export async function search(
   userId: string,
   query: string,
-  limit = 40,
+  { todayIso, limit = 40 }: SearchOptions,
 ): Promise<SearchHit[]> {
   const needle = fold(query.trim());
   if (needle.length < 2) return [];
@@ -85,7 +110,7 @@ export async function search(
   const db = await getDb();
   const perKind = Math.max(5, Math.ceil(limit / 3));
 
-  const [taskRows, ideaRows, projectRows, areaRows, journalRows] = await Promise.all([
+  const [taskRows, ideaRows, projectRows, areaRows, journalRows, agendaRows] = await Promise.all([
     db
       .select({
         id: tasks.id,
@@ -155,6 +180,46 @@ export async function search(
       .from(journal)
       .where(and(eq(journal.userId, userId), matches(journal.body, needle)))
       .limit(perKind),
+
+    /*
+      Udalosti aj s predmetom. Názov písomky predmet nenesie — „z fyziky" sa
+      pri zachytení z názvu vystrihne do `subjectId` — takže bez spojenia by
+      „fyzika" písomku z fyziky nenašla. Najnovšie prvé: pri dvadsiatich
+      písomkách za rok je tá z minulého týždňa pravdepodobnejšia než tá
+      spred roka.
+    */
+    db
+      .select({
+        id: agendaItems.id,
+        kind: agendaItems.kind,
+        title: agendaItems.title,
+        note: agendaItems.note,
+        place: agendaItems.place,
+        gradeNote: agendaItems.gradeNote,
+        date: agendaItems.date,
+        endDate: agendaItems.endDate,
+        cancelledAt: agendaItems.cancelledAt,
+        deletedAt: agendaItems.deletedAt,
+        subjectCode: schoolSubjects.code,
+        subjectName: schoolSubjects.name,
+      })
+      .from(agendaItems)
+      .leftJoin(schoolSubjects, eq(agendaItems.subjectId, schoolSubjects.id))
+      .where(
+        and(
+          eq(agendaItems.userId, userId),
+          or(
+            matches(agendaItems.title, needle),
+            matches(agendaItems.note, needle),
+            matches(agendaItems.place, needle),
+            matches(agendaItems.gradeNote, needle),
+            matches(schoolSubjects.name, needle),
+            matches(schoolSubjects.code, needle),
+          ),
+        ),
+      )
+      .orderBy(desc(agendaItems.date))
+      .limit(perKind),
   ]);
 
   const hits: SearchHit[] = [];
@@ -171,6 +236,7 @@ export async function search(
         (row.context !== null && fold(row.context).includes(needle) ? row.context : null),
       // Úloha nemá vlastnú adresu — panel s detailom sa otvára z obrazoviek.
       href: "/dnes",
+      meta: null,
       archived:
         row.deletedAt !== null || row.status === "done" || row.status === "dropped",
     });
@@ -183,6 +249,7 @@ export async function search(
       title: row.title,
       snippet: snippetAround(row.body, needle),
       href: "/napady",
+      meta: null,
       archived:
         row.deletedAt !== null || row.stage === "promoted" || row.stage === "rejected",
     });
@@ -195,6 +262,7 @@ export async function search(
       title: row.name,
       snippet: snippetAround(row.goal, needle),
       href: `/projekty/${row.id}`,
+      meta: null,
       archived:
         row.deletedAt !== null || row.status === "done" || row.status === "dropped",
     });
@@ -207,6 +275,7 @@ export async function search(
       title: row.name,
       snippet: null,
       href: "/oblasti",
+      meta: null,
       archived: row.deletedAt !== null,
     });
   }
@@ -218,7 +287,48 @@ export async function search(
       title: `Denník — ${row.date}`,
       snippet: snippetAround(row.body, needle),
       href: "/dnes",
+      meta: null,
       archived: false,
+    });
+  }
+
+  for (const row of agendaRows) {
+    const deadline = row.kind === "deadline";
+    const deleted = row.deletedAt !== null;
+    const cancelled = row.cancelledAt !== null;
+    const past = isAgendaPast(row, todayIso);
+    const subjectMatch =
+      row.subjectName !== null &&
+      (fold(row.subjectName).includes(needle) || fold(row.subjectCode ?? "").includes(needle));
+
+    hits.push({
+      kind: row.kind,
+      id: row.id,
+      title: row.title,
+      snippet:
+        snippetAround(row.note, needle) ??
+        snippetAround(row.place, needle) ??
+        snippetAround(row.gradeNote, needle) ??
+        (subjectMatch ? row.subjectName : null),
+      meta: [agendaDateSk(row, todayIso), row.subjectCode].filter(Boolean).join(" · "),
+      /*
+        Živá, prebehnutá aj zrušená udalosť sa otvorí v detaile. Zmazanú
+        detail nenačíta — jej miesto je v archíve medzi zmazanými, kde sa dá
+        vrátiť. Dopyt ide so sebou, aby výsledky ostali na obrazovke.
+      */
+      href: deleted
+        ? `/archiv?q=${encodeURIComponent(query.trim())}&druh=zmazane`
+        : `/udalosti?udalost=${encodeURIComponent(row.id)}`,
+      archived: deleted || cancelled || past,
+      date: row.date,
+      // Rod podľa druhu, ktorý stojí hneď vedľa: „Udalosť · prebehla", „Deadline · uplynul".
+      ...(deleted
+        ? {}
+        : cancelled
+          ? { archivedLabel: deadline ? "zrušený" : "zrušená" }
+          : past
+            ? { archivedLabel: deadline ? "uplynul" : "prebehla" }
+            : {}),
     });
   }
 
@@ -233,7 +343,10 @@ export async function search(
       const aTitle = fold(a.title).includes(needle) ? 0 : 1;
       const bTitle = fold(b.title).includes(needle) ? 0 : 1;
       if (aTitle !== bTitle) return aTitle - bTitle;
-      return a.title.localeCompare(b.title, "sk");
+      const byTitle = a.title.localeCompare(b.title, "sk");
+      if (byTitle !== 0 || a.date === undefined || b.date === undefined) return byTitle;
+      // Rovnomenné udalosti: čo príde, od najbližšej; čo prešlo, od najnovšej.
+      return a.archived ? b.date.localeCompare(a.date) : a.date.localeCompare(b.date);
     })
     .slice(0, limit);
 }

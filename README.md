@@ -143,15 +143,14 @@ Next.js 16 (App Router) · React 19 · TypeScript 6 · Tailwind CSS 4 · Drizzle
 | M0–M9 — od kostry po šablóny, odkazy, archív a export | hotové |
 | Školský rozvrh — import z EduPage, suplovanie, prázdniny, úlohy k predmetom | hotové |
 | Učenie — piliere, zručnosti, míľniky, lekcia z dokončenej úlohy | hotové |
-| Udalosti a deadliny — písomky, viacdňové udalosti, príprava na písomku, pripomienky | hotové |
+| Udalosti a deadliny — písomky, viacdňové udalosti, príprava na písomku, pripomienky, hľadanie a export | hotové |
 
 **Všetko je nasadené a používa sa.** Rozpis míľnikov aj rozhodnutia za nimi sú
 v [PLAN.md](PLAN.md). Podprojekty majú vlastné dokumenty:
 [docs/ROZVRH.md](docs/ROZVRH.md) (školský rozvrh) a
 [docs/UDALOSTI.md](docs/UDALOSTI.md) (udalosti a deadliny).
 
-Čo ešte nie je hotové, je v PLAN.md v sekcii **Čo zostáva**; pri udalostiach
-ešte export a vyhľadávanie.
+Čo ešte nie je hotové, je v PLAN.md v sekcii **Čo zostáva**.
 
 ---
 
@@ -304,12 +303,11 @@ Next.js 16 (App Router) · React 19 · TypeScript 6 · Tailwind CSS 4 · Drizzle
 | M0–M9 — from the skeleton to templates, links, archive and export | done |
 | School timetable — EduPage import, substitutions, holidays, tasks per subject | done |
 | Learning — pillars, skills, milestones, a lesson from a finished task | done |
-| Events and deadlines — exams, multi-day events, exam prep, reminders | done |
+| Events and deadlines — exams, multi-day events, exam prep, reminders, search and export | done |
 
 **Everything is deployed and in daily use.** The milestone breakdown and the
 decisions behind it are in [PLAN.md](PLAN.md). Sub-projects have their own
 documents: [docs/ROZVRH.md](docs/ROZVRH.md) (school timetable) and
 [docs/UDALOSTI.md](docs/UDALOSTI.md) (events and deadlines).
 
-What's still missing is listed in PLAN.md under **Čo zostáva** (what's left);
-for events, export and search.
+What's still missing is listed in PLAN.md under **Čo zostáva** (what's left).

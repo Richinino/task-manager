@@ -2,6 +2,8 @@ import { eq, getTableColumns } from "drizzle-orm";
 
 import { getDb } from "@/db";
 import {
+  agendaItems,
+  agendaReminders,
   areas,
   habitEntries,
   habits,
@@ -43,6 +45,12 @@ import { getCurrentUser } from "@/server/auth-guard";
    Formát 2 (od 25. 9. 2026) pridal školský rozvrh a učenie. Formát 1 ich
    vynechával, hoci úlohy na ne odkazujú (`subjectId`, `lessonPillarId`,
    `lessonSkillId`) — záloha by sa po obnove nedala zložiť dokopy.
+
+   Formát 3 (od 27. 9. 2026) pridal udalosti a deadliny (`agenda`). Formát 2
+   ich nemal, hoci na ne úlohy prípravy odkazujú (`agendaItemId`) — rovnaká
+   chyba ako pri formáte 1. Aby sa nezopakovala tretíkrát, stráži ju test
+   `export-coverage.test.ts`: tabuľka zo schémy, ktorá tu nie je a nie je
+   ani vedome vynechaná, zhodí testy.
    ═══════════════════════════════════════════════════════════════════════════ */
 
 export const dynamic = "force-dynamic";
@@ -89,6 +97,8 @@ export async function GET(): Promise<Response> {
       userSkills,
       userSkillMilestones,
       userReminders,
+      userAgendaItems,
+      userAgendaReminders,
     ] = await Promise.all([
       db.select().from(tasks).where(eq(tasks.userId, user.id)),
       db.select().from(taskEvents).where(eq(taskEvents.userId, user.id)),
@@ -119,11 +129,13 @@ export async function GET(): Promise<Response> {
       db.select().from(skills).where(eq(skills.userId, user.id)),
       db.select().from(skillMilestones).where(eq(skillMilestones.userId, user.id)),
       db.select().from(reminders).where(eq(reminders.userId, user.id)),
+      db.select().from(agendaItems).where(eq(agendaItems.userId, user.id)),
+      db.select().from(agendaReminders).where(eq(agendaReminders.userId, user.id)),
     ]);
 
     const payload = {
       exportedAt: new Date().toISOString(),
-      format: 2,
+      format: 3,
       user: { id: user.id, email: user.email, name: user.name, settings: user.settings },
       tasks: userTasks,
       taskEvents: userTaskEvents,
@@ -150,6 +162,15 @@ export async function GET(): Promise<Response> {
         milestones: userSkillMilestones,
       },
       reminders: userReminders,
+      /*
+        Udalosti vrátane zrušených a mäkko zmazaných. `reminders` je záznam
+        odoslaných pripomienok — bez neho by obnovená záloha poslala každú
+        pripomienku, ktorá ešte nie je 6 hodín po čase, druhýkrát.
+      */
+      agenda: {
+        items: userAgendaItems,
+        reminders: userAgendaReminders,
+      },
     };
 
     const stamp = new Date().toISOString().slice(0, 10);

@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import {
+  CalendarHeart,
   CircleCheck,
   CircleSlash,
   Lightbulb,
@@ -16,6 +17,7 @@ import {
 import { TaskEmpty } from "@/components/task/task-empty";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { restoreAgendaItem } from "@/server/actions/agenda";
 import { restoreIdea } from "@/server/actions/ideas";
 import { restoreTask } from "@/server/actions/tasks";
 import type { ArchiveKind } from "@/server/queries/archive";
@@ -26,9 +28,9 @@ import { pluralSk } from "@/lib/sk";
 /* ═══════════════════════════════════════════════════════════════════════════
    ZOZNAM ARCHÍVU
 
-   Úlohy a nápady v jednom zozname, zoradené podľa poslednej zmeny. Dva
-   oddelené zoznamy by nútili človeka hľadať dvakrát — pritom otázka je vždy
-   tá istá: „čo som to vtedy zahodil?"
+   Úlohy, nápady a zmazané udalosti v jednom zozname, zoradené podľa poslednej
+   zmeny. Oddelené zoznamy by nútili človeka hľadať viackrát — pritom otázka
+   je vždy tá istá: „čo som to vtedy zahodil?"
 
    Vrátenie sa ponúka len pri mäkko zmazaných. Hotová úloha sa nevracia
    tlačidlom „vrátiť", ale tým, že sa odškrtne späť na svojej obrazovke —
@@ -37,8 +39,8 @@ import { pluralSk } from "@/lib/sk";
 
 /** Jeden riadok archívu. Server ho pošle hotový, klient už nič nedopočítava. */
 export interface ArchiveEntry {
-  /** Úloha alebo nápad — v spoločnom zozname sa musia rozoznať na prvý pohľad. */
-  type: "task" | "idea";
+  /** Čo to je — v spoločnom zozname sa musia rozoznať na prvý pohľad. */
+  type: "task" | "idea" | "event" | "deadline";
   id: string;
   title: string;
   /** Prečo je vec v archíve. */
@@ -64,7 +66,16 @@ const REASONS: Record<ArchiveKind, { label: string; Icon: LucideIcon; tone: stri
 const TYPES: Record<ArchiveEntry["type"], { label: string; Icon: LucideIcon }> = {
   task: { label: "Úloha", Icon: ListTodo },
   idea: { label: "Nápad", Icon: Lightbulb },
+  event: { label: "Udalosť", Icon: CalendarHeart },
+  deadline: { label: "Deadline", Icon: CalendarHeart },
 };
+
+/** Vrátenie podľa druhu. Udalosť do archívu prichádza len zmazaním. */
+function restoreEntry(entry: ArchiveEntry) {
+  if (entry.type === "task") return restoreTask(entry.id);
+  if (entry.type === "idea") return restoreIdea(entry.id);
+  return restoreAgendaItem(entry.id);
+}
 
 /**
  * Prázdny archív nie je porucha, ale výsledok.
@@ -150,7 +161,7 @@ export function ArchiveList({ entries, filter }: ArchiveListProps) {
   const restore = useCallback(
     (entry: ArchiveEntry) => {
       const name = entry.title.trim();
-      const noun = entry.type === "task" ? "Úloha" : "Nápad";
+      const noun = TYPES[entry.type].label;
 
       setError(null);
       setFlash(null);
@@ -160,10 +171,7 @@ export function ArchiveList({ entries, filter }: ArchiveListProps) {
 
       startTransition(async () => {
         try {
-          const result =
-            entry.type === "task"
-              ? await restoreTask(entry.id)
-              : await restoreIdea(entry.id);
+          const result = await restoreEntry(entry);
 
           if (!result.ok) {
             // Riadok sa musí vrátiť — inak by vec z obrazovky zmizla, hoci na
@@ -287,7 +295,7 @@ function ArchiveRow({ entry, onRestore }: ArchiveRowProps) {
         </div>
 
         {/*
-          Vrátiť sa dá zmazané (úloha aj nápad) a zahodená úloha — tú
+          Vrátiť sa dá zmazané (úloha, nápad aj udalosť) a zahodená úloha — tú
           `restoreTask` znova otvorí. Zamietnutý nápad sa vracia na doske
           nápadov, nie tu.
         */}
