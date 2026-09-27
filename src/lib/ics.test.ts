@@ -8,18 +8,18 @@ import {
 } from "./ics";
 
 /*
-  Ukážka je doslova z odberu `gmet.edupage.org` (31. 8. 2026) — vrátane toho,
-  že `DESCRIPTION` nesie skupinu a vyučujúceho oddelených escapovaným `\n`
-  a že časy sú v UTC.
+  Ukážka je zo skutočného odberu z EduPage (31. 8. 2026) — vrátane toho, že
+  `DESCRIPTION` nesie skupinu a vyučujúceho oddelených escapovaným `\n` a že
+  časy sú v UTC. Vymyslené sú len doména školy a číslo kalendára.
 */
 const FEED = [
   "BEGIN:VCALENDAR",
   "PRODID:-//aSc//Edupage//EN",
   "VERSION:2.0",
-  "X-WR-CALNAME:Rozvrh: 5089303",
+  "X-WR-CALNAME:Rozvrh: 1234567",
   "X-WR-TIMEZONE:Europe/Bratislava",
   "BEGIN:VEVENT",
-  "UID:2026-09-07:6bb02a0f_1@gmet.edupage.org",
+  "UID:2026-09-07:6bb02a0f_1@skola.edupage.org",
   "DTSTART:20260907T060000Z",
   "DTEND:20260907T064500Z",
   "SUMMARY:ANJ",
@@ -27,7 +27,7 @@ const FEED = [
   "DESCRIPTION:sepB j1.sk\\nLIN",
   "END:VEVENT",
   "BEGIN:VEVENT",
-  "UID:2026-09-07:85977977_1@gmet.edupage.org",
+  "UID:2026-09-07:85977977_1@skola.edupage.org",
   "DTSTART:20260907T060000Z",
   "DTEND:20260907T064500Z",
   "SUMMARY:NEJ",
@@ -35,7 +35,7 @@ const FEED = [
   "DESCRIPTION:sepB j2.sk\\nMIE",
   "END:VEVENT",
   "BEGIN:VEVENT",
-  "UID:2026-09-07:11111111_5@gmet.edupage.org",
+  "UID:2026-09-07:11111111_5@skola.edupage.org",
   "DTSTART:20260907T095000Z",
   "DTEND:20260907T103500Z",
   "SUMMARY:DEJ",

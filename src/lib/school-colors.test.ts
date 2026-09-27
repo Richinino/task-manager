@@ -4,7 +4,7 @@ import { AREA_COLOR_OPTIONS } from "@/components/views/oblasti/area-colors";
 
 import { subjectColor } from "./school-colors";
 
-/** Skratky z jeho skutočného rozvrhu (gmet.edupage.org). */
+/** Skratky zo skutočného rozvrhu z EduPage. */
 const JEHO_PREDMETY = [
   "ANJ",
   "BIO",
