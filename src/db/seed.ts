@@ -30,7 +30,9 @@ async function main() {
     await db.insert(users).values({
       id,
       email,
-      name: "Richard",
+      // Bez mena — bočný panel vtedy ukáže e-mail. Natvrdo zapísané meno by
+      // dostal každý, kto si appku spustí, a prihlásenie ho neprepíše.
+      name: null,
       settings: DEFAULT_SETTINGS,
     });
     user = await db.query.users.findFirst({ where: eq(users.email, email) });
