@@ -98,9 +98,9 @@ describe("formatDistance", () => {
 describe("placesToText", () => {
   it("vypíše adresu, nie súradnice — práve tú človek napísal", () => {
     const places: Place[] = [
-      { context: "domino", address: "Trnavská cesta 100, Bratislava", lat: 48.1, lon: 17.1 },
+      { context: "domino", address: "Hlavné námestie 1, Bratislava", lat: 48.1, lon: 17.1 },
     ];
-    expect(placesToText(places)).toBe("domino = Trnavská cesta 100, Bratislava");
+    expect(placesToText(places)).toBe("domino = Hlavné námestie 1, Bratislava");
   });
 
   /*
@@ -120,8 +120,8 @@ describe("placesToText", () => {
 
 describe("textToPlaceEntries", () => {
   it("rozdelí riadok na kontext a adresu", () => {
-    expect(textToPlaceEntries("domino = Trnavská cesta 100, Bratislava")).toEqual([
-      { context: "domino", query: "Trnavská cesta 100, Bratislava" },
+    expect(textToPlaceEntries("domino = Hlavné námestie 1, Bratislava")).toEqual([
+      { context: "domino", query: "Hlavné námestie 1, Bratislava" },
     ]);
   });
 
@@ -184,7 +184,7 @@ describe("parseCoordinates", () => {
   */
   it("adresa začínajúca číslom NIE je dvojica súradníc", () => {
     expect(parseCoordinates("100, Bratislava")).toBeNull();
-    expect(parseCoordinates("Trnavská 100")).toBeNull();
+    expect(parseCoordinates("Hlavná 100")).toBeNull();
   });
 
   it("jedno číslo nestačí", () => {
