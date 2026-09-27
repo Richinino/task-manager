@@ -1085,7 +1085,9 @@ Jeden JSON so všetkým, cez `GET` s `Content-Disposition: attachment`.
 
 Export obsahuje **aj mäkko zmazané** riadky — je to záloha, nie prehľad. Neobsahuje tokeny z `accounts`: poverenie ku Googlu do zálohy nepatrí. Ani `push_subscriptions`: kľúče prehliadača platia pre jedno zariadenie.
 
-**Nová tabuľka s `userId` patrí do exportu.** Formát 1 vynechával školský rozvrh a učenie, hoci úlohy na ne odkazujú. Formát 2 ich má pod kľúčmi `school` a `learning`, k tomu `reminders`.
+**Nová tabuľka patrí do exportu.** Formát 1 vynechával školský rozvrh a učenie, hoci úlohy na ne odkazujú. Formát 2 ich má pod kľúčmi `school` a `learning`, k tomu `reminders`. Formát 3 pridal udalosti a deadliny pod kľúčom `agenda` (`items`, `reminders`) — formát 2 ich vynechával rovnako, hoci na ne odkazuje `tasks.agendaItemId`.
+
+Aby sa to nestalo tretíkrát potichu, stráži to `src/app/api/export/export-coverage.test.ts`: berie tabuľky priamo zo schémy a každá musí byť v `route.ts`, alebo v jeho zozname vedome vynechaných aj s dôvodom (`users` ide ako objekt `user`, `accounts` a `pushSubscriptions` zámerne nie).
 
 ## Šablóny — `src/server/actions/templates.ts`
 

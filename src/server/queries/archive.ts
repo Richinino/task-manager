@@ -3,7 +3,8 @@ import "server-only";
 import { and, desc, eq, isNotNull, isNull, or, sql, type SQL } from "drizzle-orm";
 
 import { getDb } from "@/db";
-import { ideas, tasks, type Idea, type Task } from "@/db/schema";
+import { agendaItems, ideas, schoolSubjects, tasks, type Idea, type Task } from "@/db/schema";
+import type { AgendaKind } from "@/lib/agenda";
 
 /* ═══════════════════════════════════════════════════════════════════════════
    ARCHÍV
@@ -33,6 +34,20 @@ export interface ArchivedTask extends Task {
 
 export interface ArchivedIdea extends Idea {
   archiveKind: ArchiveKind;
+}
+
+/** Zmazaná udalosť alebo deadline — len to, čo riadok archívu ukáže. */
+export interface ArchivedAgendaItem {
+  id: string;
+  kind: AgendaKind;
+  title: string;
+  note: string | null;
+  date: string;
+  endDate: string | null;
+  subjectCode: string | null;
+  updatedAt: Date;
+  /** Udalosť sa do archívu dostane jedine zmazaním. */
+  archiveKind: "deleted";
 }
 
 /**
@@ -116,7 +131,44 @@ export async function getArchivedIdeas(
 }
 
 /**
- * Koľko úloh a nápadov leží v ktorom druhu archívu — celkom, nie z načítanej
+ * Mäkko zmazané udalosti a deadliny, od naposledy zmenených.
+ *
+ * Len zmazané. Prebehnutá udalosť nie je „hotová" — je za nami a nájde ju
+ * hľadanie; zrušená ostáva prečiarknutá tam, kde bola (docs/UDALOSTI.md).
+ * Do archívu teda patrí iba zmazanie, teda omyl, ktorý sa vracia späť.
+ * Predtým sa zmazaná udalosť dala vrátiť len z hlášky hneď po zmazaní —
+ * presne tá nedosiahnuteľnosť, kvôli ktorej archív vznikol.
+ */
+export async function getArchivedAgenda(
+  userId: string,
+  options: ArchiveOptions = {},
+): Promise<ArchivedAgendaItem[]> {
+  const kinds = options.kinds ?? ARCHIVE_KINDS;
+  if (!kinds.includes("deleted")) return [];
+
+  const db = await getDb();
+  const rows = await db
+    .select({
+      id: agendaItems.id,
+      kind: agendaItems.kind,
+      title: agendaItems.title,
+      note: agendaItems.note,
+      date: agendaItems.date,
+      endDate: agendaItems.endDate,
+      subjectCode: schoolSubjects.code,
+      updatedAt: agendaItems.updatedAt,
+    })
+    .from(agendaItems)
+    .leftJoin(schoolSubjects, eq(agendaItems.subjectId, schoolSubjects.id))
+    .where(and(eq(agendaItems.userId, userId), isNotNull(agendaItems.deletedAt)))
+    .orderBy(desc(agendaItems.updatedAt))
+    .limit(options.limit ?? 200);
+
+  return rows.map((row) => ({ ...row, archiveKind: "deleted" as const }));
+}
+
+/**
+ * Koľko úloh, nápadov a zmazaných udalostí leží v ktorom druhu archívu — celkom, nie z načítanej
  * stránky. Čísla v prepínači inak rástli najviac po limit a pri veľkom
  * archíve klamali.
  */
@@ -125,7 +177,7 @@ export async function countArchive(userId: string): Promise<Record<ArchiveKind, 
   const count = (condition: SQL) =>
     sql<number>`cast(count(*) filter (where ${condition}) as int)`;
 
-  const [taskRows, ideaRows] = await Promise.all([
+  const [taskRows, ideaRows, agendaRows] = await Promise.all([
     db
       .select({
         done: count(taskKindSql("done")),
@@ -142,6 +194,10 @@ export async function countArchive(userId: string): Promise<Record<ArchiveKind, 
       })
       .from(ideas)
       .where(eq(ideas.userId, userId)),
+    db
+      .select({ deleted: count(isNotNull(agendaItems.deletedAt)) })
+      .from(agendaItems)
+      .where(eq(agendaItems.userId, userId)),
   ]);
 
   const t = taskRows[0];
@@ -149,6 +205,6 @@ export async function countArchive(userId: string): Promise<Record<ArchiveKind, 
   return {
     done: Number(t?.done ?? 0) + Number(i?.done ?? 0),
     dropped: Number(t?.dropped ?? 0) + Number(i?.dropped ?? 0),
-    deleted: Number(t?.deleted ?? 0) + Number(i?.deleted ?? 0),
+    deleted: Number(t?.deleted ?? 0) + Number(i?.deleted ?? 0) + Number(agendaRows[0]?.deleted ?? 0),
   };
 }

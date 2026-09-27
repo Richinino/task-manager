@@ -133,10 +133,63 @@ export async function getAgendaForRange(
   return withRelations(userId, rows);
 }
 
+/** Udalosť do Ctrl+K palety — len to, podľa čoho sa hľadá a čo riadok ukáže. */
+export interface PaletteAgendaItem {
+  id: string;
+  kind: "event" | "deadline";
+  title: string;
+  date: string;
+  endDate: string | null;
+  cancelled: boolean;
+  place: string | null;
+  subjectCode: string | null;
+  subjectName: string | null;
+}
+
+/**
+ * Udalosti okolo dneška do palety — rovnaké okno ako úlohy v nej.
+ *
+ * Ľahší dotaz než `getAgendaForRange`: paleta nepotrebuje postup prípravy
+ * ani farbu predmetu a beží v layoute pri každej navigácii. Predmet áno —
+ * názov písomky ho nenesie a „fyzika" ju má nájsť.
+ */
+export async function getAgendaForPalette(
+  userId: string,
+  fromIso: string,
+  toIso: string,
+): Promise<PaletteAgendaItem[]> {
+  const db = await getDb();
+  const rows = await db
+    .select({
+      id: agendaItems.id,
+      kind: agendaItems.kind,
+      title: agendaItems.title,
+      date: agendaItems.date,
+      endDate: agendaItems.endDate,
+      cancelledAt: agendaItems.cancelledAt,
+      place: agendaItems.place,
+      subjectCode: schoolSubjects.code,
+      subjectName: schoolSubjects.name,
+    })
+    .from(agendaItems)
+    .leftJoin(schoolSubjects, eq(agendaItems.subjectId, schoolSubjects.id))
+    .where(
+      and(
+        eq(agendaItems.userId, userId),
+        isNull(agendaItems.deletedAt),
+        lte(agendaItems.date, toIso),
+        gte(sql`coalesce(${agendaItems.endDate}, ${agendaItems.date})`, fromIso),
+      ),
+    )
+    .orderBy(asc(agendaItems.date));
+
+  return rows.map(({ cancelledAt, ...row }) => ({ ...row, cancelled: cancelledAt !== null }));
+}
+
 /**
  * Všetko do obrazovky „Udalosti": budúce celé, prebehnuté za posledné pol
- * roka. Staršie sa nestratia — nájdu sa v exporte — ale zoznam, ktorý rastie
- * donekonečna, by sa prestal čítať.
+ * roka. Staršie sa nestratia — nájde ich hľadanie v Archíve a sú v exporte —
+ * ale zoznam, ktorý rastie donekonečna, by sa prestal čítať.
  */
 export async function getAgendaList(userId: string, todayIso: string): Promise<AgendaItemRow[]> {
   const db = await getDb();

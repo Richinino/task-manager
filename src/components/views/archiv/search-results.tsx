@@ -87,7 +87,8 @@ export function SearchResults({ query, hits }: SearchResultsProps) {
               <Link
                 /*
                   `href` prichádza zo serverovej vrstvy ako obyčajný reťazec
-                  (raz `/dnes`, raz `/projekty/<id>`), takže ho `typedRoutes`
+                  (raz `/dnes`, raz `/projekty/<id>`, raz
+                  `/udalosti?udalost=<id>`), takže ho `typedRoutes`
                   nemá ako overiť. Cesty skladá `search.ts` a nie sú vstupom
                   od používateľa.
                 */
@@ -121,9 +122,15 @@ export function SearchResults({ query, hits }: SearchResultsProps) {
                       {mark.label}
                     </span>
 
+                    {hit.meta === null ? null : (
+                      <span className="shrink-0 font-mono text-mini tabular-nums text-fg-muted">
+                        {hit.meta}
+                      </span>
+                    )}
+
                     {hit.archived ? (
                       <span className="shrink-0 rounded-full bg-surface-2 px-1.5 py-px text-micro font-medium text-fg-subtle">
-                        v archíve
+                        {hit.archivedLabel ?? "v archíve"}
                       </span>
                     ) : null}
                   </span>
