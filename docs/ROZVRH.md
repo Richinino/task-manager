@@ -161,6 +161,31 @@ pozná:
 Prešlé hodiny stlmené, prebiehajúca zvýraznená — to je to automatické
 odškrtávanie.
 
+### Cez víkend už budúci týždeň
+
+**Od soboty rozvrh ukazuje týždeň, ktorý príde**, nie ten, čo práve skončil.
+V sobotu ráno už piatkové hodiny nikoho nezaujímajú — žiak chce vedieť, čo
+ho čaká v pondelok, a nemá to hľadať šípkou. Platí to len pre otvorenie bez
+`?od=`; šípka späť ukáže skončený týždeň ako doteraz a **„Dnes"** vedie na
+ten predvolený, takže v sobotu nevráti človeka tam, odkiaľ ho appka práve
+posunula.
+
+- Rozhoduje **kalendárny deň v pásme používateľa**, nie hodina: sobota je
+  sobotou od polnoci. Pravidlo „od piatka poobede" by muselo vedieť, kedy
+  v piatok končí škola; sobota je hranica, ktorá sa nemá ako pomýliť.
+- Počíta sa **dátumom**: cez víkend je kotvou najbližší pondelok a týždeň
+  z neho poskladá `weekDays` podľa začiatku týždňa z nastavení. Pri týždni od
+  nedele tak nedeľa ostane v týždni, ktorý práve začala — pevné „+ 7 dní" by
+  ho preskočilo. Keď týždeň začína utorkom až piatkom, najbližší pondelok je
+  v bežiacom týždni a nemení sa nič.
+- Odškrtávanie aj zvýraznenie dneška sa riadia **skutočným dneškom**, nie
+  kotvou. V budúcom týždni dnešok jednoducho nie je, takže nič nesvieti
+  a všetky hodiny sú ešte pred nami. Hlavička vtedy napíše „budúci týždeň".
+- Obrazovky Týždeň, Dnes a Mesiac sa nemenia. Plánuje sa v nich od dneška,
+  takže sa držia dnešného dňa aj cez víkend.
+
+Kód: `defaultTimetableAnchor` v `src/lib/school.ts`.
+
 ### Suplovanie
 
 **Zapisuje sa priamo do riadku hodiny.** `subjectId`, `teacherId` a `room`

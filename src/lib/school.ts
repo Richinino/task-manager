@@ -1,4 +1,4 @@
-import { diffDays, timeToMinutes } from "./dates";
+import { addDays, diffDays, parseIsoDate, timeToMinutes } from "./dates";
 
 /**
  * Čísla a stavy školského rozvrhu.
@@ -265,4 +265,33 @@ export function nextLessonDate(
   }
 
   return najblizsia;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   KTORÝ TÝŽDEŇ UKÁZAŤ
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/**
+ * Kotva týždňa, ktorý rozvrh ukáže, keď v adrese nie je `?od=`: cez víkend
+ * najbližší pondelok, inak dnešok.
+ *
+ * V sobotu ráno už týždeň, ktorý práve skončil, nikoho nezaujíma — človek
+ * chce vedieť, čo ho čaká v pondelok, a nemá to hľadať šípkou. Starý týždeň
+ * ostáva o jedno ťuknutie späť.
+ *
+ * **Vracia dátum, nie začiatok týždňa.** Ktorý týždeň z neho vznikne, rozhodne
+ * až `weekDays` podľa `weekStartsOn`, takže to sedí pri každom začiatku
+ * týždňa. Pevné „začiatok tohto týždňa + 7 dní" by pri týždni od nedele
+ * v nedeľu preskočilo celý týždeň: nedeľa už JE v týždni s najbližším
+ * pondelkom. A keď týždeň začína utorkom až piatkom, najbližší pondelok leží
+ * v práve bežiacom týždni a nič sa nezmení.
+ *
+ * Rozhoduje len kalendárny deň v pásme používateľa (`todayIn`), žiadna
+ * hodina — sobota je sobotou od polnoci.
+ */
+export function defaultTimetableAnchor(todayIso: string): string {
+  const den = parseIsoDate(todayIso).getDay();
+  if (den === 6) return addDays(todayIso, 2);
+  if (den === 0) return addDays(todayIso, 1);
+  return todayIso;
 }

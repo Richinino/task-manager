@@ -7,8 +7,9 @@ import { NamesPanel } from "@/components/views/rozvrh/names-panel";
 import { ScheduleImport } from "@/components/views/rozvrh/schedule-import";
 import { WeekGrid } from "@/components/views/rozvrh/week-grid";
 import { agendaShortTitle, assessmentsOnLessons, compareAgenda, isOnDay } from "@/lib/agenda";
-import { addDays, formatDuration, minutesIn, todayIn, weekDays } from "@/lib/dates";
+import { addDays, formatDuration, minutesIn, startOfWeek, todayIn, weekDays } from "@/lib/dates";
 import {
+  defaultTimetableAnchor,
   drawnDays,
   lessonsOutsideBreaks,
   schoolMinutes,
@@ -65,8 +66,25 @@ export default async function RozvrhPage({ searchParams }: RozvrhPageProps) {
   const params = await searchParams;
 
   const todayIso = todayIn(user.settings.timezone);
-  const kotva = readAnchor(params["od"]) ?? todayIso;
+
+  /*
+    Bez `?od=` sa ukáže predvolený týždeň — cez víkend už ten budúci, lebo
+    ten, čo práve skončil, v sobotu nikoho nezaujíma. Prečo sa to rozhoduje
+    dátumom a nie „+ 7 dní", je pri `defaultTimetableAnchor`.
+
+    „Dnes" vedie práve sem (holé `/rozvrh`), nie na týždeň s dnešným dátumom —
+    inak by v sobotu vracalo presne tam, odkiaľ sme človeka práve posunuli.
+
+    `todayIso` ostáva skutočný dnešok: mriežka ním zvýrazňuje dnešný deň
+    a odškrtáva hodiny. V budúcom týždni dnešok jednoducho nie je a všetky
+    hodiny sú ešte pred nami.
+  */
+  const predvolena = defaultTimetableAnchor(todayIso);
+  const kotva = readAnchor(params["od"]) ?? predvolena;
   const dni = weekDays(kotva, user.settings.weekStartsOn);
+  const naPredvolenom =
+    startOfWeek(kotva, user.settings.weekStartsOn) ===
+    startOfWeek(predvolena, user.settings.weekStartsOn);
 
   /*
     Víkend sa nekreslí, keď v ňom nič nie je — prázdne riadky by z mriežky
@@ -145,12 +163,18 @@ export default async function RozvrhPage({ searchParams }: RozvrhPageProps) {
       <ScreenHeader
         title="Rozvrh"
         meta={meta}
-        chip={dni.includes(todayIso) ? "tento týždeň" : undefined}
+        chip={
+          dni.includes(todayIso)
+            ? "tento týždeň"
+            : dni.includes(addDays(todayIso, 7))
+              ? "budúci týždeň"
+              : undefined
+        }
       >
         <WeekNav
           previous={`/rozvrh?od=${predchadzajuci}`}
           next={`/rozvrh?od=${nasledujuci}`}
-          today={dni.includes(todayIso) ? null : "/rozvrh"}
+          today={naPredvolenom ? null : "/rozvrh"}
         />
       </ScreenHeader>
 
