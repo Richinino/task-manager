@@ -8,6 +8,13 @@ Všetky podstatné zmeny v projekte. Formát podľa
 
 ## [Nevydané]
 
+### Pribudlo
+
+- **Claude (MCP)** — appka má vlastný MCP server s prihlásením cez OAuth.
+  Claude na počítači, webe aj v mobile prečíta deň (úlohy, rozvrh, porady,
+  udalosti, rozpočet času) a urobí s tebou ranný rituál. Pripojenie
+  v Nastaveniach → Pripojené aplikácie, návod v [docs/MCP.md](docs/MCP.md).
+
 ## [1.0.0] - 2026-09-27
 
 Prvé verejné vydanie. Appka sa od augusta 2026 denne používa; toto je stav,
@@ -81,6 +88,14 @@ All notable changes to this project. The format follows
 [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
+
+### Added
+
+- **Claude (MCP)** — the app has its own MCP server with OAuth sign-in.
+  Claude on desktop, web and mobile reads your day (tasks, timetable,
+  meetings, events, time budget) and runs the morning routine with you.
+  Connect under Nastavenia → Pripojené aplikácie; details in
+  [docs/MCP.md](docs/MCP.md) (Slovak).
 
 ## [1.0.0] - 2026-09-27
 

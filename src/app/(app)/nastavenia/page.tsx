@@ -1,13 +1,16 @@
 import type { Metadata } from "next";
+import { headers } from "next/headers";
 
 import { ScreenHeader } from "@/components/shell/screen-chrome";
 import { CalendarCard } from "@/components/views/nastavenia/calendar-card";
+import { ConnectedAppsCard } from "@/components/views/nastavenia/connected-apps-card";
 import { SettingsNav } from "@/components/views/nastavenia/settings-nav";
 import { PushSetup } from "@/components/views/nastavenia/push-setup";
 import { SettingsForm } from "@/components/views/nastavenia/settings-form";
 import { pushPublicKey } from "@/server/push";
 import { requireUser } from "@/server/auth-guard";
 import { hasCalendarAccess } from "@/server/google-tokens";
+import { listConnectedApps, mcpResource, originOf } from "@/server/oauth";
 
 export const metadata: Metadata = {
   title: "Nastavenia",
@@ -22,7 +25,21 @@ export const metadata: Metadata = {
  */
 export default async function NastaveniaPage() {
   const user = await requireUser();
-  const calendarConnected = await hasCalendarAccess(user.id);
+  const [calendarConnected, apps] = await Promise.all([
+    hasCalendarAccess(user.id),
+    listConnectedApps(user.id),
+  ]);
+  const mcpUrl = mcpResource(originOf(await headers()));
+
+  /* Dátumy pripojení v pásme používateľa, ako všade inde v appke. */
+  const when = new Intl.DateTimeFormat("sk-SK", {
+    timeZone: user.settings.timezone,
+    day: "numeric",
+    month: "numeric",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
 
   /*
     Bez kľúčov VAPID sa celá sekcia pripomienok nekreslí. Kľúč sa číta na
@@ -44,6 +61,23 @@ export default async function NastaveniaPage() {
             </h2>
             <div className="border-b border-border px-5 py-4">
               <CalendarCard connected={calendarConnected} />
+            </div>
+          </section>
+
+          <section aria-label="Pripojené aplikácie">
+            <h2 className="label border-b border-border bg-surface-2 px-5 py-[9px] text-fg-muted">
+              Pripojené aplikácie
+            </h2>
+            <div className="border-b border-border px-5 py-4">
+              <ConnectedAppsCard
+                mcpUrl={mcpUrl}
+                apps={apps.map((app) => ({
+                  id: app.id,
+                  clientName: app.clientName,
+                  createdLabel: when.format(app.createdAt),
+                  lastUsedLabel: app.lastUsedAt === null ? null : when.format(app.lastUsedAt),
+                }))}
+              />
             </div>
           </section>
 

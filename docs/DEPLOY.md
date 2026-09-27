@@ -226,6 +226,14 @@ An optional Android `.apk` (Trusted Web Activity) is supported via
 serve `/.well-known/assetlinks.json` — see section 6 of
 [NASADENIE.md](NASADENIE.md).
 
+## 10. Optional: Claude (MCP)
+
+Nothing to configure — the app is its own OAuth server. In Claude open
+**Settings → Connectors → Add custom connector**, paste
+`https://YOUR-DOMAIN/api/mcp`, sign in and click **Povoliť** (allow). The URL
+is also shown in the app under Nastavenia → Pripojené aplikácie. Tools and
+design notes: [docs/MCP.md](MCP.md) (Slovak).
+
 ## Adding another person
 
 1. Add their Gmail to **Test users** in Google Cloud Console.

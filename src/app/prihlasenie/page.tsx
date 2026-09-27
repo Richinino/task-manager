@@ -3,6 +3,7 @@ import { LogIn, TriangleAlert } from "lucide-react";
 
 import { signIn } from "@/auth";
 import { Button } from "@/components/ui/button";
+import { safeNextPath } from "@/lib/oauth";
 
 export const metadata: Metadata = {
   title: "Prihlásenie",
@@ -18,14 +19,24 @@ const ERROR_MESSAGES: Record<string, string> = {
   OAuthAccountNotLinked: "Tento e-mail je už priradený k inému spôsobu prihlásenia.",
 };
 
-async function signInWithGoogle(): Promise<void> {
-  "use server";
-  await signIn("google", { redirectTo: "/dnes" });
+/**
+ * Kam po prihlásení. `?dalej=` prichádza z obrazovky súhlasu pre MCP
+ * (`/oauth/authorize`) — bez neho by sa človek po prihlásení ocitol na
+ * „Dnes" a pripojenie Clauda by sa stratilo. Len cesta v rámci appky.
+ */
+function nextFrom(formData: FormData): string {
+  const raw = formData.get("dalej");
+  return safeNextPath(typeof raw === "string" ? raw : null) ?? "/dnes";
 }
 
-async function signInWithDevBypass(): Promise<void> {
+async function signInWithGoogle(formData: FormData): Promise<void> {
   "use server";
-  await signIn("dev", { redirectTo: "/dnes" });
+  await signIn("google", { redirectTo: nextFrom(formData) });
+}
+
+async function signInWithDevBypass(formData: FormData): Promise<void> {
+  "use server";
+  await signIn("dev", { redirectTo: nextFrom(formData) });
 }
 
 export default async function PrihlaseniePage({
@@ -34,6 +45,8 @@ export default async function PrihlaseniePage({
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const params = await searchParams;
+  const rawNext = params.dalej;
+  const dalej = safeNextPath(Array.isArray(rawNext) ? rawNext[0] : rawNext);
   const rawError = params.error;
   const errorCode = Array.isArray(rawError) ? rawError[0] : rawError;
   const errorMessage = errorCode
@@ -115,6 +128,7 @@ export default async function PrihlaseniePage({
             <div className="flex flex-col gap-3">
               {googleEnabled ? (
                 <form action={signInWithGoogle}>
+                  {dalej !== null ? <input type="hidden" name="dalej" value={dalej} /> : null}
                   <Button type="submit" variant="primary" className="w-full">
                     <LogIn className="size-4" />
                     Prihlásiť sa cez Google
@@ -134,6 +148,7 @@ export default async function PrihlaseniePage({
                     </div>
                   ) : null}
                   <form action={signInWithDevBypass}>
+                    {dalej !== null ? <input type="hidden" name="dalej" value={dalej} /> : null}
                     <Button
                       type="submit"
                       variant="secondary"
