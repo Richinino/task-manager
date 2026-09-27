@@ -49,6 +49,10 @@ const TABULKY_POUZIVATELA = new Set([
   /* Udalosti a deadliny (docs/UDALOSTI.md). */
   "agendaItems",
   "agendaReminders",
+  /* Prístupy MCP klientov (docs/MCP.md). Kódy a prístupy patria človeku;
+     registrácie klientov (`oauthClients`) nie — sú spoločné. */
+  "oauthCodes",
+  "oauthGrants",
   /* Aj samotná tabuľka ľudí. `db.select().from(users)` bez filtra vypíše
      všetkých — a odkedy sú v appke dvaja, je to únik ako každý iný. */
   "users",

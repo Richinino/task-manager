@@ -1025,6 +1025,98 @@ export const agendaReminders = pgTable(
 );
 
 /* ═══════════════════════════════════════════════════════════════════════════
+   OAUTH PRE MCP (docs/MCP.md)
+
+   Appka je sama sebe autorizačným serverom: Claude (alebo iný MCP klient) sa
+   zaregistruje, človek v appke odklikne súhlas a klient dostane token na
+   `/api/mcp`. Prihlásenie pri súhlase je to isté ako do appky — Google,
+   zoznam povolených e-mailov.
+
+   **Z tokenov sa ukladá len odtlačok (SHA-256).** Unikutá databáza tak
+   nikomu nedá prístup; token pozná iba klient, ktorý ho dostal.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/**
+ * Zaregistrovaný klient (RFC 7591). Registrácia je otvorená — klient sám
+ * nič nesmie, kým mu prihlásený človek nedá súhlas.
+ */
+export const oauthClients = pgTable("oauth_clients", {
+  /** `client_id` — náhodný, vydaný pri registrácii. */
+  id: text("id").primaryKey(),
+  /** Meno, ktoré klient o sebe tvrdí. Na obrazovke súhlasu sa ukazuje ako cudzí text. */
+  name: text("name").notNull(),
+  /** Presné adresy, kam sa smie vrátiť kód — iné sa odmietnu. */
+  redirectUris: jsonb("redirect_uris").$type<string[]>().notNull(),
+  /** `none` (verejný klient, len PKCE), `client_secret_post` alebo `client_secret_basic`. */
+  authMethod: text("auth_method").notNull().default("none"),
+  /** Odtlačok tajomstva — len pri dôverných klientoch. */
+  secretHash: text("secret_hash"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+/**
+ * Jednorazový autorizačný kód. Žije desať minút a po výmene za token sa
+ * označí ako použitý — druhý pokus s tým istým kódom neprejde.
+ */
+export const oauthCodes = pgTable(
+  "oauth_codes",
+  {
+    codeHash: text("code_hash").primaryKey(),
+    clientId: text("client_id")
+      .notNull()
+      .references(() => oauthClients.id, { onDelete: "cascade" }),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    redirectUri: text("redirect_uri").notNull(),
+    /** PKCE, vždy S256 — bez neho sa kód nevydá. */
+    codeChallenge: text("code_challenge").notNull(),
+    scope: text("scope").notNull(),
+    /** Adresa MCP servera, pre ktorý klient žiadal (RFC 8707). */
+    resource: text("resource"),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    usedAt: timestamp("used_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("oauth_codes_user_idx").on(t.userId)],
+);
+
+/**
+ * Udelený prístup — jeden riadok na jedno pripojenie klienta.
+ *
+ * Prístupový token žije hodinu, obnovovací dva mesiace a pri každom obnovení
+ * sa vymenia oba (rotácia). Odpojenie v nastaveniach vyplní `revokedAt`
+ * a oba tokeny prestanú platiť v tej istej chvíli.
+ */
+export const oauthGrants = pgTable(
+  "oauth_grants",
+  {
+    id: text("id").primaryKey(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    clientId: text("client_id")
+      .notNull()
+      .references(() => oauthClients.id, { onDelete: "cascade" }),
+    scope: text("scope").notNull(),
+    resource: text("resource"),
+    accessHash: text("access_hash").notNull(),
+    accessExpiresAt: timestamp("access_expires_at", { withTimezone: true }).notNull(),
+    refreshHash: text("refresh_hash").notNull(),
+    refreshExpiresAt: timestamp("refresh_expires_at", { withTimezone: true }).notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    /** Posledné použitie tokenu — v nastaveniach podľa neho spoznáš mŕtve pripojenie. */
+    lastUsedAt: timestamp("last_used_at", { withTimezone: true }),
+    revokedAt: timestamp("revoked_at", { withTimezone: true }),
+  },
+  (t) => [
+    index("oauth_grants_user_idx").on(t.userId),
+    uniqueIndex("oauth_grants_access_idx").on(t.accessHash),
+    uniqueIndex("oauth_grants_refresh_idx").on(t.refreshHash),
+  ],
+);
+
+/* ═══════════════════════════════════════════════════════════════════════════
    RELÁCIE
    ═══════════════════════════════════════════════════════════════════════════ */
 

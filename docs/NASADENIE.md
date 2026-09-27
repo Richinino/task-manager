@@ -460,6 +460,14 @@ nový refresh token.
 
 ---
 
+## 9. Claude (MCP) — nepovinné
+
+Nič netreba nastavovať — appka je sama sebe prihlasovacím serverom. V Claude
+otvor **Settings → Connectors → Add custom connector**, vlož
+`https://TVOJA-ADRESA.vercel.app/api/mcp`, prihlás sa a klikni **Povoliť**.
+Adresu nájdeš aj v appke v Nastaveniach, časť **Pripojené aplikácie**.
+Podrobnosti a nástroje sú v [docs/MCP.md](MCP.md).
+
 ## Migrácie pri aktualizácii
 
 **Nemusíš robiť nič.** Migrácia dobehne sama pri produkčnom nasadení, ako prvý

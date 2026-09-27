@@ -21,6 +21,9 @@ const VEDOME_VYNECHANE: Record<string, string> = {
   users: "ide ako objekt `user` — meno, e-mail a nastavenia, nie celý riadok",
   accounts: "poverenia ku Googlu (refresh token) do súboru v stiahnutých nepatria",
   pushSubscriptions: "kľúče prehliadača platia pre jedno zariadenie, na obnovu sú k ničomu",
+  oauthClients: "registrácie MCP klientov (Claude) — po obnove sa klient zaregistruje znova",
+  oauthCodes: "jednorazové kódy s desaťminútovou platnosťou, v zálohe by boli mŕtve",
+  oauthGrants: "prístupy MCP klientov — odtlačky tokenov do zálohy nepatria, Claude sa pripojí znova",
 };
 
 const route = readFileSync(new URL("./route.ts", import.meta.url), "utf8");

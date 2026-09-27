@@ -17,6 +17,42 @@ const nextConfig: NextConfig = {
         source: "/.well-known/assetlinks.json",
         destination: "/api/assetlinks",
       },
+      /*
+        Objavovanie OAuth pre MCP (docs/MCP.md). Klient sa najprv pýta
+        chráneného zdroja (RFC 9728) — aj s cestou `/api/mcp` na konci —
+        a potom autorizačného servera (RFC 8414). Niektorí klienti skúšajú
+        aj OpenID adresu, tak dostanú to isté.
+      */
+      {
+        source: "/.well-known/oauth-protected-resource/:path*",
+        destination: "/api/oauth/resource",
+      },
+      {
+        source: "/.well-known/oauth-authorization-server/:path*",
+        destination: "/api/oauth/metadata",
+      },
+      {
+        source: "/.well-known/openid-configuration/:path*",
+        destination: "/api/oauth/metadata",
+      },
+    ];
+  },
+
+  /*
+    Obrazovka súhlasu sa nesmie dať vložiť do cudzej stránky — inak by ju
+    niekto prekryl vlastným tlačidlom a súhlas by odklikol človek, ktorý
+    netuší, na čo kliká.
+  */
+  async headers() {
+    return [
+      {
+        source: "/oauth/:path*",
+        headers: [
+          { key: "X-Frame-Options", value: "DENY" },
+          { key: "Content-Security-Policy", value: "frame-ancestors 'none'" },
+          { key: "Referrer-Policy", value: "no-referrer" },
+        ],
+      },
     ];
   },
 };
