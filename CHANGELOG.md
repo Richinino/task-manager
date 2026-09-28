@@ -19,6 +19,11 @@ Všetky podstatné zmeny v projekte. Formát podľa
   oblasť, predmet aj štítky; hotovú či zahodenú vráti späť. Udalosti, písomky
   a deadliny vytvorí aj upraví (deň, čas, miesto, zrušenie, známka).
 
+- **Prezývky predmetov** — v Nastaveniach → Predmety si ku každému predmetu
+  dopíšeš, ako mu hovoríš („matika", „nj"), a zachytenie ho podľa toho
+  priradí. Bežné meno jazyka („nemčina", „angličtina", „slovenčina") appka
+  pozná sama, s diakritikou aj bez nej, v každom páde.
+
 ### Zmenené
 
 - **Rozvrh cez víkend** — od soboty sa otvorí už týždeň, ktorý príde, nie
@@ -123,6 +128,11 @@ All notable changes to this project. The format follows
   title, note, due date, time, estimate, priority, energy, context, project,
   area, subject and tags, and reopens done or dropped tasks. It creates and
   edits events, exams and deadlines (day, time, place, cancel, grade).
+
+- **Subject nicknames** — under Nastavenia → Predmety you add what you call
+  each subject ("matika", "nj") and quick capture assigns it. The everyday
+  name of a language subject ("nemčina", "angličtina", "slovenčina") is
+  recognised out of the box, with or without diacritics, in any case form.
 
 ### Changed
 

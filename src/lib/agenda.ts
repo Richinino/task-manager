@@ -1,5 +1,6 @@
 import { addDays, diffDays, formatDayMonthSk, parseIsoDate, timeToMinutes, WEEKDAYS_SHORT_SK } from "./dates";
 import { fold } from "./fold";
+import { wordNamesSubject } from "./subject-match";
 import { pluralSk } from "./sk";
 
 /**
@@ -554,21 +555,17 @@ const PREDLOZKY = new Set(["z", "zo", "na", "v", "vo", "do", "o", "k", "ku"]);
  * Z „písomka z MAT funkcie" tak ostane „z MAT funkcie"; predmet má udalosť
  * vo vlastnom poli, takže sa z názvu vyberie aj s predložkou pred ním.
  * Keď nič neostane, názov je len druh („Písomka"). Predmet sa hľadá rovnako
- * ako v `matchSubject`: skratka ako celé slovo, názov podľa prvých piatich
- * písmen („z fyziky" sedí na „Fyzika").
+ * ako v `matchSubject` (`wordNamesSubject`): skratka ako celé slovo, názov
+ * podľa prvých piatich písmen („z fyziky" sedí na „Fyzika"), meno jazyka
+ * a prezývky podľa základu („z nemčiny").
  */
 export function assessmentTitle(
   type: AgendaType,
   rest: string,
-  subject: { code: string; name: string | null } | null,
+  subject: { code: string; name: string | null; aliases?: readonly string[] } | null,
 ): string {
-  const code = subject !== null ? fold(subject.code) : null;
-  const stem = subject?.name ? fold(subject.name).slice(0, 5) : null;
   const clean = (w: string): string => fold(w).replace(/[.,;:!?]+$/u, "");
-  const isSubject = (w: string): boolean => {
-    const f = clean(w);
-    return (code !== null && f === code) || (stem !== null && stem.length === 5 && f.startsWith(stem));
-  };
+  const isSubject = (w: string): boolean => subject !== null && wordNamesSubject(w, subject);
 
   const out: string[] = [];
   for (const word of rest.trim().split(/\s+/u).filter(Boolean)) {

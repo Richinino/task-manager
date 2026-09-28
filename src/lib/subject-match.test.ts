@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { matchSubject } from "./subject-match";
+import { builtInAliases, cleanAliases, matchSubject, wordNamesSubject } from "./subject-match";
 
 /** Jeho skutočné predmety, aj s celými názvami z CSV. */
 const PREDMETY = [
@@ -10,6 +10,8 @@ const PREDMETY = [
   { id: "che", code: "CHE", name: "Chémia" },
   { id: "fyz", code: "FYZ", name: "Fyzika" },
   { id: "mat", code: "MAT", name: "Matematika" },
+  { id: "nej", code: "NEJ", name: "Nemecký jazyk" },
+  { id: "inf", code: "INF", name: "Informatika" },
   { id: "sjl", code: "SJL", name: "Slovenský jazyk" },
   { id: "ukl", code: "UKL", name: "Umenie a kultúra" },
 ];
@@ -75,5 +77,70 @@ describe("matchSubject", () => {
   it("nezáleží na veľkosti písmen ani diakritike", () => {
     expect(kod("fyzika du")).toBe("FYZ");
     expect(kod("CHEMIA pisomka")).toBe("CHE");
+  });
+});
+
+describe("bežné meno jazyka", () => {
+  /* Predmet sa v EduPage volá „Nemecký jazyk", ale píše sa „nemčina". */
+  it("nemčina, angličtina, slovenčina sedia v každom tvare a bez diakritiky", () => {
+    expect(kod("nemčina slovíčka")).toBe("NEJ");
+    expect(kod("nemcina DU")).toBe("NEJ");
+    expect(kod("NEMČINA test")).toBe("NEJ");
+    expect(kod("úloha z nemčiny")).toBe("NEJ");
+    expect(kod("naučiť sa na nemcinu")).toBe("NEJ");
+    expect(kod("angličtina esej")).toBe("ANJ");
+    expect(kod("slovencina rozbor")).toBe("SJL");
+  });
+
+  it("odvodí sa z názvu aj zo skratky", () => {
+    expect(builtInAliases({ code: "NEJ", name: "Nemecký jazyk" })).toEqual(["nemčina"]);
+    expect(builtInAliases({ code: "XYZ", name: "Francúzsky jazyk" })).toEqual(["francúzština"]);
+    expect(builtInAliases({ code: "ANJ", name: null })).toEqual(["angličtina"]);
+    expect(builtInAliases({ code: "FYZ", name: "Fyzika" })).toEqual([]);
+  });
+});
+
+describe("prezývky z nastavení", () => {
+  const sPrezyvkami = PREDMETY.map((p) =>
+    p.code === "MAT" ? { ...p, aliases: ["matika"] } : p.code === "NEJ" ? { ...p, aliases: ["nj"] } : p,
+  );
+  const s = (title: string) => matchSubject(title, sPrezyvkami)?.code ?? null;
+
+  it("dlhá prezývka sedí aj skloňovaná a bez diakritiky", () => {
+    expect(s("matika DU")).toBe("MAT");
+    expect(s("príklady z matiky")).toBe("MAT");
+    expect(s("MATIKA test")).toBe("MAT");
+  });
+
+  /* „matika" je aj vnútri „informatika" — prezývka musí začínať slovo. */
+  it("dlhá prezývka nesedí vnútri iného slova", () => {
+    expect(s("informatika projekt")).toBe("INF");
+  });
+
+  it("krátka prezývka len ako samostatné slovo", () => {
+    expect(s("nj slovíčka")).toBe("NEJ");
+    expect(s("nejaká úloha")).toBeNull();
+  });
+
+  it("bez prezývky sa prezývka stále nehádá", () => {
+    expect(kod("matika DU")).toBeNull();
+  });
+});
+
+describe("wordNamesSubject", () => {
+  const nej = { code: "NEJ", name: "Nemecký jazyk", aliases: ["nj"] };
+
+  it("slovo s menom jazyka, prezývkou alebo skratkou je predmet", () => {
+    expect(wordNamesSubject("nemčiny", nej)).toBe(true);
+    expect(wordNamesSubject("NJ", nej)).toBe(true);
+    expect(wordNamesSubject("NEJ,", nej)).toBe(true);
+    expect(wordNamesSubject("slovíčka", nej)).toBe(false);
+  });
+});
+
+describe("cleanAliases", () => {
+  it("oreže, zahodí prázdne a opakované bez ohľadu na diakritiku", () => {
+    expect(cleanAliases([" matika ", "", "Matika", "mat", "  mat  "])).toEqual(["matika", "mat"]);
+    expect(cleanAliases(["čj", "cj"])).toEqual(["čj"]);
   });
 });

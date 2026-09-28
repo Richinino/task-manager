@@ -7,10 +7,13 @@ import { ConnectedAppsCard } from "@/components/views/nastavenia/connected-apps-
 import { SettingsNav } from "@/components/views/nastavenia/settings-nav";
 import { PushSetup } from "@/components/views/nastavenia/push-setup";
 import { SettingsForm } from "@/components/views/nastavenia/settings-form";
+import { SubjectAliasesCard } from "@/components/views/nastavenia/subject-aliases-card";
+import { builtInAliases } from "@/lib/subject-match";
 import { pushPublicKey } from "@/server/push";
 import { requireUser } from "@/server/auth-guard";
 import { hasCalendarAccess } from "@/server/google-tokens";
 import { listConnectedApps, mcpResource, originOf } from "@/server/oauth";
+import { listSubjects } from "@/server/queries/school";
 
 export const metadata: Metadata = {
   title: "Nastavenia",
@@ -25,9 +28,10 @@ export const metadata: Metadata = {
  */
 export default async function NastaveniaPage() {
   const user = await requireUser();
-  const [calendarConnected, apps] = await Promise.all([
+  const [calendarConnected, apps, subjects] = await Promise.all([
     hasCalendarAccess(user.id),
     listConnectedApps(user.id),
+    listSubjects(user.id),
   ]);
   const mcpUrl = mcpResource(originOf(await headers()));
 
@@ -76,6 +80,22 @@ export default async function NastaveniaPage() {
                   clientName: app.clientName,
                   createdLabel: when.format(app.createdAt),
                   lastUsedLabel: app.lastUsedAt === null ? null : when.format(app.lastUsedAt),
+                }))}
+              />
+            </div>
+          </section>
+
+          <section aria-label="Predmety">
+            <h2 className="label border-b border-border bg-surface-2 px-5 py-[9px] text-fg-muted">
+              Predmety
+            </h2>
+            <div className="border-b border-border px-5 py-4">
+              <SubjectAliasesCard
+                subjects={subjects.map((subject) => ({
+                  code: subject.code,
+                  name: subject.name,
+                  builtIn: builtInAliases(subject),
+                  aliases: user.settings.subjectAliases[subject.code] ?? [],
                 }))}
               />
             </div>

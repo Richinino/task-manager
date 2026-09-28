@@ -920,14 +920,17 @@ export async function quickCapture(
       hádať, ktorého predmetu sa týka, by znamenalo vymyslieť si to.
     */
     let subjectId: string | null = null;
-    const predmety = await db
-      .select({
-        id: schoolSubjects.id,
-        code: schoolSubjects.code,
-        name: schoolSubjects.name,
-      })
-      .from(schoolSubjects)
-      .where(eq(schoolSubjects.userId, user.id));
+    /* Prezývky z nastavení sú pri skratke predmetu („matika" → MAT). */
+    const predmety = (
+      await db
+        .select({
+          id: schoolSubjects.id,
+          code: schoolSubjects.code,
+          name: schoolSubjects.name,
+        })
+        .from(schoolSubjects)
+        .where(eq(schoolSubjects.userId, user.id))
+    ).map((p) => ({ ...p, aliases: user.settings.subjectAliases[p.code] ?? [] }));
     if (predmety.length > 0) {
       subjectId = matchSubject(title, predmety)?.id ?? null;
     }
@@ -1158,7 +1161,7 @@ async function captureAgenda(input: {
   kind: "event" | "deadline";
   type: AgendaType;
   rest: string;
-  subject: { id: string; code: string; name: string | null } | null;
+  subject: { id: string; code: string; name: string | null; aliases?: readonly string[] } | null;
   /** Deň napísaný v texte. */
   date: string | null;
   /** Predvyplnený deň obrazovky (Dnes, „+" na dni) — slabší než text. */

@@ -162,6 +162,23 @@ export const settingsSchema = z.object({
    */
   schoolGroups: z.array(z.string().trim().min(1).max(80)).max(40).default([]),
 
+  /**
+   * Prezývky predmetov — čo ešte v názve úlohy znamená daný predmet
+   * („matika" → `MAT`, „nj" → `NEJ`). Bežné meno jazyka („nemčina") appka
+   * pozná sama (`builtInAliases`), sem patria len vlastné.
+   *
+   * Kľúčom je **skratka** predmetu, nie jeho id: skratka prichádza z EduPage
+   * a prežije aj to, keď import nepoužívaný predmet uprace a neskôr založí
+   * znova.
+   *
+   * `.catch({})`: pokazený záznam nesmie zhodiť celé nastavenia —
+   * `parseSettings` by inak vrátil predvolené a zmizlo by všetko ostatné.
+   * Zápis ide cez `saveSubjectAliases`, ktorý vstup overuje sám.
+   */
+  subjectAliases: z
+    .record(z.string().min(1).max(40), z.array(z.string().min(1).max(60)).max(12))
+    .catch({}),
+
   theme: z.enum(["system", "light", "dark"]).default("system"),
 });
 

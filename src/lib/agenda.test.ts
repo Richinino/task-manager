@@ -436,6 +436,12 @@ describe("assessmentTitle", () => {
     expect(assessmentTitle("exam", "z fyziky kinematika", fyz)).toBe("Písomka — kinematika");
   });
 
+  it("vystrihne aj meno jazyka a prezývku", () => {
+    const nej = { code: "NEJ", name: "Nemecký jazyk", aliases: ["nj"] };
+    expect(assessmentTitle("exam", "z nemčiny Perfekt", nej)).toBe("Písomka — Perfekt");
+    expect(assessmentTitle("exam", "nj slovíčka", nej)).toBe("Písomka — slovíčka");
+  });
+
   it("bez predmetu nechá text, len odreže visiace predložky", () => {
     expect(assessmentTitle("exam", "funkcie z", null)).toBe("Písomka — funkcie");
     expect(assessmentTitle("exam", "matematika funkcie", null)).toBe("Písomka — matematika funkcie");

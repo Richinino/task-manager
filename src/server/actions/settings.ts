@@ -1,13 +1,14 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { z } from "zod";
 
 import { getDb } from "@/db";
-import { users } from "@/db/schema";
+import { schoolSubjects, users } from "@/db/schema";
 import { parseCoordinates, textToPlaceEntries, type Place } from "@/lib/places";
 import { type Settings, settingsInputSchema } from "@/lib/settings";
+import { cleanAliases } from "@/lib/subject-match";
 import { requireUser } from "@/server/auth-guard";
 import { GEOCODE_GAP_MS, geocodeAddress } from "@/server/geocode";
 
@@ -84,6 +85,57 @@ export async function updateSettings(
     return { ok: true, data: settings };
   } catch (error) {
     return fail(error, "Nastavenia sa nepodarilo uložiť.");
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   PREZÝVKY PREDMETOV
+
+   Zvlášť od `updateSettings`, lebo skratka sa overuje proti predmetom
+   v databáze a vstup sa upratuje (prázdne, opakované). Schéma nastavení má
+   pri prezývkach `.catch({})`, aby pokazený záznam nezhodil celé nastavenia
+   — overenie teda musí byť tu, inak by chybný vstup ticho zmazal všetko.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+const subjectAliasesSchema = z.object({
+  code: z.string().trim().min(1, "Chýba predmet.").max(40, "Neplatný predmet."),
+  aliases: z
+    .array(z.string().max(60, "Prezývka môže mať najviac 60 znakov."))
+    .max(12, "Jeden predmet môže mať najviac 12 prezývok."),
+});
+
+/** Prezývky jedného predmetu. Prázdny zoznam prezývky predmetu zmaže. */
+export async function saveSubjectAliases(
+  code: string,
+  aliases: string[],
+): Promise<ActionResult<string[]>> {
+  const user = await requireUser();
+  const parsed = subjectAliasesSchema.safeParse({ code, aliases });
+  if (!parsed.success) return invalid(parsed.error, "Prezývky sa nepodarilo uložiť.");
+
+  try {
+    const db = await getDb();
+    const [predmet] = await db
+      .select({ code: schoolSubjects.code })
+      .from(schoolSubjects)
+      .where(and(eq(schoolSubjects.userId, user.id), eq(schoolSubjects.code, parsed.data.code)))
+      .limit(1);
+    if (predmet === undefined) return { ok: false, error: "Taký predmet v rozvrhu nemáš." };
+
+    const ciste = cleanAliases(parsed.data.aliases);
+    const prezyvky = { ...user.settings.subjectAliases };
+    if (ciste.length === 0) delete prezyvky[predmet.code];
+    else prezyvky[predmet.code] = ciste;
+
+    await db
+      .update(users)
+      .set({ settings: { ...user.settings, subjectAliases: prezyvky } })
+      .where(eq(users.id, user.id));
+
+    revalidatePath("/nastavenia");
+    return { ok: true, data: ciste };
+  } catch (error) {
+    return fail(error, "Prezývky sa nepodarilo uložiť.");
   }
 }
 
