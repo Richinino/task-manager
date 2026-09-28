@@ -367,7 +367,8 @@ export interface LessonReslot {
  * Dotýka sa len písomiek naviazaných na hodinu (`period`) — ručný čas je
  * rozhodnutie človeka. Keď predmet v ten deň z rozvrhu zmizol, písomka
  * ostane, kde je: zmazať jej čas by bolo horšie než nechať starý. Miesto
- * sa doplní len prázdne; zapísané mohol zadať človek.
+ * ide s hodinou, keď je z nej (prázdne alebo učebňa pôvodnej hodiny
+ * z `previous`); iné miesto zadal človek a ostane.
  */
 export function reslotAssessments(
   items: readonly {
@@ -383,6 +384,8 @@ export function reslotAssessments(
     place: string | null;
   }[],
   lessons: readonly (LessonSlot & { room?: string | null })[],
+  /** Hodiny, ako boli pred importom — podľa nich sa pozná učebňa, z ktorej miesto písomky pochádza. */
+  previous: readonly (Omit<LessonSlot, "startTime" | "endTime"> & { room?: string | null })[] = [],
 ): LessonReslot[] {
   const zmeny: LessonReslot[] = [];
   for (const item of items) {
@@ -391,13 +394,26 @@ export function reslotAssessments(
     if (slot === null) continue;
     const startTime = hhmm(slot.startTime)!;
     const endTime = hhmm(slot.endTime)!;
-    if (slot.period === item.period && startTime === hhmm(item.startTime) && endTime === hhmm(item.endTime)) {
+    const naHodine = (l: { date: string; period: number; subjectId: string }, period: number) =>
+      l.date === item.date && l.period === period && l.subjectId === item.subjectId;
+    const room = lessons.find((l) => naHodine(l, slot.period))?.room ?? null;
+    /*
+      Miesto ide s hodinou, keď z nej pochádza: prázdne, alebo rovné
+      učebni hodiny, na ktorej písomka doteraz bola. Čo človek napísal
+      sám („aula"), ostane.
+    */
+    const staraUcebna = previous.find((l) => naHodine(l, item.period!))?.room ?? null;
+    const miestoZHodiny = item.place === null || (staraUcebna !== null && item.place === staraUcebna);
+    const place = miestoZHodiny ? room : item.place;
+    if (
+      slot.period === item.period &&
+      startTime === hhmm(item.startTime) &&
+      endTime === hhmm(item.endTime) &&
+      place === item.place
+    ) {
       continue;
     }
-    const room =
-      lessons.find((l) => l.date === item.date && l.period === slot.period && l.subjectId === item.subjectId)?.room ??
-      null;
-    zmeny.push({ id: item.id, period: slot.period, startTime, endTime, place: item.place ?? room });
+    zmeny.push({ id: item.id, period: slot.period, startTime, endTime, place });
   }
   return zmeny;
 }

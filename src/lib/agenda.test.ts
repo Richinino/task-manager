@@ -261,6 +261,42 @@ describe("reslotAssessments", () => {
     expect(reslotAssessments([pisomka({ place: "aula" })], hodiny)[0]?.place).toBe("aula");
   });
 
+  /* Nemčina vo štvrtok: bola 3. hodinu v 4b, teraz je 2. v 2aa. */
+  const stvrtok = "2026-10-01";
+  const predtym = [{ date: stvrtok, period: 3, subjectId: "nej", room: "4b (T)" }];
+  const teraz = [
+    { date: stvrtok, period: 2, subjectId: "nej", startTime: "08:55:00", endTime: "09:40:00", room: "2aa (T)" },
+  ];
+  const nemcina = pisomka({
+    date: stvrtok,
+    subjectId: "nej",
+    period: 3,
+    startTime: "09:50:00",
+    endTime: "10:35:00",
+    place: "4b (T)",
+  });
+
+  it("miesto z učebne pôvodnej hodiny ide s hodinou do novej učebne", () => {
+    expect(reslotAssessments([nemcina], teraz, predtym)).toEqual([
+      { id: "p1", period: 2, startTime: "08:55", endTime: "09:40", place: "2aa (T)" },
+    ]);
+  });
+
+  it("miesto, ktoré človek napísal sám, ostane aj pri presune", () => {
+    expect(reslotAssessments([{ ...nemcina, place: "jazyková učebňa" }], teraz, predtym)[0]?.place).toBe(
+      "jazyková učebňa",
+    );
+  });
+
+  it("zmena len učebne na tej istej hodine sa prenesie tiež", () => {
+    const naDruhej = { ...nemcina, period: 2, startTime: "08:55:00", endTime: "09:40:00", place: "4b (T)" };
+    const predtymNaDruhej = [{ date: stvrtok, period: 2, subjectId: "nej", room: "4b (T)" }];
+    expect(reslotAssessments([naDruhej], teraz, predtymNaDruhej)).toEqual([
+      { id: "p1", period: 2, startTime: "08:55", endTime: "09:40", place: "2aa (T)" },
+    ]);
+    expect(reslotAssessments([{ ...naDruhej, place: "2aa (T)" }], teraz, predtymNaDruhej)).toEqual([]);
+  });
+
   it("ručný čas, iný typ či viac dní nechá tak", () => {
     expect(reslotAssessments([pisomka({ period: null })], hodiny)).toEqual([]);
     expect(reslotAssessments([pisomka({ type: "other" })], hodiny)).toEqual([]);

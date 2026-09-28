@@ -52,7 +52,10 @@ k nemu patria. Deadline sám len prejde.
   6.), import rozvrhu posunie aj písomku — ide s predmetom, nie so starým
   časom. Týka sa to len písomiek na hodine; ručne zadaný čas je rozhodnutie
   človeka a import ho nechá. Keď predmet v ten deň z rozvrhu zmizne,
-  písomka ostane, kde bola (`reslotAssessments`).
+  písomka ostane, kde bola (`reslotAssessments`). **Miesto ide s hodinou,**
+  keď z nej pochádza — bolo prázdne alebo rovné učebni pôvodnej hodiny
+  (import to porovná s rozvrhom spred stiahnutia). Miesto, ktoré človek
+  napísal sám („aula"), ostane.
 - **Úprava ju od hodiny neodpojí.** Formulár posiela čas taký, aký v ňom
   je; kým sa nezmenil, písomka ostáva na hodine a pri inom dni či predmete
   si nájde novú (`keepsLessonSlot`). Od hodiny ju odpojí až ručne zmenený

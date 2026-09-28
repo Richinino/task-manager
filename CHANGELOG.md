@@ -24,7 +24,8 @@ Všetky podstatné zmeny v projekte. Formát podľa
 - **Rozvrh cez víkend** — od soboty sa otvorí už týždeň, ktorý príde, nie
   ten, čo práve skončil. Šípka späť ho stále ukáže.
 - **Písomka ide za svojou hodinou** — keď sa v rozvrhu hodina predmetu
-  presunie (suplovanie), stiahnutie rozvrhu posunie aj písomku.
+  presunie (suplovanie), stiahnutie rozvrhu posunie aj písomku, a s ňou aj
+  učebňu, ak miesto písomky bolo učebňou hodiny.
 
 ### Opravené
 
@@ -129,7 +130,8 @@ All notable changes to this project. The format follows
   coming week instead of the one that just ended. The back arrow still
   shows it.
 - **Exams follow their lesson** — when a subject's lesson moves in the
-  timetable (a substitution), syncing the timetable moves the exam too.
+  timetable (a substitution), syncing the timetable moves the exam too,
+  along with the classroom when the exam's place was the lesson's room.
 
 ### Fixed
 
