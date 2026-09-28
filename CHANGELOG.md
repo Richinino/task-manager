@@ -32,6 +32,10 @@ Všetky podstatné zmeny v projekte. Formát podľa
   premenovať a ostala s pevným časom: rozvrh ju už neposúval a rozpočet dňa
   ju rátal dvakrát (ako školu aj ako udalosť). Teraz ostáva na hodine, kým
   sa jej čas ručne nezmení.
+- **Prečo zlyhalo stiahnutie rozvrhu** — pri chybe `502` je dôvod v logu
+  aj v odpovedi cronu (chyba spojenia, stav a hlavičky odpovede, čo prišlo
+  namiesto kalendára). Keď EduPage pošle HTML stránku namiesto kalendára,
+  hláška to povie rovno, nie „v odbere nie je ani jedna hodina".
 
 ## [1.0.0] - 2026-09-27
 
@@ -133,6 +137,11 @@ All notable changes to this project. The format follows
   it with a fixed time: the timetable no longer moved it and the day's time
   budget counted it twice (as school and as an event). It now stays on the
   lesson until its time is changed by hand.
+- **Why the timetable download failed** — on a `502` the reason is in the
+  log and in the cron response (connection error, response status and
+  headers, what came instead of a calendar). When EduPage sends an HTML
+  page instead of a calendar, the message says so instead of "no lessons
+  in the feed".
 
 ## [1.0.0] - 2026-09-27
 

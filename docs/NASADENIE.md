@@ -427,6 +427,22 @@ externý cron každú hodinu cez školský deň (sekcia 5.3). GitHub workflow
 **Rozvrh** ostáva ako záloha. Cez tlačidlo *Stiahnuť z EduPage* na obrazovke
 rozvrhu sa dá pustiť kedykoľvek ručne.
 
+### Keď cron vráti 502
+
+`502` znamená, že z EduPage neprišiel použiteľný kalendár. Dôvod je v tele
+odpovede (`dovod` a `detail` — história behov na cron-job.org si ho pamätá)
+aj v logoch Vercelu pod `[api/rozvrh]`:
+
+| `detail` | Čo to znamená |
+|---|---|
+| `kod: UND_ERR_CONNECT_TIMEOUT`, `ECONNREFUSED`… | k EduPage sa nedalo pripojiť ani na druhý pokus — výpadok alebo sieť |
+| `status: 403` / `429`, `cfMitigated`, `retryAfter` | EduPage (alebo ochrana pred ním) požiadavku odmietla; `429` = priveľa požiadaviek |
+| `status: 200`, `zaciatok: <!DOCTYPE html…` | namiesto kalendára prišla stránka — údržba alebo prihlásenie |
+| `status: 404` / `410` | adresa odberu už neplatí — vygeneruj novú v EduPage |
+
+Adresa odberu v detaile nikdy nie je; zo začiatku tela sa ukáže len pár
+znakov a nič, čo vyzerá ako odkaz.
+
 Rozhodnutia za rozvrhom sú v [ROZVRH.md](ROZVRH.md).
 
 ---

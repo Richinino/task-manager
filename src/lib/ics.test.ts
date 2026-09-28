@@ -5,6 +5,8 @@ import {
   filterByGroups,
   groupsInFeed,
   parseIcs,
+  ukazkaTela,
+  vyzeraAkoKalendar,
 } from "./ics";
 
 /*
@@ -284,5 +286,31 @@ describe("suplovanie v SUMMARY", () => {
       subject: "DEJ ->",
       originalSubject: null,
     });
+  });
+});
+
+describe("diagnostika odberu", () => {
+  it("kalendár pozná aj s BOM a prázdnym riadkom na začiatku", () => {
+    expect(vyzeraAkoKalendar(FEED)).toBe(true);
+    expect(vyzeraAkoKalendar("\uFEFF\r\nBEGIN:VCALENDAR\r\nEND:VCALENDAR")).toBe(true);
+    expect(vyzeraAkoKalendar("begin:vcalendar")).toBe(true);
+  });
+
+  it("HTML stránka, JSON ani prázdna odpoveď kalendár nie sú", () => {
+    expect(vyzeraAkoKalendar("<!DOCTYPE html><html><body>Údržba</body></html>")).toBe(false);
+    expect(vyzeraAkoKalendar('{"error":"forbidden"}')).toBe(false);
+    expect(vyzeraAkoKalendar("")).toBe(false);
+  });
+
+  it("ukážka tela povie, čo prišlo, a nič viac", () => {
+    expect(ukazkaTela("<!DOCTYPE html><html><body>Údržba</body></html>")).toBe("<!DOCTYPE html><html");
+    expect(ukazkaTela("")).toBe("(prázdne)");
+    expect(ukazkaTela("   \n")).toBe("(prázdne)");
+    expect(ukazkaTela("Chyba č. 5")).toBe("Chyba ·. 5");
+  });
+
+  it("ukážka nikdy neukáže odkaz — mohla by to byť adresa odberu", () => {
+    expect(ukazkaTela("https://skola.edupage.org/ics?key=tajne")).toBe("(skryté — vyzerá ako odkaz)");
+    expect(ukazkaTela("Moved: webcal://x")).toBe("(skryté — vyzerá ako odkaz)");
   });
 });

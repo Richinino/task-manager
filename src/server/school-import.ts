@@ -6,7 +6,7 @@ import { getDb, type Database } from "@/db";
 import { agendaItems, schoolLessons, schoolSubjects, schoolTeachers, tasks } from "@/db/schema";
 import { reslotAssessments } from "@/lib/agenda";
 import { todayIn } from "@/lib/dates";
-import { filterByGroups, parseIcs } from "@/lib/ics";
+import { filterByGroups, parseIcs, ukazkaTela, vyzeraAkoKalendar } from "@/lib/ics";
 import { uuidv7 } from "@/lib/id";
 import { subjectColor } from "@/lib/school-colors";
 import { lessonMatcher, slotKey } from "@/lib/school-pairing";
@@ -466,9 +466,19 @@ async function upracPredmety(db: Queryable, userId: string): Promise<number> {
    STIAHNUTIE ODBERU
    ═══════════════════════════════════════════════════════════════════════════ */
 
-/** Adresa odberu nie je nastavená, alebo z nej nič neprišlo. */
+/**
+ * Podrobnosti o zlyhaní odberu do logu a do odpovede cronu: kód chyby
+ * spojenia, HTTP stav, niekoľko hlavičiek, dĺžka a začiatok tela.
+ * **Adresa odberu v nich nikdy nie je.**
+ */
+export type DetailOdberu = Record<string, string | number | null>;
+
+/** Adresa odberu nie je nastavená, alebo z nej nič použiteľné neprišlo. */
 export class OdberNedostupny extends Error {
-  constructor(dovod: string) {
+  constructor(
+    dovod: string,
+    readonly detail: DetailOdberu = {},
+  ) {
     super(dovod);
     this.name = "OdberNedostupny";
   }
@@ -514,11 +524,14 @@ export async function stiahniOdber(): Promise<string> {
       signal: AbortSignal.timeout(20_000),
     });
 
+  const zaciatok = Date.now();
+  let pokusy = 1;
   let odpoved: Response;
   try {
     try {
       odpoved = await stiahni();
     } catch {
+      pokusy = 2;
       await new Promise((hotovo) => setTimeout(hotovo, 2_000));
       odpoved = await stiahni();
     }
@@ -541,17 +554,53 @@ export async function stiahniOdber(): Promise<string> {
       "K odberu sa nepodarilo pripojiť (" +
         kod +
         "). Skús načítať súbor .ics nižšie.",
+      { kod, pokusy, trvanieMs: Date.now() - zaciatok },
     );
   }
 
+  /*
+    Čo o odpovedi povedať, keď sa nedá použiť. Hlavičky sú vybrané: podľa
+    `server` a `cf-mitigated` sa pozná ochrana pred robotmi, podľa
+    `retry-after` obmedzenie počtu požiadaviek. Z tela len dĺžka a začiatok
+    (`ukazkaTela` — nikdy nie odkaz).
+  */
+  const popis = (telo: string): DetailOdberu => ({
+    status: odpoved.status,
+    contentType: odpoved.headers.get("content-type"),
+    server: odpoved.headers.get("server"),
+    retryAfter: odpoved.headers.get("retry-after"),
+    cfMitigated: odpoved.headers.get("cf-mitigated"),
+    dlzka: telo.length,
+    zaciatok: ukazkaTela(telo),
+    pokusy,
+    trvanieMs: Date.now() - zaciatok,
+  });
+
   if (!odpoved.ok) {
+    const telo = await odpoved.text().catch(() => "");
     throw new OdberNedostupny(
       "Odber odpovedal " +
         String(odpoved.status) +
         ". Skontroluj, či adresa v EduPage stále platí.",
+      popis(telo),
     );
   }
 
-  return await odpoved.text();
+  const text = await odpoved.text();
+
+  /*
+    `200` s HTML stránkou (údržba, prihlásenie, ochrana pred robotmi) by
+    parser prečítal ako prázdny rozvrh a hláška by tvrdila, že v odbere nie
+    sú hodiny. Pravda je, že neprišiel kalendár.
+  */
+  if (!vyzeraAkoKalendar(text)) {
+    throw new OdberNedostupny(
+      "Z odberu neprišiel kalendár, ale niečo iné. Skús to o chvíľu znova; " +
+        "keď to trvá, skontroluj, či adresa v EduPage stále platí.",
+      popis(text),
+    );
+  }
+
+  return text;
 }
 
