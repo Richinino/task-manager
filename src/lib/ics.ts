@@ -312,3 +312,34 @@ export function filterByGroups(
 
   return hodiny.filter((h) => !delene.has(h.group) || vyber.has(h.group));
 }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   DIAGNOSTIKA ODBERU
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/**
+ * Je to vôbec kalendár?
+ *
+ * EduPage vie na adresu odberu vrátiť `200` s HTML stránkou (prihlásenie,
+ * údržba, ochrana pred robotmi). Parser v nej nenájde ani jednu hodinu
+ * a jediné, čo by človek videl, je „v odbere nie je ani jedna hodina" —
+ * hoci problém nie je v rozvrhu, ale v tom, čo prišlo. Kalendár podľa
+ * RFC 5545 vždy začína `BEGIN:VCALENDAR` (pred ním môže byť len BOM).
+ */
+export function vyzeraAkoKalendar(text: string): boolean {
+  return text.replace(/^﻿/, "").trimStart().toUpperCase().startsWith("BEGIN:VCALENDAR");
+}
+
+/**
+ * Začiatok tela odpovede do logu — len toľko, aby bolo vidno, ČO prišlo
+ * (`<!DOCTYPE html`, `{"error"`, prázdno).
+ *
+ * Nikdy nesmie niesť adresu odberu: tá je prístup k rozvrhu. Keď je
+ * v ukážke čokoľvek, čo vyzerá ako odkaz, radšej sa neukáže nič.
+ */
+export function ukazkaTela(text: string): string {
+  const zaciatok = text.replace(/^﻿/, "").trimStart().slice(0, 20).replace(/[^\x20-\x7E]/g, "·");
+  if (zaciatok === "") return "(prázdne)";
+  if (/:\/\/|https?|webcal|www\./i.test(zaciatok)) return "(skryté — vyzerá ako odkaz)";
+  return zaciatok;
+}

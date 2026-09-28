@@ -674,8 +674,12 @@ export async function syncScheduleFromUrl(): Promise<ActionResult<ImportSummary>
     revalidateViews();
     return { ok: true, data: summary };
   } catch (error) {
-    if (error instanceof OdberNedostupny) return { ok: false, error: error.message };
+    if (error instanceof OdberNedostupny) {
+      console.warn("[actions/school] Odber nedostupný:", error.message, error.detail);
+      return { ok: false, error: error.message };
+    }
     if (error instanceof PrazdnyKalendar) {
+      console.warn("[actions/school] V odbere nie je ani jedna hodina.");
       return { ok: false, error: "V odbere nie je ani jedna hodina." };
     }
     return fail(error, "Rozvrh sa nepodarilo stiahnuť.");

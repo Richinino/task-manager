@@ -67,6 +67,7 @@ export async function POST(request: Request): Promise<Response> {
   }
 
   if (!maOdber()) {
+    console.warn("[api/rozvrh] SKOLA_ICS_URL nie je nastavená.");
     return odpoved({ ok: false, dovod: "SKOLA_ICS_URL nie je nastavená." }, 503);
   }
 
@@ -81,6 +82,7 @@ export async function POST(request: Request): Promise<Response> {
     .from(schoolSubjects);
 
   if (majuRozvrh.length === 0) {
+    console.warn("[api/rozvrh] Rozvrh si ešte nikto nenačítal — cron nemá komu.");
     return odpoved({
       ok: false,
       dovod: "Rozvrh si ešte nikto nenačítal — prvý import treba spraviť ručne.",
@@ -88,6 +90,7 @@ export async function POST(request: Request): Promise<Response> {
   }
 
   if (majuRozvrh.length > 1) {
+    console.warn("[api/rozvrh] Rozvrh má viac ľudí, adresa odberu je jedna — nič sa nesťahuje.");
     return odpoved(
       {
         ok: false,
@@ -124,12 +127,20 @@ export async function POST(request: Request): Promise<Response> {
     */
     for (const cesta of ["/rozvrh", "/dnes", "/tyzden", "/udalosti", "/mesiac"]) revalidatePath(cesta);
 
+    console.info("[api/rozvrh] Rozvrh stiahnutý", summary);
     return odpoved({ ok: true, ...summary });
   } catch (chyba) {
+    /*
+      Dôvod ide do logu Vercelu aj do odpovede — tú si pamätá história
+      cron-job.org dlhšie, než Vercel drží logy. V detaile nie je adresa
+      odberu (`DetailOdberu`).
+    */
     if (chyba instanceof OdberNedostupny) {
-      return odpoved({ ok: false, dovod: chyba.message }, 502);
+      console.warn("[api/rozvrh] Odber nedostupný:", chyba.message, chyba.detail);
+      return odpoved({ ok: false, dovod: chyba.message, detail: chyba.detail }, 502);
     }
     if (chyba instanceof PrazdnyKalendar) {
+      console.warn("[api/rozvrh] V odbere nie je ani jedna hodina.");
       return odpoved({ ok: false, dovod: "V odbere nie je ani jedna hodina." }, 502);
     }
 
