@@ -12,12 +12,13 @@ import { cn } from "@/lib/utils";
  * má týždenná tabuľa.
  *
  * „Dnes" sa ukazuje len vtedy, keď je človek inde. Tlačidlo, ktoré vedie tam,
- * kde už si, je len ďalší prvok, na ktorý sa treba pozerať.
+ * kde už si, je len ďalší prvok, na ktorý sa treba pozerať. Vedie na týždeň,
+ * ktorý rozvrh ukáže bez `?od=` — cez víkend je to už ten budúci.
  */
 export interface WeekNavProps {
   previous: string;
   next: string;
-  /** Odkaz späť na aktuálny týždeň; `null`, keď v ňom človek už je. */
+  /** Odkaz späť na predvolený týždeň; `null`, keď v ňom človek už je. */
   today: string | null;
 }
 

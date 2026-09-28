@@ -34,11 +34,25 @@ export interface McpTask {
   isPriorityOfDay: boolean;
   /** Koľkokrát sa už odložila na neskôr. */
   postponed: number;
+  /** Len pri opakovanej — odškrtnutie či zahodenie založí ďalší výskyt. */
+  recurring?: true;
   note?: string;
+  /** Poznámka je dlhšia než to, čo model dostal. */
+  noteTruncated?: true;
+}
+
+/** Koľko z poznámky dostane model. Dlhšiu nech nepíše celú nanovo — stratil by koniec. */
+const NOTE_LIMIT = 500;
+
+function noteFields(raw: string | null, withNote: boolean): { note?: string; noteTruncated?: true } {
+  const note = raw?.trim();
+  if (!withNote || note === undefined || note === "") return {};
+  return note.length > NOTE_LIMIT
+    ? { note: `${note.slice(0, NOTE_LIMIT)}…`, noteTruncated: true }
+    : { note };
 }
 
 export function mcpTask(task: TaskWithRelations, withNote = false): McpTask {
-  const note = task.note?.trim();
   return {
     id: task.id,
     title: task.title,
@@ -57,18 +71,30 @@ export function mcpTask(task: TaskWithRelations, withNote = false): McpTask {
     allDay: task.allDay,
     isPriorityOfDay: task.isFrog,
     postponed: task.postponeCount,
-    ...(withNote && note !== undefined && note !== "" ? { note: note.slice(0, 500) } : {}),
+    ...(task.recurrenceRule !== null ? { recurring: true as const } : {}),
+    ...noteFields(task.note, withNote),
   };
 }
 
+/**
+ * Udalosť alebo deadline. Polia sú tie isté, ktoré berú `update_event`
+ * a `create_event` — model tak vidí, čo presne mení.
+ */
 export function mcpAgenda(item: AgendaItemRow, todayIso: string) {
   return {
     id: item.id,
     kind: item.kind,
-    type: agendaTypeLabel(item.type),
+    /** `exam` · `oral` · `submit` · `other` — hodnota pre `update_event`. */
+    type: item.type,
+    label: agendaTypeLabel(item.type),
     title: item.title,
     date: item.date,
     endDate: item.endDate,
+    /** Pri deadline je `end` hodina „do" a `start` chýba. */
+    start: hhmm(item.startTime),
+    end: hhmm(item.endTime),
+    /** Poradie vyučovacej hodiny, keď písomka leží na hodine — čas je z rozvrhu. */
+    lesson: item.period,
     when: `${agendaDateSk(item, todayIso)} · ${agendaTimeLabel(item)}`,
     place: item.place,
     subject: item.subject?.code ?? null,
@@ -76,6 +102,8 @@ export function mcpAgenda(item: AgendaItemRow, todayIso: string) {
     /** Príprava (úlohy pod udalosťou): hotové / všetky. */
     prep: item.progress.total > 0 ? `${item.progress.done}/${item.progress.total}` : null,
     grade: item.grade,
+    ...(item.gradeNote ? { gradeNote: item.gradeNote } : {}),
+    ...noteFields(item.note, true),
   };
 }
 

@@ -14,6 +14,15 @@ Všetky podstatné zmeny v projekte. Formát podľa
   Claude na počítači, webe aj v mobile prečíta deň (úlohy, rozvrh, porady,
   udalosti, rozpočet času) a urobí s tebou ranný rituál. Pripojenie
   v Nastaveniach → Pripojené aplikácie, návod v [docs/MCP.md](docs/MCP.md).
+- **Claude vie upravovať** — nielen vytvoriť a odškrtnúť: pri úlohe zmení
+  názov, poznámku, termín, čas, odhad, prioritu, energiu, kontext, projekt,
+  oblasť, predmet aj štítky; hotovú či zahodenú vráti späť. Udalosti, písomky
+  a deadliny vytvorí aj upraví (deň, čas, miesto, zrušenie, známka).
+
+### Zmenené
+
+- **Rozvrh cez víkend** — od soboty sa otvorí už týždeň, ktorý príde, nie
+  ten, čo práve skončil. Šípka späť ho stále ukáže.
 
 ## [1.0.0] - 2026-09-27
 
@@ -96,6 +105,16 @@ All notable changes to this project. The format follows
   meetings, events, time budget) and runs the morning routine with you.
   Connect under Nastavenia → Pripojené aplikácie; details in
   [docs/MCP.md](docs/MCP.md) (Slovak).
+- **Claude can edit** — not just create and tick off: it changes a task's
+  title, note, due date, time, estimate, priority, energy, context, project,
+  area, subject and tags, and reopens done or dropped tasks. It creates and
+  edits events, exams and deadlines (day, time, place, cancel, grade).
+
+### Changed
+
+- **Timetable on weekends** — from Saturday on, the timetable opens on the
+  coming week instead of the one that just ended. The back arrow still
+  shows it.
 
 ## [1.0.0] - 2026-09-27
 

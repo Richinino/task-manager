@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 
+import { diffDays, startOfWeek, weekDays } from "./dates";
 import {
+  defaultTimetableAnchor,
   drawnDays,
   isSchoolBreak,
   lessonsOutsideBreaks,
@@ -349,5 +351,93 @@ describe("teachingDays a drawnDays", () => {
 
     expect(teachingDays(TYZDEN, mimoVolna)).toHaveLength(4);
     expect(drawnDays(TYZDEN, mimoVolna, volno)).toHaveLength(5);
+  });
+});
+
+describe("defaultTimetableAnchor — ktorý týždeň rozvrh ukáže", () => {
+  /* Týždeň 21.–27. 9. 2026: pondelok až nedeľa. Najbližší pondelok je 28. 9. */
+  const PIATOK = "2026-09-25";
+  const SOBOTA = "2026-09-26";
+  const NEDELA = "2026-09-27";
+  const PONDELOK = "2026-09-28";
+
+  /** Prvý deň týždňa, ktorý rozvrh bez `?od=` ukáže. */
+  const zaciatok = (dnes: string, weekStartsOn: number) =>
+    startOfWeek(defaultTimetableAnchor(dnes), weekStartsOn);
+
+  it("cez týždeň je to dnešok", () => {
+    for (const den of ["2026-09-21", "2026-09-22", "2026-09-23", "2026-09-24", PIATOK]) {
+      expect(defaultTimetableAnchor(den)).toBe(den);
+    }
+  });
+
+  it("v sobotu aj v nedeľu je to najbližší pondelok", () => {
+    expect(defaultTimetableAnchor(SOBOTA)).toBe(PONDELOK);
+    expect(defaultTimetableAnchor(NEDELA)).toBe(PONDELOK);
+  });
+
+  it("prejde cez koniec mesiaca aj roka", () => {
+    expect(defaultTimetableAnchor("2026-10-31")).toBe("2026-11-02");
+    expect(defaultTimetableAnchor("2028-12-30")).toBe("2029-01-01");
+    expect(defaultTimetableAnchor("2028-12-31")).toBe("2029-01-01");
+  });
+
+  /* 25. 10. 2026 sa mení čas — deň má 25 hodín, pondelok musí ostať pondelkom. */
+  it("zmena času ho neposunie", () => {
+    expect(defaultTimetableAnchor("2026-10-24")).toBe("2026-10-26");
+    expect(defaultTimetableAnchor("2026-10-25")).toBe("2026-10-26");
+  });
+
+  it("nezmysel vráti bez zmeny", () => {
+    expect(defaultTimetableAnchor("")).toBe("");
+    expect(defaultTimetableAnchor("zajtra")).toBe("zajtra");
+  });
+
+  it("týždeň od pondelka: v piatok ešte tento, od soboty budúci", () => {
+    expect(weekDays(defaultTimetableAnchor(PIATOK), 1)).toEqual([
+      "2026-09-21", "2026-09-22", "2026-09-23", "2026-09-24", "2026-09-25", SOBOTA, NEDELA,
+    ]);
+    expect(zaciatok(SOBOTA, 1)).toBe(PONDELOK);
+    expect(zaciatok(NEDELA, 1)).toBe(PONDELOK);
+  });
+
+  /*
+    Nedeľa už začína týždeň s najbližším pondelkom. Pevné „+ 7 dní od začiatku
+    týždňa" by v nedeľu skočilo až na 4. 10. a celý týždeň by preskočilo.
+  */
+  it("týždeň od nedele: od soboty ten, ktorý začína v nedeľu", () => {
+    expect(zaciatok(PIATOK, 0)).toBe("2026-09-20");
+    expect(zaciatok(SOBOTA, 0)).toBe(NEDELA);
+    expect(zaciatok(NEDELA, 0)).toBe(NEDELA);
+    expect(weekDays(defaultTimetableAnchor(NEDELA), 0)).toContain(NEDELA);
+  });
+
+  it("týždeň od soboty: v sobotu je to ten, ktorý práve začal", () => {
+    expect(zaciatok(PIATOK, 6)).toBe("2026-09-19");
+    expect(zaciatok(SOBOTA, 6)).toBe(SOBOTA);
+    expect(zaciatok(NEDELA, 6)).toBe(SOBOTA);
+  });
+
+  /* Pondelok už leží v práve bežiacom týždni — cez víkend sa nič nemení. */
+  it("týždeň od utorka až piatku: víkend ostane v bežiacom týždni", () => {
+    for (const ws of [2, 3, 4, 5]) {
+      expect(zaciatok(SOBOTA, ws)).toBe(zaciatok(PIATOK, ws));
+      expect(zaciatok(NEDELA, ws)).toBe(zaciatok(PIATOK, ws));
+    }
+  });
+
+  /*
+    Pre každý začiatok týždňa: cez víkend je v týždni najbližší pondelok, z
+    piatka na sobotu sa skočí najviac o jeden týždeň a v pondelok sa už
+    neskočí druhý raz — sobota, nedeľa aj pondelok ukážu ten istý týždeň.
+  */
+  it("sedí pri každom začiatku týždňa", () => {
+    for (let ws = 0; ws <= 6; ws += 1) {
+      expect(weekDays(defaultTimetableAnchor(SOBOTA), ws)).toContain(PONDELOK);
+      expect(weekDays(defaultTimetableAnchor(NEDELA), ws)).toContain(PONDELOK);
+      expect([0, 7]).toContain(diffDays(zaciatok(PIATOK, ws), zaciatok(SOBOTA, ws)));
+      expect(zaciatok(NEDELA, ws)).toBe(zaciatok(SOBOTA, ws));
+      expect(zaciatok(PONDELOK, ws)).toBe(zaciatok(SOBOTA, ws));
+    }
   });
 });
