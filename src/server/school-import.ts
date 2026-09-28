@@ -1,9 +1,10 @@
 import "server-only";
 
-import { and, eq, inArray, isNotNull, isNull } from "drizzle-orm";
+import { and, eq, gte, inArray, isNotNull, isNull } from "drizzle-orm";
 
 import { getDb, type Database } from "@/db";
-import { schoolLessons, schoolSubjects, schoolTeachers, tasks } from "@/db/schema";
+import { agendaItems, schoolLessons, schoolSubjects, schoolTeachers, tasks } from "@/db/schema";
+import { reslotAssessments } from "@/lib/agenda";
 import { todayIn } from "@/lib/dates";
 import { filterByGroups, parseIcs } from "@/lib/ics";
 import { uuidv7 } from "@/lib/id";
@@ -68,6 +69,8 @@ export interface ImportSummary {
   novychUcitelov: number;
   /** Koľko nepoužitých predmetov po importe zmizlo. */
   upratanychPredmetov: number;
+  /** Písomky, ktoré išli za svojou hodinou, keď sa v rozvrhu pohla. */
+  presunutychPisomiek: number;
 }
 
 /**
@@ -315,6 +318,7 @@ export async function importScheduleFor(
         );
     }
 
+    const presunutychPisomiek = await dorovnajPisomky(tx, userId, dnes);
     const upratanychPredmetov = await upracPredmety(tx, userId);
 
     return {
@@ -327,8 +331,63 @@ export async function importScheduleFor(
       novychPredmetov: novePredmety.length,
       novychUcitelov: noviUcitelia.length,
       upratanychPredmetov,
+      presunutychPisomiek,
     };
   });
+}
+
+/**
+ * Písomky na hodine pôjdu za svojou hodinou, keď sa v rozvrhu pohla.
+ *
+ * Písomka si pri založení zapíše poradie a čas hodiny predmetu. Keď škola
+ * hodiny prehodí (suplovanie: dejepis zo 5. na 6.), bez tohto by písomka
+ * ďalej tvrdila starý čas. Čo je v zmene, rozhoduje `reslotAssessments`;
+ * tu sa len načítajú dnešné a budúce hodiny po zápise a zmeny sa uložia.
+ */
+async function dorovnajPisomky(db: Queryable, userId: string, dnes: string): Promise<number> {
+  const pisomky = await db
+    .select()
+    .from(agendaItems)
+    .where(
+      and(
+        eq(agendaItems.userId, userId),
+        eq(agendaItems.kind, "event"),
+        inArray(agendaItems.type, ["exam", "oral"]),
+        isNotNull(agendaItems.period),
+        isNotNull(agendaItems.subjectId),
+        isNull(agendaItems.deletedAt),
+        gte(agendaItems.date, dnes),
+      ),
+    );
+  if (pisomky.length === 0) return 0;
+
+  const hodiny = await db
+    .select({
+      date: schoolLessons.date,
+      period: schoolLessons.period,
+      subjectId: schoolLessons.subjectId,
+      startTime: schoolLessons.startTime,
+      endTime: schoolLessons.endTime,
+      cancelled: schoolLessons.cancelled,
+      room: schoolLessons.room,
+    })
+    .from(schoolLessons)
+    .where(and(eq(schoolLessons.userId, userId), gte(schoolLessons.date, dnes)));
+
+  const zmeny = reslotAssessments(pisomky, hodiny);
+  for (const z of zmeny) {
+    await db
+      .update(agendaItems)
+      .set({
+        period: z.period,
+        startTime: z.startTime,
+        endTime: z.endTime,
+        place: z.place,
+        updatedAt: new Date(),
+      })
+      .where(and(eq(agendaItems.id, z.id), eq(agendaItems.userId, userId)));
+  }
+  return zmeny.length;
 }
 
 /**

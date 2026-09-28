@@ -238,6 +238,9 @@ function zhrnutie(d: ImportSummary, uvod: string): string {
   if (d.upratanychPredmetov > 0) {
     casti.push(`upratané nepoužité predmety (${d.upratanychPredmetov})`);
   }
+  if (d.presunutychPisomiek > 0) {
+    casti.push(`písomky posunuté za hodinou (${d.presunutychPisomiek})`);
+  }
 
   if (casti.length === 0) return `${uvod} Nič sa nezmenilo.`;
   return `${uvod} Zmeny: ${casti.join(", ")}.`;
