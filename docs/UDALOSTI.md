@@ -48,6 +48,16 @@ k nemu patria. Deadline sám len prejde.
 - **Čas z rozvrhu.** Písomka s predmetom a dňom si nájde hodinu toho
   predmetu v ten deň a vezme si jej poradie aj čas. Bez dňa dostane
   najbližšiu hodinu predmetu — tá istá ponuka, akú dostáva domáca úloha.
+- **Ide za svojou hodinou.** Keď škola hodiny prehodí (dejepis zo 5. na
+  6.), import rozvrhu posunie aj písomku — ide s predmetom, nie so starým
+  časom. Týka sa to len písomiek na hodine; ručne zadaný čas je rozhodnutie
+  človeka a import ho nechá. Keď predmet v ten deň z rozvrhu zmizne,
+  písomka ostane, kde bola (`reslotAssessments`).
+- **Úprava ju od hodiny neodpojí.** Formulár posiela čas taký, aký v ňom
+  je; kým sa nezmenil, písomka ostáva na hodine a pri inom dni či predmete
+  si nájde novú (`keepsLessonSlot`). Od hodiny ju odpojí až ručne zmenený
+  čas. Predtým stačilo písomku premenovať a ostala s pevným časom — rozvrh
+  ju už neposúval a rozpočet dňa ju rátal dvakrát.
 - **Na hodine, nie vedľa nej.** V rozvrhu aj v pruhu na „Dnes" je písomka
   vyznačená priamo v okienku hodiny. Deadline k hodine nepatrí, preto stojí
   pri dni.

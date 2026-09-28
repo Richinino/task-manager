@@ -118,10 +118,11 @@ export async function POST(request: Request): Promise<Response> {
     );
 
     /*
-      Obrazovky, na ktorých je rozvrh vidieť. Bez toho by človek videl starý
-      rozvrh až do najbližšieho tvrdého načítania stránky.
+      Obrazovky, na ktorých je rozvrh vidieť — aj písomky, ktoré import
+      posunul za hodinou. Bez toho by človek videl starý stav až do
+      najbližšieho tvrdého načítania stránky.
     */
-    for (const cesta of ["/rozvrh", "/dnes", "/tyzden"]) revalidatePath(cesta);
+    for (const cesta of ["/rozvrh", "/dnes", "/tyzden", "/udalosti", "/mesiac"]) revalidatePath(cesta);
 
     return odpoved({ ok: true, ...summary });
   } catch (chyba) {

@@ -23,6 +23,15 @@ Všetky podstatné zmeny v projekte. Formát podľa
 
 - **Rozvrh cez víkend** — od soboty sa otvorí už týždeň, ktorý príde, nie
   ten, čo práve skončil. Šípka späť ho stále ukáže.
+- **Písomka ide za svojou hodinou** — keď sa v rozvrhu hodina predmetu
+  presunie (suplovanie), stiahnutie rozvrhu posunie aj písomku.
+
+### Opravené
+
+- **Úprava písomky ju odpájala od hodiny** — stačilo ju v detaile
+  premenovať a ostala s pevným časom: rozvrh ju už neposúval a rozpočet dňa
+  ju rátal dvakrát (ako školu aj ako udalosť). Teraz ostáva na hodine, kým
+  sa jej čas ručne nezmení.
 
 ## [1.0.0] - 2026-09-27
 
@@ -115,6 +124,15 @@ All notable changes to this project. The format follows
 - **Timetable on weekends** — from Saturday on, the timetable opens on the
   coming week instead of the one that just ended. The back arrow still
   shows it.
+- **Exams follow their lesson** — when a subject's lesson moves in the
+  timetable (a substitution), syncing the timetable moves the exam too.
+
+### Fixed
+
+- **Editing an exam detached it from its lesson** — just renaming it left
+  it with a fixed time: the timetable no longer moved it and the day's time
+  budget counted it twice (as school and as an event). It now stays on the
+  lesson until its time is changed by hand.
 
 ## [1.0.0] - 2026-09-27
 

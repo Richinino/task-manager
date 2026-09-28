@@ -304,6 +304,104 @@ export function lessonForSubject(
   return best;
 }
 
+/** Písomka alebo skúšanie s predmetom, na jeden deň — len také sa píšu na hodine. */
+function sitsOnLesson(item: {
+  kind: AgendaKind;
+  type: AgendaType;
+  date: string;
+  endDate?: string | null;
+  subjectId?: string | null;
+}): boolean {
+  return (
+    item.kind === "event" &&
+    isAssessment(item.type) &&
+    (item.subjectId ?? null) !== null &&
+    !(item.endDate != null && item.endDate > item.date)
+  );
+}
+
+/**
+ * Drží úprava písomku na hodine rozvrhu?
+ *
+ * Formulár posiela čas taký, aký v ňom je — aj keď ho človek nechal tak
+ * a je to len čas hodiny. Keby sa bral ako ručný, premenovanie písomky by
+ * ju od hodiny odpojilo: ostala by s pevným časom, rozvrh by ju už
+ * neposúval a rozpočet dňa by ju rátal dvakrát (raz ako školu, raz ako
+ * udalosť). Preto: kým sa čas nezmenil, písomka na hodine ostáva — a keď
+ * sa zmenil deň alebo predmet, nájde si hodinu znova. Ručne zmenený čas
+ * ju od hodiny odpojí, tak ako doteraz.
+ */
+export function keepsLessonSlot(
+  current: { period: number | null; startTime: string | null; endTime: string | null },
+  draft: {
+    kind: AgendaKind;
+    type: AgendaType;
+    date: string;
+    endDate?: string | null;
+    subjectId?: string | null;
+    startTime?: string | null;
+    endTime?: string | null;
+  },
+): boolean {
+  if (current.period === null || !sitsOnLesson(draft)) return false;
+  return (
+    hhmm(draft.startTime) === hhmm(current.startTime) && hhmm(draft.endTime) === hhmm(current.endTime)
+  );
+}
+
+export interface LessonReslot {
+  id: string;
+  period: number;
+  startTime: string;
+  endTime: string;
+  place: string | null;
+}
+
+/**
+ * Písomky na hodine, ktorých hodina sa v rozvrhu pohla — a kam.
+ *
+ * Písomka si pri založení zapíše poradie a čas hodiny. Keď škola hodiny
+ * v ten deň prehodí (dejepis zo 5. na 6.), písomka ide s predmetom, nie so
+ * starým časom. Import rozvrhu to po každom stiahnutí dorovná.
+ *
+ * Dotýka sa len písomiek naviazaných na hodinu (`period`) — ručný čas je
+ * rozhodnutie človeka. Keď predmet v ten deň z rozvrhu zmizol, písomka
+ * ostane, kde je: zmazať jej čas by bolo horšie než nechať starý. Miesto
+ * sa doplní len prázdne; zapísané mohol zadať človek.
+ */
+export function reslotAssessments(
+  items: readonly {
+    id: string;
+    kind: AgendaKind;
+    type: AgendaType;
+    date: string;
+    endDate: string | null;
+    period: number | null;
+    startTime: string | null;
+    endTime: string | null;
+    subjectId: string | null;
+    place: string | null;
+  }[],
+  lessons: readonly (LessonSlot & { room?: string | null })[],
+): LessonReslot[] {
+  const zmeny: LessonReslot[] = [];
+  for (const item of items) {
+    if (item.period === null || item.subjectId === null || !sitsOnLesson(item)) continue;
+    const slot = lessonForSubject(lessons, item.subjectId, item.date);
+    if (slot === null) continue;
+    const startTime = hhmm(slot.startTime)!;
+    const endTime = hhmm(slot.endTime)!;
+    if (slot.period === item.period && startTime === hhmm(item.startTime) && endTime === hhmm(item.endTime)) {
+      continue;
+    }
+    const room =
+      lessons.find((l) => l.date === item.date && l.period === slot.period && l.subjectId === item.subjectId)?.room ??
+      null;
+    zmeny.push({ id: item.id, period: slot.period, startTime, endTime, place: item.place ?? room });
+  }
+  return zmeny;
+}
+
 /**
  * Na ktorej hodine rozvrhu písomka alebo skúšanie leží — kľúčom je id hodiny.
  *

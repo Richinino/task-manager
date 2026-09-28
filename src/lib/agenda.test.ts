@@ -17,8 +17,10 @@ import {
   isAgendaPast,
   isOnDay,
   isValidGrade,
+  keepsLessonSlot,
   lessonForSubject,
   matchAgenda,
+  reslotAssessments,
   shortDaySk,
   weekSpans,
   type AgendaLike,
@@ -172,6 +174,106 @@ describe("lessonForSubject", () => {
   it("odpadnutú hodinu a iný deň ignoruje", () => {
     expect(lessonForSubject(hodiny, "mat", DNES)).toBeNull();
     expect(lessonForSubject(hodiny, "mat", "2026-09-29")?.startTime).toBe("08:00");
+  });
+});
+
+describe("keepsLessonSlot", () => {
+  /* Písomka z dejepisu na 5. hodine, tak ako ju uloží databáza (čas so sekundami). */
+  const naHodine = { period: 5, startTime: "11:50:00", endTime: "12:35:00" };
+  const formular = {
+    kind: "event" as const,
+    type: "exam" as const,
+    date: DNES,
+    endDate: null,
+    subjectId: "dej",
+    startTime: "11:50",
+    endTime: "12:35",
+  };
+
+  it("premenovanie s nezmeneným časom písomku na hodine nechá", () => {
+    expect(keepsLessonSlot(naHodine, formular)).toBe(true);
+  });
+
+  it("iný deň alebo predmet s nezmeneným časom si hodinu nájde znova", () => {
+    expect(keepsLessonSlot(naHodine, { ...formular, date: "2026-09-30" })).toBe(true);
+    expect(keepsLessonSlot(naHodine, { ...formular, subjectId: "sjl" })).toBe(true);
+  });
+
+  it("ručne zmenený čas písomku od hodiny odpojí", () => {
+    expect(keepsLessonSlot(naHodine, { ...formular, startTime: "12:00" })).toBe(false);
+    expect(keepsLessonSlot(naHodine, { ...formular, endTime: "13:00" })).toBe(false);
+  });
+
+  it("vymazaný čas rieši rozvrh sám, nie táto poistka", () => {
+    expect(keepsLessonSlot(naHodine, { ...formular, startTime: null, endTime: null })).toBe(false);
+  });
+
+  it("písomka bez hodiny, iný typ, bez predmetu či viac dní sa nedrží ničoho", () => {
+    expect(keepsLessonSlot({ ...naHodine, period: null }, formular)).toBe(false);
+    expect(keepsLessonSlot(naHodine, { ...formular, type: "other" })).toBe(false);
+    expect(keepsLessonSlot(naHodine, { ...formular, kind: "deadline", type: "submit" })).toBe(false);
+    expect(keepsLessonSlot(naHodine, { ...formular, subjectId: null })).toBe(false);
+    expect(keepsLessonSlot(naHodine, { ...formular, endDate: "2026-09-29" })).toBe(false);
+  });
+
+  it("skúšanie sa správa ako písomka", () => {
+    expect(keepsLessonSlot(naHodine, { ...formular, type: "oral" })).toBe(true);
+  });
+});
+
+describe("reslotAssessments", () => {
+  /* Dnešný pondelok: dejepis sa zo 5. hodiny presunul na 6., slovenčina prišla na 5. */
+  const hodiny = [
+    { date: DNES, period: 5, subjectId: "sjl", startTime: "11:50:00", endTime: "12:35:00", cancelled: false, room: "sep b" },
+    { date: DNES, period: 6, subjectId: "dej", startTime: "12:45:00", endTime: "13:30:00", cancelled: false, room: "U1 (T)" },
+    { date: "2026-09-30", period: 5, subjectId: "che", startTime: "11:50:00", endTime: "12:35:00", cancelled: false, room: null },
+  ];
+
+  function pisomka(patch: Partial<Parameters<typeof reslotAssessments>[0][number]> = {}) {
+    return {
+      id: "p1",
+      kind: "event" as const,
+      type: "exam" as const,
+      date: DNES,
+      endDate: null,
+      period: 5,
+      startTime: "11:50:00",
+      endTime: "12:35:00",
+      subjectId: "dej",
+      place: "U1 (T)",
+      ...patch,
+    };
+  }
+
+  it("písomka ide za svojou hodinou, keď sa v rozvrhu pohla", () => {
+    expect(reslotAssessments([pisomka()], hodiny)).toEqual([
+      { id: "p1", period: 6, startTime: "12:45", endTime: "13:30", place: "U1 (T)" },
+    ]);
+  });
+
+  it("písomka na správnej hodine sa nemení", () => {
+    const sedi = pisomka({ id: "p2", date: "2026-09-30", subjectId: "che", place: null });
+    expect(reslotAssessments([sedi], hodiny)).toEqual([]);
+  });
+
+  it("prázdne miesto doplní učebňou hodiny, zapísané nechá", () => {
+    expect(reslotAssessments([pisomka({ place: null })], hodiny)[0]?.place).toBe("U1 (T)");
+    expect(reslotAssessments([pisomka({ place: "aula" })], hodiny)[0]?.place).toBe("aula");
+  });
+
+  it("ručný čas, iný typ či viac dní nechá tak", () => {
+    expect(reslotAssessments([pisomka({ period: null })], hodiny)).toEqual([]);
+    expect(reslotAssessments([pisomka({ type: "other" })], hodiny)).toEqual([]);
+    expect(reslotAssessments([pisomka({ endDate: "2026-09-29" })], hodiny)).toEqual([]);
+  });
+
+  it("keď predmet v ten deň z rozvrhu zmizol, písomka ostane, kde je", () => {
+    expect(reslotAssessments([pisomka({ subjectId: "mat" })], hodiny)).toEqual([]);
+  });
+
+  it("odpadnutá hodina písomku nenesie", () => {
+    const odpadla = hodiny.map((h) => (h.subjectId === "dej" ? { ...h, cancelled: true } : h));
+    expect(reslotAssessments([pisomka()], odpadla)).toEqual([]);
   });
 });
 

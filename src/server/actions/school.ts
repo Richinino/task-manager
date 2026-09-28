@@ -70,7 +70,8 @@ function fail(error: unknown, message: string): { ok: false; error: string } {
   return { ok: false, error: message };
 }
 
-const AFFECTED_PATHS = ["/rozvrh", "/dnes", "/tyzden"] as const;
+/* Udalosti a mesiac pre písomky, ktoré import posunie za ich hodinou. */
+const AFFECTED_PATHS = ["/rozvrh", "/dnes", "/tyzden", "/udalosti", "/mesiac"] as const;
 
 function revalidateViews(): void {
   for (const path of AFFECTED_PATHS) revalidatePath(path);

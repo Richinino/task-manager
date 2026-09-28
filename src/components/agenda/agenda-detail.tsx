@@ -586,12 +586,11 @@ function AgendaForm({
   const types = TYPES_FOR[kind];
   const effectiveType = types.includes(type) ? type : "other";
   /*
-    Pri písomke a skúšaní sa čas neukladá, ak sa nezmenil deň ani predmet —
-    server ho inak prepočíta z rozvrhu. Keď človek čas vymaže, rozvrh ho
-    doplní znova.
+    Čas ide na server taký, aký je vo formulári. Či písomka ostáva na hodine
+    rozvrhu, rozhodne server (`keepsLessonSlot`): kým človek čas nezmení,
+    ostáva, a pri inom dni či predmete si hodinu nájde znova. Keď čas vymaže,
+    rozvrh ho doplní.
   */
-  const lessonTimed = item.period !== null && date === item.date && subjectId === (item.subjectId ?? NONE);
-
   function submit(): void {
     onSave({
       kind,
@@ -600,7 +599,7 @@ function AgendaForm({
       note: note.trim() === "" ? null : note,
       date,
       endDate: kind === "event" && endDate !== "" && endDate > date ? endDate : null,
-      startTime: kind === "event" && startTime !== "" && !lessonTimed ? startTime : lessonTimed ? hhmm(item.startTime) : null,
+      startTime: kind === "event" && startTime !== "" ? startTime : null,
       endTime: endTime !== "" ? endTime : null,
       place: place.trim() === "" ? null : place,
       subjectId: subjectId === NONE ? null : subjectId,

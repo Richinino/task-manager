@@ -7,7 +7,13 @@ import { z } from "zod";
 import { getDb } from "@/db";
 import { agendaItems, tasks, type AgendaItem } from "@/db/schema";
 import { addDays, diffDays } from "@/lib/dates";
-import { AGENDA_REMINDERS, isAssessment, isValidGrade, type AgendaReminder } from "@/lib/agenda";
+import {
+  AGENDA_REMINDERS,
+  isAssessment,
+  isValidGrade,
+  keepsLessonSlot,
+  type AgendaReminder,
+} from "@/lib/agenda";
 import { reminderOptions } from "@/lib/agenda-reminders";
 import { checkAgendaRefs, insertAgendaItem, resolveAgendaValues } from "@/server/agenda-write";
 import { requireUser } from "@/server/auth-guard";
@@ -123,8 +129,9 @@ export async function createAgendaItem(input: AgendaInput): Promise<ActionResult
  * málo polí a pri čiastočnej úprave by sa ťažko hovorilo o tom, kedy sa má
  * čas prepočítať z rozvrhu.
  *
- * Čas z rozvrhu sa prepočíta, keď sa pri písomke zmení deň alebo predmet
- * a formulár čas neposlal (vymazal ho). Ručne zadaný čas sa nikdy neprepíše.
+ * Čas z rozvrhu sa prepočíta, keď formulár čas neposlal (vymazal ho), a pri
+ * písomke na hodine aj vtedy, keď čas nechal tak (`keepsLessonSlot`). Ručne
+ * zmenený čas sa nikdy neprepíše.
  */
 export async function updateAgendaItem(id: string, input: AgendaInput): Promise<ActionResult> {
   const user = await requireUser();
@@ -144,11 +151,31 @@ export async function updateAgendaItem(id: string, input: AgendaInput): Promise<
       Oblasť a projekt formulár neukazuje. Chýbajúce pole preto znamená
       „nechaj, ako je“, nie „odpoj“ — inak by každá úprava ticho zmazala väzby.
     */
-    const values = await resolveAgendaValues(user.id, {
+    const draft = {
       ...parsed.data,
       areaId: parsed.data.areaId === undefined ? current.areaId : parsed.data.areaId,
       projectId: parsed.data.projectId === undefined ? current.projectId : parsed.data.projectId,
-    });
+    };
+
+    /*
+      Písomka na hodine s nezmeneným časom na hodine ostáva: čas sa nepošle
+      a rozvrh ho doplní (pri inom dni či predmete tú novú hodinu). Keď hodina
+      v ten istý deň z rozvrhu zmizla, ostane čas, aký bol — úprava názvu či
+      poznámky nemá písomke zobrať aj čas.
+    */
+    const naHodine = keepsLessonSlot(current, parsed.data);
+    let values = await resolveAgendaValues(
+      user.id,
+      naHodine ? { ...draft, startTime: null, endTime: null } : draft,
+    );
+    if (
+      naHodine &&
+      values.period === null &&
+      parsed.data.date === current.date &&
+      (parsed.data.subjectId ?? null) === current.subjectId
+    ) {
+      values = await resolveAgendaValues(user.id, draft);
+    }
     await db
       .update(agendaItems)
       .set({ ...values, updatedAt: new Date() })
