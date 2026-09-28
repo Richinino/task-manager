@@ -1,5 +1,6 @@
 import { addDays, diffDays, formatDayMonthSk, parseIsoDate, timeToMinutes, WEEKDAYS_SHORT_SK } from "./dates";
 import { fold } from "./fold";
+import { wordNamesSubject } from "./subject-match";
 import { pluralSk } from "./sk";
 
 /**
@@ -367,7 +368,8 @@ export interface LessonReslot {
  * Dotýka sa len písomiek naviazaných na hodinu (`period`) — ručný čas je
  * rozhodnutie človeka. Keď predmet v ten deň z rozvrhu zmizol, písomka
  * ostane, kde je: zmazať jej čas by bolo horšie než nechať starý. Miesto
- * sa doplní len prázdne; zapísané mohol zadať človek.
+ * ide s hodinou, keď je z nej (prázdne alebo učebňa pôvodnej hodiny
+ * z `previous`); iné miesto zadal človek a ostane.
  */
 export function reslotAssessments(
   items: readonly {
@@ -383,6 +385,8 @@ export function reslotAssessments(
     place: string | null;
   }[],
   lessons: readonly (LessonSlot & { room?: string | null })[],
+  /** Hodiny, ako boli pred importom — podľa nich sa pozná učebňa, z ktorej miesto písomky pochádza. */
+  previous: readonly (Omit<LessonSlot, "startTime" | "endTime"> & { room?: string | null })[] = [],
 ): LessonReslot[] {
   const zmeny: LessonReslot[] = [];
   for (const item of items) {
@@ -391,13 +395,26 @@ export function reslotAssessments(
     if (slot === null) continue;
     const startTime = hhmm(slot.startTime)!;
     const endTime = hhmm(slot.endTime)!;
-    if (slot.period === item.period && startTime === hhmm(item.startTime) && endTime === hhmm(item.endTime)) {
+    const naHodine = (l: { date: string; period: number; subjectId: string }, period: number) =>
+      l.date === item.date && l.period === period && l.subjectId === item.subjectId;
+    const room = lessons.find((l) => naHodine(l, slot.period))?.room ?? null;
+    /*
+      Miesto ide s hodinou, keď z nej pochádza: prázdne, alebo rovné
+      učebni hodiny, na ktorej písomka doteraz bola. Čo človek napísal
+      sám („aula"), ostane.
+    */
+    const staraUcebna = previous.find((l) => naHodine(l, item.period!))?.room ?? null;
+    const miestoZHodiny = item.place === null || (staraUcebna !== null && item.place === staraUcebna);
+    const place = miestoZHodiny ? room : item.place;
+    if (
+      slot.period === item.period &&
+      startTime === hhmm(item.startTime) &&
+      endTime === hhmm(item.endTime) &&
+      place === item.place
+    ) {
       continue;
     }
-    const room =
-      lessons.find((l) => l.date === item.date && l.period === slot.period && l.subjectId === item.subjectId)?.room ??
-      null;
-    zmeny.push({ id: item.id, period: slot.period, startTime, endTime, place: item.place ?? room });
+    zmeny.push({ id: item.id, period: slot.period, startTime, endTime, place });
   }
   return zmeny;
 }
@@ -538,21 +555,17 @@ const PREDLOZKY = new Set(["z", "zo", "na", "v", "vo", "do", "o", "k", "ku"]);
  * Z „písomka z MAT funkcie" tak ostane „z MAT funkcie"; predmet má udalosť
  * vo vlastnom poli, takže sa z názvu vyberie aj s predložkou pred ním.
  * Keď nič neostane, názov je len druh („Písomka"). Predmet sa hľadá rovnako
- * ako v `matchSubject`: skratka ako celé slovo, názov podľa prvých piatich
- * písmen („z fyziky" sedí na „Fyzika").
+ * ako v `matchSubject` (`wordNamesSubject`): skratka ako celé slovo, názov
+ * podľa prvých piatich písmen („z fyziky" sedí na „Fyzika"), meno jazyka
+ * a prezývky podľa základu („z nemčiny").
  */
 export function assessmentTitle(
   type: AgendaType,
   rest: string,
-  subject: { code: string; name: string | null } | null,
+  subject: { code: string; name: string | null; aliases?: readonly string[] } | null,
 ): string {
-  const code = subject !== null ? fold(subject.code) : null;
-  const stem = subject?.name ? fold(subject.name).slice(0, 5) : null;
   const clean = (w: string): string => fold(w).replace(/[.,;:!?]+$/u, "");
-  const isSubject = (w: string): boolean => {
-    const f = clean(w);
-    return (code !== null && f === code) || (stem !== null && stem.length === 5 && f.startsWith(stem));
-  };
+  const isSubject = (w: string): boolean => subject !== null && wordNamesSubject(w, subject);
 
   const out: string[] = [];
   for (const word of rest.trim().split(/\s+/u).filter(Boolean)) {

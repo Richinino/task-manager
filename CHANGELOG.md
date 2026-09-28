@@ -19,12 +19,18 @@ Všetky podstatné zmeny v projekte. Formát podľa
   oblasť, predmet aj štítky; hotovú či zahodenú vráti späť. Udalosti, písomky
   a deadliny vytvorí aj upraví (deň, čas, miesto, zrušenie, známka).
 
+- **Prezývky predmetov** — v Nastaveniach → Predmety si ku každému predmetu
+  dopíšeš, ako mu hovoríš („matika", „nj"), a zachytenie ho podľa toho
+  priradí. Bežné meno jazyka („nemčina", „angličtina", „slovenčina") appka
+  pozná sama, s diakritikou aj bez nej, v každom páde.
+
 ### Zmenené
 
 - **Rozvrh cez víkend** — od soboty sa otvorí už týždeň, ktorý príde, nie
   ten, čo práve skončil. Šípka späť ho stále ukáže.
 - **Písomka ide za svojou hodinou** — keď sa v rozvrhu hodina predmetu
-  presunie (suplovanie), stiahnutie rozvrhu posunie aj písomku.
+  presunie (suplovanie), stiahnutie rozvrhu posunie aj písomku, a s ňou aj
+  učebňu, ak miesto písomky bolo učebňou hodiny.
 
 ### Opravené
 
@@ -123,13 +129,19 @@ All notable changes to this project. The format follows
   area, subject and tags, and reopens done or dropped tasks. It creates and
   edits events, exams and deadlines (day, time, place, cancel, grade).
 
+- **Subject nicknames** — under Nastavenia → Predmety you add what you call
+  each subject ("matika", "nj") and quick capture assigns it. The everyday
+  name of a language subject ("nemčina", "angličtina", "slovenčina") is
+  recognised out of the box, with or without diacritics, in any case form.
+
 ### Changed
 
 - **Timetable on weekends** — from Saturday on, the timetable opens on the
   coming week instead of the one that just ended. The back arrow still
   shows it.
 - **Exams follow their lesson** — when a subject's lesson moves in the
-  timetable (a substitution), syncing the timetable moves the exam too.
+  timetable (a substitution), syncing the timetable moves the exam too,
+  along with the classroom when the exam's place was the lesson's room.
 
 ### Fixed
 

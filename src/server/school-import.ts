@@ -318,7 +318,7 @@ export async function importScheduleFor(
         );
     }
 
-    const presunutychPisomiek = await dorovnajPisomky(tx, userId, dnes);
+    const presunutychPisomiek = await dorovnajPisomky(tx, userId, dnes, buduceUlozene);
     const upratanychPredmetov = await upracPredmety(tx, userId);
 
     return {
@@ -344,7 +344,13 @@ export async function importScheduleFor(
  * ďalej tvrdila starý čas. Čo je v zmene, rozhoduje `reslotAssessments`;
  * tu sa len načítajú dnešné a budúce hodiny po zápise a zmeny sa uložia.
  */
-async function dorovnajPisomky(db: Queryable, userId: string, dnes: string): Promise<number> {
+async function dorovnajPisomky(
+  db: Queryable,
+  userId: string,
+  dnes: string,
+  /** Hodiny pred týmto importom — z nich sa pozná, či miesto písomky je učebňa jej hodiny. */
+  predtym: readonly { date: string; period: number; subjectId: string; room: string | null }[],
+): Promise<number> {
   const pisomky = await db
     .select()
     .from(agendaItems)
@@ -374,7 +380,7 @@ async function dorovnajPisomky(db: Queryable, userId: string, dnes: string): Pro
     .from(schoolLessons)
     .where(and(eq(schoolLessons.userId, userId), gte(schoolLessons.date, dnes)));
 
-  const zmeny = reslotAssessments(pisomky, hodiny);
+  const zmeny = reslotAssessments(pisomky, hodiny, predtym);
   for (const z of zmeny) {
     await db
       .update(agendaItems)

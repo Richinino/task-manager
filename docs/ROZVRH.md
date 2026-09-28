@@ -234,7 +234,23 @@ Skutočné čísla: pondelok/streda/piatok 270 min, utorok/štvrtok 315 min.
 
 ## Spojenie s úlohami
 
-Úloha dostane **predmet**. Z toho plynie zvyšok:
+Úloha dostane **predmet**. Nájde sa v názve úlohy (`matchSubject`):
+
+- **skratka** ako celé slovo — `FYZ`, `NEJ`;
+- **názov** predmetu, aj skloňovaný — „z fyziky" sedí na „Fyzika";
+- **bežné meno jazyka** — „Nemecký jazyk" z EduPage je doma „nemčina",
+  takže „nemcina DU" aj „z nemčiny" sedia na `NEJ` (to isté angličtina,
+  slovenčina, francúzština…);
+- **prezývky** z Nastavení → Predmety — „matika", „nj"… Uložené sú pri
+  skratke predmetu, takže prežijú aj opätovný import. Dlhšie sa skloňujú,
+  ale musia začínať slovo („matika" nie je v „informatike"); krátke sa berú
+  len ako celé slovo.
+
+Diakritika ani veľké písmená nerozhodujú. Vymyslené prezývky appka
+nedomýšľa — čo nie je skratka, názov, meno jazyka ani prezývka, predmet nie
+je.
+
+Z toho plynie zvyšok:
 
 - **Termín sa ponúkne sám — na deň tej hodiny.** Napíšeš „domáca úloha na
   matiku", appka nájde najbližšiu hodinu MAT a dátum **predvyplní**. Je to
