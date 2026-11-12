@@ -19,6 +19,7 @@
  * `title` a prázdne tokeny.
  */
 
+import { matchProjectAt } from "@/lib/project-match";
 import type { SchoolKind } from "@/lib/school-kind";
 import {
   addDays,
@@ -70,6 +71,11 @@ export interface ParsedCapture {
   energy?: "low" | "mid" | "high";
   context?: string;
   tags: string[];
+  /**
+   * Projekt za `+`. Keď parser dostal zoznam projektov (`projects`) a za `+`
+   * stojí meno jedného z nich, je tu meno tak, ako je uložené — aj s medzerou
+   * a diakritikou („+3D tlaciaren" → „3D tlačiareň"). Inak holé slovo za `+`.
+   */
   projectName?: string;
   /**
    * Domáca úloha, alebo písomka — z textu, nie z výberu.
@@ -463,6 +469,11 @@ const W_TIME_HOUR = 6;
   pravidlo vzniklo.
 */
 const W_TIME_RANGE = 7;
+/*
+  Meno existujúceho projektu za `+` je výslovná značka a prebije všetko, čo
+  by sa našlo vnútri neho — projekt „Výlet v piatok" nesmie rozbiť dátum.
+*/
+const W_PROJECT_KNOWN = 8;
 
 /* ═══════════════════════════════════════════════════════════════════════════
    POMOCNÉ FUNKCIE
@@ -577,10 +588,18 @@ function energyFromWord(word: string): "low" | "mid" | "high" | null {
    PARSER
    ═══════════════════════════════════════════════════════════════════════════ */
 
-export function parseCapture(
-  input: string,
-  opts?: { now?: Date; weekStartsOn?: number },
-): ParsedCapture {
+export interface ParseOptions {
+  now?: Date;
+  weekStartsOn?: number;
+  /**
+   * Mená projektov používateľa. Bez nich značka `+` končí na prvej medzere;
+   * s nimi sa natiahne na celé meno projektu („+3D tlačiareň"). Viac
+   * v `src/lib/project-match.ts`.
+   */
+  projects?: readonly string[];
+}
+
+export function parseCapture(input: string, opts?: ParseOptions): ParsedCapture {
   const text = typeof input === "string" ? input : "";
   try {
     return parseInner(text, opts);
@@ -590,10 +609,7 @@ export function parseCapture(
   }
 }
 
-function parseInner(
-  input: string,
-  opts?: { now?: Date; weekStartsOn?: number },
-): ParsedCapture {
+function parseInner(input: string, opts?: ParseOptions): ParsedCapture {
   const base = today(opts?.now);
   const weekStartsOn = opts?.weekStartsOn ?? 1;
   const folded = fold(input);
@@ -893,6 +909,18 @@ function parseInner(
   });
 
   eachMatch(RE_PROJECT, folded, (m) => {
+    const known = matchProjectAt(input, m.index + 1, opts?.projects ?? []);
+    if (known !== null) {
+      candidates.push({
+        kind: "project",
+        start: m.index,
+        end: known.end,
+        weight: W_PROJECT_KNOWN,
+        label: `+${known.name}`,
+        text: known.name,
+      });
+      return;
+    }
     const end = m.index + m[0].length;
     candidates.push({
       kind: "project",

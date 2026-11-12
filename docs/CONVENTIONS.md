@@ -271,7 +271,7 @@ export function parseCapture(
 | `v piatok`, `na zajtra`, `zajtra`, `dnes`, `pozajtra`, `12.8.` | `plannedDate` |
 | `do piatku`, `do 31.3.`, `termín 31.3.`, `deadline 31.3.` | `dueDate` |
 
-Ďalšie tokeny: `15:00` · `o 15:00` → čas · `!1 !2 !3` → priorita · `@kontext` · `#tag` · `+projekt` · `15m`, `90min`, `2h`, `1,5h` → odhad · `!!nizka`/`!!stredna`/`!!vysoka` → energia.
+Ďalšie tokeny: `15:00` · `o 15:00` → čas · `!1 !2 !3` → priorita · `@kontext` · `#tag` · `+projekt` (s `projects` v `parseCapture` aj viacslovné meno existujúceho projektu, `src/lib/project-match.ts`) · `15m`, `90min`, `2h`, `1,5h` → odhad · `!!nizka`/`!!stredna`/`!!vysoka` → energia.
 
 Slovenské dni v týždni vo všetkých pádoch, ktoré sa reálne píšu: `pondelok/pondelka/pondelky`, `utorok/utorka`, `streda/stredu/stredy`, `štvrtok/stvrtok/štvrtka`, `piatok/piatka`, `sobota/sobotu/soboty`, `nedeľa/nedelu/nedele`. Diakritika **nesmie** byť povinná (`stvrtok` = `štvrtok`).
 

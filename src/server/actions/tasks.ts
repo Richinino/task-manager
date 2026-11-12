@@ -27,6 +27,7 @@ import { uuidv7 } from "@/lib/id";
 import { assessmentTitle, type AgendaType } from "@/lib/agenda";
 import { fold } from "@/lib/fold";
 import { parseCapture } from "@/lib/parse";
+import { findProject } from "@/lib/project-match";
 import { matchSubject } from "@/lib/subject-match";
 import { applyRules } from "@/server/apply-rules";
 import { SCHOOL_KINDS, type SchoolKind } from "@/lib/school-kind";
@@ -838,9 +839,20 @@ export async function quickCapture(
         ? new Date(y, m - 1, d, 12, 0, 0, 0)
         : new Date();
 
+    /*
+      Projekty idú do parsera, aby `+3D tlačiareň` bol jeden projekt, nie
+      projekt „3D" a slovo „tlačiareň" v názve. Viac v `project-match.ts`.
+    */
+    const db = await getDb();
+    const mojeProjekty = await db
+      .select({ id: projects.id, name: projects.name })
+      .from(projects)
+      .where(and(eq(projects.userId, user.id), isNull(projects.deletedAt)));
+
     const parsed = parseCapture(rawParsed.data, {
       now,
       weekStartsOn: user.settings.weekStartsOn,
+      projects: mojeProjekty.map((p) => p.name),
     });
 
     const title = parsed.title.trim();
@@ -856,7 +868,6 @@ export async function quickCapture(
     if (!title && target === "task") return { ok: false, error: "Úloha musí mať názov." };
 
     const forceInbox = opts?.forceInbox === true;
-    const db = await getDb();
 
     /* Udalosť, pod ktorú úloha patrí — overená proti používateľovi, id prišlo z prehliadača. */
     let linked: { id: string; date: string; subjectId: string | null } | null = null;
@@ -876,24 +887,13 @@ export async function quickCapture(
       linked = row;
     }
 
-    // Projekt sa priraďuje podľa názvu bez ohľadu na veľkosť písmen.
+    // Projekt sa priraďuje podľa názvu bez ohľadu na veľkosť písmen,
+    // diakritiku a to, či je medzi slovami medzera alebo spojovník.
     // Nový projekt sa zámerne nezakladá — na to je samostatný krok.
-    let projectId: string | null = null;
-    const projectName = parsed.projectName?.trim();
-    if (projectName) {
-      const rows = await db
-        .select({ id: projects.id })
-        .from(projects)
-        .where(
-          and(
-            eq(projects.userId, user.id),
-            isNull(projects.deletedAt),
-            sql`lower(${projects.name}) = lower(${projectName})`,
-          ),
-        )
-        .limit(1);
-      projectId = rows[0]?.id ?? null;
-    }
+    let projectId: string | null =
+      parsed.projectName !== undefined
+        ? (findProject(parsed.projectName, mojeProjekty)?.id ?? null)
+        : null;
 
     /*
       `defaultPlannedDate` prichádza z tlačidla „+" na konkrétnom dni. Je to

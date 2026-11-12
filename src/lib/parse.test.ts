@@ -802,3 +802,51 @@ describe("učiť sa verzus zopakovať", () => {
     expect(parseCapture("zopakovat si dejepis").title).toBe("si dejepis");
   });
 });
+
+describe("projekt s viacslovným menom", () => {
+  const PROJEKTY = ["3D tlačiareň", "3D", "Výlet v piatok", "Web"];
+  const pp = (input: string) => parseCapture(input, { now: NOW, projects: PROJEKTY });
+
+  it("+3D tlaciaren je celý projekt, nie „3D“ a slovo v názve", () => {
+    const input = "kúpiť filament +3D tlaciaren zajtra";
+    const r = pp(input);
+    expect(r.projectName).toBe("3D tlačiareň");
+    expect(r.title).toBe("kúpiť filament");
+    expect(r.plannedDate).toBe("2026-08-06");
+    expectAligned(input, r);
+  });
+
+  it("kratší projekt ostane kratší, keď ďalšie slovo nie je jeho", () => {
+    const r = pp("+3D vytlačiť držiak");
+    expect(r.projectName).toBe("3D");
+    expect(r.title).toBe("vytlačiť držiak");
+  });
+
+  it("spojovník aj podčiarkovník sú medzera", () => {
+    expect(pp("filament +3D-tlačiareň").projectName).toBe("3D tlačiareň");
+    expect(pp("filament +3d_TLACIAREN").projectName).toBe("3D tlačiareň");
+  });
+
+  it("meno projektu prebije dátum vnútri neho", () => {
+    const r = pp("zbaliť sa +Výlet v piatok");
+    expect(r.projectName).toBe("Výlet v piatok");
+    expect(r.plannedDate).toBeUndefined();
+    expect(r.title).toBe("zbaliť sa");
+  });
+
+  it("jednoslovný projekt bez diakritiky dostane uložené meno", () => {
+    expect(pp("úloha +web").projectName).toBe("Web");
+  });
+
+  it("neznámy projekt ostáva po starom jedno slovo", () => {
+    const r = pp("úloha +Záhrada jar");
+    expect(r.projectName).toBe("Záhrada");
+    expect(r.title).toBe("úloha jar");
+  });
+
+  it("bez zoznamu projektov sa nič nemení", () => {
+    const r = p("filament +3D tlaciaren");
+    expect(r.projectName).toBe("3D");
+    expect(r.title).toBe("filament tlaciaren");
+  });
+});
