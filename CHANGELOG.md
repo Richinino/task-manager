@@ -34,6 +34,11 @@ Všetky podstatné zmeny v projekte. Formát podľa
 
 ### Opravené
 
+- **Projekt s viacslovným menom v zachytení** — `+3D tlaciaren` zaradilo
+  úlohu do projektu „3D", lebo značka končila na prvej medzere. Teraz sa za
+  `+` hľadá celé meno existujúceho projektu, bez ohľadu na diakritiku
+  a veľkosť písmen; medzera, spojovník aj podčiarkovník platia rovnako
+  a pri projektoch „3D" aj „3D tlačiareň" vyhrá dlhší, ak je celý napísaný.
 - **Úprava písomky ju odpájala od hodiny** — stačilo ju v detaile
   premenovať a ostala s pevným časom: rozvrh ju už neposúval a rozpočet dňa
   ju rátal dvakrát (ako školu aj ako udalosť). Teraz ostáva na hodine, kým
@@ -145,6 +150,12 @@ All notable changes to this project. The format follows
 
 ### Fixed
 
+- **Multi-word project names in quick capture** — `+3D tlaciaren` filed the
+  task under a project called "3D" because the marker stopped at the first
+  space. The text after `+` is now matched against the full names of
+  existing projects, ignoring diacritics and case; a space, hyphen or
+  underscore all count as the same separator, and with both "3D" and
+  "3D tlačiareň" the longer one wins when it is written out in full.
 - **Editing an exam detached it from its lesson** — just renaming it left
   it with a fixed time: the timetable no longer moved it and the day's time
   budget counted it twice (as school and as an event). It now stays on the

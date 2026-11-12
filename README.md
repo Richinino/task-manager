@@ -114,7 +114,7 @@ zavolať Petrovi v piatok 15:00 !1 @telefon +Klient-Novak 15m
 | `!1` `!2` `!3` | priorita |
 | `@pocitac` | kontext |
 | `#tag` | tag |
-| `+projekt` | projekt |
+| `+projekt` | projekt; aj viacslovný (`+3D tlačiareň`), bez ohľadu na diakritiku |
 | `30m`, `2h`, `1,5h` | odhad času |
 | `!!nizka` `!!stredna` `!!vysoka` | energia |
 
@@ -288,7 +288,7 @@ zavolať Petrovi v piatok 15:00 !1 @telefon +Klient-Novak 15m
 | `!1` `!2` `!3` | priority |
 | `@pocitac` | context |
 | `#tag` | tag |
-| `+projekt` | project |
+| `+projekt` | project; multi-word names work too (`+3D tlačiareň`), diacritics optional |
 | `30m`, `2h`, `1,5h` | time estimate |
 | `!!nizka` `!!stredna` `!!vysoka` | energy (low / medium / high) |
 

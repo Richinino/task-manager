@@ -22,6 +22,7 @@ import { Kbd } from "@/components/ui/kbd";
 import type { SyntaxEdit } from "@/lib/capture-syntax";
 import { formatLongSk } from "@/lib/dates";
 import { parseCapture, type ParsedCapture } from "@/lib/parse";
+import { projectExists } from "@/lib/project-match";
 import { cn } from "@/lib/utils";
 import { fold } from "@/lib/fold";
 import { activeTrigger, applySuggestion } from "@/lib/capture-suggest";
@@ -217,8 +218,9 @@ export function QuickCapture({
 
   // Parser je čistá a lacná funkcia — pokojne beží pri každom znaku.
   const parsed = useMemo<ParsedCapture | null>(
-    () => (trimmed === "" ? null : parseCapture(value, { weekStartsOn })),
-    [value, trimmed, weekStartsOn],
+    () =>
+      trimmed === "" ? null : parseCapture(value, { weekStartsOn, projects: knownProjects }),
+    [value, trimmed, weekStartsOn, knownProjects],
   );
 
   /** Čo sa naozaj uloží — prepínač, alebo písomka rozpoznaná v texte. */
@@ -454,7 +456,7 @@ export function QuickCapture({
         );
         // Server ešte nič nevrátil, tak si názov odvodíme sami — je to ten
         // istý parser, ktorý beží aj v náhľade pod poľom.
-        const title = parseCapture(raw, { weekStartsOn }).title.trim();
+        const title = parseCapture(raw, { weekStartsOn, projects: knownProjects }).title.trim();
         finish(title === "" ? raw : title, true);
         return true;
       } catch {
@@ -481,7 +483,7 @@ export function QuickCapture({
           parser nemá, takže „!1" alebo „do 31.3." by ostali v názve nápadu
           ako smeti. Že sa značky stratili, hovorí náhľad ešte pred uložením.
         */
-        const title = parseCapture(raw, { weekStartsOn }).title.trim();
+        const title = parseCapture(raw, { weekStartsOn, projects: knownProjects }).title.trim();
         if (title === "") {
           setError("Napíš aj názov nápadu — zo samotných značiek nápad nevznikne.");
           inputRef.current?.focus();
@@ -737,10 +739,7 @@ export function QuickCapture({
           {!idea &&
           parsed?.projectName !== undefined &&
           knownProjects.length > 0 &&
-          !knownProjects.some(
-            (name) =>
-              name.trim().toLowerCase() === parsed.projectName?.trim().toLowerCase(),
-          ) ? (
+          !projectExists(parsed.projectName, knownProjects) ? (
             <div className="px-3 pb-1 pl-9">
               <button
                 type="button"

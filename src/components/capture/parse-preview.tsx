@@ -15,6 +15,7 @@ import { EnergyBadge, energyLabel } from "@/components/task/energy-badge";
 import { EstimateChip, estimateLabel } from "@/components/task/estimate-chip";
 import { formatDuration, formatLongSk, formatRelativeSk } from "@/lib/dates";
 import type { ParsedCapture } from "@/lib/parse";
+import { projectExists } from "@/lib/project-match";
 import { cn } from "@/lib/utils";
 
 /**
@@ -129,20 +130,6 @@ function storedEstimate(minutes: number): number {
 /** Kontext tak, ako sa naozaj uloží (aj so znakom `@`). */
 function storedContext(context: string): string {
   return context.trim().slice(0, MAX_CONTEXT_LENGTH);
-}
-
-/**
- * Existuje projekt s týmto názvom?
- *
- * Porovnáva sa **presne tak, ako to robí server** — `quickCapture` hľadá cez
- * `lower(name) = lower(...)`, teda bez ohľadu na veľkosť písmen, ale
- * s ohľadom na diakritiku. Keby náhľad skladal aj diakritiku cez `fold()`,
- * tváril by sa, že „+Praca" projekt nájde, a server by ho nenašiel — čo je
- * horšie než nevarovať vôbec.
- */
-function projectExists(name: string, known: readonly string[]): boolean {
-  const needle = name.trim().toLowerCase();
-  return known.some((candidate) => candidate.trim().toLowerCase() === needle);
 }
 
 /**
