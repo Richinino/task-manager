@@ -11,7 +11,6 @@ import {
   type ReactNode,
 } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { Plus } from "lucide-react";
 
 import { QuickCapture } from "@/components/capture/quick-capture";
 import type { AutoTagRule } from "@/lib/rules";
@@ -22,7 +21,6 @@ import {
 } from "@/components/command/command-palette";
 import { NAV_ITEMS } from "@/components/shell/sidebar";
 import { registerShortcuts, type Shortcut } from "@/lib/keyboard";
-import { cn } from "@/lib/utils";
 import type { TaskWithRelations } from "@/server/queries/tasks";
 
 /**
@@ -270,22 +268,6 @@ export function CaptureProvider({
   return (
     <CaptureContext.Provider value={contextValue}>
       {children}
-
-      {/* Na telefóne nie je klávesnica so skratkami — zachytenie musí byť
-          dosiahnuteľné palcom. Nad spodnou lištou, mimo jej dosahu. */}
-      <button
-        type="button"
-        onClick={() => openCapture()}
-        aria-label="Rýchle zachytenie úlohy"
-        style={{ bottom: "calc(var(--bar-inset) + 0.75rem)" }}
-        className={cn(
-          "fixed right-4 z-40 inline-flex size-12 items-center justify-center rounded-full",
-          "bg-accent text-accent-fg shadow-md transition-colors duration-100 active:bg-accent/80",
-          "md:hidden",
-        )}
-      >
-        <Plus aria-hidden="true" className="size-5" />
-      </button>
 
       <QuickCapture
         open={captureOpen}

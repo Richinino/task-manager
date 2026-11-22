@@ -25,6 +25,7 @@ import {
   listSubjects,
   listTeachers,
 } from "@/server/queries/school";
+import { PlanTabs } from "@/components/views/plan/plan-tabs";
 
 export const metadata: Metadata = {
   title: "Rozvrh",
@@ -160,6 +161,7 @@ export default async function RozvrhPage({ searchParams }: RozvrhPageProps) {
 
   return (
     <div className="flex w-full flex-col md:h-dvh">
+      <PlanTabs />
       <ScreenHeader
         title="Rozvrh"
         meta={meta}

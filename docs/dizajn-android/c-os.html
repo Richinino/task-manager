@@ -1,0 +1,469 @@
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,100..900&display=swap">
+<style>
+  .screens, .screens * { box-sizing: border-box; margin: 0; }
+  .screens {
+    display: flex; gap: 32px; flex-wrap: wrap; padding: 24px;
+    font-family: "Archivo", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  }
+  .screen {
+    width: 360px; height: 780px; overflow: hidden; position: relative;
+    border-radius: 0; background: var(--ground); color: var(--ink);
+    font-family: "Archivo", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    font-stretch: 100%; font-weight: 400; font-variant-numeric: tabular-nums;
+    -webkit-font-smoothing: antialiased;
+  }
+  .screen--light {
+    --ground: #f7f7f9; --surface: #ffffff; --ink: #141419; --ink2: #55555f; --ink3: #8e8e99;
+    --line: #e2e2e8; --chip: #ececf1; --frog: #d9971c; --onFrog: #1d1405; --frogDeep: #a86f08;
+    --violet: #6a4fe0; --green: #1f8a5f; --rose: #c2417a; --danger: #d23b2c; --ok: #1f8a5f;
+    --acc: #141419; --onAcc: #f7f7f9;
+  }
+  .screen--dark {
+    --ground: #0f0f13; --surface: #1a1a21; --ink: #f2f2f6; --ink2: #a9a9b6; --ink3: #6c6c78;
+    --line: #2a2a33; --chip: #24242d; --frog: #f0b544; --onFrog: #1d1405;
+    --violet: #8f7af2; --green: #4cc38d; --rose: #e7779f; --danger: #f08272; --ok: #4cc38d;
+    --acc: #f2f2f6; --onAcc: #0f0f13;
+  }
+  .screen svg { display: block; flex: none; }
+  .ico { fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+
+  .disp { font-stretch: 125%; font-weight: 800; line-height: 1; letter-spacing: -0.01em; }
+
+  /* status bar */
+  .sb { height: 24px; padding: 0 16px; display: flex; align-items: center; justify-content: space-between;
+        font-size: 12px; font-weight: 600; color: var(--ink); }
+  .sb-r { display: flex; align-items: center; gap: 6px; }
+  .gesture { position: absolute; left: 126px; bottom: 8px; width: 108px; height: 4px; border-radius: 999px;
+             background: var(--ink); opacity: 0.85; }
+
+  /* ===== screen 1 ===== */
+  .top { height: 52px; padding: 0 10px 0 20px; display: flex; align-items: center; gap: 8px; }
+  .top-l { display: flex; flex-direction: column; justify-content: center; flex: none; }
+  .top-l b { font-size: 15px; font-weight: 600; line-height: 18px; }
+  .top-l span { font-size: 12px; color: var(--ink3); line-height: 14px; }
+  .now { margin-left: auto; min-width: 0; height: 32px; padding: 0 12px 0 10px; border-radius: 999px;
+         background: var(--chip); display: flex; align-items: center; gap: 7px; font-size: 12px; font-weight: 500; }
+  .now i { width: 7px; height: 7px; border-radius: 50%; background: var(--frog); flex: none; }
+  .now span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .icon-btn { width: 44px; height: 44px; border: 0; background: transparent; color: var(--ink);
+              display: flex; align-items: center; justify-content: center; flex: none; padding: 0; }
+  .budget { height: 36px; padding: 0 20px; font-size: 13px; line-height: 18px; color: var(--ink2); }
+  .budget b { color: var(--ok); font-weight: 700; }
+
+  .stack { position: relative; margin: 12px 20px 0; width: 320px; height: 316px; }
+  .back { position: absolute; height: 300px; border-radius: 22px; }
+  .back--1 { left: 12px; right: 12px; top: 8px; background: var(--violet); }
+  .back--2 { left: 24px; right: 24px; top: 16px; background: var(--line); }
+  .hero { position: absolute; left: 0; top: 0; width: 320px; height: 300px; border-radius: 22px;
+          background: var(--frog); color: var(--onFrog); padding: 20px; display: flex; flex-direction: column; }
+  .hero-top { display: flex; justify-content: space-between; align-items: center; height: 18px;
+              font-size: 13px; font-weight: 600; }
+  .hero-top span { display: flex; align-items: center; gap: 6px; }
+  .hero-title { margin-top: 14px; font-size: 26px; }
+  .hero-title span { display: block; white-space: nowrap; }
+  .hero-chips { margin-top: 14px; display: flex; gap: 8px; font-size: 14px; font-weight: 500; }
+  .hero-chips span { height: 30px; padding: 0 12px; border-radius: 999px; background: rgba(0, 0, 0, 0.12);
+                     display: flex; align-items: center; }
+  .hero-actions { margin-top: auto; display: flex; gap: 10px; }
+  .btn-go { flex: 1; height: 52px; border: 0; border-radius: 14px; background: var(--acc); color: var(--onAcc);
+            display: flex; align-items: center; justify-content: center; gap: 8px; font: inherit;
+            font-size: 16px; font-weight: 600; }
+  .btn-next { width: 52px; height: 52px; border-radius: 14px; border: 1.5px solid rgba(0, 0, 0, 0.25);
+              background: transparent; color: var(--onFrog); display: flex; align-items: center;
+              justify-content: center; padding: 0; flex: none; }
+  .hint { margin-top: 8px; height: 16px; text-align: center; font-size: 12px; line-height: 16px; color: var(--ink3); }
+
+  .then-h { margin-top: 12px; height: 28px; padding: 0 20px; display: flex; justify-content: space-between;
+            align-items: center; font-size: 13px; }
+  .then-h b { font-weight: 600; color: var(--ink2); }
+  .then-h span { color: var(--ink3); }
+  .row { height: 44px; padding: 0 20px; display: flex; align-items: center; gap: 12px; border-top: 1px solid var(--line); }
+  .row i { width: 10px; height: 10px; border-radius: 3px; flex: none; }
+  .row b { flex: 1; min-width: 0; font-size: 15px; font-weight: 400; white-space: nowrap; overflow: hidden;
+           text-overflow: ellipsis; }
+  .row span { font-size: 13px; color: var(--ink3); flex: none; }
+  .row--late i { background: var(--danger); }
+  .row--late span { color: var(--danger); font-weight: 600; }
+
+  .nav { position: absolute; left: 0; right: 0; bottom: 0; height: 80px; background: var(--ground);
+         border-top: 1px solid var(--line); }
+  .nav-in { height: 64px; padding: 0 10px; display: flex; align-items: center; justify-content: space-between; }
+  .nav-it { height: 48px; display: flex; flex-direction: column; align-items: center; justify-content: center;
+            gap: 2px; font-size: 12px; color: var(--ink3); position: relative; }
+  .nav-it--on { flex-direction: row; gap: 6px; height: 40px; padding: 0 14px; border-radius: 999px;
+                background: var(--acc); color: var(--onAcc); font-weight: 600; }
+  .nav-dot { position: absolute; top: 2px; right: 8px; width: 8px; height: 8px; border-radius: 50%;
+             background: var(--danger); }
+  .fab { width: 56px; height: 56px; border-radius: 50%; border: 0; background: var(--acc); color: var(--onAcc);
+         display: flex; align-items: center; justify-content: center; padding: 0; flex: none; }
+
+  /* ===== screen 2 ===== */
+  .comp-top { height: 56px; padding: 0 20px 0 10px; display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; }
+  .comp-top h1 { font-size: 15px; font-weight: 600; text-align: center; }
+  .seg { justify-self: end; height: 36px; padding: 3px; border-radius: 999px; background: var(--chip); display: flex; }
+  .seg span { height: 30px; padding: 0 13px; border-radius: 999px; display: flex; align-items: center;
+              font-size: 13px; font-weight: 600; color: var(--ink2); }
+  .seg span.on { background: var(--acc); color: var(--onAcc); }
+  .input { margin: 12px 20px 0; min-height: 111px; font-stretch: 125%; font-weight: 700; font-size: 24px;
+           line-height: 1.15; letter-spacing: -0.01em; color: var(--ink); }
+  .tok { padding: 0 2px; border-radius: 6px; -webkit-box-decoration-break: clone; box-decoration-break: clone; }
+  .tok--v { background: rgba(143, 122, 242, 0.3); }
+  .tok--g { background: rgba(76, 195, 141, 0.3); }
+  .tok--c { background: var(--chip); }
+  .tok--d { background: rgba(240, 130, 114, 0.3); }
+  .caret { display: inline-block; width: 2px; height: 26px; margin-left: 2px; vertical-align: -5px;
+           background: var(--ink); animation: blink 1.1s steps(1) infinite; }
+  @keyframes blink { 0%, 55% { opacity: 1; } 56%, 100% { opacity: 0; } }
+  @media (prefers-reduced-motion: reduce) { .caret { animation: none; } }
+  .label { margin: 16px 20px 0; height: 18px; font-size: 13px; line-height: 18px; color: var(--ink3); }
+  .prev { margin: 8px 20px 0; width: 320px; height: 150px; border-radius: 22px; background: #5f45d6;
+          color: #ffffff; padding: 16px; display: flex; flex-direction: column; }
+  .prev-title { font-size: 20px; }
+  .prev-chips { margin-top: auto; display: flex; flex-wrap: wrap; gap: 6px; }
+  .prev-chips span { height: 26px; padding: 0 10px; border-radius: 999px; background: rgba(255, 255, 255, 0.22);
+                     display: flex; align-items: center; font-size: 12px; font-weight: 600; }
+  .syntax { margin: 12px 20px 0; font-size: 12px; line-height: 16px; color: var(--ink3); }
+  .syntax span { margin-right: 10px; white-space: nowrap; display: inline-block; }
+  .syntax b { font-weight: 600; color: var(--ink2); }
+  .save { position: absolute; left: 20px; right: 20px; bottom: 258px; height: 52px; border: 0; border-radius: 14px;
+          background: var(--acc); color: var(--onAcc); font: inherit; font-size: 16px; font-weight: 600;
+          display: flex; align-items: center; justify-content: center; }
+
+  .kb { position: absolute; left: 0; right: 0; bottom: 0; height: 250px; background: #0a0a0d; color: #f2f2f6; }
+  .kb-sug { height: 40px; display: flex; align-items: center; border-bottom: 1px solid #1c1c22; font-size: 15px; }
+  .kb-sug span { flex: 1; text-align: center; }
+  .kb-sug span + span { border-left: 1px solid #24242d; }
+  .kb-rows { padding: 6px 4px 0; display: flex; flex-direction: column; gap: 6px; }
+  .kb-row { display: flex; gap: 4px; height: 42px; }
+  .kb-row--2 { padding: 0 16px; }
+  .k { flex: 1; min-width: 0; border-radius: 8px; background: #24242d; display: flex; align-items: center;
+       justify-content: center; font-size: 17px; }
+  .k--w { flex: 1.5; font-size: 13px; color: #a9a9b6; }
+  .k--sp { flex: 5; }
+  .k--go { flex: 1.5; background: #f2f2f6; color: #0f0f13; }
+
+  /* ===== osi ===== */
+  .strip { position: relative; margin: 0 20px; width: 320px; height: 64px; }
+  .strip .track { position: absolute; left: 0; top: 16px; width: 320px; height: 28px; border-radius: 10px;
+                  background: var(--ground); overflow: hidden; }
+  .strip .track::after { content: ""; position: absolute; left: 0; top: 0; right: 0; bottom: 0; border-radius: 10px;
+                         box-shadow: inset 0 0 0 1px var(--line); }
+  .strip .b { position: absolute; top: 0; height: 28px; border-right: 1px solid var(--ground); }
+  .b--school { background: var(--line); }
+  .b--frog { background: var(--frog); }
+  .b--v { background: var(--violet); }
+  .b--g { background: var(--green); }
+  .b--grey { background: rgba(255, 255, 255, 0.2); }
+  .b--out { top: 1px; height: 26px; border: 2px solid var(--ink); border-radius: 6px; background: transparent; }
+  .strip .past { position: absolute; left: 0; top: 0; height: 28px;
+                 background: repeating-linear-gradient(135deg, rgba(247, 247, 249, 0.86) 0 3px, rgba(247, 247, 249, 0.55) 3px 6px); }
+  .nowline { position: absolute; top: 14px; width: 2px; height: 32px; background: var(--ink); z-index: 2; }
+  .nowlbl { position: absolute; top: 0; height: 14px; line-height: 14px; font-size: 11px; font-weight: 700; color: var(--ink); }
+  .hrs { position: absolute; left: 0; right: 0; top: 48px; height: 16px; font-size: 12px; line-height: 16px; color: var(--ink3); }
+  .hrs span { position: absolute; top: 0; }
+
+  .s1 .stack { margin: 16px 20px 0; height: 276px; }
+  .s1 .back { height: 260px; }
+  .s1 .hero { height: 260px; padding: 18px 20px 20px; }
+  .s1 .hero-title { margin-top: 12px; }
+  .dayhead { margin: 12px 20px 0; height: 28px; display: flex; align-items: center; justify-content: space-between; font-size: 13px; }
+  .dayhead div b { font-weight: 700; }
+  .dayhead div span { margin-left: 8px; color: var(--ok); font-weight: 600; }
+  .link { height: 44px; margin: -8px -10px -8px 0; padding: 0 10px; border: 0; background: transparent; color: var(--ink2);
+          font: inherit; font-size: 13px; font-weight: 600; }
+  .s1 .then-h { margin-top: 16px; }
+
+  .seg2 { margin: 0 20px; height: 40px; padding: 3px; border-radius: 999px; background: var(--chip); display: flex; }
+  .seg2 span { flex: 1; height: 34px; border-radius: 999px; display: flex; align-items: center; justify-content: center;
+               font-size: 14px; font-weight: 600; color: var(--ink2); }
+  .seg2 span.on { background: var(--acc); color: var(--onAcc); }
+  .hl { position: absolute; left: 20px; width: 26px; height: 16px; line-height: 16px; text-align: right; font-size: 12px; color: var(--ink3); }
+  .gl { position: absolute; left: 52px; right: 20px; height: 1px; background: var(--line); opacity: 0.7; }
+  .ls { position: absolute; left: 52px; width: 112px; border-radius: 8px; background: var(--line); padding: 0 8px;
+        display: flex; align-items: center; justify-content: space-between; font-size: 12px; box-shadow: 0 0 0 1px var(--ground); }
+  .ls b { font-weight: 600; }
+  .ls s { text-decoration: line-through; color: var(--ink3); }
+  .ls--done { color: var(--ink3); }
+  .ls--cur { border: 2px solid var(--ink); padding: 0 6px; box-shadow: none; font-weight: 700; }
+  .tk { position: absolute; left: 52px; right: 20px; border-radius: 10px; padding: 0 10px; display: flex; align-items: center;
+        gap: 6px; color: #ffffff; box-shadow: 0 0 0 1px var(--ground); }
+  .tk b { flex: 1; min-width: 0; font-size: 13px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .tk span { font-size: 12px; font-weight: 500; flex: none; opacity: 0.88; }
+  .tk--v { background: var(--violet); }
+  .tk--g { background: var(--green); }
+  .tk--frog { background: var(--frog); color: var(--onFrog); }
+  .tk--out { background: transparent; color: var(--ink); border: 2px solid var(--ink); padding: 0 8px; box-shadow: none; }
+  .tk--out div { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+  .tk--out b { flex: none; }
+  .tk--out em { font-style: normal; font-size: 12px; color: var(--ink2); line-height: 16px; }
+  .tk--out span { opacity: 1; font-weight: 600; }
+  .free { position: absolute; left: 52px; right: 20px; border-radius: 10px; border: 1.5px dashed var(--line);
+          display: flex; align-items: center; justify-content: center; font-size: 13px; color: var(--ink3); }
+  .nline { position: absolute; left: 48px; right: 20px; height: 2px; background: var(--ink); z-index: 3; }
+  .npill { position: absolute; right: 20px; height: 18px; padding: 0 8px; border-radius: 999px; background: var(--acc);
+           color: var(--onAcc); font-size: 11px; font-weight: 700; line-height: 18px; z-index: 4; }
+  .tray { position: absolute; left: 0; right: 0; top: 648px; height: 52px; border-top: 1px solid var(--line); padding: 4px 20px 0; }
+  .tray-r1 { height: 16px; display: flex; justify-content: space-between; align-items: center; font-size: 12px; line-height: 16px; }
+  .tray-r1 b { font-weight: 700; font-size: 13px; }
+  .tray-r1 span { color: var(--ink3); }
+  .tchip { margin-top: 3px; height: 28px; padding: 0 12px; border-radius: 999px; background: var(--chip); display: flex;
+           align-items: center; gap: 8px; font-size: 13px; font-weight: 500; }
+  .tchip i { width: 8px; height: 8px; border-radius: 3px; background: var(--rose); flex: none; }
+  .tchip b { flex: 1; min-width: 0; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .tchip span { color: var(--ink3); flex: none; }
+
+  .s3 .input { margin: 8px 20px 0; }
+  .s3 .label { margin: 8px 20px 0; }
+  .s3 .prev { margin: 6px 20px 0; height: 104px; padding: 12px 16px; }
+  .s3 .prev-chips { gap: 4px 6px; }
+  .s3 .prev-chips span { height: 24px; }
+  .mhead { margin: 8px 20px 0; height: 16px; line-height: 16px; font-size: 13px; color: var(--ink2); }
+  .mhead b { font-weight: 700; }
+  .glbl { position: absolute; top: 0; height: 14px; line-height: 14px; font-size: 12px; font-weight: 600; color: var(--violet);
+          transform: translateX(-50%); white-space: nowrap; }
+  .ghost { position: absolute; top: 0; height: 28px; border: 2px dashed var(--violet); background: rgba(143, 122, 242, 0.2);
+           border-radius: 4px; }
+  .mtext { margin: 6px 20px 0; height: 36px; font-size: 13px; line-height: 18px; color: var(--ink2); }
+  .mtext b { font-weight: 700; color: var(--ink); }
+</style>
+<div class="screens">
+
+  <section class="screen screen--light s1" aria-label="Os 1: pravítko pod kartou">
+    <div class="sb">
+      <span>9:52</span>
+      <span class="sb-r">
+        <svg width="14" height="12" viewBox="0 0 14 12" aria-hidden="true"><path d="M1 11 L13 11 L13 1 Z" fill="currentColor"/></svg>
+        <svg width="14" height="12" viewBox="0 0 14 12" aria-hidden="true"><path d="M1 4.5 A8.5 8.5 0 0 1 13 4.5 M3.2 7 A5.5 5.5 0 0 1 10.8 7 M5.4 9.4 A2.3 2.3 0 0 1 8.6 9.4" class="ico" style="stroke-width:1.5"/></svg>
+        <span style="display:flex;align-items:center;gap:3px">78%
+          <svg width="20" height="10" viewBox="0 0 20 10" aria-hidden="true"><rect x="0.75" y="0.75" width="16.5" height="8.5" rx="2" fill="none" stroke="currentColor" stroke-width="1.5"/><rect x="2.5" y="2.5" width="9.5" height="5" rx="1" fill="currentColor"/><rect x="18" y="3" width="1.5" height="4" rx="0.5" fill="currentColor"/></svg>
+        </span>
+      </span>
+    </div>
+    <div class="top">
+      <div class="top-l"><b>Dnes</b><span>po 23. 11.</span></div>
+      <div class="now"><i></i><span>Prestávka, o 8 min FYZ v F2</span></div>
+      <button class="icon-btn" type="button" aria-label="Viac">
+        <svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true"><circle cx="5" cy="12" r="1.8" fill="currentColor"/><circle cx="12" cy="12" r="1.8" fill="currentColor"/><circle cx="19" cy="12" r="1.8" fill="currentColor"/></svg>
+      </button>
+    </div>
+
+    <div class="stack">
+      <div class="back back--2"></div>
+      <div class="back back--1"></div>
+      <article class="hero">
+        <div class="hero-top">
+          <span>
+            <svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path class="ico" d="M12 3.5 14.6 9 20.5 9.7 16.2 13.8 17.3 19.7 12 16.8 6.7 19.7 7.8 13.8 3.5 9.7 9.4 9Z" fill="currentColor"/></svg>
+            Priorita dňa
+          </span>
+          <span>1 z 6</span>
+        </div>
+        <h2 class="disp hero-title"><span>Dokončiť model</span><span>držiaka na 3D</span><span>tlačiareň</span></h2>
+        <div class="hero-chips"><span>3D tlačiareň</span><span>45 min</span></div>
+        <div class="hero-actions">
+          <button class="btn-go" type="button">
+            <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4.5 19 12 7 19.5Z" fill="currentColor"/></svg>
+            Začať
+          </button>
+          <button class="btn-next" type="button" aria-label="Ďalšia karta">
+            <svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true"><path class="ico" d="M6 5.5 15 12 6 18.5Z"/><path class="ico" d="M19 5v14"/></svg>
+          </button>
+        </div>
+      </article>
+    </div>
+    <p class="hint">Potiahni doľava pre ďalšiu úlohu</p>
+
+    <div class="dayhead"><div><b>Deň</b><span>Rezerva 3 h 55</span></div><button class="link" type="button">Rozbaliť</button></div>
+    <div class="strip" role="img" aria-label="Deň od 7:00 do 22:00, teraz 9:52">
+      <span class="nowlbl" style="left:66.16px">9:52</span>
+      <div class="track">
+        <i class="b b--school" style="left:21.33px;width:117.33px"></i>
+        <i class="b b--frog" style="left:144px;width:16px"></i>
+        <i class="b b--v" style="left:163.56px;width:14.22px"></i>
+        <i class="b b--v" style="left:179.56px;width:8.89px"></i>
+        <i class="b b--out" style="left:202.67px;width:32px"></i>
+        <i class="b b--g" style="left:245.33px;width:12.44px"></i>
+        <i class="b b--v" style="left:261.33px;width:10.67px"></i>
+        <i class="past" style="width:61.16px"></i>
+      </div>
+      <i class="nowline" style="left:60.16px"></i>
+      <div class="hrs"><span style="left:0">7</span><span style="left:64px;transform:translateX(-50%)">10</span><span style="left:128px;transform:translateX(-50%)">13</span><span style="left:192px;transform:translateX(-50%)">16</span><span style="left:256px;transform:translateX(-50%)">19</span><span style="right:0">22</span></div>
+    </div>
+
+    <div class="then-h"><b>Potom</b><span>3 h 05 min</span></div>
+    <div class="row row--late"><i></i><b>Odovzdať prihlášku na olympiádu z INF</b><span>pred 3 dňami</span></div>
+    <div class="row"><i style="background:var(--violet)"></i><b>Naučiť sa na písomku z FYZ</b><span>40 min</span></div>
+    <div class="row"><i style="background:var(--violet)"></i><b>Domáca úloha MAT — str. 54/3–8</b><span>25 min</span></div>
+
+    <nav class="nav" aria-label="Hlavná navigácia">
+      <div class="nav-in">
+        <div class="nav-it nav-it--on">
+          <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true"><circle class="ico" cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="3" fill="currentColor"/></svg>
+          Dnes
+        </div>
+        <div class="nav-it" style="width:48px">
+          <svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true"><rect class="ico" x="4" y="5.5" width="16" height="14" rx="2.5"/><path class="ico" d="M4 10h16M8.5 3.5v4M15.5 3.5v4"/></svg>
+          Plán
+        </div>
+        <button class="fab" type="button" aria-label="Zachytiť">
+          <svg width="26" height="26" viewBox="0 0 24 24" aria-hidden="true"><path class="ico" style="stroke-width:2.2" d="M12 5v14M5 12h14"/></svg>
+        </button>
+        <div class="nav-it" style="width:48px">
+          <svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true"><path class="ico" d="M4 13.5 6.5 5.5h11l2.5 8M4 13.5V18a1.5 1.5 0 0 0 1.5 1.5h13A1.5 1.5 0 0 0 20 18v-4.5M4 13.5h4.5a3.5 3.5 0 0 0 7 0H20"/></svg>
+          <span class="nav-dot"></span>
+          Inbox
+        </div>
+        <div class="nav-it" style="width:62px">
+          <svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true"><path class="ico" d="M5.5 4.5h10A2.5 2.5 0 0 1 18 7v12.5H8A2.5 2.5 0 0 1 5.5 17ZM5.5 17A2.5 2.5 0 0 1 8 14.5h10"/></svg>
+          Knižnica
+        </div>
+      </div>
+    </nav>
+    <div class="gesture"></div>
+  </section>
+
+  <section class="screen screen--light s2" aria-label="Os 2: prepínač Karta a Deň">
+    <div class="sb">
+      <span>9:52</span>
+      <span class="sb-r">
+        <svg width="14" height="12" viewBox="0 0 14 12" aria-hidden="true"><path d="M1 11 L13 11 L13 1 Z" fill="currentColor"/></svg>
+        <svg width="14" height="12" viewBox="0 0 14 12" aria-hidden="true"><path d="M1 4.5 A8.5 8.5 0 0 1 13 4.5 M3.2 7 A5.5 5.5 0 0 1 10.8 7 M5.4 9.4 A2.3 2.3 0 0 1 8.6 9.4" class="ico" style="stroke-width:1.5"/></svg>
+        <span style="display:flex;align-items:center;gap:3px">78%
+          <svg width="20" height="10" viewBox="0 0 20 10" aria-hidden="true"><rect x="0.75" y="0.75" width="16.5" height="8.5" rx="2" fill="none" stroke="currentColor" stroke-width="1.5"/><rect x="2.5" y="2.5" width="9.5" height="5" rx="1" fill="currentColor"/><rect x="18" y="3" width="1.5" height="4" rx="0.5" fill="currentColor"/></svg>
+        </span>
+      </span>
+    </div>
+    <div class="top">
+      <div class="top-l"><b>Dnes</b><span>po 23. 11.</span></div>
+      <div class="now"><i></i><span>Prestávka, o 8 min FYZ v F2</span></div>
+      <button class="icon-btn" type="button" aria-label="Viac">
+        <svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true"><circle cx="5" cy="12" r="1.8" fill="currentColor"/><circle cx="12" cy="12" r="1.8" fill="currentColor"/><circle cx="19" cy="12" r="1.8" fill="currentColor"/></svg>
+      </button>
+    </div>
+    <div class="seg2"><span>Karta</span><span class="on">Deň</span></div>
+      <span class="hl" style="top:118px">7</span><i class="gl" style="top:126px"></i>
+      <span class="hl" style="top:152px">8</span><i class="gl" style="top:160px"></i>
+      <span class="hl" style="top:186px">9</span><i class="gl" style="top:194px"></i>
+      <span class="hl" style="top:220px">10</span><i class="gl" style="top:228px"></i>
+      <span class="hl" style="top:254px">11</span><i class="gl" style="top:262px"></i>
+      <span class="hl" style="top:288px">12</span><i class="gl" style="top:296px"></i>
+      <span class="hl" style="top:322px">13</span><i class="gl" style="top:330px"></i>
+      <span class="hl" style="top:356px">14</span><i class="gl" style="top:364px"></i>
+      <span class="hl" style="top:390px">15</span><i class="gl" style="top:398px"></i>
+      <span class="hl" style="top:424px">16</span><i class="gl" style="top:432px"></i>
+      <span class="hl" style="top:458px">17</span><i class="gl" style="top:466px"></i>
+      <span class="hl" style="top:492px">18</span><i class="gl" style="top:500px"></i>
+      <span class="hl" style="top:526px">19</span><i class="gl" style="top:534px"></i>
+      <span class="hl" style="top:560px">20</span><i class="gl" style="top:568px"></i>
+      <span class="hl" style="top:594px">21</span><i class="gl" style="top:602px"></i>
+      <span class="hl" style="top:628px">22</span><i class="gl" style="top:636px"></i>
+      <div class="ls ls--done" style="top:160px;height:25.5px"><s>SJL</s><svg width="12" height="12" viewBox="0 0 24 24" aria-hidden="true"><path class="ico" style="stroke-width:3" d="M5 12.5 10 17.5 19 7"/></svg></div>
+      <div class="ls ls--done" style="top:191.17px;height:25.5px"><s>MAT</s><svg width="12" height="12" viewBox="0 0 24 24" aria-hidden="true"><path class="ico" style="stroke-width:3" d="M5 12.5 10 17.5 19 7"/></svg></div>
+      <div class="ls ls--cur" style="top:228px;height:25.5px"><b>FYZ</b><span>F2</span></div>
+      <div class="ls" style="top:259.17px;height:25.5px"><b>ANJ</b></div>
+      <div class="ls" style="top:290.33px;height:25.5px"><b>INF</b></div>
+      <div class="ls" style="top:321.5px;height:25.5px"><b>TSV</b></div>
+      <div class="tk tk--frog" style="top:355.5px;height:26px"><svg width="13" height="13" viewBox="0 0 24 24" aria-hidden="true"><path class="ico" d="M12 3.5 14.6 9 20.5 9.7 16.2 13.8 17.3 19.7 12 16.8 6.7 19.7 7.8 13.8 3.5 9.7 9.4 9Z" fill="currentColor"/></svg><b>Dokončiť model držiaka na 3D tlačiareň</b><span>45 min</span></div>
+      <div class="tk tk--v" style="top:386.67px;height:25.5px"><b>Naučiť sa na písomku z FYZ</b><span>40 min</span></div>
+      <div class="tk tk--v" style="top:412.17px;height:26px"><b>Domáca úloha MAT — str. 54/3–8</b><span>25 min</span></div>
+      <div class="tk tk--g" style="top:517px;height:25.5px"><b>Beh 5 km</b><span>35 min</span></div>
+      <div class="tk tk--v" style="top:542.5px;height:26px"><b>Cvičiť gitaru — akordy F a Bm</b><span>30 min</span></div>
+      <div class="tk tk--out" style="top:449px;height:51px"><div><b>Tréning florbal</b><em>Športová hala</em></div><span>16:30–18:00</span></div>
+      <div class="free" style="top:572px;height:64px">voľné 2 h</div>
+      <i class="nline" style="top:222.47px"></i><span class="npill" style="top:214.47px">9:52</span>
+
+    <div class="tray">
+      <div class="tray-r1"><b>Bez času</b><span>Potiahni do dňa</span></div>
+      <div class="tchip"><i></i><b>Zavolať do servisu kvôli bicyklu</b><span>10 min</span></div>
+    </div>
+
+    <nav class="nav" aria-label="Hlavná navigácia">
+      <div class="nav-in">
+        <div class="nav-it nav-it--on">
+          <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true"><circle class="ico" cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="3" fill="currentColor"/></svg>
+          Dnes
+        </div>
+        <div class="nav-it" style="width:48px">
+          <svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true"><rect class="ico" x="4" y="5.5" width="16" height="14" rx="2.5"/><path class="ico" d="M4 10h16M8.5 3.5v4M15.5 3.5v4"/></svg>
+          Plán
+        </div>
+        <button class="fab" type="button" aria-label="Zachytiť">
+          <svg width="26" height="26" viewBox="0 0 24 24" aria-hidden="true"><path class="ico" style="stroke-width:2.2" d="M12 5v14M5 12h14"/></svg>
+        </button>
+        <div class="nav-it" style="width:48px">
+          <svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true"><path class="ico" d="M4 13.5 6.5 5.5h11l2.5 8M4 13.5V18a1.5 1.5 0 0 0 1.5 1.5h13A1.5 1.5 0 0 0 20 18v-4.5M4 13.5h4.5a3.5 3.5 0 0 0 7 0H20"/></svg>
+          <span class="nav-dot"></span>
+          Inbox
+        </div>
+        <div class="nav-it" style="width:62px">
+          <svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true"><path class="ico" d="M5.5 4.5h10A2.5 2.5 0 0 1 18 7v12.5H8A2.5 2.5 0 0 1 5.5 17ZM5.5 17A2.5 2.5 0 0 1 8 14.5h10"/></svg>
+          Knižnica
+        </div>
+      </div>
+    </nav>
+    <div class="gesture"></div>
+  </section>
+
+  <section class="screen screen--dark s3" aria-label="Os 3: os pri plánovaní">
+    <div class="sb">
+      <span>9:52</span>
+      <span class="sb-r">
+        <svg width="14" height="12" viewBox="0 0 14 12" aria-hidden="true"><path d="M1 11 L13 11 L13 1 Z" fill="currentColor"/></svg>
+        <svg width="14" height="12" viewBox="0 0 14 12" aria-hidden="true"><path d="M1 4.5 A8.5 8.5 0 0 1 13 4.5 M3.2 7 A5.5 5.5 0 0 1 10.8 7 M5.4 9.4 A2.3 2.3 0 0 1 8.6 9.4" class="ico" style="stroke-width:1.5"/></svg>
+        <span style="display:flex;align-items:center;gap:3px">78%
+          <svg width="20" height="10" viewBox="0 0 20 10" aria-hidden="true"><rect x="0.75" y="0.75" width="16.5" height="8.5" rx="2" fill="none" stroke="currentColor" stroke-width="1.5"/><rect x="2.5" y="2.5" width="9.5" height="5" rx="1" fill="currentColor"/><rect x="18" y="3" width="1.5" height="4" rx="0.5" fill="currentColor"/></svg>
+        </span>
+      </span>
+    </div>
+
+    <div class="comp-top">
+      <button class="icon-btn" type="button" aria-label="Zavrieť">
+        <svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true"><path class="ico" d="M6 6l12 12M18 6 6 18"/></svg>
+      </button>
+      <h1>Nová úloha</h1>
+      <div class="seg"><span class="on">Úloha</span><span>Nápad</span></div>
+    </div>
+
+    <p class="input">kúpiť filament PETG <span class="tok tok--v">+3D tlačiareň</span> <span class="tok tok--g">zajtra</span> <span class="tok tok--c">30m</span> <span class="tok tok--d">!2</span><span class="caret"></span></p>
+
+    <p class="label">Takto bude vyzerať</p>
+    <article class="prev">
+      <h2 class="disp prev-title">Kúpiť filament PETG</h2>
+      <div class="prev-chips"><span>3D tlačiareň</span><span>Zajtra, ut 24. 11.</span><span>30 min</span><span>Priorita 2</span></div>
+    </article>
+
+    <p class="mhead"><b>Zajtra, utorok 24. 11.</b></p>
+    <div class="strip strip--m" role="img" aria-label="Zajtra od 7:00 do 22:00, úloha sa zmestí o 15:00">
+      <span class="glbl" style="left:176px">sem sa zmestí, 15:00</span>
+      <div class="track">
+        <i class="b b--school" style="left:21.33px;width:136.89px"></i>
+        <i class="b b--grey" style="left:192px;width:21.33px"></i>
+        <i class="b b--grey" style="left:245.33px;width:14.22px"></i>
+        <i class="ghost" style="left:170.67px;width:10.67px"></i>
+      </div>
+      <div class="hrs"><span style="left:0">7</span><span style="left:64px;transform:translateX(-50%)">10</span><span style="left:128px;transform:translateX(-50%)">13</span><span style="left:192px;transform:translateX(-50%)">16</span><span style="left:256px;transform:translateX(-50%)">19</span><span style="right:0">22</span></div>
+    </div>
+    <p class="mtext">Zajtra máš voľné <b>4 h 20 min</b>, po tejto úlohe <b>3 h 50 min</b>.</p>
+
+    <button class="save" type="button">Uložiť do zajtra</button>
+
+    <div class="kb" aria-hidden="true">
+      <div class="kb-sug"><span>PETG</span><span>petg</span><span>PETG-čko</span></div>
+      <div class="kb-rows">
+        <div class="kb-row"><div class="k">q</div><div class="k">w</div><div class="k">e</div><div class="k">r</div><div class="k">t</div><div class="k">z</div><div class="k">u</div><div class="k">i</div><div class="k">o</div><div class="k">p</div></div>
+        <div class="kb-row kb-row--2"><div class="k">a</div><div class="k">s</div><div class="k">d</div><div class="k">f</div><div class="k">g</div><div class="k">h</div><div class="k">j</div><div class="k">k</div><div class="k">l</div></div>
+        <div class="kb-row">
+          <div class="k k--w"><svg width="18" height="18" viewBox="0 0 24 24"><path class="ico" d="M12 4 4.5 12H9v7h6v-7h4.5Z"/></svg></div>
+          <div class="k">y</div><div class="k">x</div><div class="k">c</div><div class="k">v</div><div class="k">b</div><div class="k">n</div><div class="k">m</div>
+          <div class="k k--w"><svg width="20" height="20" viewBox="0 0 24 24"><path class="ico" d="M9 6h10a1.5 1.5 0 0 1 1.5 1.5v9A1.5 1.5 0 0 1 19 18H9l-5.5-6ZM11.5 9.5l5 5M16.5 9.5l-5 5"/></svg></div>
+        </div>
+        <div class="kb-row">
+          <div class="k k--w">?123</div><div class="k">,</div><div class="k k--sp"></div><div class="k">.</div>
+          <div class="k k--go"><svg width="20" height="20" viewBox="0 0 24 24"><path class="ico" d="M19 6v6a2 2 0 0 1-2 2H6M10 9.5 5.5 14l4.5 4.5"/></svg></div>
+        </div>
+      </div>
+    </div>
+    <div class="gesture"></div>
+  </section>
+
+</div>

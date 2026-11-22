@@ -58,6 +58,9 @@
   --frog-soft: #fbefd9;
   /** Nádych pre celý riadok priority dňa. Jemnejší než `frog-soft`. */
   --frog-tint: rgba(201, 143, 32, 0.14);
+  /* Výplň karty priority dňa a text na nej (telefón, smer „Jedna karta"). */
+  --frog-fill: #d9971c;
+  --on-frog: #1d1405;
 
   --success: #3f8f5f;
   --danger: #db4133;
@@ -92,6 +95,9 @@
   */
   --bar-height: 4rem;
   --bar-inset: calc(var(--bar-height) + env(safe-area-inset-bottom));
+
+  /* Nadpisové písmo telefónu: Archivo v rozšírenom reze (viď `.font-display`). */
+  --font-display: var(--font-archivo), ui-sans-serif, system-ui, sans-serif;
 }
 
 .dark {
@@ -117,6 +123,8 @@
   --frog: #e6b95f;
   --frog-soft: #3d331c;
   --frog-tint: rgba(230, 185, 95, 0.20);
+  --frog-fill: #f0b544;
+  --on-frog: #1d1405;
 
   --success: #63c68c;
   --danger: #f08272;
@@ -154,6 +162,8 @@
   --color-frog: var(--frog);
   --color-frog-soft: var(--frog-soft);
   --color-frog-tint: var(--frog-tint);
+  --color-frog-fill: var(--frog-fill);
+  --color-on-frog: var(--on-frog);
   --color-accent-badge: var(--accent-badge);
   --color-danger-tint: var(--danger-tint);
 
@@ -212,7 +222,14 @@
   --shadow-sm: var(--sh-sm);
   --shadow-lg: var(--sh-lg);
   --shadow-accent: var(--sh-accent);
+}
 
+/*
+  Písma NIE SÚ v `@theme inline`: na telefóne sa `--font-sans` a `--font-mono`
+  prepisujú na Archivo a to funguje len vtedy, keď utility `font-sans` /
+  `font-mono` čítajú premennú, nie jej vloženú hodnotu.
+*/
+@theme static {
   /*
     Písma z návrhu. `--font-plex` a `--font-jetbrains` nastavuje `next/font`
     v `layout.tsx` — self-hostuje ich pri builde, takže sa nič nesťahuje
@@ -226,6 +243,57 @@
     sans-serif;
   --font-mono:
     var(--font-jetbrains), ui-monospace, "Cascadia Code", Consolas, monospace;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   TELEFÓN — paleta C („Jedna karta")
+
+   Pod `md` sa prepíšu existujúce tokeny, takže sa nemusel dotknúť žiaden
+   komponent. Počítač ostáva v dizajne „Terminál" bez zmeny. Obe témy sú
+   vypísané celé: `.dark` je v tomto bloku PO `:root`, aby pri rovnakej
+   špecificite vyhrala tmavá.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+@media (max-width: 767.98px) {
+  :root {
+    --bg: #f7f7f9;
+    --surface: #ffffff;
+    --surface-2: #ececf1;
+    --border: #e2e2e8;
+    --border-strong: #cfcfd8;
+    --fg: #141419;
+    --fg-muted: #55555f;
+    --fg-subtle: #8e8e99;
+    --accent: #141419;
+    --accent-fg: #ffffff;
+    --accent-soft: #ececf1;
+    --accent-badge: rgba(20, 20, 25, 0.1);
+    --frog: #a86f08;
+    --success: #1f8a5f;
+    --danger: #d23b2c;
+
+    /* Jedno písmo na telefóne; čísla nesie `tabular-nums`. */
+    --font-sans: var(--font-archivo), ui-sans-serif, system-ui, sans-serif;
+    --font-mono: var(--font-archivo), ui-sans-serif, system-ui, sans-serif;
+  }
+
+  .dark {
+    --bg: #0f0f13;
+    --surface: #1a1a21;
+    --surface-2: #24242d;
+    --border: #2a2a33;
+    --border-strong: #3a3a45;
+    --fg: #f2f2f6;
+    --fg-muted: #a9a9b6;
+    --fg-subtle: #6c6c78;
+    --accent: #f2f2f6;
+    --accent-fg: #0f0f13;
+    --accent-soft: #24242d;
+    --accent-badge: rgba(242, 242, 246, 0.14);
+    --frog: #f0b544;
+    --success: #4cc38d;
+    --danger: #f08272;
+  }
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
@@ -285,6 +353,17 @@
       Farbu preto dopĺňa každé použitie.
     */
     @apply font-mono text-mini uppercase tracking-[0.14em];
+
+    /*
+      Smer „Jedna karta" na telefóne nemá kapitálky — nadpis sekcie je
+      obyčajná veta („Potom", „Bez času"), tučnejšia a o stupeň väčšia.
+    */
+    @media (max-width: 767.98px) {
+      font-size: var(--text-body);
+      font-weight: 600;
+      text-transform: none;
+      letter-spacing: 0;
+    }
   }
 
   /* Klávesová skratka v texte */
@@ -322,4 +401,16 @@
     animation-duration: 0.01ms !important;
     transition-duration: 0.01ms !important;
   }
+}
+
+/*
+  Nadpisy kariet na telefóne: Archivo, rozšírený rez, váha 800.
+  `@utility`, nie obyčajná trieda — inak by nefungovali varianty
+  (`max-md:font-display` sa ticho nevygeneroval a detail úlohy mal nadpis
+  obyčajným písmom).
+*/
+@utility font-display {
+  font-family: var(--font-display);
+  font-stretch: 125%;
+  font-weight: 800;
 }

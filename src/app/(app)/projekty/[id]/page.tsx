@@ -6,6 +6,7 @@ import { ScreenHeader } from "@/components/shell/screen-chrome";
 import { notFound } from "next/navigation";
 
 import { ProjectDangerZone } from "@/components/views/projekty/project-danger-zone";
+import { MobileProject } from "@/components/views/projekty/mobile-project";
 import { ProjectDetail } from "@/components/views/projekty/project-detail";
 import { ProjectTasks } from "@/components/views/projekty/project-tasks";
 import { todayIn } from "@/lib/dates";
@@ -45,7 +46,9 @@ export default async function ProjektDetailPage({
   const total = project.openTaskCount + project.doneTaskCount;
 
   return (
-    <div className="flex w-full flex-col md:h-dvh">
+    <>
+    <MobileProject project={project} areas={activeAreas} tasks={projectTasks} todayIso={todayIso} />
+    <div className="hidden w-full flex-col md:flex md:h-dvh">
       {/*
         Drobec, nie nadpis. Detail projektu je jediná obrazovka, z ktorej sa
         dá „ísť späť", a návrh na to používa cestu `Projekty / názov` —
@@ -103,5 +106,6 @@ export default async function ProjektDetailPage({
         />
       </div>
     </div>
+    </>
   );
 }

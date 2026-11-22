@@ -4,7 +4,8 @@ import type { Route } from "next";
 import Link from "next/link";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 
-import { addDays, diffDays, formatLongSk } from "@/lib/dates";
+import { addDays, formatLongSk } from "@/lib/dates";
+import { capitalizeSk, relativeDayLabel } from "@/lib/day-label";
 import { cn } from "@/lib/utils";
 
 export interface DayHeaderProps {
@@ -25,28 +26,6 @@ export interface DayHeaderProps {
    * o veci, ktorá je dnes.
    */
   todayIso: string;
-}
-
-/**
- * Ako sa deň volá vzhľadom na dnešok — „Dnes", „Včera", „V piatok"…
- *
- * `null` znamená, že blízke pomenovanie nemá zmysel a stačí samotný dátum.
- * Dnešok prichádza parametrom, nie z `formatRelativeSk`: tá si ho počíta
- * z pásma procesu a na Verceli (UTC) by sa po polnoci rozišla so zvyškom appky.
- */
-function relativeLabel(date: string, todayIso: string): string | null {
-  const diff = diffDays(todayIso, date);
-  if (diff === 0) return "Dnes";
-  if (diff === 1) return "Zajtra";
-  if (diff === 2) return "Pozajtra";
-  if (diff === -1) return "Včera";
-  if (diff === -2) return "Predvčerom";
-  return null;
-}
-
-/** „štvrtok 6. augusta" → „Štvrtok 6. augusta" — nadpis stránky začína veľkým. */
-function capitalize(text: string): string {
-  return text.charAt(0).toUpperCase() + text.slice(1);
 }
 
 /**
@@ -71,7 +50,7 @@ export function DayHeader({
   todayIso,
 }: DayHeaderProps) {
   const allDone = totalCount > 0 && doneCount === totalCount;
-  const label = relativeLabel(date, todayIso);
+  const label = relativeDayLabel(date, todayIso);
   const jeDnes = date === todayIso;
 
   const progress =
@@ -96,7 +75,7 @@ export function DayHeader({
       <div className="flex min-w-0 items-center gap-2 md:contents">
         <div className="flex min-w-0 flex-1 flex-col md:contents">
           <h1 className="min-w-0 truncate text-lg font-semibold tracking-tight text-fg md:text-row">
-            {label ?? capitalize(formatLongSk(date))}
+            {label ?? capitalizeSk(formatLongSk(date))}
           </h1>
 
           {/* „dnes" je v návrhu tichá pripomienka vedľa dátumu, nie nadpis. */}

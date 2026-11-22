@@ -63,6 +63,11 @@ export interface CaptureChipsProps {
   onModeChange: (mode: CaptureMode) => void;
   /** Prvý deň týždňa — kvôli zhode s parserom v náhľade. */
   weekStartsOn?: number;
+  /**
+   * Telefón rozdeľuje rad na dve časti: prepínač cieľa sedí navrchu okna
+   * (`mode`), značky pod poľom (`values`). Počítač ich drží pokope (`all`).
+   */
+  part?: "all" | "mode" | "values";
   className?: string;
 }
 
@@ -78,7 +83,7 @@ const CHIP_BASE = [
   "inline-flex select-none items-center justify-center gap-1 whitespace-nowrap",
   "rounded border font-medium leading-none",
   "h-11 min-w-11 px-3 text-body",
-  "sm:h-7 sm:min-w-0 sm:px-2 sm:text-meta",
+  "md:h-7 md:min-w-0 md:px-2 md:text-meta",
   "transition-[background-color,border-color,color] duration-100 ease-out",
 ].join(" ");
 
@@ -144,20 +149,32 @@ function Chip({
   );
 }
 
-function ChipGroup({ label, children }: { label: string; children: ReactNode }) {
+function ChipGroup({
+  label,
+  children,
+  className,
+  hideLabel = false,
+}: {
+  label: string;
+  children: ReactNode;
+  className?: string;
+  hideLabel?: boolean;
+}) {
   return (
     <div
       role="group"
       aria-label={label}
-      className="flex shrink-0 items-center gap-1"
+      className={cn("flex shrink-0 items-center gap-1", className)}
     >
       {/* Popis skupiny počuje čítačka z `aria-label`; nahlas by znel dvakrát. */}
-      <span
-        aria-hidden="true"
-        className="pr-0.5 text-mini leading-none text-fg-subtle"
-      >
-        {label}
-      </span>
+      {hideLabel ? null : (
+        <span
+          aria-hidden="true"
+          className="pr-0.5 text-mini leading-none text-fg-subtle"
+        >
+          {label}
+        </span>
+      )}
       {children}
     </div>
   );
@@ -228,6 +245,7 @@ export function CaptureChips({
   mode,
   onModeChange,
   weekStartsOn = 1,
+  part = "all",
   className,
 }: CaptureChipsProps) {
   const dateRef = useRef<HTMLInputElement>(null);
@@ -271,6 +289,10 @@ export function CaptureChips({
   }
 
   const due = active.due;
+  const segmented = part === "mode";
+
+  // Pod poľom nie je čo ponúknuť, kým ide o nápad, udalosť či deadline.
+  if (part === "values" && mode !== "task") return null;
 
   return (
     <div
@@ -287,7 +309,7 @@ export function CaptureChips({
           odsadenie + 2 px hrúbka). Menej ako `py-1` sa dať nedá.
         */
         "flex items-center gap-3 overflow-x-auto py-1",
-        "sm:flex-wrap sm:gap-x-4 sm:gap-y-2 sm:overflow-x-visible",
+        "md:flex-wrap md:gap-x-4 md:gap-y-2 md:overflow-x-visible",
         className,
       )}
     >
@@ -295,7 +317,12 @@ export function CaptureChips({
         Prepínač je prvý v rade a na telefóne teda vždy viditeľný bez rolovania.
         Za ním nasledujú značky, ktoré platia len pre úlohu.
       */}
-      <ChipGroup label="Ukladám">
+      {part === "values" ? null : (
+      <ChipGroup
+        label="Ukladám"
+        hideLabel={segmented}
+        className={segmented ? "gap-0.5 rounded-full bg-surface-2 p-1" : undefined}
+      >
         {MODE_OPTIONS.map((option) => {
           const on = mode === option.value;
           const Icon = option.Icon;
@@ -307,14 +334,25 @@ export function CaptureChips({
               aria-pressed={on}
               title={option.description}
               onClick={() => onModeChange(option.value)}
-              className={cn(CHIP_BASE, on ? cn(ACTIVE_MODE, "font-semibold") : CHIP_IDLE)}
+              className={cn(
+                CHIP_BASE,
+                on ? cn(ACTIVE_MODE, "font-semibold") : CHIP_IDLE,
+                // Telefón: pilulky v jednom pásiku, bez ikon — inak sa nezmestia.
+                segmented && "h-9 min-w-0 rounded-full border-transparent px-3",
+                segmented && !on && "bg-transparent hover:bg-transparent",
+              )}
             >
-              <Icon aria-hidden="true" size={14} className="shrink-0" />
+              <Icon
+                aria-hidden="true"
+                size={14}
+                className={cn("shrink-0", segmented && "hidden")}
+              />
               {option.label}
             </button>
           );
         })}
       </ChipGroup>
+      )}
 
       {/*
         Nápad nemá termín, prioritu ani odhad — `createIdea` také polia vôbec
@@ -327,7 +365,7 @@ export function CaptureChips({
         vkladali značky, ktoré server pri udalosti zahodí. Deň a čas sa píšu
         rovno do textu („piatok 18:00") a náhľad ich ukáže.
       */}
-      {mode !== "task" ? null : (
+      {mode !== "task" || part === "mode" ? null : (
         <>
           {/* Termín je prvý zámerne — práve ten sa v poli nedal nájsť. */}
           <ChipGroup label="Termín">
@@ -383,7 +421,7 @@ export function CaptureChips({
                 className={cn(
                   CHIP_BASE,
                   CHIP_IDLE,
-                  "px-0 hover:text-danger sm:min-w-7 sm:px-0",
+                  "px-0 hover:text-danger md:min-w-7 md:px-0",
                 )}
               >
                 <X aria-hidden="true" size={14} className="shrink-0" />

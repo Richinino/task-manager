@@ -1,0 +1,1508 @@
+<title>Task manažér v telefóne</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Schibsted+Grotesk:wght@400;500;700&amp;family=Martian+Mono:wdth,wght@87,400;87,500&amp;display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,100..900&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto+Flex:opsz,wdth,wght@8..144,25..151,100..1000&display=swap">
+<style>
+/* Galéria na porovnanie: tichá stránka, hlas majú telefóny. */
+:root {
+  --bg: #f1f1f3;
+  --panel: #ffffff;
+  --fg: #23232a;
+  --fgm: #676773;
+  --line: #dcdce2;
+  --acc: #5b52d6;
+  --ui: "IBM Plex Sans", system-ui, sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #18181d; --panel: #212128; --fg: #ececf1; --fgm: #a0a0ad; --line: #34343e; --acc: #8b86ee;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #18181d; --panel: #212128; --fg: #ececf1; --fgm: #a0a0ad; --line: #34343e; --acc: #8b86ee;
+  color-scheme: dark;
+}
+body {
+  background: var(--bg); color: var(--fg); font: 16px/1.55 var(--ui);
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+.wrap { max-width: 1040px; margin: 0 auto; padding-block: 48px 80px; }
+h1 { font-size: clamp(30px, 5vw, 44px); line-height: 1.1; font-weight: 600; letter-spacing: -0.02em; margin: 0 0 16px; text-wrap: balance; }
+.lead { max-width: 62ch; color: var(--fgm); margin: 0 0 12px; }
+.jump { display: flex; flex-wrap: wrap; gap: 8px; margin: 28px 0 0; padding: 0; list-style: none; }
+.jump a {
+  display: inline-flex; align-items: center; gap: 10px; min-height: 44px; padding: 0 16px 0 6px;
+  border: 1px solid var(--line); border-radius: 999px; background: var(--panel);
+  color: var(--fg); text-decoration: none; font-weight: 500; font-size: 15px;
+}
+.jump b { display: grid; place-items: center; width: 32px; height: 32px; border-radius: 50%; background: var(--fg); color: var(--bg); font-size: 14px; }
+.jump a:hover { border-color: var(--fgm); }
+a:focus-visible { outline: 2px solid var(--acc); outline-offset: 3px; }
+
+.variant { margin-top: 72px; padding-top: 32px; border-top: 1px solid var(--line); scroll-margin-top: 16px; }
+.vhead { display: grid; grid-template-columns: auto 1fr; gap: 4px 18px; align-items: baseline; }
+.letter { grid-row: span 2; font-size: 56px; line-height: 1; font-weight: 600; letter-spacing: -0.04em; color: var(--fgm); }
+.vhead h2 { margin: 0; font-size: 26px; line-height: 1.2; font-weight: 600; text-wrap: balance; }
+.vhead p { margin: 0; color: var(--fgm); max-width: 60ch; }
+.phones { margin: 28px 0 8px; overflow-x: auto; }
+.trade { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px 32px; margin-top: 16px; }
+.trade div { min-width: 0; }
+.trade h3 { margin: 0 0 4px; font-size: 14px; font-weight: 600; }
+.trade p { margin: 0; color: var(--fgm); font-size: 15px; }
+.next { margin-top: 80px; padding: 28px; border-radius: 10px; background: var(--panel); border: 1px solid var(--line); }
+.next h2 { margin: 0 0 8px; font-size: 22px; font-weight: 600; }
+.next p { margin: 0 0 8px; max-width: 62ch; color: var(--fgm); }
+.next p:last-child { margin: 0; }
+@media (max-width: 820px) { .phones { zoom: .86; } }
+@media (max-width: 440px) { .phones { zoom: .78; } .letter { font-size: 40px; } }
+</style>
+
+<div class="wrap">
+  <header>
+    <h1>Štyri smery pre telefón</h1>
+    <p class="lead">Každý smer ukazuje to isté ráno: pondelok 23. novembra, 9:52, veľká prestávka po druhej hodine. Vľavo je obrazovka Dnes vo svetlej téme, vpravo rozpísané rýchle zachytenie v tmavej.</p>
+    <p class="lead">Vo všetkých štyroch ostáva jantárová farbou priority dňa a červená farbou toho, čo je po termíne. Appka pôjde do Samsungu ako .apk, ale vnútri je to stále tá istá stránka, takže zvolený smer sa postaví raz pre telefón aj počítač.</p>
+    <ul class="jump" aria-label="Smery">
+      <li><a href="#a"><b>A</b>Terminál do ruky</a></li>
+      <li><a href="#b"><b>B</b>Pravítko dňa</a></li>
+      <li><a href="#c"><b>C</b>Jedna karta</a></li>
+      <li><a href="#d"><b>D</b>One UI</a></li>
+    </ul>
+  </header>
+
+  <section class="variant" id="a" aria-labelledby="a-h">
+    <div class="vhead">
+      <span class="letter" aria-hidden="true">A</span>
+      <h2 id="a-h">Terminál do ruky</h2>
+      <p>Tvoj súčasný dizajn bez zmeny farieb a písma. Mení sa len to, kam siaha palec: namiesto plávajúceho tlačidla je nad lištou príkazový riadok a rozpočet dňa je jednoriadkové pravítko.</p>
+    </div>
+    <div class="phones"><template shadowrootmode="open">
+<style>
+  .screens { display: flex; gap: 32px; flex-wrap: wrap; padding: 24px; }
+  .screen, .screen * { box-sizing: border-box; }
+  .screen {
+    width: 360px; height: 780px; position: relative; overflow: hidden; border-radius: 0;
+    background: var(--bg); color: var(--fg);
+    font-family: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+    font-size: 14px; line-height: 1.3;
+  }
+  .screen--light {
+    --bg: #faf9f7; --surface: #ffffff; --surface2: #f4f3f0; --border: #e3e1dd; --borderS: #cfccc6;
+    --fg: #2b2b31; --fgm: #7b7a83; --fgs: #a3a1a9; --acc: #5b52d6; --accfg: #ffffff; --accsoft: #e6e4fb;
+    --p1: #db4133; --p2: #c88431; --p3: #9a99a1; --frog: #c98f20; --frogsoft: #fbefd9;
+    --frogtint: rgba(201,143,32,.14); --danger: #db4133; --dangertint: rgba(219,65,51,.10); --succ: #3f8f5f;
+    --a-uce: #7a4fd6; --a-zdr: #2f8f6a; --a-dom: #c04f7a; --a-fin: #b8801f; --a-pra: #5b52d6;
+  }
+  .screen--dark {
+    --bg: #22242e; --surface: #2b2d38; --surface2: #333542; --border: #3d3f4d; --borderS: #4f5262;
+    --fg: #eceef3; --fgm: #9ea3b3; --fgs: #787d8e; --acc: #8b86ee; --accfg: #1b1d26; --accsoft: #3a3660;
+    --p1: #f08272; --p2: #e5b072; --p3: #787d8e; --frog: #e6b95f; --frogsoft: #3d331c;
+    --frogtint: rgba(230,185,95,.14); --danger: #f08272; --dangertint: rgba(240,130,114,.12); --succ: #63c68c;
+    --a-uce: #a98cf0; --a-zdr: #5cc396; --a-dom: #e88bab; --a-fin: #e5b072; --a-pra: #8b86ee;
+  }
+  .mono { font-family: "JetBrains Mono", ui-monospace, "Cascadia Mono", Consolas, monospace; }
+  .screen svg { display: block; flex: none; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+
+  /* status bar */
+  .status { height: 24px; padding: 0 14px 0 16px; display: flex; align-items: center; justify-content: space-between;
+    font-family: "JetBrains Mono", ui-monospace, Consolas, monospace; font-size: 11px; font-weight: 500; color: var(--fg); }
+  .status .sys { display: flex; align-items: center; gap: 6px; }
+  .status svg { stroke-width: 1.5; }
+
+  /* header */
+  .head { height: 48px; padding: 0 4px 0 16px; display: flex; align-items: center; border-bottom: 1px solid var(--border); background: var(--bg); }
+  .head h1 { margin: 0; font-size: 20px; font-weight: 600; letter-spacing: -.01em; }
+  .head .sub { margin-left: 10px; font-family: "JetBrains Mono", ui-monospace, Consolas, monospace; font-size: 11px; color: var(--fgm); }
+  .head .count { margin-left: auto; font-family: "JetBrains Mono", ui-monospace, Consolas, monospace; font-size: 12px; color: var(--fgm); }
+  .ibtn { width: 44px; height: 44px; border: 0; background: transparent; color: var(--fg); display: flex; align-items: center; justify-content: center; border-radius: 5px; padding: 0; }
+
+  /* day ruler */
+  .ruler { height: 60px; padding: 4px 16px 0; border-bottom: 1px solid var(--border); background: var(--bg); }
+  .ruler-row { display: flex; gap: 6px; height: 28px; }
+  .ruler-lbl { width: 14px; margin-top: 12px; font-family: "JetBrains Mono", ui-monospace, Consolas, monospace; font-size: 10px; line-height: 12px; color: var(--fgs); }
+  .ruler-lbl.r { text-align: right; width: 14px; }
+  .track { position: relative; flex: 1; height: 28px; }
+  .track .bar { position: absolute; left: 0; right: 0; top: 16px; height: 4px; background: var(--border); border-radius: 2px; }
+  .track .tick { position: absolute; top: 14px; width: 1px; height: 8px; background: var(--borderS); }
+  .track .blk { position: absolute; top: 16px; height: 4px; border-radius: 1px; }
+  .track .school { left: 6.667%; width: 36.667%; background: var(--fgs); }
+  .track .flor { left: 63.333%; width: 10%; background: var(--accsoft); border: 1px solid var(--acc); }
+  .track .past { position: absolute; left: 0; width: 19.11%; top: 16px; height: 4px; background: repeating-linear-gradient(135deg, var(--bg) 0 1.5px, transparent 1.5px 3px); }
+  .track .now { position: absolute; left: 19.11%; top: 14px; width: 8px; height: 8px; margin-left: -4px; border-radius: 50%; background: var(--acc); }
+  .track .nowt { position: absolute; left: 19.11%; top: 0; transform: translateX(-50%); font-family: "JetBrains Mono", ui-monospace, Consolas, monospace; font-size: 10px; line-height: 12px; color: var(--acc); font-weight: 500; }
+  .budget { display: flex; gap: 14px; height: 22px; align-items: center; font-family: "JetBrains Mono", ui-monospace, Consolas, monospace; font-size: 11px; color: var(--fg); white-space: nowrap; }
+  .budget span { color: var(--fgs); margin-right: 4px; }
+
+  /* section label */
+  .lbl { height: 28px; padding: 0 16px; display: flex; align-items: center; justify-content: space-between; background: var(--surface2);
+    border-bottom: 1px solid var(--border); font-family: "JetBrains Mono", ui-monospace, Consolas, monospace; font-size: 10px; letter-spacing: .14em; text-transform: uppercase; color: var(--fgm); }
+  .lbl .tot { letter-spacing: 0; text-transform: none; font-size: 11px; color: var(--fg); }
+
+  /* school strip */
+  .school-band { padding: 8px 16px 0; border-bottom: 1px solid var(--border); background: var(--bg); height: 98px; }
+  .school-band .t { height: 12px; margin-bottom: 6px; font-family: "JetBrains Mono", ui-monospace, Consolas, monospace; font-size: 10px; line-height: 12px; letter-spacing: .14em; text-transform: uppercase; color: var(--fgm); }
+  .cells { display: flex; gap: 4px; height: 44px; align-items: stretch; }
+  .cell { flex: 1; border: 1px solid var(--border); border-radius: 4px; background: var(--surface); padding: 5px 0 0 6px; font-family: "JetBrains Mono", ui-monospace, Consolas, monospace; position: relative; overflow: hidden; }
+  .cell b { display: block; font-size: 12px; font-weight: 500; line-height: 16px; }
+  .cell i { display: block; font-style: normal; font-size: 10px; line-height: 14px; color: var(--fgm); white-space: nowrap; }
+  .cell.done { background: var(--surface2); color: var(--fgs); }
+  .cell.done b { text-decoration: line-through; }
+  .cell.done i { color: var(--fgs); }
+  .cell.done svg { position: absolute; right: 4px; top: 5px; color: var(--succ); stroke-width: 2; }
+  .cell.now { flex: 1.45; border: 1.5px solid var(--acc); background: var(--accsoft); padding: 4px 0 0 5px; }
+  .cell.now i { color: var(--acc); }
+  .gap { width: 14px; flex: none; display: flex; justify-content: center; }
+  .gap span { display: block; width: 0; border-left: 1px dashed var(--borderS); }
+  .school-note { height: 28px; padding-top: 6px; font-size: 12px; line-height: 16px; color: var(--fgm); }
+
+  /* priority (frog) band */
+  .frog { height: 68px; display: flex; align-items: center; gap: 10px; padding: 0 16px 0 14px; background: var(--frogtint); border-left: 2px solid var(--frog); border-bottom: 1px solid var(--border); }
+  .frog svg { color: var(--frog); }
+  .frog .tx { flex: 1; min-width: 0; }
+  .frog .ti { font-size: 14px; font-weight: 500; line-height: 18px; }
+  .frog .me { margin-top: 3px; display: flex; gap: 10px; font-family: "JetBrains Mono", ui-monospace, Consolas, monospace; font-size: 11px; color: var(--fgm); }
+  .btn-frog { height: 32px; padding: 0 12px; border: 0; border-radius: 5px; background: var(--frog); color: #ffffff; font-family: inherit; font-size: 13px; font-weight: 600; flex: none; }
+
+  /* rows */
+  .row { min-height: 60px; display: flex; align-items: center; gap: 10px; padding: 0 16px; background: var(--surface); border-bottom: 1px solid var(--border); position: relative; }
+  .row .cb { width: 18px; height: 18px; border: 1.5px solid var(--borderS); border-radius: 4px; flex: none; display: flex; align-items: center; justify-content: center; }
+  .row .pd { width: 8px; height: 8px; border-radius: 50%; flex: none; }
+  .row .pd.p1 { background: var(--p1); }
+  .row .pd.p2 { background: var(--p2); }
+  .row .pd.p0 { visibility: hidden; }
+  .row .tx { flex: 1; min-width: 0; }
+  .row .ti { font-size: 14px; font-weight: 500; line-height: 19px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .row .me { margin-top: 2px; font-family: "JetBrains Mono", ui-monospace, Consolas, monospace; font-size: 12px; line-height: 16px; color: var(--fgm); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .row .rt { display: flex; align-items: center; gap: 7px; flex: none; font-family: "JetBrains Mono", ui-monospace, Consolas, monospace; font-size: 12px; color: var(--fgm); }
+  .row .ad { width: 8px; height: 8px; border-radius: 50%; }
+  .ad.uce { background: var(--a-uce); } .ad.zdr { background: var(--a-zdr); } .ad.dom { background: var(--a-dom); } .ad.fin { background: var(--a-fin); } .ad.pra { background: var(--a-pra); }
+  .row.over { background: var(--dangertint); border-left: 2px solid var(--danger); padding-left: 14px; }
+  .row.over .me { color: var(--danger); display: flex; gap: 10px; }
+  .row.finished .ti { text-decoration: line-through; color: var(--fgs); font-weight: 400; }
+  .row.finished .me, .row.finished .rt { color: var(--fgs); }
+  .row.finished .cb { background: var(--succ); border-color: var(--succ); color: #ffffff; }
+  .row.finished .cb svg { stroke-width: 2.2; }
+  .swipe { position: relative; overflow: hidden; border-bottom: 1px solid var(--border); background: var(--succ); }
+  .swipe .back { position: absolute; left: 0; top: 0; bottom: 0; width: 96px; display: flex; align-items: center; gap: 8px; padding-left: 16px; color: #ffffff; font-size: 13px; font-weight: 600; }
+  .swipe .back svg { stroke-width: 2.2; }
+  .swipe .row { transform: translateX(96px); border-bottom: 0; }
+  .list { position: absolute; left: 0; right: 0; top: 0; bottom: 0; }
+
+  /* command line + nav */
+  .cmd { position: absolute; left: 0; right: 0; bottom: 80px; height: 52px; background: var(--surface); border-top: 1px solid var(--border); display: flex; align-items: center; gap: 10px; padding: 0 16px; font-family: "JetBrains Mono", ui-monospace, Consolas, monospace; }
+  .cmd .pr { color: var(--acc); font-size: 18px; font-weight: 500; line-height: 1; }
+  .cmd .ph { color: var(--fgs); font-size: 14px; }
+  .cmd .hint { margin-left: auto; min-width: 22px; height: 22px; padding: 0 6px; display: flex; align-items: center; justify-content: center; border: 1px solid var(--border); border-radius: 4px; font-size: 11px; color: var(--fgs); }
+  .nav { position: absolute; left: 0; right: 0; bottom: 0; height: 80px; padding-bottom: 16px; box-sizing: border-box; background: var(--surface); border-top: 1px solid var(--border); display: flex; }
+  .nav .it { flex: 1; position: relative; display: flex; flex-direction: column; align-items: center; padding-top: 9px; gap: 4px; color: var(--fgm); font-size: 11px; line-height: 14px; }
+  .nav .it svg { stroke-width: 1.6; }
+  .nav .it.on { color: var(--acc); font-weight: 500; }
+  .nav .it.on::before { content: ""; position: absolute; left: 14px; right: 14px; top: -1px; height: 2px; background: var(--acc); }
+  .nav .dot { position: absolute; top: 8px; left: calc(50% + 6px); width: 7px; height: 7px; border-radius: 50%; background: var(--acc); }
+  .gest { position: absolute; left: 50%; bottom: 8px; width: 108px; height: 4px; margin-left: -54px; border-radius: 2px; background: var(--fg); opacity: .55; z-index: 5; }
+
+  /* screen 2 */
+  .behind { position: absolute; left: 0; right: 0; top: 24px; bottom: 0; opacity: .35; }
+  .scrim { position: absolute; inset: 0; background: rgba(0,0,0,.5); }
+  .screen--dark .status { position: relative; z-index: 4; }
+  .sheet { position: absolute; left: 0; right: 0; bottom: 260px; background: var(--surface); border-top: 1px solid var(--border); border-radius: 6px 6px 0 0;
+    box-shadow: 0 18px 40px -24px rgba(0,0,0,.55); padding: 12px 16px 10px; z-index: 3; }
+  .sh-top { display: flex; align-items: center; justify-content: space-between; height: 32px; }
+  .sh-top .l { font-family: "JetBrains Mono", ui-monospace, Consolas, monospace; font-size: 10px; letter-spacing: .14em; color: var(--fgm); text-transform: uppercase; }
+  .seg { display: flex; height: 32px; border: 1px solid var(--border); border-radius: 5px; overflow: hidden; background: var(--bg); }
+  .seg span { width: 68px; display: flex; align-items: center; justify-content: center; font-size: 13px; color: var(--fgm); }
+  .seg span.on { background: var(--acc); color: var(--accfg); font-weight: 600; }
+  .inp { margin-top: 10px; height: 56px; padding: 6px 0; font-family: "JetBrains Mono", ui-monospace, Consolas, monospace; font-size: 15px; line-height: 22px; color: var(--fg); }
+  .inp .acc { color: var(--acc); } .inp .ok { color: var(--succ); } .inp .est { color: #e5b072; } .inp .pri { color: var(--p2); }
+  .caret { display: inline-block; width: 2px; height: 17px; background: var(--acc); vertical-align: -3px; margin-left: 1px; }
+  .parse { margin-top: 6px; padding: 8px 0; border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); display: grid; grid-template-columns: 72px 1fr; row-gap: 1px; font-family: "JetBrains Mono", ui-monospace, Consolas, monospace; font-size: 12px; line-height: 19px; }
+  .parse .pk { color: var(--fgs); } .parse .pv { color: var(--fg); }
+  .syn { margin-top: 8px; display: flex; flex-wrap: wrap; gap: 3px 12px; font-family: "JetBrains Mono", ui-monospace, Consolas, monospace; font-size: 11px; line-height: 14px; color: var(--fgs); }
+  .syn b { font-weight: 500; color: var(--fgm); margin-right: 4px; }
+  .sh-act { margin-top: 10px; display: flex; align-items: center; justify-content: space-between; height: 44px; }
+  .ghost { height: 40px; padding: 0 8px; display: flex; align-items: center; gap: 8px; border: 0; background: transparent; color: var(--fgm); font-family: "JetBrains Mono", ui-monospace, Consolas, monospace; font-size: 12px; }
+  .ghost kbd { font: inherit; border: 1px solid var(--border); border-radius: 4px; padding: 1px 5px; color: var(--fgs); }
+  .btn-acc { height: 40px; padding: 0 24px; border: 0; border-radius: 5px; background: var(--acc); color: var(--accfg); font-family: inherit; font-size: 14px; font-weight: 600; }
+
+  .kb { position: absolute; left: 0; right: 0; bottom: 0; height: 260px; background: #1b1d26; z-index: 3; padding: 0 4px; }
+  .sug { height: 36px; display: flex; align-items: center; }
+  .sug span { flex: 1; text-align: center; font-size: 15px; color: #d6d9e3; position: relative; }
+  .sug span + span::before { content: ""; position: absolute; left: 0; top: 4px; bottom: 4px; width: 1px; background: #3a3c48; }
+  .kr { height: 42px; margin-top: 6px; display: flex; gap: 4px; }
+  .kr.i { padding: 0 16px; }
+  .k { flex: 1; border-radius: 6px; background: #3a3c48; color: #eceef3; display: flex; align-items: center; justify-content: center; font-size: 17px; font-weight: 400; }
+  .k.w { flex: 1.45; background: #2c2e39; }
+  .k.sp { flex: 4.6; }
+  .k.en { flex: 1.45; background: #5b52d6; color: #ffffff; }
+  .k svg { stroke-width: 1.8; }
+</style>
+<div class="screens">
+
+  <section class="screen screen--light" aria-label="Dnes">
+    <div class="status">
+      <span>9:52</span>
+      <span class="sys">
+        <svg width="14" height="12" viewBox="0 0 14 12" aria-hidden="true"><path d="M1 11h1M5 11V8M9 11V5M13 11V1"/></svg>
+        <svg width="14" height="12" viewBox="0 0 14 12" aria-hidden="true"><path d="M1 4.5a8.5 8.5 0 0 1 12 0M3.2 7a5.5 5.5 0 0 1 7.6 0M5.5 9.4a2.2 2.2 0 0 1 3 0"/></svg>
+        <svg width="22" height="12" viewBox="0 0 22 12" aria-hidden="true"><rect x="1" y="2" width="17" height="8" rx="2"/><path d="M20 5v2"/><rect x="2.8" y="3.8" width="10.5" height="4.4" rx="1" fill="currentColor" stroke="none"/></svg>
+        <span>78</span>
+      </span>
+    </div>
+
+    <div class="head">
+      <h1>Dnes</h1>
+      <span class="sub">po 23. 11.</span>
+      <span class="count">1/7</span>
+      <button class="ibtn" type="button" aria-label="Kalendár">
+        <svg width="20" height="20" viewBox="0 0 20 20" aria-hidden="true"><rect x="3" y="4" width="14" height="13" rx="2"/><path d="M3 8h14M7 2v3M13 2v3"/></svg>
+      </button>
+    </div>
+
+    <div class="ruler">
+      <div class="ruler-row">
+        <span class="ruler-lbl">07</span>
+        <div class="track">
+          <div class="bar"></div>
+          <span class="tick" style="left:0%"></span><span class="tick" style="left:6.667%"></span><span class="tick" style="left:13.333%"></span><span class="tick" style="left:20%"></span><span class="tick" style="left:26.667%"></span><span class="tick" style="left:33.333%"></span><span class="tick" style="left:40%"></span><span class="tick" style="left:46.667%"></span><span class="tick" style="left:53.333%"></span><span class="tick" style="left:60%"></span><span class="tick" style="left:66.667%"></span><span class="tick" style="left:73.333%"></span><span class="tick" style="left:80%"></span><span class="tick" style="left:86.667%"></span><span class="tick" style="left:93.333%"></span><span class="tick" style="left:99.9%"></span>
+          <div class="blk school"></div>
+          <div class="blk flor"></div>
+          <div class="past"></div>
+          <span class="nowt">9:52</span>
+          <div class="now"></div>
+        </div>
+        <span class="ruler-lbl r">22</span>
+      </div>
+      <div class="budget">
+        <div><span>voľné</span>7 h</div>
+        <div><span>plán</span>3 h 05</div>
+        <div><span>rezerva</span>3 h 55</div>
+      </div>
+    </div>
+
+    <div class="school-band">
+      <div class="t">Škola</div>
+      <div class="cells">
+        <div class="cell done"><b>SJL</b><i>8:00</i><svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true"><path d="M2 6.5l2.5 2.5L10 3.5"/></svg></div>
+        <div class="cell done"><b>MAT</b><i>8:55</i><svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true"><path d="M2 6.5l2.5 2.5L10 3.5"/></svg></div>
+        <div class="gap" aria-label="prestávka"><span></span></div>
+        <div class="cell now"><b>FYZ</b><i>10:00 F2</i></div>
+        <div class="cell"><b>ANJ</b><i>10:55</i></div>
+        <div class="cell"><b>INF</b><i>11:50</i></div>
+        <div class="cell"><b>TSV</b><i>12:45</i></div>
+      </div>
+      <div class="school-note">Teraz prestávka, o 8 min fyzika v F2</div>
+    </div>
+
+    <div class="frog">
+      <svg width="20" height="20" viewBox="0 0 20 20" aria-hidden="true"><path d="M10 2.5l2.3 4.8 5.2.7-3.8 3.6.9 5.2L10 14.3 5.4 16.8l.9-5.2L2.5 8l5.2-.7z"/></svg>
+      <div class="tx">
+        <div class="ti">Dokončiť model držiaka na 3D tlačiareň</div>
+        <div class="me"><span>+3D tlačiareň</span><span>45 min</span></div>
+      </div>
+      <button class="btn-frog" type="button">Začať</button>
+    </div>
+
+    <div class="lbl"><span>Po termíne</span></div>
+    <div class="row over">
+      <span class="cb"></span>
+      <span class="pd p1"></span>
+      <div class="tx">
+        <div class="ti">Odovzdať prihlášku na olympiádu z INF</div>
+        <div class="me"><span>pred 3 dňami</span><span>15 min</span></div>
+      </div>
+      <div class="rt"><span class="ad uce"></span></div>
+    </div>
+
+    <div class="lbl"><span>Naplánované na dnes</span><span class="tot mono">3 h 05 min</span></div>
+
+    <div style="position:absolute; left:0; right:0; top:414px; bottom:116px; overflow:hidden;">
+      <div class="row">
+        <span class="cb"></span>
+        <span class="pd p0"></span>
+        <div class="tx">
+          <div class="ti">Naučiť sa na písomku z FYZ</div>
+          <div class="me">FYZ učiť sa</div>
+        </div>
+        <div class="rt"><span class="ad uce"></span><span>40 min</span></div>
+      </div>
+      <div class="row">
+        <span class="cb"></span>
+        <span class="pd p0"></span>
+        <div class="tx">
+          <div class="ti">Domáca úloha MAT — str. 54/3–8</div>
+          <div class="me">du MAT do zajtra</div>
+        </div>
+        <div class="rt"><span class="ad uce"></span><span>25 min</span></div>
+      </div>
+      <div class="swipe">
+        <div class="back">
+          <svg width="20" height="20" viewBox="0 0 20 20" aria-hidden="true"><path d="M4 10.5l4 4 8-9"/></svg>
+          <span>Hotovo</span>
+        </div>
+        <div class="row">
+          <span class="cb"></span>
+          <span class="pd p0"></span>
+          <div class="tx">
+            <div class="ti">Cvičiť gitaru — akordy F a Bm</div>
+            <div class="me">✦ Hudba ↺</div>
+          </div>
+          <div class="rt"><span class="ad uce"></span><span>30 min</span></div>
+        </div>
+      </div>
+      <div class="row">
+        <span class="cb"></span>
+        <span class="pd p2"></span>
+        <div class="tx">
+          <div class="ti">Zavolať do servisu kvôli bicyklu</div>
+          <div class="me">@telefon</div>
+        </div>
+        <div class="rt"><span class="ad dom"></span><span>10 min</span></div>
+      </div>
+      <div class="row">
+        <span class="cb"></span>
+        <span class="pd p0"></span>
+        <div class="tx">
+          <div class="ti">Beh 5 km</div>
+          <div class="me">↺</div>
+        </div>
+        <div class="rt"><span class="ad zdr"></span><span>35 min</span></div>
+      </div>
+      <div class="row finished">
+        <span class="cb"><svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true"><path d="M2 6.5l2.5 2.5L10 3.5"/></svg></span>
+        <span class="pd p0"></span>
+        <div class="tx">
+          <div class="ti">Zaliať kvety</div>
+          <div class="me">hotovo 7:20</div>
+        </div>
+        <div class="rt"><span class="ad dom"></span><span>5 min</span></div>
+      </div>
+    </div>
+
+    <div class="cmd">
+      <span class="pr">›</span>
+      <span class="ph">Zachytiť…</span>
+      <span class="hint">n</span>
+    </div>
+    <nav class="nav" aria-label="Hlavná navigácia">
+      <div class="it on">
+        <svg width="20" height="20" viewBox="0 0 20 20" aria-hidden="true"><rect x="3" y="4" width="14" height="13" rx="2"/><path d="M3 8h14M7 2v3M13 2v3"/></svg>
+        <span>Dnes</span>
+      </div>
+      <div class="it">
+        <svg width="20" height="20" viewBox="0 0 20 20" aria-hidden="true"><rect x="3" y="4" width="14" height="12" rx="2"/><path d="M8 4v12M13 4v12"/></svg>
+        <span>Týždeň</span>
+      </div>
+      <div class="it">
+        <svg width="20" height="20" viewBox="0 0 20 20" aria-hidden="true"><path d="M3 11l2-6h10l2 6v5H3zM3 11h4l1 2h4l1-2h4"/></svg>
+        <span>Inbox</span>
+        <i class="dot"></i>
+      </div>
+      <div class="it">
+        <svg width="20" height="20" viewBox="0 0 20 20" aria-hidden="true"><path d="M2.5 5h5.5l2 2h7.5v9h-15z"/></svg>
+        <span>Projekty</span>
+      </div>
+      <div class="it">
+        <svg width="20" height="20" viewBox="0 0 20 20" aria-hidden="true"><circle cx="4.5" cy="10" r="1" fill="currentColor"/><circle cx="10" cy="10" r="1" fill="currentColor"/><circle cx="15.5" cy="10" r="1" fill="currentColor"/></svg>
+        <span>Viac</span>
+      </div>
+    </nav>
+    <div class="gest"></div>
+  </section>
+
+  <section class="screen screen--dark" aria-label="Zachytenie">
+    <div class="status">
+      <span>9:52</span>
+      <span class="sys">
+        <svg width="14" height="12" viewBox="0 0 14 12" aria-hidden="true"><path d="M1 11h1M5 11V8M9 11V5M13 11V1"/></svg>
+        <svg width="14" height="12" viewBox="0 0 14 12" aria-hidden="true"><path d="M1 4.5a8.5 8.5 0 0 1 12 0M3.2 7a5.5 5.5 0 0 1 7.6 0M5.5 9.4a2.2 2.2 0 0 1 3 0"/></svg>
+        <svg width="22" height="12" viewBox="0 0 22 12" aria-hidden="true"><rect x="1" y="2" width="17" height="8" rx="2"/><path d="M20 5v2"/><rect x="2.8" y="3.8" width="10.5" height="4.4" rx="1" fill="currentColor" stroke="none"/></svg>
+        <span>78</span>
+      </span>
+    </div>
+
+    <div class="behind" aria-hidden="true">
+      <div class="head">
+        <h1>Dnes</h1>
+        <span class="sub">po 23. 11.</span>
+        <span class="count">1/7</span>
+        <span class="ibtn">
+          <svg width="20" height="20" viewBox="0 0 20 20"><rect x="3" y="4" width="14" height="13" rx="2"/><path d="M3 8h14M7 2v3M13 2v3"/></svg>
+        </span>
+      </div>
+      <div class="lbl"><span>Naplánované na dnes</span><span class="tot mono">3 h 05 min</span></div>
+      <div class="row">
+        <span class="cb"></span><span class="pd p0"></span>
+        <div class="tx"><div class="ti">Naučiť sa na písomku z FYZ</div><div class="me">FYZ učiť sa</div></div>
+        <div class="rt"><span class="ad uce"></span><span>40 min</span></div>
+      </div>
+      <div class="row">
+        <span class="cb"></span><span class="pd p0"></span>
+        <div class="tx"><div class="ti">Domáca úloha MAT — str. 54/3–8</div><div class="me">du MAT do zajtra</div></div>
+        <div class="rt"><span class="ad uce"></span><span>25 min</span></div>
+      </div>
+      <div class="row">
+        <span class="cb"></span><span class="pd p0"></span>
+        <div class="tx"><div class="ti">Cvičiť gitaru — akordy F a Bm</div><div class="me">✦ Hudba ↺</div></div>
+        <div class="rt"><span class="ad uce"></span><span>30 min</span></div>
+      </div>
+    </div>
+    <div class="scrim"></div>
+
+    <div class="sheet">
+      <div class="sh-top">
+        <span class="l">Zachytiť</span>
+        <div class="seg"><span class="on">Úloha</span><span>Nápad</span></div>
+      </div>
+      <div class="inp">kúpiť filament PETG <span class="acc">+3D tlačiareň</span> <span class="ok">zajtra</span> <span class="est">30m</span> <span class="pri">!2</span><i class="caret"></i></div>
+      <div class="parse">
+        <span class="pk">názov</span><span class="pv">kúpiť filament PETG</span>
+        <span class="pk">projekt</span><span class="pv">3D tlačiareň</span>
+        <span class="pk">plán</span><span class="pv">zajtra, ut 24. 11.</span>
+        <span class="pk">odhad</span><span class="pv">30 min</span>
+        <span class="pk">priorita</span><span class="pv">2</span>
+      </div>
+      <div class="syn">
+        <span><b>v piatok</b>plán</span>
+        <span><b>do 31.3.</b>termín</span>
+        <span><b>!1</b></span>
+        <span><b>30m</b></span>
+        <span><b>@telefon</b></span>
+        <span><b>#štítok</b></span>
+        <span><b>+projekt</b></span>
+      </div>
+      <div class="sh-act">
+        <button class="ghost" type="button"><kbd>Esc</kbd>zrušiť</button>
+        <button class="btn-acc" type="button">Uložiť</button>
+      </div>
+    </div>
+
+    <div class="kb" aria-label="Klávesnica">
+      <div class="sug"><span>PETG</span><span>petg</span><span>PETG-čko</span></div>
+      <div class="kr"><span class="k">q</span><span class="k">w</span><span class="k">e</span><span class="k">r</span><span class="k">t</span><span class="k">z</span><span class="k">u</span><span class="k">i</span><span class="k">o</span><span class="k">p</span></div>
+      <div class="kr i"><span class="k">a</span><span class="k">s</span><span class="k">d</span><span class="k">f</span><span class="k">g</span><span class="k">h</span><span class="k">j</span><span class="k">k</span><span class="k">l</span></div>
+      <div class="kr">
+        <span class="k w"><svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true"><path d="M9 3l6 6h-3.5v5h-5V9H3z"/></svg></span>
+        <span class="k">y</span><span class="k">x</span><span class="k">c</span><span class="k">v</span><span class="k">b</span><span class="k">n</span><span class="k">m</span>
+        <span class="k w"><svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true"><path d="M7 4h8v10H7l-5-5zM9.5 7l4 4M13.5 7l-4 4"/></svg></span>
+      </div>
+      <div class="kr">
+        <span class="k w">123</span>
+        <span class="k">,</span>
+        <span class="k sp"></span>
+        <span class="k">.</span>
+        <span class="k en"><svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true"><path d="M15 4v6H4M7.5 6.5L4 10l3.5 3.5"/></svg></span>
+      </div>
+    </div>
+    <div class="gest" style="background:#eceef3; opacity:.7;"></div>
+  </section>
+
+</div>
+<style>
+.screens{display:flex!important;flex-wrap:wrap;gap:36px!important;padding:14px!important;justify-content:center}
+.screen{border-radius:34px!important;box-shadow:0 0 0 10px #17171c,0 0 0 11px #3b3b44,0 30px 60px -30px rgba(0,0,0,.6)!important;flex:none}
+</style></template></div>
+    <div class="trade">
+      <div><h3>Získaš</h3><p>Najmenej práce. Telefón a počítač budú vyzerať ako jedna appka a nič, čo už poznáš, sa nepresunie.</p></div>
+      <div><h3>Stratíš</h3><p>Nič nové sa nepridá. Telefón ostane menším počítačom, len s lepším dosahom palca.</p></div>
+    </div>
+  </section>
+
+  <section class="variant" id="b" aria-labelledby="b-h">
+    <div class="vhead">
+      <span class="letter" aria-hidden="true">B</span>
+      <h2 id="b-h">Pravítko dňa</h2>
+      <p>Dnes je zvislá časová os od 7:00 do 22:00, kde výška znamená čas. Hodiny v škole sa prečiarkujú samy, úlohy ležia vo voľných medzerách a rozpočet je to prázdne miesto medzi nimi.</p>
+    </div>
+    <div class="phones"><template shadowrootmode="open">
+<style>
+  .screens { display: flex; gap: 32px; flex-wrap: wrap; padding: 24px; }
+
+  .screen {
+    width: 360px; height: 780px; overflow: hidden; position: relative;
+    border-radius: 0; flex: none; box-sizing: border-box;
+    font-family: "Schibsted Grotesk", system-ui, -apple-system, "Segoe UI", sans-serif;
+    font-size: 13px; line-height: 1.3;
+    background: var(--ground); color: var(--ink);
+  }
+  .screen *, .screen *::before, .screen *::after { box-sizing: border-box; margin: 0; }
+  .screen .mono {
+    font-family: "Martian Mono", ui-monospace, "SFMono-Regular", Consolas, monospace;
+    font-stretch: 87%; font-weight: 400;
+  }
+  .screen svg { display: block; flex: none; }
+
+  .screen--light {
+    --ground: #eef1f4; --panel: #f8fafb; --ink: #18212c; --ink2: #4d5866; --ink3: #8a94a1;
+    --line: #d5dbe2; --cobalt: #2c55c7; --cobalt-soft: #dbe4f8; --on-cobalt: #ffffff;
+    --frog: #c98f20; --frog-soft: #f6e8c8; --danger: #c8392b; --danger-soft: #f7dcd8; --ok: #2f8a5a;
+    --c-uc: #7350c8; --c-zd: #2b8a64; --c-do: #b9496f;
+    --past: rgba(24, 33, 44, 0.05); --hatch: rgba(24, 33, 44, 0.08); --hatch2: rgba(77, 88, 102, 0.22);
+    --grey: #c3cad3;
+  }
+  .screen--dark {
+    --ground: #141a22; --panel: #1c242e; --ink: #e8edf3; --ink2: #aab4c1; --ink3: #6f7b89;
+    --line: #2c3642; --cobalt: #7f9df0; --cobalt-soft: #24324f; --on-cobalt: #141a22;
+    --frog: #e6b95f; --frog-soft: #3b3018; --danger: #f08272; --danger-soft: #3a2220; --ok: #63c68c;
+    --c-uc: #a98cf0; --c-zd: #5cc396; --c-do: #e88bab;
+    --past: rgba(232, 237, 243, 0.04); --hatch: rgba(232, 237, 243, 0.07); --hatch2: rgba(170, 180, 193, 0.22);
+    --grey: #3b4654;
+  }
+
+  /* status bar and gesture bar */
+  .status { position: absolute; left: 0; top: 0; width: 360px; height: 24px; display: flex; align-items: center; justify-content: space-between; padding: 0 16px; z-index: 30; color: var(--ink); }
+  .status .time { font-size: 12px; font-weight: 500; }
+  .status .ico { display: flex; align-items: center; gap: 6px; }
+  .gesture { position: absolute; left: 126px; bottom: 8px; width: 108px; height: 4px; border-radius: 2px; background: var(--ink); opacity: 0.4; z-index: 40; }
+
+  /* header */
+  .hdr { position: absolute; left: 0; top: 24px; width: 360px; height: 56px; padding: 5px 12px 0 16px; }
+  .hdr .r1 { display: flex; align-items: baseline; justify-content: space-between; height: 28px; }
+  .hdr h1 { font-size: 22px; font-weight: 700; line-height: 28px; }
+  .hdr .cap { display: flex; gap: 8px; font-size: 11px; color: var(--ink2); white-space: nowrap; }
+  .hdr .cap b { color: var(--ok); font-weight: 700; }
+  .hdr .r2 { display: flex; align-items: baseline; justify-content: space-between; font-size: 13px; color: var(--ink2); line-height: 18px; }
+  .hdr .r2 span:last-child { font-size: 12px; color: var(--ink3); }
+
+  /* overdue strip */
+  .over { position: absolute; left: 8px; top: 82px; width: 344px; height: 40px; background: var(--danger-soft); border-left: 3px solid var(--danger); border-radius: 3px; padding: 0 8px; display: flex; align-items: center; gap: 8px; font-size: 12px; line-height: 15px; z-index: 10; }
+  .over svg { color: var(--danger); }
+  .over b { font-weight: 700; color: var(--danger); }
+
+  /* axis */
+  .ax { position: absolute; left: 0; top: 124px; width: 360px; height: 532px; overflow: hidden; }
+  .ax .past { position: absolute; left: 44px; top: 16px; width: 316px; height: 92px; background-color: var(--past); background-image: repeating-linear-gradient(135deg, transparent 0 6px, var(--hatch) 6px 7px); }
+  .ax .hr { position: absolute; left: 0; width: 360px; height: 0; }
+  .ax .hr i { position: absolute; left: 44px; right: 0; top: 0; height: 1px; background: var(--line); }
+  .ax .hr b { position: absolute; left: 0; top: 2px; width: 38px; text-align: right; font-size: 11px; line-height: 12px; color: var(--ink3); }
+  .ax .blk { position: absolute; border-radius: 3px; display: flex; align-items: center; overflow: hidden; }
+
+  /* school track */
+  .sch { left: 48px; width: 62px; background: var(--cobalt-soft); color: var(--cobalt); padding: 0 5px; gap: 4px; font-size: 12px; font-weight: 700; height: 24px; }
+  .sch.done { opacity: 0.55; }
+  .sch.done span { text-decoration: line-through; text-decoration-thickness: 1.5px; }
+  .sch.next { border-left: 3px solid var(--cobalt); padding-left: 5px; }
+  .sch .room { font-size: 11px; font-weight: 400; margin-left: auto; }
+  .flor { left: 48px; width: 62px; top: 320px; height: 48px; border: 1px solid var(--ink2); color: var(--ink2); flex-direction: column; align-items: flex-start; justify-content: center; padding: 0 6px; font-size: 12px; font-weight: 500; line-height: 15px; }
+  .flor small { font-size: 11px; font-weight: 400; color: var(--ink3); }
+  .busy { left: 116px; width: 236px; top: 320px; height: 48px; background-image: repeating-linear-gradient(135deg, transparent 0 5px, var(--hatch2) 5px 6px); border: 1px solid var(--line); align-items: flex-start; padding: 3px 7px; font-size: 11px; color: var(--ink3); }
+
+  /* task track */
+  .tk { left: 116px; width: 236px; padding: 0 8px; gap: 6px; border-left: 3px solid var(--uc); background: var(--panel); background: color-mix(in srgb, var(--uc) 16%, var(--panel)); }
+  .tk .n { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 12px; font-weight: 500; line-height: 14px; }
+  .tk .d { font-size: 11px; color: var(--ink2); white-space: nowrap; }
+  .tk.uc { --uc: var(--c-uc); }
+  .tk.zd { --uc: var(--c-zd); }
+  .tk.do { --uc: var(--c-do); }
+  .tk.frog { --uc: var(--frog); background: var(--frog-soft); }
+  .tk.frog svg { color: var(--frog); }
+  .tk.past { opacity: 0.55; }
+  .tk.past .n { text-decoration: line-through; font-size: 11px; }
+  .tk svg.sp { color: var(--c-uc); }
+
+  .gap { position: absolute; left: 112px; top: 436px; height: 60px; border-left: 1px dashed var(--ink3); padding-left: 6px; font-size: 11px; font-weight: 500; line-height: 14px; color: var(--ink3); padding-top: 4px; }
+
+  /* now line */
+  .now { position: absolute; left: 40px; right: 0; top: 107px; height: 2px; background: var(--cobalt); z-index: 5; }
+  .nowpill { position: absolute; left: 4px; top: 101px; width: 38px; height: 14px; border-radius: 3px; background: var(--cobalt); color: var(--on-cobalt); font-size: 11px; line-height: 14px; text-align: center; font-weight: 500; z-index: 6; }
+  .nowtxt { position: absolute; right: 8px; top: 91px; font-size: 11px; line-height: 14px; font-weight: 500; color: var(--cobalt); background: var(--ground); padding: 0 4px; z-index: 6; }
+
+  /* tray */
+  .tray { position: absolute; left: 0; top: 656px; width: 360px; height: 64px; background: var(--panel); border-top: 1px solid var(--line); z-index: 12; }
+  .tray .grip { position: absolute; left: 0; top: 0; width: 44px; height: 63px; display: flex; align-items: center; justify-content: center; color: var(--ink3); }
+  .tray .l1 { position: absolute; left: 44px; top: 7px; right: 12px; display: flex; align-items: baseline; gap: 8px; font-size: 13px; line-height: 18px; }
+  .tray .l1 b { font-weight: 700; }
+  .tray .l1 span { color: var(--ink2); font-size: 12px; }
+  .tray .chips { position: absolute; left: 44px; right: 12px; top: 28px; display: flex; gap: 6px; }
+  .chip { height: 30px; padding: 0 10px; border: 1px solid var(--line); border-radius: 3px; background: var(--ground); font-size: 12px; font-weight: 500; line-height: 28px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+  .chip.c1 { flex: 0 1 auto; }
+  .chip.c2 { flex: none; color: var(--ink2); }
+
+  /* fab and nav */
+  .fab { position: absolute; left: 292px; top: 592px; width: 52px; height: 52px; border-radius: 50%; background: var(--cobalt); color: var(--on-cobalt); border: 0; padding: 0; display: flex; align-items: center; justify-content: center; z-index: 20; }
+  .nav { position: absolute; left: 0; top: 720px; width: 360px; height: 60px; background: var(--panel); border-top: 1px solid var(--line); display: flex; z-index: 12; }
+  .nav .it { flex: 1; display: flex; flex-direction: column; align-items: center; padding-top: 7px; gap: 3px; color: var(--ink3); font-size: 12px; line-height: 14px; position: relative; }
+  .nav .it.on { color: var(--cobalt); font-weight: 700; }
+  .nav .dot { position: absolute; top: 6px; left: 50%; margin-left: 5px; width: 7px; height: 7px; border-radius: 2px; background: var(--danger); }
+
+  /* screen 2 */
+  .bgdim { position: absolute; left: 0; top: 0; width: 360px; height: 780px; opacity: 0.3; }
+  .bgdim .blk { position: absolute; border-radius: 3px; }
+  .scrim { position: absolute; left: 0; top: 0; width: 360px; height: 780px; background: rgba(6, 9, 13, 0.55); z-index: 3; }
+  .sheet { position: absolute; left: 0; top: 56px; width: 360px; height: 474px; background: var(--panel); border-radius: 14px 14px 0 0; z-index: 10; padding: 0 16px 14px; display: flex; flex-direction: column; }
+  .sheet .handle { width: 36px; height: 4px; border-radius: 2px; background: var(--ink3); margin: 8px auto 8px; flex: none; }
+  .seg { display: flex; height: 44px; padding: 3px; background: var(--ground); border-radius: 8px; flex: none; }
+  .seg div { flex: 1; display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 500; color: var(--ink2); border-radius: 6px; }
+  .seg div.on { background: var(--cobalt); color: var(--on-cobalt); font-weight: 700; }
+  .inp { margin-top: 12px; min-height: 56px; font-size: 17px; line-height: 28px; color: var(--ink); flex: none; }
+  .inp .t { text-decoration: underline; text-decoration-thickness: 2px; text-underline-offset: 5px; }
+  .inp .t-p { text-decoration-color: var(--cobalt); }
+  .inp .t-d { text-decoration-color: var(--ok); }
+  .inp .t-e { text-decoration-color: var(--ink2); }
+  .inp .t-q { text-decoration-color: #e5b072; }
+  .inp .caret { display: inline-block; width: 2px; height: 20px; background: var(--cobalt); vertical-align: -4px; margin-left: 1px; }
+  .tom { margin-top: 10px; flex: none; }
+  .tom .hd { display: flex; justify-content: space-between; align-items: baseline; font-size: 12px; line-height: 18px; color: var(--ink2); margin-bottom: 4px; }
+  .tom .hd b { font-weight: 700; color: var(--ink); }
+  .mini { position: relative; width: 328px; height: 64px; background: var(--ground); border-radius: 3px; overflow: hidden; }
+  .mini .b { position: absolute; top: 20px; height: 24px; border-radius: 3px; }
+  .mini .school { left: 22px; width: 140px; background: var(--cobalt-soft); color: var(--cobalt); font-size: 11px; font-weight: 500; line-height: 24px; padding-left: 6px; }
+  .mini .tsk { background: var(--grey); }
+  .mini .ghost { top: 16px; height: 30px; left: 175px; width: 11px; border: 1.5px dashed var(--cobalt); background: rgba(127, 157, 240, 0.25); border-radius: 3px; }
+  .mini .gl { position: absolute; left: 172px; top: 0; font-size: 11px; line-height: 14px; font-weight: 500; color: var(--cobalt); white-space: nowrap; }
+  .mini .ruler { position: absolute; left: 0; top: 46px; width: 328px; height: 4px; background-image: repeating-linear-gradient(90deg, var(--ink3) 0 1px, transparent 1px 21.87px); }
+  .mini .base { position: absolute; left: 0; top: 46px; width: 328px; height: 1px; background: var(--ink3); }
+  .mini .lb { position: absolute; top: 51px; font-size: 11px; line-height: 12px; color: var(--ink3); }
+  .tom .cp { margin-top: 8px; font-size: 12px; line-height: 17px; color: var(--ink2); }
+  .tom .cp b { font-weight: 700; color: var(--ink); }
+  .rows { margin-top: 10px; flex: none; }
+  .rows .row { display: flex; justify-content: space-between; align-items: center; height: 24px; font-size: 13px; border-bottom: 1px solid var(--line); }
+  .rows .row:last-child { border-bottom: 0; }
+  .rows .row span { color: var(--ink3); }
+  .rows .row strong { font-weight: 500; color: var(--ink); }
+  .rows .row strong.mono { font-size: 12px; }
+  .acts { margin-top: auto; display: flex; justify-content: flex-end; align-items: center; gap: 8px; flex: none; }
+  .btn { height: 44px; display: flex; align-items: center; justify-content: center; font-size: 15px; font-weight: 500; border-radius: 8px; padding: 0 18px; }
+  .btn.ghostb { color: var(--ink2); }
+  .btn.save { background: var(--cobalt); color: var(--on-cobalt); font-weight: 700; min-width: 128px; }
+
+  /* keyboard */
+  .kb { position: absolute; left: 0; top: 530px; width: 360px; height: 250px; background: #10151b; z-index: 20; }
+  .kb .sug { display: flex; height: 36px; align-items: center; }
+  .kb .sug div { flex: 1; text-align: center; font-size: 15px; color: #e8edf3; line-height: 36px; }
+  .kb .sug div + div { border-left: 1px solid #2a3340; }
+  .kb .kr { display: flex; gap: 4px; padding: 0 3px; margin-top: 6px; height: 44px; }
+  .kb .kr.r2 { padding: 0 19px; }
+  .kb .k { flex: 1; background: #2a3340; border-radius: 6px; color: #e8edf3; font-size: 18px; display: flex; align-items: center; justify-content: center; }
+  .kb .k.w14 { flex: 1.5; }
+  .kb .k.w13 { flex: 1.4; font-size: 14px; }
+  .kb .k.sp { flex: 5; }
+  .kb .k.en { background: var(--cobalt); color: var(--on-cobalt); flex: 1.4; }
+  .kb .k.fn { background: #202833; }
+</style>
+<div class="screens">
+
+  <!-- ============ 1. DNES (svetla) ============ -->
+  <section class="screen screen--light" aria-label="Dnes">
+    <div class="status">
+      <span class="time">9:52</span>
+      <span class="ico">
+        <svg width="14" height="12" viewBox="0 0 14 12" fill="currentColor" aria-hidden="true"><rect x="0" y="8" width="2.5" height="4" rx="0.6"/><rect x="3.8" y="5.5" width="2.5" height="6.5" rx="0.6"/><rect x="7.6" y="3" width="2.5" height="9" rx="0.6"/><rect x="11.4" y="0" width="2.5" height="12" rx="0.6"/></svg>
+        <svg width="14" height="12" viewBox="0 0 14 12" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" aria-hidden="true"><path d="M1 4.2a9.5 9.5 0 0 1 12 0"/><path d="M3.2 6.8a6.3 6.3 0 0 1 7.6 0"/><path d="M5.4 9.2a3 3 0 0 1 3.2 0"/></svg>
+        <svg width="22" height="12" viewBox="0 0 22 12" fill="none" aria-hidden="true"><rect x="0.75" y="1.25" width="18" height="9.5" rx="2.2" stroke="currentColor" stroke-width="1.3"/><rect x="2.5" y="3" width="11.9" height="6" rx="1" fill="currentColor"/><rect x="19.8" y="4" width="1.6" height="4" rx="0.8" fill="currentColor"/></svg>
+      </span>
+    </div>
+
+    <header class="hdr">
+      <div class="r1">
+        <h1>Dnes</h1>
+        <div class="cap"><span>7 h voľna</span><span>3 h 05 naplánované</span><span><b>3 h 55</b> rezerva</span></div>
+      </div>
+      <div class="r2"><span>pondelok 23. novembra</span><span>1 z 7 hotovo</span></div>
+    </header>
+
+    <div class="over">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 2 15 14H1z"/><path d="M8 6.5v3.2"/><path d="M8 11.7v.1"/></svg>
+      <span><b>Po termíne:</b> Odovzdať prihlášku na olympiádu z INF, pred 3 dňami</span>
+    </div>
+
+    <div class="ax">
+      <div class="past"></div>
+
+      <div class="hr" style="top:16px"><i></i><b class="mono">07</b></div>
+      <div class="hr" style="top:48px"><i></i><b class="mono">08</b></div>
+      <div class="hr" style="top:80px"><i></i><b class="mono">09</b></div>
+      <div class="hr" style="top:112px"><i></i><b class="mono">10</b></div>
+      <div class="hr" style="top:144px"><i></i><b class="mono">11</b></div>
+      <div class="hr" style="top:176px"><i></i><b class="mono">12</b></div>
+      <div class="hr" style="top:208px"><i></i><b class="mono">13</b></div>
+      <div class="hr" style="top:240px"><i></i><b class="mono">14</b></div>
+      <div class="hr" style="top:272px"><i></i><b class="mono">15</b></div>
+      <div class="hr" style="top:304px"><i></i><b class="mono">16</b></div>
+      <div class="hr" style="top:336px"><i></i><b class="mono">17</b></div>
+      <div class="hr" style="top:368px"><i></i><b class="mono">18</b></div>
+      <div class="hr" style="top:400px"><i></i><b class="mono">19</b></div>
+      <div class="hr" style="top:432px"><i></i><b class="mono">20</b></div>
+      <div class="hr" style="top:464px"><i></i><b class="mono">21</b></div>
+      <div class="hr" style="top:496px"><i></i><b class="mono">22</b></div>
+
+      <!-- koľaj školy -->
+      <div class="blk sch done" style="top:48px"><span>SJL</span><svg width="11" height="11" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="margin-left:auto"><path d="M2 6.5 5 9.5 10.5 3"/></svg></div>
+      <div class="blk sch done" style="top:77px"><span>MAT</span><svg width="11" height="11" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="margin-left:auto"><path d="M2 6.5 5 9.5 10.5 3"/></svg></div>
+      <div class="blk sch next" style="top:112px"><span>FYZ</span><span class="room mono">F2</span></div>
+      <div class="blk sch" style="top:141px"><span>ANJ</span></div>
+      <div class="blk sch" style="top:171px"><span>INF</span></div>
+      <div class="blk sch" style="top:200px"><span>TSV</span></div>
+
+      <!-- hotovy blok v minulosti -->
+      <div class="blk tk do past" style="top:20px;height:14px;padding:0 8px 0 6px"><span class="n">Zaliať kvety</span><span class="d mono">5m</span></div>
+
+      <!-- ulohy -->
+      <div class="blk tk frog" style="top:232px;height:26px">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" aria-hidden="true"><path d="M12 2.5 14.8 9l7 .6-5.3 4.6 1.6 6.9L12 17.4 5.9 21.1l1.6-6.9L2.2 9.6l7-.6z"/></svg>
+        <span class="n">Dokončiť model držiaka na 3D tlačiareň</span><span class="d mono">45m</span>
+      </div>
+      <div class="blk tk uc" style="top:261px;height:23px"><span class="n">Naučiť sa na písomku z FYZ</span><span class="d mono">40m</span></div>
+      <div class="blk tk uc" style="top:285px;height:26px"><span class="n">Domáca úloha MAT — str. 54/3–8</span><span class="d mono">25m</span></div>
+
+      <!-- florbal -->
+      <div class="blk flor"><span>Florbal</span><small>hala</small></div>
+      <div class="blk busy">obsadené</div>
+
+      <div class="blk tk zd" style="top:384px;height:23px"><span class="n">Beh 5 km</span><span class="d mono">35m</span></div>
+      <div class="blk tk uc" style="top:408px;height:26px">
+        <span class="n">Cvičiť gitaru — akordy F a Bm</span>
+        <svg class="sp" width="11" height="11" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 1.5c.9 5.6 4.9 9.6 10.5 10.5-5.6.9-9.6 4.9-10.5 10.5C11.1 16.9 7.1 12.9 1.5 12 7.1 11.1 11.1 7.1 12 1.5z"/></svg>
+        <span class="d mono">30m</span>
+      </div>
+
+      <div class="gap">voľné 2 h</div>
+
+      <!-- teraz -->
+      <div class="nowtxt">o 8 min FYZ v F2</div>
+      <div class="now"></div>
+      <div class="nowpill mono">9:52</div>
+    </div>
+
+    <div class="tray">
+      <div class="grip">
+        <svg width="16" height="22" viewBox="0 0 16 22" fill="currentColor" aria-hidden="true"><circle cx="4.5" cy="4" r="1.6"/><circle cx="11.5" cy="4" r="1.6"/><circle cx="4.5" cy="11" r="1.6"/><circle cx="11.5" cy="11" r="1.6"/><circle cx="4.5" cy="18" r="1.6"/><circle cx="11.5" cy="18" r="1.6"/></svg>
+      </div>
+      <div class="l1"><b>Bez času</b><span>2 úlohy, 15 min</span></div>
+      <div class="chips"><div class="chip c1">Zavolať do servisu kvôli bicyklu</div><div class="chip c2">+1</div></div>
+    </div>
+
+    <button type="button" class="fab" aria-label="Zachytiť">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+    </button>
+
+    <nav class="nav" aria-label="Navigácia">
+      <div class="it on">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M7 3v18"/><path d="M7 6h4M7 10h7M7 14h4M7 18h7"/><path d="M17 4v16"/></svg>
+        <span>Dnes</span>
+      </div>
+      <div class="it">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3.5" y="5" width="17" height="15" rx="2"/><path d="M3.5 10h17M8 3v4M16 3v4"/></svg>
+        <span>Týždeň</span>
+      </div>
+      <div class="it">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3.5 13.5 6.5 5h11l3 8.5V19a1 1 0 0 1-1 1h-15a1 1 0 0 1-1-1z"/><path d="M3.5 13.5h5l1 2.5h5l1-2.5h5"/></svg>
+        <span>Inbox</span><i class="dot"></i>
+      </div>
+      <div class="it">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3.5 7a1.5 1.5 0 0 1 1.5-1.5h4l2 2.5h8A1.5 1.5 0 0 1 20.5 9.5V18a1.5 1.5 0 0 1-1.5 1.5H5A1.5 1.5 0 0 1 3.5 18z"/></svg>
+        <span>Projekty</span>
+      </div>
+      <div class="it">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M5 7h14M5 12h14M5 17h14"/></svg>
+        <span>Viac</span>
+      </div>
+    </nav>
+    <div class="gesture"></div>
+  </section>
+
+  <!-- ============ 2. ZACHYTENIE (tmava) ============ -->
+  <section class="screen screen--dark" aria-label="Zachytenie">
+    <div class="status">
+      <span class="time">9:52</span>
+      <span class="ico">
+        <svg width="14" height="12" viewBox="0 0 14 12" fill="currentColor" aria-hidden="true"><rect x="0" y="8" width="2.5" height="4" rx="0.6"/><rect x="3.8" y="5.5" width="2.5" height="6.5" rx="0.6"/><rect x="7.6" y="3" width="2.5" height="9" rx="0.6"/><rect x="11.4" y="0" width="2.5" height="12" rx="0.6"/></svg>
+        <svg width="14" height="12" viewBox="0 0 14 12" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" aria-hidden="true"><path d="M1 4.2a9.5 9.5 0 0 1 12 0"/><path d="M3.2 6.8a6.3 6.3 0 0 1 7.6 0"/><path d="M5.4 9.2a3 3 0 0 1 3.2 0"/></svg>
+        <svg width="22" height="12" viewBox="0 0 22 12" fill="none" aria-hidden="true"><rect x="0.75" y="1.25" width="18" height="9.5" rx="2.2" stroke="currentColor" stroke-width="1.3"/><rect x="2.5" y="3" width="11.9" height="6" rx="1" fill="currentColor"/><rect x="19.8" y="4" width="1.6" height="4" rx="0.8" fill="currentColor"/></svg>
+      </span>
+    </div>
+
+    <!-- stlmená obrazovka Dnes -->
+    <div class="bgdim" aria-hidden="true">
+      <div style="position:absolute;left:16px;top:29px;font-size:22px;font-weight:700;line-height:28px">Dnes</div>
+      <div style="position:absolute;left:0;top:124px;width:360px;height:532px">
+        <div class="blk" style="left:48px;top:48px;width:62px;height:24px;background:var(--cobalt-soft)"></div>
+        <div class="blk" style="left:48px;top:77px;width:62px;height:24px;background:var(--cobalt-soft)"></div>
+        <div class="blk" style="left:48px;top:112px;width:62px;height:24px;background:var(--cobalt-soft);border-left:3px solid var(--cobalt)"></div>
+        <div class="blk" style="left:48px;top:141px;width:62px;height:24px;background:var(--cobalt-soft)"></div>
+        <div class="blk" style="left:48px;top:171px;width:62px;height:24px;background:var(--cobalt-soft)"></div>
+        <div class="blk" style="left:116px;top:232px;width:236px;height:26px;background:var(--frog-soft);border-left:3px solid var(--frog)"></div>
+        <div class="blk" style="left:116px;top:261px;width:236px;height:23px;background:var(--panel);border-left:3px solid var(--c-uc)"></div>
+        <div class="blk" style="left:48px;top:107px;width:304px;height:2px;background:var(--cobalt)"></div>
+      </div>
+    </div>
+    <div class="scrim"></div>
+
+    <div class="sheet">
+      <div class="handle"></div>
+      <div class="seg"><div class="on">Úloha</div><div>Nápad</div></div>
+
+      <div class="inp">kúpiť filament PETG <span class="t t-p">+3D tlačiareň</span> <span class="t t-d">zajtra</span> <span class="t t-e">30m</span> <span class="t t-q">!2</span><span class="caret"></span></div>
+
+      <div class="tom">
+        <div class="hd"><b>utorok 24. 11.</b><span>zajtrajšia os</span></div>
+        <div class="mini">
+          <div class="gl">sem sa zmestí, 15:00–15:30</div>
+          <div class="b tsk" style="left:11px;width:7px"></div>
+          <div class="b school">škola</div>
+          <div class="b tsk" style="left:219px;width:16px"></div>
+          <div class="b tsk" style="left:262px;width:11px"></div>
+          <div class="b ghost"></div>
+          <div class="base"></div>
+          <div class="ruler"></div>
+          <span class="lb mono" style="left:0">07</span>
+          <span class="lb mono" style="left:58px">10</span>
+          <span class="lb mono" style="left:123px">13</span>
+          <span class="lb mono" style="left:189px">16</span>
+          <span class="lb mono" style="left:254px">19</span>
+          <span class="lb mono" style="left:313px">22</span>
+        </div>
+        <div class="cp">Zajtra máš voľné <b>4 h 20 min</b>, po tejto úlohe <b>3 h 50 min</b>.</div>
+      </div>
+
+      <div class="rows">
+        <div class="row"><span>Projekt</span><strong>3D tlačiareň</strong></div>
+        <div class="row"><span>Plán</span><strong>zajtra, ut 24. 11.</strong></div>
+        <div class="row"><span>Odhad</span><strong class="mono">30 min</strong></div>
+        <div class="row"><span>Priorita</span><strong>2</strong></div>
+      </div>
+
+      <div class="acts"><div class="btn ghostb">Zrušiť</div><div class="btn save">Uložiť</div></div>
+    </div>
+
+    <div class="kb" aria-hidden="true">
+      <div class="sug"><div>PETG</div><div>petg</div><div>PETG-čko</div></div>
+      <div class="kr"><div class="k">q</div><div class="k">w</div><div class="k">e</div><div class="k">r</div><div class="k">t</div><div class="k">z</div><div class="k">u</div><div class="k">i</div><div class="k">o</div><div class="k">p</div></div>
+      <div class="kr r2"><div class="k">a</div><div class="k">s</div><div class="k">d</div><div class="k">f</div><div class="k">g</div><div class="k">h</div><div class="k">j</div><div class="k">k</div><div class="k">l</div></div>
+      <div class="kr">
+        <div class="k w14 fn"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" aria-hidden="true"><path d="M12 4 4 13h4.5v6h7v-6H20z"/></svg></div>
+        <div class="k">y</div><div class="k">x</div><div class="k">c</div><div class="k">v</div><div class="k">b</div><div class="k">n</div><div class="k">m</div>
+        <div class="k w14 fn"><svg width="20" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 5h11v14H9L2.5 12z"/><path d="m12.5 9.5 5 5M17.5 9.5l-5 5"/></svg></div>
+      </div>
+      <div class="kr">
+        <div class="k w13 fn">?123</div><div class="k fn">,</div><div class="k sp"></div><div class="k fn">.</div>
+        <div class="k en"><svg width="20" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6v6H5"/><path d="m9 8-4 4 4 4"/></svg></div>
+      </div>
+    </div>
+    <div class="gesture" style="background:#e8edf3"></div>
+  </section>
+
+</div>
+<style>
+.screens{display:flex!important;flex-wrap:wrap;gap:36px!important;padding:14px!important;justify-content:center}
+.screen{border-radius:34px!important;box-shadow:0 0 0 10px #17171c,0 0 0 11px #3b3b44,0 30px 60px -30px rgba(0,0,0,.6)!important;flex:none}
+</style></template></div>
+    <div class="trade">
+      <div><h3>Získaš</h3><p>Odpoveď na otázku „stihnem to?" jedným pohľadom. Pri zachytení hneď vidíš, kam sa nová úloha zajtra zmestí.</p></div>
+      <div><h3>Stratíš</h3><p>Hustotu. Úlohy bez odhadu sa na os nedajú položiť a čakajú v podnose dole, kým im čas nedáš.</p></div>
+    </div>
+  </section>
+
+  <section class="variant" id="c" aria-labelledby="c-h">
+    <div class="vhead">
+      <span class="letter" aria-hidden="true">C</span>
+      <h2 id="c-h">Jedna karta</h2>
+      <p>Telefón odpovedá na jedinú otázku: čo robím ďalej? Dnes je jedna veľká karta s úlohou, ktorá je na rade, a pod ňou vytŕčajú ďalšie. Potiahnutím ide ďalšia, ťuknutím na „Začať“ sa púšťaš do práce. Zvyšok dňa je krátky zoznam pod kartou.</p>
+    </div>
+    <div class="phones"><template shadowrootmode="open">
+<style>
+  .screens, .screens * { box-sizing: border-box; margin: 0; }
+  .screens {
+    display: flex; gap: 32px; flex-wrap: wrap; padding: 24px;
+    font-family: "Archivo", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  }
+  .screen {
+    width: 360px; height: 780px; overflow: hidden; position: relative;
+    border-radius: 0; background: var(--ground); color: var(--ink);
+    font-family: "Archivo", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    font-stretch: 100%; font-weight: 400; font-variant-numeric: tabular-nums;
+    -webkit-font-smoothing: antialiased;
+  }
+  .screen--light {
+    --ground: #f7f7f9; --surface: #ffffff; --ink: #141419; --ink2: #55555f; --ink3: #8e8e99;
+    --line: #e2e2e8; --chip: #ececf1; --frog: #d9971c; --onFrog: #1d1405; --frogDeep: #a86f08;
+    --violet: #6a4fe0; --green: #1f8a5f; --rose: #c2417a; --danger: #d23b2c; --ok: #1f8a5f;
+    --acc: #141419; --onAcc: #f7f7f9;
+  }
+  .screen--dark {
+    --ground: #0f0f13; --surface: #1a1a21; --ink: #f2f2f6; --ink2: #a9a9b6; --ink3: #6c6c78;
+    --line: #2a2a33; --chip: #24242d; --frog: #f0b544; --onFrog: #1d1405;
+    --violet: #8f7af2; --green: #4cc38d; --rose: #e7779f; --danger: #f08272; --ok: #4cc38d;
+    --acc: #f2f2f6; --onAcc: #0f0f13;
+  }
+  .screen svg { display: block; flex: none; }
+  .ico { fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+
+  .disp { font-stretch: 125%; font-weight: 800; line-height: 1; letter-spacing: -0.01em; }
+
+  /* status bar */
+  .sb { height: 24px; padding: 0 16px; display: flex; align-items: center; justify-content: space-between;
+        font-size: 12px; font-weight: 600; color: var(--ink); }
+  .sb-r { display: flex; align-items: center; gap: 6px; }
+  .gesture { position: absolute; left: 126px; bottom: 8px; width: 108px; height: 4px; border-radius: 999px;
+             background: var(--ink); opacity: 0.85; }
+
+  /* ===== screen 1 ===== */
+  .top { height: 52px; padding: 0 10px 0 20px; display: flex; align-items: center; gap: 8px; }
+  .top-l { display: flex; flex-direction: column; justify-content: center; flex: none; }
+  .top-l b { font-size: 15px; font-weight: 600; line-height: 18px; }
+  .top-l span { font-size: 12px; color: var(--ink3); line-height: 14px; }
+  .now { margin-left: auto; min-width: 0; height: 32px; padding: 0 12px 0 10px; border-radius: 999px;
+         background: var(--chip); display: flex; align-items: center; gap: 7px; font-size: 12px; font-weight: 500; }
+  .now i { width: 7px; height: 7px; border-radius: 50%; background: var(--frog); flex: none; }
+  .now span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .icon-btn { width: 44px; height: 44px; border: 0; background: transparent; color: var(--ink);
+              display: flex; align-items: center; justify-content: center; flex: none; padding: 0; }
+  .budget { height: 36px; padding: 0 20px; font-size: 13px; line-height: 18px; color: var(--ink2); }
+  .budget b { color: var(--ok); font-weight: 700; }
+
+  .stack { position: relative; margin: 12px 20px 0; width: 320px; height: 316px; }
+  .back { position: absolute; height: 300px; border-radius: 22px; }
+  .back--1 { left: 12px; right: 12px; top: 8px; background: var(--violet); }
+  .back--2 { left: 24px; right: 24px; top: 16px; background: var(--line); }
+  .hero { position: absolute; left: 0; top: 0; width: 320px; height: 300px; border-radius: 22px;
+          background: var(--frog); color: var(--onFrog); padding: 20px; display: flex; flex-direction: column; }
+  .hero-top { display: flex; justify-content: space-between; align-items: center; height: 18px;
+              font-size: 13px; font-weight: 600; }
+  .hero-top span { display: flex; align-items: center; gap: 6px; }
+  .hero-title { margin-top: 14px; font-size: 26px; }
+  .hero-title span { display: block; white-space: nowrap; }
+  .hero-chips { margin-top: 14px; display: flex; gap: 8px; font-size: 14px; font-weight: 500; }
+  .hero-chips span { height: 30px; padding: 0 12px; border-radius: 999px; background: rgba(0, 0, 0, 0.12);
+                     display: flex; align-items: center; }
+  .hero-actions { margin-top: auto; display: flex; gap: 10px; }
+  .btn-go { flex: 1; height: 52px; border: 0; border-radius: 14px; background: var(--acc); color: var(--onAcc);
+            display: flex; align-items: center; justify-content: center; gap: 8px; font: inherit;
+            font-size: 16px; font-weight: 600; }
+  .btn-next { width: 52px; height: 52px; border-radius: 14px; border: 1.5px solid rgba(0, 0, 0, 0.25);
+              background: transparent; color: var(--onFrog); display: flex; align-items: center;
+              justify-content: center; padding: 0; flex: none; }
+  .hint { margin-top: 8px; height: 16px; text-align: center; font-size: 12px; line-height: 16px; color: var(--ink3); }
+
+  .then-h { margin-top: 12px; height: 28px; padding: 0 20px; display: flex; justify-content: space-between;
+            align-items: center; font-size: 13px; }
+  .then-h b { font-weight: 600; color: var(--ink2); }
+  .then-h span { color: var(--ink3); }
+  .row { height: 44px; padding: 0 20px; display: flex; align-items: center; gap: 12px; border-top: 1px solid var(--line); }
+  .row i { width: 10px; height: 10px; border-radius: 3px; flex: none; }
+  .row b { flex: 1; min-width: 0; font-size: 15px; font-weight: 400; white-space: nowrap; overflow: hidden;
+           text-overflow: ellipsis; }
+  .row span { font-size: 13px; color: var(--ink3); flex: none; }
+  .row--late i { background: var(--danger); }
+  .row--late span { color: var(--danger); font-weight: 600; }
+
+  .nav { position: absolute; left: 0; right: 0; bottom: 0; height: 80px; background: var(--ground);
+         border-top: 1px solid var(--line); }
+  .nav-in { height: 64px; padding: 0 10px; display: flex; align-items: center; justify-content: space-between; }
+  .nav-it { height: 48px; display: flex; flex-direction: column; align-items: center; justify-content: center;
+            gap: 2px; font-size: 12px; color: var(--ink3); position: relative; }
+  .nav-it--on { flex-direction: row; gap: 6px; height: 40px; padding: 0 14px; border-radius: 999px;
+                background: var(--acc); color: var(--onAcc); font-weight: 600; }
+  .nav-dot { position: absolute; top: 2px; right: 8px; width: 8px; height: 8px; border-radius: 50%;
+             background: var(--danger); }
+  .fab { width: 56px; height: 56px; border-radius: 50%; border: 0; background: var(--acc); color: var(--onAcc);
+         display: flex; align-items: center; justify-content: center; padding: 0; flex: none; }
+
+  /* ===== screen 2 ===== */
+  .comp-top { height: 56px; padding: 0 20px 0 10px; display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; }
+  .comp-top h1 { font-size: 15px; font-weight: 600; text-align: center; }
+  .seg { justify-self: end; height: 36px; padding: 3px; border-radius: 999px; background: var(--chip); display: flex; }
+  .seg span { height: 30px; padding: 0 13px; border-radius: 999px; display: flex; align-items: center;
+              font-size: 13px; font-weight: 600; color: var(--ink2); }
+  .seg span.on { background: var(--acc); color: var(--onAcc); }
+  .input { margin: 12px 20px 0; min-height: 111px; font-stretch: 125%; font-weight: 700; font-size: 24px;
+           line-height: 1.15; letter-spacing: -0.01em; color: var(--ink); }
+  .tok { padding: 0 2px; border-radius: 6px; -webkit-box-decoration-break: clone; box-decoration-break: clone; }
+  .tok--v { background: rgba(143, 122, 242, 0.3); }
+  .tok--g { background: rgba(76, 195, 141, 0.3); }
+  .tok--c { background: var(--chip); }
+  .tok--d { background: rgba(240, 130, 114, 0.3); }
+  .caret { display: inline-block; width: 2px; height: 26px; margin-left: 2px; vertical-align: -5px;
+           background: var(--ink); animation: blink 1.1s steps(1) infinite; }
+  @keyframes blink { 0%, 55% { opacity: 1; } 56%, 100% { opacity: 0; } }
+  @media (prefers-reduced-motion: reduce) { .caret { animation: none; } }
+  .label { margin: 16px 20px 0; height: 18px; font-size: 13px; line-height: 18px; color: var(--ink3); }
+  .prev { margin: 8px 20px 0; width: 320px; height: 150px; border-radius: 22px; background: #5f45d6;
+          color: #ffffff; padding: 16px; display: flex; flex-direction: column; }
+  .prev-title { font-size: 20px; }
+  .prev-chips { margin-top: auto; display: flex; flex-wrap: wrap; gap: 6px; }
+  .prev-chips span { height: 26px; padding: 0 10px; border-radius: 999px; background: rgba(255, 255, 255, 0.22);
+                     display: flex; align-items: center; font-size: 12px; font-weight: 600; }
+  .syntax { margin: 12px 20px 0; font-size: 12px; line-height: 16px; color: var(--ink3); }
+  .syntax span { margin-right: 10px; white-space: nowrap; display: inline-block; }
+  .syntax b { font-weight: 600; color: var(--ink2); }
+  .save { position: absolute; left: 20px; right: 20px; bottom: 258px; height: 52px; border: 0; border-radius: 14px;
+          background: var(--acc); color: var(--onAcc); font: inherit; font-size: 16px; font-weight: 600;
+          display: flex; align-items: center; justify-content: center; }
+
+  .kb { position: absolute; left: 0; right: 0; bottom: 0; height: 250px; background: #0a0a0d; color: #f2f2f6; }
+  .kb-sug { height: 40px; display: flex; align-items: center; border-bottom: 1px solid #1c1c22; font-size: 15px; }
+  .kb-sug span { flex: 1; text-align: center; }
+  .kb-sug span + span { border-left: 1px solid #24242d; }
+  .kb-rows { padding: 6px 4px 0; display: flex; flex-direction: column; gap: 6px; }
+  .kb-row { display: flex; gap: 4px; height: 42px; }
+  .kb-row--2 { padding: 0 16px; }
+  .k { flex: 1; min-width: 0; border-radius: 8px; background: #24242d; display: flex; align-items: center;
+       justify-content: center; font-size: 17px; }
+  .k--w { flex: 1.5; font-size: 13px; color: #a9a9b6; }
+  .k--sp { flex: 5; }
+  .k--go { flex: 1.5; background: #f2f2f6; color: #0f0f13; }
+</style>
+<div class="screens">
+
+  <section class="screen screen--light" aria-label="Dnes">
+    <div class="sb">
+      <span>9:52</span>
+      <span class="sb-r">
+        <svg width="14" height="12" viewBox="0 0 14 12" aria-hidden="true"><path d="M1 11 L13 11 L13 1 Z" fill="currentColor"/></svg>
+        <svg width="14" height="12" viewBox="0 0 14 12" aria-hidden="true"><path d="M1 4.5 A8.5 8.5 0 0 1 13 4.5 M3.2 7 A5.5 5.5 0 0 1 10.8 7 M5.4 9.4 A2.3 2.3 0 0 1 8.6 9.4" class="ico" style="stroke-width:1.5"/></svg>
+        <span style="display:flex;align-items:center;gap:3px">78%
+          <svg width="20" height="10" viewBox="0 0 20 10" aria-hidden="true"><rect x="0.75" y="0.75" width="16.5" height="8.5" rx="2" fill="none" stroke="currentColor" stroke-width="1.5"/><rect x="2.5" y="2.5" width="9.5" height="5" rx="1" fill="currentColor"/><rect x="18" y="3" width="1.5" height="4" rx="0.5" fill="currentColor"/></svg>
+        </span>
+      </span>
+    </div>
+
+    <div class="top">
+      <div class="top-l"><b>Dnes</b><span>po 23. 11.</span></div>
+      <div class="now"><i></i><span>Prestávka, o 8 min FYZ v F2</span></div>
+      <button class="icon-btn" type="button" aria-label="Viac">
+        <svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true"><circle cx="5" cy="12" r="1.8" fill="currentColor"/><circle cx="12" cy="12" r="1.8" fill="currentColor"/><circle cx="19" cy="12" r="1.8" fill="currentColor"/></svg>
+      </button>
+    </div>
+
+    <p class="budget">Po škole a tréningu máš 7 h. Úlohy zaberú 3 h 05. <b style="white-space:nowrap">Rezerva 3 h 55.</b></p>
+
+    <div class="stack">
+      <div class="back back--2"></div>
+      <div class="back back--1"></div>
+      <article class="hero">
+        <div class="hero-top">
+          <span>
+            <svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path class="ico" d="M12 3.5 14.6 9 20.5 9.7 16.2 13.8 17.3 19.7 12 16.8 6.7 19.7 7.8 13.8 3.5 9.7 9.4 9Z" fill="currentColor"/></svg>
+            Priorita dňa
+          </span>
+          <span>1 z 6</span>
+        </div>
+        <h2 class="disp hero-title"><span>Dokončiť model</span><span>držiaka na 3D</span><span>tlačiareň</span></h2>
+        <div class="hero-chips"><span>3D tlačiareň</span><span>45 min</span></div>
+        <div class="hero-actions">
+          <button class="btn-go" type="button">
+            <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4.5 19 12 7 19.5Z" fill="currentColor"/></svg>
+            Začať
+          </button>
+          <button class="btn-next" type="button" aria-label="Ďalšia karta">
+            <svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true"><path class="ico" d="M6 5.5 15 12 6 18.5Z"/><path class="ico" d="M19 5v14"/></svg>
+          </button>
+        </div>
+      </article>
+    </div>
+    <p class="hint">Potiahni doľava pre ďalšiu úlohu</p>
+
+    <div class="then-h"><b>Potom</b><span>3 h 05 min</span></div>
+    <div class="row row--late"><i></i><b>Odovzdať prihlášku na olympiádu z INF</b><span>pred 3 dňami</span></div>
+    <div class="row"><i style="background:var(--violet)"></i><b>Naučiť sa na písomku z FYZ</b><span>40 min</span></div>
+    <div class="row"><i style="background:var(--violet)"></i><b>Domáca úloha MAT — str. 54/3–8</b><span>25 min</span></div>
+    <div class="row"><i style="background:var(--violet)"></i><b>Cvičiť gitaru — akordy F a Bm</b><span>30 min</span></div>
+    <div class="row"><i style="background:var(--green)"></i><b>Beh 5 km</b><span>35 min</span></div>
+
+    <nav class="nav" aria-label="Hlavná navigácia">
+      <div class="nav-in">
+        <div class="nav-it nav-it--on">
+          <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true"><circle class="ico" cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="3" fill="currentColor"/></svg>
+          Dnes
+        </div>
+        <div class="nav-it" style="width:58px">
+          <svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true"><rect class="ico" x="4" y="5.5" width="16" height="14" rx="2.5"/><path class="ico" d="M4 10h16M8.5 3.5v4M15.5 3.5v4"/></svg>
+          Týždeň
+        </div>
+        <button class="fab" type="button" aria-label="Zachytiť">
+          <svg width="26" height="26" viewBox="0 0 24 24" aria-hidden="true"><path class="ico" style="stroke-width:2.2" d="M12 5v14M5 12h14"/></svg>
+        </button>
+        <div class="nav-it" style="width:52px">
+          <svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true"><path class="ico" d="M4 13.5 6.5 5.5h11l2.5 8M4 13.5V18a1.5 1.5 0 0 0 1.5 1.5h13A1.5 1.5 0 0 0 20 18v-4.5M4 13.5h4.5a3.5 3.5 0 0 0 7 0H20"/></svg>
+          <span class="nav-dot"></span>
+          Inbox
+        </div>
+        <div class="nav-it" style="width:62px">
+          <svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true"><path class="ico" d="M3.5 7.5A1.5 1.5 0 0 1 5 6h4.2l2 2.2H19A1.5 1.5 0 0 1 20.5 9.7V17.5A1.5 1.5 0 0 1 19 19H5a1.5 1.5 0 0 1-1.5-1.5Z"/></svg>
+          Projekty
+        </div>
+      </div>
+    </nav>
+    <div class="gesture"></div>
+  </section>
+
+  <section class="screen screen--dark" aria-label="Zachytenie">
+    <div class="sb">
+      <span>9:52</span>
+      <span class="sb-r">
+        <svg width="14" height="12" viewBox="0 0 14 12" aria-hidden="true"><path d="M1 11 L13 11 L13 1 Z" fill="currentColor"/></svg>
+        <svg width="14" height="12" viewBox="0 0 14 12" aria-hidden="true"><path d="M1 4.5 A8.5 8.5 0 0 1 13 4.5 M3.2 7 A5.5 5.5 0 0 1 10.8 7 M5.4 9.4 A2.3 2.3 0 0 1 8.6 9.4" class="ico" style="stroke-width:1.5"/></svg>
+        <span style="display:flex;align-items:center;gap:3px">78%
+          <svg width="20" height="10" viewBox="0 0 20 10" aria-hidden="true"><rect x="0.75" y="0.75" width="16.5" height="8.5" rx="2" fill="none" stroke="currentColor" stroke-width="1.5"/><rect x="2.5" y="2.5" width="9.5" height="5" rx="1" fill="currentColor"/><rect x="18" y="3" width="1.5" height="4" rx="0.5" fill="currentColor"/></svg>
+        </span>
+      </span>
+    </div>
+
+    <div class="comp-top">
+      <button class="icon-btn" type="button" aria-label="Zavrieť">
+        <svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true"><path class="ico" d="M6 6l12 12M18 6 6 18"/></svg>
+      </button>
+      <h1>Nová úloha</h1>
+      <div class="seg"><span class="on">Úloha</span><span>Nápad</span></div>
+    </div>
+
+    <p class="input">kúpiť filament PETG <span class="tok tok--v">+3D tlačiareň</span> <span class="tok tok--g">zajtra</span> <span class="tok tok--c">30m</span> <span class="tok tok--d">!2</span><span class="caret"></span></p>
+
+    <p class="label">Takto bude vyzerať</p>
+    <article class="prev">
+      <h2 class="disp prev-title">Kúpiť filament PETG</h2>
+      <div class="prev-chips"><span>3D tlačiareň</span><span>Zajtra, ut 24. 11.</span><span>30 min</span><span>Priorita 2</span></div>
+    </article>
+
+    <p class="syntax"><span><b>v piatok</b> plán</span><span><b>do 31.3.</b> termín</span><span><b>!1</b></span><span><b>30m</b></span><span><b>@telefon</b></span><span><b>#štítok</b></span><span><b>+projekt</b></span></p>
+
+    <button class="save" type="button">Uložiť do zajtra</button>
+
+    <div class="kb" aria-hidden="true">
+      <div class="kb-sug"><span>PETG</span><span>petg</span><span>PETG-čko</span></div>
+      <div class="kb-rows">
+        <div class="kb-row"><div class="k">q</div><div class="k">w</div><div class="k">e</div><div class="k">r</div><div class="k">t</div><div class="k">z</div><div class="k">u</div><div class="k">i</div><div class="k">o</div><div class="k">p</div></div>
+        <div class="kb-row kb-row--2"><div class="k">a</div><div class="k">s</div><div class="k">d</div><div class="k">f</div><div class="k">g</div><div class="k">h</div><div class="k">j</div><div class="k">k</div><div class="k">l</div></div>
+        <div class="kb-row">
+          <div class="k k--w"><svg width="18" height="18" viewBox="0 0 24 24"><path class="ico" d="M12 4 4.5 12H9v7h6v-7h4.5Z"/></svg></div>
+          <div class="k">y</div><div class="k">x</div><div class="k">c</div><div class="k">v</div><div class="k">b</div><div class="k">n</div><div class="k">m</div>
+          <div class="k k--w"><svg width="20" height="20" viewBox="0 0 24 24"><path class="ico" d="M9 6h10a1.5 1.5 0 0 1 1.5 1.5v9A1.5 1.5 0 0 1 19 18H9l-5.5-6ZM11.5 9.5l5 5M16.5 9.5l-5 5"/></svg></div>
+        </div>
+        <div class="kb-row">
+          <div class="k k--w">?123</div><div class="k">,</div><div class="k k--sp"></div><div class="k">.</div>
+          <div class="k k--go"><svg width="20" height="20" viewBox="0 0 24 24"><path class="ico" d="M19 6v6a2 2 0 0 1-2 2H6M10 9.5 5.5 14l4.5 4.5"/></svg></div>
+        </div>
+      </div>
+    </div>
+    <div class="gesture"></div>
+  </section>
+
+</div>
+<style>
+.screens{display:flex!important;flex-wrap:wrap;gap:36px!important;padding:14px!important;justify-content:center}
+.screen{border-radius:34px!important;box-shadow:0 0 0 10px #17171c,0 0 0 11px #3b3b44,0 30px 60px -30px rgba(0,0,0,.6)!important;flex:none}
+</style></template></div>
+    <div class="trade">
+      <div><h3>Získaš</h3><p>Najmenej rozhodovania. Ráno neotváraš zoznam, ale jednu vec. Zachytenie ti rovno ukáže kartu, ktorá z textu vznikne.</p></div>
+      <div><h3>Stratíš</h3><p>Prehľad naraz. Celý deň vidíš len v krátkom zozname pod kartou, plánovať sa bude radšej v Týždni alebo na počítači.</p></div>
+    </div>
+  </section>
+
+  <section class="variant" id="d" aria-labelledby="d-h">
+    <div class="vhead">
+      <span class="letter" aria-hidden="true">D</span>
+      <h2 id="d-h">One UI: pozri hore, ťukni dole</h2>
+      <p>Appka, ktorá vyzerá, akoby ju dodal Samsung. Horná tretina sa len číta a nesie jedno veľké číslo, všetko na ťukanie je v dosahu palca. Farby sú tónmi tvojej indigovej.</p>
+    </div>
+    <div class="phones"><template shadowrootmode="open">
+<style>
+  .screens { display: flex; gap: 32px; flex-wrap: wrap; padding: 24px; }
+  .screens * { box-sizing: border-box; margin: 0; }
+
+  .screen {
+    width: 360px; height: 780px; overflow: hidden; position: relative;
+    border-radius: 0;
+    font-family: "Roboto Flex", Roboto, "Segoe UI", system-ui, sans-serif;
+    font-size: 15px; line-height: 20px; font-stretch: 100%;
+    background: var(--ground); color: var(--onSurface);
+  }
+  .screen--light {
+    --ground: #f6f5fb; --container: #ffffff; --containerLow: #eeedf6;
+    --onSurface: #1c1b22; --onSurfaceVar: #5f5d6c; --outline: #c9c6d6;
+    --primary: #4f46c8; --onPrimary: #ffffff;
+    --primaryContainer: #e3e0ff; --onPrimaryContainer: #1a1466;
+    --frog: #b87d10; --frogContainer: #ffe7b8; --onFrogContainer: #3d2800;
+    --danger: #c3382a; --dangerContainer: #ffdad5; --ok: #2e7d55;
+    --aLearn: #7a4fd6; --aHealth: #2f8f6a; --aHome: #c04f7a;
+  }
+  .screen--dark {
+    --ground: #131218; --container: #1e1d25; --containerLow: #26252e;
+    --onSurface: #e6e3ef; --onSurfaceVar: #aeaabd; --outline: #48465a;
+    --primary: #c4c0ff; --onPrimary: #241c86;
+    --primaryContainer: #3b33a8; --onPrimaryContainer: #e3e0ff;
+    --frog: #f2c063; --frogContainer: #4a3600; --onFrogContainer: #ffe7b8;
+    --danger: #ffb4a9; --dangerContainer: #5c1a14; --ok: #7fd6a6;
+    --aLearn: #a98af0; --aHealth: #5fc79b; --aHome: #e27fa5;
+    --chipFill: #2e2a6a;
+  }
+
+  .i { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; flex: none; display: block; }
+  .i--s { width: 18px; height: 18px; }
+  .i--xs { width: 16px; height: 16px; }
+
+  /* status bar + gesture bar */
+  .sb { position: absolute; top: 0; left: 0; right: 0; height: 24px; display: flex; align-items: center; justify-content: space-between; padding: 0 16px; font-size: 12px; font-weight: 500; line-height: 24px; z-index: 6; }
+  .sb__r { display: flex; align-items: center; gap: 6px; }
+  .sb__r svg { width: 14px; height: 14px; display: block; }
+  .gest { position: absolute; left: 126px; bottom: 8px; width: 108px; height: 4px; border-radius: 4px; background: var(--onSurface); opacity: .85; z-index: 7; }
+
+  /* HERO */
+  .hero { position: absolute; top: 24px; left: 0; right: 0; height: 250px; padding: 18px 24px 0; }
+  .hero__date { font-size: 14px; line-height: 20px; color: var(--onSurfaceVar); }
+  .hero__lead { margin-top: 22px; font-size: 20px; line-height: 26px; font-weight: 400; }
+  .num { margin-top: 4px; display: flex; align-items: baseline; white-space: nowrap; }
+  .num__n { font-size: 84px; line-height: 80px; font-stretch: 35%; font-variation-settings: "wdth" 35, "wght" 650, "opsz" 96; font-weight: 650; color: var(--primary); font-variant-numeric: tabular-nums; letter-spacing: -1px; }
+  .num__u { margin-left: 8px; font-size: 22px; line-height: 26px; font-weight: 500; color: var(--onSurfaceVar); }
+  .cap { margin-top: 22px; display: flex; gap: 2px; height: 8px; }
+  .cap i { display: block; height: 8px; border-radius: 999px; }
+  .cap__school { flex: 393; background: var(--onSurfaceVar); }
+  .cap__sport { flex: 107; background: var(--outline); }
+  .cap__tasks { flex: 220; background: var(--primary); }
+  .cap__free { flex: 280; background: var(--containerLow); border: 1px solid var(--outline); }
+  .leg { margin-top: 12px; display: flex; gap: 14px; font-size: 12px; line-height: 16px; color: var(--onSurfaceVar); white-space: nowrap; }
+  .leg span { display: flex; align-items: center; gap: 5px; }
+  .leg b { width: 8px; height: 8px; border-radius: 50%; display: block; }
+  .calbtn { position: absolute; top: 10px; right: 16px; width: 40px; height: 40px; border-radius: 999px; background: var(--containerLow); color: var(--onSurface); display: flex; align-items: center; justify-content: center; }
+  .calbtn::after { content: ""; position: absolute; inset: -2px; }
+
+  /* THUMB ZONE */
+  .zone { position: absolute; top: 274px; left: 0; right: 0; bottom: 88px; padding: 4px 16px 0; overflow: hidden; }
+
+  .prio { background: var(--frogContainer); color: var(--onFrogContainer); border-radius: 26px; padding: 14px 16px; }
+  .prio__top { display: flex; align-items: center; gap: 6px; font-size: 13px; line-height: 20px; }
+  .prio__top .i { color: var(--frog); fill: var(--frog); width: 20px; height: 20px; }
+  .prio__title { margin-top: 6px; font-size: 17px; line-height: 22px; font-weight: 600; }
+  .prio__row { margin-top: 12px; display: flex; align-items: center; justify-content: space-between; }
+  .prio__chips { display: flex; gap: 8px; }
+  .chip { display: inline-flex; align-items: center; height: 32px; padding: 0 12px; border-radius: 999px; font-size: 13px; line-height: 16px; white-space: nowrap; }
+  .chip--frog { background: rgba(255, 255, 255, .6); color: var(--onFrogContainer); }
+  .btn-frog { height: 44px; padding: 0 24px; border-radius: 999px; background: var(--frog); color: #ffffff; font-size: 15px; font-weight: 600; display: inline-flex; align-items: center; }
+
+  .sch__note { margin-top: 16px; font-size: 13px; line-height: 18px; color: var(--onSurfaceVar); padding-left: 8px; }
+  .sch__row { margin: 8px -16px 0; padding: 0 16px; display: flex; gap: 8px; white-space: nowrap; overflow: hidden; }
+  .lc { flex: none; display: inline-flex; align-items: center; gap: 4px; height: 36px; padding: 0 14px; border-radius: 999px; font-size: 13px; line-height: 16px; font-weight: 500; }
+  .lc--done { background: var(--containerLow); color: var(--onSurfaceVar); padding: 0 12px 0 14px; }
+  .lc--ghost { border: 1px dashed var(--outline); color: var(--onSurfaceVar); font-weight: 400; }
+  .lc--now { background: var(--primaryContainer); color: var(--onPrimaryContainer); font-weight: 600; }
+  .lc--next { border: 1px solid var(--outline); color: var(--onSurface); }
+
+  .grp { margin-top: 16px; background: var(--container); border-radius: 26px; overflow: hidden; }
+  .grp__h { height: 48px; padding: 0 20px 0 20px; display: flex; align-items: center; justify-content: space-between; }
+  .grp__h b { font-size: 15px; font-weight: 600; }
+  .grp__h span { font-size: 13px; color: var(--onSurfaceVar); }
+  .row { position: relative; height: 56px; padding: 0 16px; display: flex; align-items: center; gap: 16px; }
+  .row::after { content: ""; position: absolute; left: 56px; right: 0; bottom: 0; height: 1px; background: var(--outline); opacity: .6; }
+  .cb { flex: none; width: 24px; height: 24px; border-radius: 50%; border: 2px solid var(--outline); }
+  .row__t { flex: 1; min-width: 0; }
+  .row__t b { display: block; font-size: 15px; line-height: 20px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .row__t span { display: block; font-size: 13px; line-height: 18px; color: var(--onSurfaceVar); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .row__e { flex: none; display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--onSurfaceVar); }
+  .row__e i { width: 8px; height: 8px; border-radius: 50%; display: block; }
+  .row--late .row__t b { color: var(--danger); }
+  .row--late .row__t span { color: var(--danger); }
+  .row--late .cb { border-color: var(--danger); }
+
+  .fab { position: absolute; right: 16px; bottom: 104px; height: 56px; padding: 0 20px 0 16px; border-radius: 18px; background: var(--primaryContainer); color: var(--onPrimaryContainer); display: flex; align-items: center; gap: 12px; font-size: 15px; font-weight: 600; box-shadow: 0 4px 12px rgba(0, 0, 0, .15); z-index: 4; }
+
+  .nav { position: absolute; left: 0; right: 0; bottom: 0; height: 88px; padding-bottom: 16px; background: var(--containerLow); display: flex; z-index: 3; }
+  .nav__it { flex: 1; padding-top: 12px; display: flex; flex-direction: column; align-items: center; gap: 4px; font-size: 12px; line-height: 16px; color: var(--onSurfaceVar); }
+  .nav__pill { position: relative; width: 64px; height: 32px; border-radius: 999px; display: flex; align-items: center; justify-content: center; }
+  .nav__it--on .nav__pill { background: var(--primaryContainer); color: var(--onPrimaryContainer); }
+  .nav__it--on { color: var(--onSurface); font-weight: 600; }
+  .badge { position: absolute; top: 3px; right: 18px; width: 9px; height: 9px; border-radius: 50%; background: var(--danger); border: 2px solid var(--containerLow); box-sizing: content-box; }
+
+  /* SCREEN 2 */
+  .bg { position: absolute; inset: 0; opacity: .6; }
+  .bg .num { position: absolute; top: 28px; left: 24px; margin: 0; }
+  .scrim { position: absolute; inset: 0; background: rgba(0, 0, 0, .5); z-index: 2; }
+  .sheet { position: absolute; left: 0; right: 0; bottom: 260px; background: var(--container); border-radius: 28px 28px 0 0; padding: 12px 20px 12px; z-index: 3; }
+  .handle { width: 32px; height: 4px; border-radius: 4px; background: var(--outline); margin: 0 auto 16px; }
+  .sheet__top { display: flex; align-items: center; justify-content: space-between; }
+  .sheet__top h2 { font-size: 22px; line-height: 28px; font-weight: 500; }
+  .seg { display: flex; height: 40px; border: 1px solid var(--outline); border-radius: 999px; overflow: hidden; font-size: 14px; font-weight: 500; }
+  .seg span { display: flex; align-items: center; gap: 6px; padding: 0 16px; color: var(--onSurface); }
+  .seg span + span { border-left: 1px solid var(--outline); }
+  .seg .seg__on { background: var(--primaryContainer); color: var(--onPrimaryContainer); padding: 0 16px 0 12px; }
+  .field { margin-top: 16px; background: var(--containerLow); border-radius: 16px 16px 0 0; border-bottom: 2px solid var(--primary); padding: 14px 16px; font-size: 18px; line-height: 26px; min-height: 80px; }
+  .field i { display: inline-block; width: 2px; height: 22px; background: var(--primary); vertical-align: -4px; margin-left: 1px; }
+  .reco { margin-top: 14px; font-size: 13px; line-height: 18px; color: var(--onSurfaceVar); }
+  .assist { margin-top: 8px; display: flex; flex-wrap: wrap; gap: 8px; }
+  .ac { display: inline-flex; align-items: center; gap: 6px; height: 32px; padding: 0 12px 0 8px; border-radius: 8px; font-size: 13px; line-height: 16px; font-weight: 500; white-space: nowrap; background: var(--chipFill); color: var(--onPrimaryContainer); }
+  .ac .i { color: var(--primary); }
+  .ac--out { background: transparent; border: 1px solid var(--outline); color: var(--onSurfaceVar); font-weight: 400; padding: 0 12px 0 8px; }
+  .ac--out .i { color: var(--onSurfaceVar); }
+  .prev { margin-top: 12px; font-size: 13px; line-height: 18px; color: var(--onSurfaceVar); }
+  .acts { margin-top: 8px; display: flex; justify-content: flex-end; align-items: center; gap: 8px; }
+  .btn-text { height: 48px; padding: 0 16px; display: inline-flex; align-items: center; font-size: 15px; font-weight: 600; color: var(--primary); }
+  .btn-fill { height: 48px; padding: 0 28px; border-radius: 999px; display: inline-flex; align-items: center; font-size: 15px; font-weight: 600; background: var(--primary); color: var(--onPrimary); }
+
+  .kb { position: absolute; left: 0; right: 0; bottom: 0; height: 260px; background: #0f0e13; z-index: 4; color: #e6e3ef; }
+  .kb__sug { height: 40px; display: flex; align-items: center; font-size: 16px; }
+  .kb__sug span { flex: 1; text-align: center; line-height: 24px; }
+  .kb__sug span + span { border-left: 1px solid #2b2a33; }
+  .kb__keys { padding: 6px 8px 0; display: flex; flex-direction: column; gap: 6px; }
+  .kr { display: flex; gap: 5px; height: 42px; }
+  .kr--ind { padding: 0 15px; }
+  .k { flex: 1; border-radius: 10px; background: #2b2a33; display: flex; align-items: center; justify-content: center; font-size: 18px; line-height: 22px; }
+  .k--w { flex: 1.5; background: #3a3944; font-size: 14px; }
+  .k--sp { flex: 5; }
+  .k--go { flex: 1.5; background: #c4c0ff; color: #241c86; }
+  .kb .gest { background: #e6e3ef; }
+</style>
+<div class="screens">
+
+  <section class="screen screen--light" aria-label="Dnes">
+    <div class="sb">
+      <span>9:52</span>
+      <span class="sb__r">
+        <svg viewBox="0 0 14 14" fill="currentColor"><path d="M1 12.5L12.5 1v11.5z"/></svg>
+        <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M1.5 5.2a8.5 8.5 0 0 1 11 0M3.7 7.7a5.3 5.3 0 0 1 6.6 0"/><circle cx="7" cy="10.6" r="1" fill="currentColor"/></svg>
+        <svg viewBox="0 0 22 14" style="width:22px" fill="none"><rect x="1" y="2.5" width="17" height="9" rx="2.2" stroke="currentColor" stroke-width="1.3"/><rect x="2.6" y="4.1" width="10.6" height="5.8" rx="1" fill="currentColor"/><path d="M19.8 5.5v3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+        <span>78 %</span>
+      </span>
+    </div>
+
+    <header class="hero">
+      <p class="hero__date">pondelok 23. novembra</p>
+      <p class="hero__lead">Po úlohách ti dnes ostáva</p>
+      <div class="num"><span class="num__n">3 h 55</span><span class="num__u">min</span></div>
+      <div class="cap" role="img" aria-label="Rozpočet dňa: škola, florbal, úlohy, rezerva">
+        <i class="cap__school"></i><i class="cap__sport"></i><i class="cap__tasks"></i><i class="cap__free"></i>
+      </div>
+      <div class="leg">
+        <span><b style="background:var(--onSurfaceVar)"></b>škola 5 h 30</span>
+        <span><b style="background:var(--primary)"></b>úlohy 3 h 05</span>
+        <span><b style="background:var(--outline);border:1px solid var(--onSurfaceVar)"></b>rezerva 3 h 55</span>
+      </div>
+      <div class="calbtn" aria-label="Kalendár"><svg class="i" viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="15" rx="3"/><path d="M4 10h16M8 3v4M16 3v4"/></svg></div>
+    </header>
+
+    <div class="zone">
+      <div class="prio">
+        <div class="prio__top">
+          <svg class="i" viewBox="0 0 24 24"><path d="M12 3.5l2.6 5.4 5.9.8-4.3 4.1 1 5.9L12 17l-5.2 2.7 1-5.9L3.5 9.7l5.9-.8z"/></svg>
+          <span>Priorita dňa</span>
+        </div>
+        <p class="prio__title">Dokončiť model držiaka na 3D tlačiareň</p>
+        <div class="prio__row">
+          <div class="prio__chips"><span class="chip chip--frog">3D tlačiareň</span><span class="chip chip--frog">45 min</span></div>
+          <span class="btn-frog">Začať</span>
+        </div>
+      </div>
+
+      <p class="sch__note">Teraz prestávka, o 8 min fyzika</p>
+      <div class="sch__row">
+        <span class="lc lc--done">SJL <svg class="i i--xs" viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></span>
+        <span class="lc lc--done">MAT <svg class="i i--xs" viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></span>
+        <span class="lc lc--ghost">Prestávka</span>
+        <span class="lc lc--now">FYZ 10:00 F2</span>
+        <span class="lc lc--next">ANJ 10:55</span>
+        <span class="lc lc--next">INF 11:50</span>
+        <span class="lc lc--next">TSV 12:45</span>
+      </div>
+
+      <div class="grp">
+        <div class="grp__h"><b>Na dnes</b><span>1 z 7</span></div>
+        <div class="row row--late">
+          <span class="cb"></span>
+          <div class="row__t"><b>Odovzdať prihlášku na olympiádu z INF</b><span>po termíne, pred 3 dňami</span></div>
+          <div class="row__e">15 min<i style="background:var(--aLearn)"></i></div>
+        </div>
+        <div class="row">
+          <span class="cb"></span>
+          <div class="row__t"><b>Naučiť sa na písomku z FYZ</b><span>učiť sa FYZ, písomka v stredu</span></div>
+          <div class="row__e">40 min<i style="background:var(--aLearn)"></i></div>
+        </div>
+        <div class="row">
+          <span class="cb"></span>
+          <div class="row__t"><b>Domáca úloha MAT, str. 54/3–8</b><span>du MAT, do zajtra</span></div>
+          <div class="row__e">25 min<i style="background:var(--aLearn)"></i></div>
+        </div>
+        <div class="row">
+          <span class="cb"></span>
+          <div class="row__t"><b>Cvičiť gitaru, akordy F a Bm</b><span>lekcia Hudba, plní návyk</span></div>
+          <div class="row__e">30 min<i style="background:var(--aLearn)"></i></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="fab">
+      <svg class="i" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
+      <span>Zachytiť</span>
+    </div>
+
+    <nav class="nav" aria-label="Navigácia">
+      <div class="nav__it nav__it--on"><span class="nav__pill"><svg class="i" viewBox="0 0 24 24"><path d="M4 11l8-7 8 7v8a1 1 0 0 1-1 1h-4v-6H9v6H5a1 1 0 0 1-1-1z"/></svg></span>Dnes</div>
+      <div class="nav__it"><span class="nav__pill"><svg class="i" viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="15" rx="3"/><path d="M4 10h16M9 14h6M9 17h3"/></svg></span>Týždeň</div>
+      <div class="nav__it"><span class="nav__pill"><svg class="i" viewBox="0 0 24 24"><path d="M4 13l2.5-7.5A2 2 0 0 1 8.4 4h7.2a2 2 0 0 1 1.9 1.5L20 13v5a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2z"/><path d="M4 13h5l1 2h4l1-2h5"/></svg><i class="badge"></i></span>Inbox</div>
+      <div class="nav__it"><span class="nav__pill"><svg class="i" viewBox="0 0 24 24"><path d="M3 7a2 2 0 0 1 2-2h4l2 2.5h8a2 2 0 0 1 2 2V18a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg></span>Projekty</div>
+      <div class="nav__it"><span class="nav__pill"><svg class="i" viewBox="0 0 24 24" style="stroke-width:3"><path d="M5.5 12h.01M12 12h.01M18.5 12h.01"/></svg></span>Viac</div>
+    </nav>
+    <div class="gest"></div>
+  </section>
+
+  <section class="screen screen--dark" aria-label="Zachytenie">
+    <div class="sb">
+      <span>9:52</span>
+      <span class="sb__r">
+        <svg viewBox="0 0 14 14" fill="currentColor"><path d="M1 12.5L12.5 1v11.5z"/></svg>
+        <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M1.5 5.2a8.5 8.5 0 0 1 11 0M3.7 7.7a5.3 5.3 0 0 1 6.6 0"/><circle cx="7" cy="10.6" r="1" fill="currentColor"/></svg>
+        <svg viewBox="0 0 22 14" style="width:22px" fill="none"><rect x="1" y="2.5" width="17" height="9" rx="2.2" stroke="currentColor" stroke-width="1.3"/><rect x="2.6" y="4.1" width="10.6" height="5.8" rx="1" fill="currentColor"/><path d="M19.8 5.5v3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+        <span>78 %</span>
+      </span>
+    </div>
+
+    <div class="bg">
+      <div class="num"><span class="num__n">3 h 55</span><span class="num__u">min</span></div>
+    </div>
+    <div class="scrim"></div>
+
+    <div class="sheet">
+      <div class="handle"></div>
+      <div class="sheet__top">
+        <h2>Nová úloha</h2>
+        <div class="seg">
+          <span class="seg__on"><svg class="i i--s" viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>Úloha</span>
+          <span>Nápad</span>
+        </div>
+      </div>
+      <p class="field">kúpiť filament PETG +3D tlačiareň zajtra 30m !2<i></i></p>
+      <p class="reco">Rozpoznané</p>
+      <div class="assist">
+        <span class="ac"><svg class="i i--s" viewBox="0 0 24 24"><path d="M3 7a2 2 0 0 1 2-2h4l2 2.5h8a2 2 0 0 1 2 2V18a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>3D tlačiareň</span>
+        <span class="ac"><svg class="i i--s" viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="15" rx="3"/><path d="M4 10h16M8 3v4M16 3v4"/></svg>Zajtra, ut 24. 11.</span>
+        <span class="ac"><svg class="i i--s" viewBox="0 0 24 24"><circle cx="12" cy="13" r="7.5"/><path d="M12 9v4l2.5 2M9.5 3h5"/></svg>30 min</span>
+        <span class="ac"><svg class="i i--s" viewBox="0 0 24 24"><path d="M6 21V4M6 5h11l-2 4 2 4H6"/></svg>Priorita 2</span>
+        <span class="ac ac--out"><svg class="i i--s" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>Pridať termín</span>
+      </div>
+      <p class="prev">Názov: kúpiť filament PETG</p>
+      <div class="acts">
+        <span class="btn-text">Zrušiť</span>
+        <span class="btn-fill">Uložiť</span>
+      </div>
+    </div>
+
+    <div class="kb">
+      <div class="kb__sug"><span>PETG</span><span>petg</span><span>PETG-čko</span></div>
+      <div class="kb__keys">
+        <div class="kr"><span class="k">q</span><span class="k">w</span><span class="k">e</span><span class="k">r</span><span class="k">t</span><span class="k">z</span><span class="k">u</span><span class="k">i</span><span class="k">o</span><span class="k">p</span></div>
+        <div class="kr kr--ind"><span class="k">a</span><span class="k">s</span><span class="k">d</span><span class="k">f</span><span class="k">g</span><span class="k">h</span><span class="k">j</span><span class="k">k</span><span class="k">l</span></div>
+        <div class="kr"><span class="k k--w"><svg class="i i--s" viewBox="0 0 24 24"><path d="M12 5l7 8h-4v6H9v-6H5z"/></svg></span><span class="k">y</span><span class="k">x</span><span class="k">c</span><span class="k">v</span><span class="k">b</span><span class="k">n</span><span class="k">m</span><span class="k k--w"><svg class="i i--s" viewBox="0 0 24 24"><path d="M9 6h11a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H9l-6-6zM12 9.5l5 5M17 9.5l-5 5"/></svg></span></div>
+        <div class="kr"><span class="k k--w">?123</span><span class="k">,</span><span class="k k--sp"></span><span class="k">.</span><span class="k k--go"><svg class="i i--s" viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></span></div>
+      </div>
+      <div class="gest"></div>
+    </div>
+  </section>
+
+</div>
+<style>
+.screens{display:flex!important;flex-wrap:wrap;gap:36px!important;padding:14px!important;justify-content:center}
+.screen{border-radius:34px!important;box-shadow:0 0 0 10px #17171c,0 0 0 11px #3b3b44,0 30px 60px -30px rgba(0,0,0,.6)!important;flex:none}
+</style></template></div>
+    <div class="trade">
+      <div><h3>Získaš</h3><p>Pocit natívnej appky a najpohodlnejšie ovládanie jednou rukou. Zbalí sa pekne aj na menší telefón.</p></div>
+      <div><h3>Stratíš</h3><p>Vlastnú tvár. Bude vyzerať ako ostatné appky v telefóne a s verziou na počítači sa rozíde viac než ostatné smery.</p></div>
+    </div>
+  </section>
+
+  <section class="next" aria-labelledby="next-h">
+    <h2 id="next-h">Ako ďalej</h2>
+    <p>Napíš mi písmeno. Kombinácie sú v poriadku, napríklad „B, ale v písme a farbách A".</p>
+    <p>Zvolený smer potom dotiahnem na ďalšie obrazovky (Týždeň, Inbox, detail úlohy, hárok Viac), postavím ho v appke a pripravím .apk na stiahnutie do Samsungu.</p>
+  </section>
+</div>

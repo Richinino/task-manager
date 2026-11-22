@@ -6,6 +6,7 @@ import { WeekHeader, taskCountLabel } from "@/components/views/tyzden/week-heade
 import { WeeklyReviewLauncher } from "@/components/rituals/review-launcher";
 import {
   WEEKDAYS_SK,
+  addDays,
   formatDuration,
   parseIsoDate,
   startOfWeek,
@@ -27,6 +28,20 @@ import { listProjects } from "@/server/queries/structure";
 import { getRitualState } from "@/server/queries/rituals";
 import { daysSinceTouch } from "@/lib/ideas";
 import { getAgendaForRange } from "@/server/queries/agenda";
+import { MobileWeek, type MobileWeekDay } from "@/components/views/tyzden/mobile-week";
+import { cardFill } from "@/components/task/card-fill";
+import {
+  agendaShortTitle,
+  hhmm,
+  isAssessment,
+  isCancelled,
+  isOnDay,
+} from "@/lib/agenda";
+import { layoutDay } from "@/lib/day-timeline";
+import { capitalizeSk } from "@/lib/day-label";
+import { dayHeadline, dayLoad, pickDots, weekRangeShort, weekdayShort } from "@/lib/plan-mobile";
+import { toTimelineInput } from "@/server/queries/day-timeline";
+import { getLessonsForRange, listBreaks } from "@/server/queries/school";
 
 export const metadata: Metadata = {
   title: "Týždeň",
@@ -76,6 +91,8 @@ export default async function TyzdenPage({ searchParams }: TyzdenPageProps) {
     // z `weeklyState` úplne inú vec — príznak, že revízia je už uzavretá.
     completedTasks,
     agenda,
+    lessons,
+    breaks,
   ] = await Promise.all([
     // Celý týždeň jedným dotazom — sedem samostatných by bolo sedem ciest do databázy.
     getTasksForRange(user.id, weekStart, weekEnd),
@@ -95,6 +112,9 @@ export default async function TyzdenPage({ searchParams }: TyzdenPageProps) {
         user.settings.timezone,
       ),
     getAgendaForRange(user.id, weekStart, weekEnd),
+    // Telefón: voľný čas dňa = okno dňa mínus hodiny a udalosti.
+    getLessonsForRange(user.id, weekStart, weekEnd),
+    listBreaks(user.id),
   ]);
 
   // Vek nápadu počíta server. V klientovi by `new Date()` po hydratácii dal
@@ -136,13 +156,71 @@ export default async function TyzdenPage({ searchParams }: TyzdenPageProps) {
       : null,
   ].filter((part): part is string => part !== null);
 
+  /*
+    Telefón: riadok na deň. Voľný čas = okno dňa − hodiny − udalosti z agendy.
+    Kalendár Google sa tu zámerne nečíta (jeden dotaz na deň by týždeň
+    spomalil), takže schôdzky z kalendára voľný čas neuberajú.
+  */
+  const mobileDays: MobileWeekDay[] = days.map((iso) => {
+    const dayTasks = openTasks.filter((task) => task.plannedDate === iso);
+    const plannedMin = dayTasks.reduce((sum, task) => sum + (task.estimateMin ?? 0), 0);
+    const timeline = layoutDay({
+      ...toTimelineInput({
+        dateIso: iso,
+        dayStartHour: user.settings.dayStartHour,
+        dayEndHour: user.settings.dayEndHour,
+        lessons: lessons.filter((lesson) => lesson.date === iso),
+        breaks,
+        events: [],
+        agenda,
+        planned: [],
+      }),
+      nowMin: null,
+    });
+
+    const dayAgenda = agenda.filter((item) => !isCancelled(item) && isOnDay(item, iso));
+    const assessment = dayAgenda.find((item) => isAssessment(item.type));
+    const timed = dayAgenda.find(
+      (item) => item.kind === "event" && !isAssessment(item.type) && hhmm(item.startTime) !== null,
+    );
+    const isToday = iso === todayIso;
+    const count = dayHeadline(dayTasks.length, isToday);
+
+    return {
+      iso,
+      weekday: weekdayShort(iso),
+      dayNumber: parseIsoDate(iso).getDate(),
+      isToday,
+      headline:
+        !isToday && assessment === undefined && timed !== undefined
+          ? `${timed.title} ${hhmm(timed.startTime) ?? ""}`.trim()
+          : count,
+      chip:
+        assessment === undefined
+          ? null
+          : capitalizeSk(agendaShortTitle(assessment, assessment.subject?.code ?? null)),
+      dots: pickDots(
+        dayTasks.map((task) => cardFill({ area: task.area, subject: task.subject }).color),
+        4,
+      ),
+      load: dayLoad(plannedMin, timeline.freeMin),
+    };
+  });
+
   return (
     /*
       Na počítači je obrazovka presne vysoká ako okno a roluje sa obsah
       stĺpcov, nie stránka — tak to má návrh (1280 × 800 bez rolovania).
       Na telefóne sa naopak roluje normálne celá stránka.
     */
-    <div className="flex w-full flex-col md:h-dvh">
+    <>
+    <MobileWeek
+      rangeLabel={weekRangeShort(weekStart, weekEnd)}
+      prevHref={`/tyzden?od=${addDays(weekStart, -7)}`}
+      nextHref={`/tyzden?od=${addDays(weekStart, 7)}`}
+      days={mobileDays}
+    />
+    <div className="hidden w-full flex-col md:flex md:h-dvh">
       <WeekHeader
         weekStart={weekStart}
         weekEnd={weekEnd}
@@ -186,5 +264,6 @@ export default async function TyzdenPage({ searchParams }: TyzdenPageProps) {
 
       <ScreenFooter summary={summary.join(" · ")} />
     </div>
+    </>
   );
 }

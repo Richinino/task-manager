@@ -1,0 +1,291 @@
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto+Flex:opsz,wdth,wght@8..144,25..151,100..1000&display=swap">
+<style>
+  .screens { display: flex; gap: 32px; flex-wrap: wrap; padding: 24px; }
+  .screens * { box-sizing: border-box; margin: 0; }
+
+  .screen {
+    width: 360px; height: 780px; overflow: hidden; position: relative;
+    border-radius: 0;
+    font-family: "Roboto Flex", Roboto, "Segoe UI", system-ui, sans-serif;
+    font-size: 15px; line-height: 20px; font-stretch: 100%;
+    background: var(--ground); color: var(--onSurface);
+  }
+  .screen--light {
+    --ground: #f6f5fb; --container: #ffffff; --containerLow: #eeedf6;
+    --onSurface: #1c1b22; --onSurfaceVar: #5f5d6c; --outline: #c9c6d6;
+    --primary: #4f46c8; --onPrimary: #ffffff;
+    --primaryContainer: #e3e0ff; --onPrimaryContainer: #1a1466;
+    --frog: #b87d10; --frogContainer: #ffe7b8; --onFrogContainer: #3d2800;
+    --danger: #c3382a; --dangerContainer: #ffdad5; --ok: #2e7d55;
+    --aLearn: #7a4fd6; --aHealth: #2f8f6a; --aHome: #c04f7a;
+  }
+  .screen--dark {
+    --ground: #131218; --container: #1e1d25; --containerLow: #26252e;
+    --onSurface: #e6e3ef; --onSurfaceVar: #aeaabd; --outline: #48465a;
+    --primary: #c4c0ff; --onPrimary: #241c86;
+    --primaryContainer: #3b33a8; --onPrimaryContainer: #e3e0ff;
+    --frog: #f2c063; --frogContainer: #4a3600; --onFrogContainer: #ffe7b8;
+    --danger: #ffb4a9; --dangerContainer: #5c1a14; --ok: #7fd6a6;
+    --aLearn: #a98af0; --aHealth: #5fc79b; --aHome: #e27fa5;
+    --chipFill: #2e2a6a;
+  }
+
+  .i { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; flex: none; display: block; }
+  .i--s { width: 18px; height: 18px; }
+  .i--xs { width: 16px; height: 16px; }
+
+  /* status bar + gesture bar */
+  .sb { position: absolute; top: 0; left: 0; right: 0; height: 24px; display: flex; align-items: center; justify-content: space-between; padding: 0 16px; font-size: 12px; font-weight: 500; line-height: 24px; z-index: 6; }
+  .sb__r { display: flex; align-items: center; gap: 6px; }
+  .sb__r svg { width: 14px; height: 14px; display: block; }
+  .gest { position: absolute; left: 126px; bottom: 8px; width: 108px; height: 4px; border-radius: 4px; background: var(--onSurface); opacity: .85; z-index: 7; }
+
+  /* HERO */
+  .hero { position: absolute; top: 24px; left: 0; right: 0; height: 250px; padding: 18px 24px 0; }
+  .hero__date { font-size: 14px; line-height: 20px; color: var(--onSurfaceVar); }
+  .hero__lead { margin-top: 22px; font-size: 20px; line-height: 26px; font-weight: 400; }
+  .num { margin-top: 4px; display: flex; align-items: baseline; white-space: nowrap; }
+  .num__n { font-size: 84px; line-height: 80px; font-stretch: 35%; font-variation-settings: "wdth" 35, "wght" 650, "opsz" 96; font-weight: 650; color: var(--primary); font-variant-numeric: tabular-nums; letter-spacing: -1px; }
+  .num__u { margin-left: 8px; font-size: 22px; line-height: 26px; font-weight: 500; color: var(--onSurfaceVar); }
+  .cap { margin-top: 22px; display: flex; gap: 2px; height: 8px; }
+  .cap i { display: block; height: 8px; border-radius: 999px; }
+  .cap__school { flex: 393; background: var(--onSurfaceVar); }
+  .cap__sport { flex: 107; background: var(--outline); }
+  .cap__tasks { flex: 220; background: var(--primary); }
+  .cap__free { flex: 280; background: var(--containerLow); border: 1px solid var(--outline); }
+  .leg { margin-top: 12px; display: flex; gap: 14px; font-size: 12px; line-height: 16px; color: var(--onSurfaceVar); white-space: nowrap; }
+  .leg span { display: flex; align-items: center; gap: 5px; }
+  .leg b { width: 8px; height: 8px; border-radius: 50%; display: block; }
+  .calbtn { position: absolute; top: 10px; right: 16px; width: 40px; height: 40px; border-radius: 999px; background: var(--containerLow); color: var(--onSurface); display: flex; align-items: center; justify-content: center; }
+  .calbtn::after { content: ""; position: absolute; inset: -2px; }
+
+  /* THUMB ZONE */
+  .zone { position: absolute; top: 274px; left: 0; right: 0; bottom: 88px; padding: 4px 16px 0; overflow: hidden; }
+
+  .prio { background: var(--frogContainer); color: var(--onFrogContainer); border-radius: 26px; padding: 14px 16px; }
+  .prio__top { display: flex; align-items: center; gap: 6px; font-size: 13px; line-height: 20px; }
+  .prio__top .i { color: var(--frog); fill: var(--frog); width: 20px; height: 20px; }
+  .prio__title { margin-top: 6px; font-size: 17px; line-height: 22px; font-weight: 600; }
+  .prio__row { margin-top: 12px; display: flex; align-items: center; justify-content: space-between; }
+  .prio__chips { display: flex; gap: 8px; }
+  .chip { display: inline-flex; align-items: center; height: 32px; padding: 0 12px; border-radius: 999px; font-size: 13px; line-height: 16px; white-space: nowrap; }
+  .chip--frog { background: rgba(255, 255, 255, .6); color: var(--onFrogContainer); }
+  .btn-frog { height: 44px; padding: 0 24px; border-radius: 999px; background: var(--frog); color: #ffffff; font-size: 15px; font-weight: 600; display: inline-flex; align-items: center; }
+
+  .sch__note { margin-top: 16px; font-size: 13px; line-height: 18px; color: var(--onSurfaceVar); padding-left: 8px; }
+  .sch__row { margin: 8px -16px 0; padding: 0 16px; display: flex; gap: 8px; white-space: nowrap; overflow: hidden; }
+  .lc { flex: none; display: inline-flex; align-items: center; gap: 4px; height: 36px; padding: 0 14px; border-radius: 999px; font-size: 13px; line-height: 16px; font-weight: 500; }
+  .lc--done { background: var(--containerLow); color: var(--onSurfaceVar); padding: 0 12px 0 14px; }
+  .lc--ghost { border: 1px dashed var(--outline); color: var(--onSurfaceVar); font-weight: 400; }
+  .lc--now { background: var(--primaryContainer); color: var(--onPrimaryContainer); font-weight: 600; }
+  .lc--next { border: 1px solid var(--outline); color: var(--onSurface); }
+
+  .grp { margin-top: 16px; background: var(--container); border-radius: 26px; overflow: hidden; }
+  .grp__h { height: 48px; padding: 0 20px 0 20px; display: flex; align-items: center; justify-content: space-between; }
+  .grp__h b { font-size: 15px; font-weight: 600; }
+  .grp__h span { font-size: 13px; color: var(--onSurfaceVar); }
+  .row { position: relative; height: 56px; padding: 0 16px; display: flex; align-items: center; gap: 16px; }
+  .row::after { content: ""; position: absolute; left: 56px; right: 0; bottom: 0; height: 1px; background: var(--outline); opacity: .6; }
+  .cb { flex: none; width: 24px; height: 24px; border-radius: 50%; border: 2px solid var(--outline); }
+  .row__t { flex: 1; min-width: 0; }
+  .row__t b { display: block; font-size: 15px; line-height: 20px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .row__t span { display: block; font-size: 13px; line-height: 18px; color: var(--onSurfaceVar); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .row__e { flex: none; display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--onSurfaceVar); }
+  .row__e i { width: 8px; height: 8px; border-radius: 50%; display: block; }
+  .row--late .row__t b { color: var(--danger); }
+  .row--late .row__t span { color: var(--danger); }
+  .row--late .cb { border-color: var(--danger); }
+
+  .fab { position: absolute; right: 16px; bottom: 104px; height: 56px; padding: 0 20px 0 16px; border-radius: 18px; background: var(--primaryContainer); color: var(--onPrimaryContainer); display: flex; align-items: center; gap: 12px; font-size: 15px; font-weight: 600; box-shadow: 0 4px 12px rgba(0, 0, 0, .15); z-index: 4; }
+
+  .nav { position: absolute; left: 0; right: 0; bottom: 0; height: 88px; padding-bottom: 16px; background: var(--containerLow); display: flex; z-index: 3; }
+  .nav__it { flex: 1; padding-top: 12px; display: flex; flex-direction: column; align-items: center; gap: 4px; font-size: 12px; line-height: 16px; color: var(--onSurfaceVar); }
+  .nav__pill { position: relative; width: 64px; height: 32px; border-radius: 999px; display: flex; align-items: center; justify-content: center; }
+  .nav__it--on .nav__pill { background: var(--primaryContainer); color: var(--onPrimaryContainer); }
+  .nav__it--on { color: var(--onSurface); font-weight: 600; }
+  .badge { position: absolute; top: 3px; right: 18px; width: 9px; height: 9px; border-radius: 50%; background: var(--danger); border: 2px solid var(--containerLow); box-sizing: content-box; }
+
+  /* SCREEN 2 */
+  .bg { position: absolute; inset: 0; opacity: .6; }
+  .bg .num { position: absolute; top: 28px; left: 24px; margin: 0; }
+  .scrim { position: absolute; inset: 0; background: rgba(0, 0, 0, .5); z-index: 2; }
+  .sheet { position: absolute; left: 0; right: 0; bottom: 260px; background: var(--container); border-radius: 28px 28px 0 0; padding: 12px 20px 12px; z-index: 3; }
+  .handle { width: 32px; height: 4px; border-radius: 4px; background: var(--outline); margin: 0 auto 16px; }
+  .sheet__top { display: flex; align-items: center; justify-content: space-between; }
+  .sheet__top h2 { font-size: 22px; line-height: 28px; font-weight: 500; }
+  .seg { display: flex; height: 40px; border: 1px solid var(--outline); border-radius: 999px; overflow: hidden; font-size: 14px; font-weight: 500; }
+  .seg span { display: flex; align-items: center; gap: 6px; padding: 0 16px; color: var(--onSurface); }
+  .seg span + span { border-left: 1px solid var(--outline); }
+  .seg .seg__on { background: var(--primaryContainer); color: var(--onPrimaryContainer); padding: 0 16px 0 12px; }
+  .field { margin-top: 16px; background: var(--containerLow); border-radius: 16px 16px 0 0; border-bottom: 2px solid var(--primary); padding: 14px 16px; font-size: 18px; line-height: 26px; min-height: 80px; }
+  .field i { display: inline-block; width: 2px; height: 22px; background: var(--primary); vertical-align: -4px; margin-left: 1px; }
+  .reco { margin-top: 14px; font-size: 13px; line-height: 18px; color: var(--onSurfaceVar); }
+  .assist { margin-top: 8px; display: flex; flex-wrap: wrap; gap: 8px; }
+  .ac { display: inline-flex; align-items: center; gap: 6px; height: 32px; padding: 0 12px 0 8px; border-radius: 8px; font-size: 13px; line-height: 16px; font-weight: 500; white-space: nowrap; background: var(--chipFill); color: var(--onPrimaryContainer); }
+  .ac .i { color: var(--primary); }
+  .ac--out { background: transparent; border: 1px solid var(--outline); color: var(--onSurfaceVar); font-weight: 400; padding: 0 12px 0 8px; }
+  .ac--out .i { color: var(--onSurfaceVar); }
+  .prev { margin-top: 12px; font-size: 13px; line-height: 18px; color: var(--onSurfaceVar); }
+  .acts { margin-top: 8px; display: flex; justify-content: flex-end; align-items: center; gap: 8px; }
+  .btn-text { height: 48px; padding: 0 16px; display: inline-flex; align-items: center; font-size: 15px; font-weight: 600; color: var(--primary); }
+  .btn-fill { height: 48px; padding: 0 28px; border-radius: 999px; display: inline-flex; align-items: center; font-size: 15px; font-weight: 600; background: var(--primary); color: var(--onPrimary); }
+
+  .kb { position: absolute; left: 0; right: 0; bottom: 0; height: 260px; background: #0f0e13; z-index: 4; color: #e6e3ef; }
+  .kb__sug { height: 40px; display: flex; align-items: center; font-size: 16px; }
+  .kb__sug span { flex: 1; text-align: center; line-height: 24px; }
+  .kb__sug span + span { border-left: 1px solid #2b2a33; }
+  .kb__keys { padding: 6px 8px 0; display: flex; flex-direction: column; gap: 6px; }
+  .kr { display: flex; gap: 5px; height: 42px; }
+  .kr--ind { padding: 0 15px; }
+  .k { flex: 1; border-radius: 10px; background: #2b2a33; display: flex; align-items: center; justify-content: center; font-size: 18px; line-height: 22px; }
+  .k--w { flex: 1.5; background: #3a3944; font-size: 14px; }
+  .k--sp { flex: 5; }
+  .k--go { flex: 1.5; background: #c4c0ff; color: #241c86; }
+  .kb .gest { background: #e6e3ef; }
+</style>
+<div class="screens">
+
+  <section class="screen screen--light" aria-label="Dnes">
+    <div class="sb">
+      <span>9:52</span>
+      <span class="sb__r">
+        <svg viewBox="0 0 14 14" fill="currentColor"><path d="M1 12.5L12.5 1v11.5z"/></svg>
+        <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M1.5 5.2a8.5 8.5 0 0 1 11 0M3.7 7.7a5.3 5.3 0 0 1 6.6 0"/><circle cx="7" cy="10.6" r="1" fill="currentColor"/></svg>
+        <svg viewBox="0 0 22 14" style="width:22px" fill="none"><rect x="1" y="2.5" width="17" height="9" rx="2.2" stroke="currentColor" stroke-width="1.3"/><rect x="2.6" y="4.1" width="10.6" height="5.8" rx="1" fill="currentColor"/><path d="M19.8 5.5v3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+        <span>78 %</span>
+      </span>
+    </div>
+
+    <header class="hero">
+      <p class="hero__date">pondelok 23. novembra</p>
+      <p class="hero__lead">Po úlohách ti dnes ostáva</p>
+      <div class="num"><span class="num__n">3 h 55</span><span class="num__u">min</span></div>
+      <div class="cap" role="img" aria-label="Rozpočet dňa: škola, florbal, úlohy, rezerva">
+        <i class="cap__school"></i><i class="cap__sport"></i><i class="cap__tasks"></i><i class="cap__free"></i>
+      </div>
+      <div class="leg">
+        <span><b style="background:var(--onSurfaceVar)"></b>škola 5 h 30</span>
+        <span><b style="background:var(--primary)"></b>úlohy 3 h 05</span>
+        <span><b style="background:var(--outline);border:1px solid var(--onSurfaceVar)"></b>rezerva 3 h 55</span>
+      </div>
+      <div class="calbtn" aria-label="Kalendár"><svg class="i" viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="15" rx="3"/><path d="M4 10h16M8 3v4M16 3v4"/></svg></div>
+    </header>
+
+    <div class="zone">
+      <div class="prio">
+        <div class="prio__top">
+          <svg class="i" viewBox="0 0 24 24"><path d="M12 3.5l2.6 5.4 5.9.8-4.3 4.1 1 5.9L12 17l-5.2 2.7 1-5.9L3.5 9.7l5.9-.8z"/></svg>
+          <span>Priorita dňa</span>
+        </div>
+        <p class="prio__title">Dokončiť model držiaka na 3D tlačiareň</p>
+        <div class="prio__row">
+          <div class="prio__chips"><span class="chip chip--frog">3D tlačiareň</span><span class="chip chip--frog">45 min</span></div>
+          <span class="btn-frog">Začať</span>
+        </div>
+      </div>
+
+      <p class="sch__note">Teraz prestávka, o 8 min fyzika</p>
+      <div class="sch__row">
+        <span class="lc lc--done">SJL <svg class="i i--xs" viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></span>
+        <span class="lc lc--done">MAT <svg class="i i--xs" viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></span>
+        <span class="lc lc--ghost">Prestávka</span>
+        <span class="lc lc--now">FYZ 10:00 F2</span>
+        <span class="lc lc--next">ANJ 10:55</span>
+        <span class="lc lc--next">INF 11:50</span>
+        <span class="lc lc--next">TSV 12:45</span>
+      </div>
+
+      <div class="grp">
+        <div class="grp__h"><b>Na dnes</b><span>1 z 7</span></div>
+        <div class="row row--late">
+          <span class="cb"></span>
+          <div class="row__t"><b>Odovzdať prihlášku na olympiádu z INF</b><span>po termíne, pred 3 dňami</span></div>
+          <div class="row__e">15 min<i style="background:var(--aLearn)"></i></div>
+        </div>
+        <div class="row">
+          <span class="cb"></span>
+          <div class="row__t"><b>Naučiť sa na písomku z FYZ</b><span>učiť sa FYZ, písomka v stredu</span></div>
+          <div class="row__e">40 min<i style="background:var(--aLearn)"></i></div>
+        </div>
+        <div class="row">
+          <span class="cb"></span>
+          <div class="row__t"><b>Domáca úloha MAT, str. 54/3–8</b><span>du MAT, do zajtra</span></div>
+          <div class="row__e">25 min<i style="background:var(--aLearn)"></i></div>
+        </div>
+        <div class="row">
+          <span class="cb"></span>
+          <div class="row__t"><b>Cvičiť gitaru, akordy F a Bm</b><span>lekcia Hudba, plní návyk</span></div>
+          <div class="row__e">30 min<i style="background:var(--aLearn)"></i></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="fab">
+      <svg class="i" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
+      <span>Zachytiť</span>
+    </div>
+
+    <nav class="nav" aria-label="Navigácia">
+      <div class="nav__it nav__it--on"><span class="nav__pill"><svg class="i" viewBox="0 0 24 24"><path d="M4 11l8-7 8 7v8a1 1 0 0 1-1 1h-4v-6H9v6H5a1 1 0 0 1-1-1z"/></svg></span>Dnes</div>
+      <div class="nav__it"><span class="nav__pill"><svg class="i" viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="15" rx="3"/><path d="M4 10h16M9 14h6M9 17h3"/></svg></span>Týždeň</div>
+      <div class="nav__it"><span class="nav__pill"><svg class="i" viewBox="0 0 24 24"><path d="M4 13l2.5-7.5A2 2 0 0 1 8.4 4h7.2a2 2 0 0 1 1.9 1.5L20 13v5a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2z"/><path d="M4 13h5l1 2h4l1-2h5"/></svg><i class="badge"></i></span>Inbox</div>
+      <div class="nav__it"><span class="nav__pill"><svg class="i" viewBox="0 0 24 24"><path d="M3 7a2 2 0 0 1 2-2h4l2 2.5h8a2 2 0 0 1 2 2V18a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg></span>Projekty</div>
+      <div class="nav__it"><span class="nav__pill"><svg class="i" viewBox="0 0 24 24" style="stroke-width:3"><path d="M5.5 12h.01M12 12h.01M18.5 12h.01"/></svg></span>Viac</div>
+    </nav>
+    <div class="gest"></div>
+  </section>
+
+  <section class="screen screen--dark" aria-label="Zachytenie">
+    <div class="sb">
+      <span>9:52</span>
+      <span class="sb__r">
+        <svg viewBox="0 0 14 14" fill="currentColor"><path d="M1 12.5L12.5 1v11.5z"/></svg>
+        <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M1.5 5.2a8.5 8.5 0 0 1 11 0M3.7 7.7a5.3 5.3 0 0 1 6.6 0"/><circle cx="7" cy="10.6" r="1" fill="currentColor"/></svg>
+        <svg viewBox="0 0 22 14" style="width:22px" fill="none"><rect x="1" y="2.5" width="17" height="9" rx="2.2" stroke="currentColor" stroke-width="1.3"/><rect x="2.6" y="4.1" width="10.6" height="5.8" rx="1" fill="currentColor"/><path d="M19.8 5.5v3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+        <span>78 %</span>
+      </span>
+    </div>
+
+    <div class="bg">
+      <div class="num"><span class="num__n">3 h 55</span><span class="num__u">min</span></div>
+    </div>
+    <div class="scrim"></div>
+
+    <div class="sheet">
+      <div class="handle"></div>
+      <div class="sheet__top">
+        <h2>Nová úloha</h2>
+        <div class="seg">
+          <span class="seg__on"><svg class="i i--s" viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>Úloha</span>
+          <span>Nápad</span>
+        </div>
+      </div>
+      <p class="field">kúpiť filament PETG +3D tlačiareň zajtra 30m !2<i></i></p>
+      <p class="reco">Rozpoznané</p>
+      <div class="assist">
+        <span class="ac"><svg class="i i--s" viewBox="0 0 24 24"><path d="M3 7a2 2 0 0 1 2-2h4l2 2.5h8a2 2 0 0 1 2 2V18a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>3D tlačiareň</span>
+        <span class="ac"><svg class="i i--s" viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="15" rx="3"/><path d="M4 10h16M8 3v4M16 3v4"/></svg>Zajtra, ut 24. 11.</span>
+        <span class="ac"><svg class="i i--s" viewBox="0 0 24 24"><circle cx="12" cy="13" r="7.5"/><path d="M12 9v4l2.5 2M9.5 3h5"/></svg>30 min</span>
+        <span class="ac"><svg class="i i--s" viewBox="0 0 24 24"><path d="M6 21V4M6 5h11l-2 4 2 4H6"/></svg>Priorita 2</span>
+        <span class="ac ac--out"><svg class="i i--s" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>Pridať termín</span>
+      </div>
+      <p class="prev">Názov: kúpiť filament PETG</p>
+      <div class="acts">
+        <span class="btn-text">Zrušiť</span>
+        <span class="btn-fill">Uložiť</span>
+      </div>
+    </div>
+
+    <div class="kb">
+      <div class="kb__sug"><span>PETG</span><span>petg</span><span>PETG-čko</span></div>
+      <div class="kb__keys">
+        <div class="kr"><span class="k">q</span><span class="k">w</span><span class="k">e</span><span class="k">r</span><span class="k">t</span><span class="k">z</span><span class="k">u</span><span class="k">i</span><span class="k">o</span><span class="k">p</span></div>
+        <div class="kr kr--ind"><span class="k">a</span><span class="k">s</span><span class="k">d</span><span class="k">f</span><span class="k">g</span><span class="k">h</span><span class="k">j</span><span class="k">k</span><span class="k">l</span></div>
+        <div class="kr"><span class="k k--w"><svg class="i i--s" viewBox="0 0 24 24"><path d="M12 5l7 8h-4v6H9v-6H5z"/></svg></span><span class="k">y</span><span class="k">x</span><span class="k">c</span><span class="k">v</span><span class="k">b</span><span class="k">n</span><span class="k">m</span><span class="k k--w"><svg class="i i--s" viewBox="0 0 24 24"><path d="M9 6h11a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H9l-6-6zM12 9.5l5 5M17 9.5l-5 5"/></svg></span></div>
+        <div class="kr"><span class="k k--w">?123</span><span class="k">,</span><span class="k k--sp"></span><span class="k">.</span><span class="k k--go"><svg class="i i--s" viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></span></div>
+      </div>
+      <div class="gest"></div>
+    </div>
+  </section>
+
+</div>

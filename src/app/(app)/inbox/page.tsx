@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 
 import { InboxList } from "@/components/views/inbox/inbox-list";
+import { MobileInbox } from "@/components/views/inbox/mobile-inbox";
 import { todayIn } from "@/lib/dates";
 import { requireUser } from "@/server/auth-guard";
 import { getAreas, getInboxTasks, getProjects } from "@/server/queries/tasks";
@@ -29,15 +30,26 @@ export default async function InboxPage() {
   return (
     /* Návrh nemá `max-w` ani odsadenie: triedička ide od kraja po kraj
        a fronta stojí pri pravom okraji okna. */
-    <div className="w-full">
-      <InboxList
-        tasks={tasks}
-        areas={areas}
-        projects={projects}
-        todayIso={todayIn(user.settings.timezone)}
-        postponeWarnAt={user.settings.postponeWarnAt}
-        postponeBlockAt={user.settings.postponeBlockAt}
-      />
-    </div>
+    <>
+      <div className="w-full md:hidden">
+        <MobileInbox
+          tasks={tasks}
+          areas={areas}
+          projects={projects}
+          todayIso={todayIn(user.settings.timezone)}
+          timeZone={user.settings.timezone}
+        />
+      </div>
+      <div className="hidden w-full md:block">
+        <InboxList
+          tasks={tasks}
+          areas={areas}
+          projects={projects}
+          todayIso={todayIn(user.settings.timezone)}
+          postponeWarnAt={user.settings.postponeWarnAt}
+          postponeBlockAt={user.settings.postponeBlockAt}
+        />
+      </div>
+    </>
   );
 }

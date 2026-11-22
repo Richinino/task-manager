@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { IBM_Plex_Sans, JetBrains_Mono } from "next/font/google";
+import { Archivo, IBM_Plex_Sans, JetBrains_Mono } from "next/font/google";
 
 import { ServiceWorkerRegister } from "@/components/pwa/sw-register";
 
@@ -27,6 +27,17 @@ const jetbrains = JetBrains_Mono({
   display: "swap",
 });
 
+/*
+  Archivo je písmo telefónu (smer „Jedna karta"). Os `wdth` dáva rozšírený rez
+  pre nadpisy kariet (`font-display`); váha je premenná, takže stačí jeden súbor.
+*/
+const archivo = Archivo({
+  subsets: ["latin", "latin-ext"],
+  axes: ["wdth"],
+  variable: "--font-archivo",
+  display: "swap",
+});
+
 export const metadata: Metadata = {
   title: { default: "Task manažér", template: "%s · Task manažér" },
   description: "Osobný systém na riadenie úloh a nápadov.",
@@ -48,6 +59,11 @@ export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   viewportFit: "cover",
+  /*
+    Klávesnica Androidu zmenší rozloženie, nie len výrez — celostránkové
+    zachytenie má tlačidlo „Uložiť" pripnuté dole a inak by ho prekryla.
+  */
+  interactiveWidget: "resizes-content",
 };
 
 /**
@@ -70,7 +86,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html
       lang="sk"
       suppressHydrationWarning
-      className={`${plex.variable} ${jetbrains.variable}`}
+      className={`${plex.variable} ${jetbrains.variable} ${archivo.variable}`}
     >
       <head>
         <script dangerouslySetInnerHTML={{ __html: themeScript }} />
