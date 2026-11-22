@@ -29,6 +29,7 @@ import {
   updateTask,
 } from "@/server/actions/tasks";
 import { getAgendaForRange, getAgendaItem } from "@/server/queries/agenda";
+import { getCalendarEvents } from "@/server/queries/calendar";
 import { getRitualState } from "@/server/queries/rituals";
 import { listSubjects } from "@/server/queries/school";
 import { search } from "@/server/queries/search";
@@ -57,7 +58,7 @@ import {
   type NamedKind,
   type TaskRefs,
 } from "./edit";
-import { errorResult, jsonResult, mcpAgenda, mcpTask } from "./format";
+import { calendarByDay, errorResult, jsonResult, mcpAgenda, mcpTask } from "./format";
 
 /*
   MCP server Task manažéra (docs/MCP.md).
@@ -144,7 +145,7 @@ export function createMcpServer(): McpServer {
     {
       title: "Prehľad dňa",
       description:
-        "Overview of one day (default today): open tasks planned for it, overdue tasks, priority of the day, time budget, school timetable, calendar meetings, events and exams (that day and the next 14 days), habits, inbox count and whether the morning ritual is done.",
+        "Overview of one day (default today): open tasks planned for it, overdue tasks, priority of the day, time budget, school timetable, Google Calendar events of that day from all shown calendars (calendar, time, place, description, category, who added it, guests, links; countsInTimeBudget says whether it takes from the time budget), events and exams (that day and the next 14 days), habits, inbox count and whether the morning ritual is done.",
       inputSchema: { date: dateSchema.optional().describe("Day to show, YYYY-MM-DD. Default: today.") },
       annotations: { readOnlyHint: true, openWorldHint: false },
     },
@@ -173,7 +174,7 @@ export function createMcpServer(): McpServer {
     {
       title: "Najbližšie dni",
       description:
-        "Tasks planned or due in the next days, grouped by day, plus events and deadlines (exams, trips, hand-ins) in the same range. Good for weekly planning or moving tasks to a lighter day.",
+        "Tasks planned or due in the next days, grouped by day, plus events and deadlines (exams, trips, hand-ins) in the same range, and the user's Google Calendar events by day (all shown calendars, with calendar, place, description, category, who added it, guests, links). Good for weekly planning or moving tasks to a lighter day.",
       inputSchema: {
         days: z.number().int().min(1).max(31).optional().describe("How many days ahead, including today. Default 7."),
       },
@@ -183,9 +184,10 @@ export function createMcpServer(): McpServer {
       const user = await requireUser();
       const todayIso = todayIn(user.settings.timezone);
       const to = addDays(todayIso, (days ?? 7) - 1);
-      const [tasks, agenda] = await Promise.all([
+      const [tasks, agenda, calendar] = await Promise.all([
         getTasksForRange(user.id, todayIso, to, { includeDue: true }),
         getAgendaForRange(user.id, todayIso, to),
+        getCalendarEvents(user.id, user.settings, todayIso, to),
       ]);
       const open = tasks.filter((task) => task.status !== "done" && task.status !== "dropped");
       const byDay: Record<string, ReturnType<typeof mcpTask>[]> = {};
@@ -203,6 +205,7 @@ export function createMcpServer(): McpServer {
         plannedByDay: byDay,
         dueInRangeNotPlanned: dueOnly,
         events: agenda.map((item) => mcpAgenda(item, todayIso)),
+        calendarByDay: calendarByDay(calendar, todayIso, to, user.settings.timezone),
       });
     },
   );

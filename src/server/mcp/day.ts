@@ -41,7 +41,7 @@ export async function dayOverview(user: CurrentUser, dateIso?: string) {
       getTasksForDay(user.id, date),
       getOverdueTasks(user.id, todayIso),
       getRitualState(user.id, "daily_plan", period),
-      getDayEvents(user.id, date, timezone),
+      getDayEvents(user.id, user.settings, date),
       getLessonsForDay(user.id, date),
       listBreaks(user.id),
       isToday
@@ -119,7 +119,7 @@ export async function dayOverview(user: CurrentUser, dateIso?: string) {
       schoolBreak !== null
         ? { break: schoolBreak.label, lessons: [] }
         : { break: null, lessons: lessons.map(mcpLesson) },
-    meetings: events.map(mcpEvent),
+    calendar: events.map((event) => mcpEvent(event)),
     events: agendaDay.map((item) => mcpAgenda(item, todayIso)),
     upcomingEvents: agendaUpcoming.map((item) => mcpAgenda(item, todayIso)),
     habits: habits.map((habit) => ({

@@ -459,8 +459,11 @@ normálne — kalendár je doplnok, nie podmienka.
 3. V appke **Nastavenia → Google Kalendár → Prepojiť kalendár**. Google sa
    spýta na súhlas s čítaním kalendára — prihlásenie samo o sebe ho zámerne
    nepýta.
+4. V tej istej karte si vyber, ktoré kalendáre appka ukazuje a ktoré sa
+   rátajú do času dňa. Čo appka z kalendára číta, je v
+   [KALENDAR.md](KALENDAR.md).
 
-Keď porady stále nevidno, pozri logy na Verceli. Hľadaj riadky začínajúce
+Keď udalosti stále nevidno, pozri logy na Verceli. Hľadaj riadky začínajúce
 `[calendar]` alebo `[google-tokens]` — obe vrstvy zlyhanie zapisujú a nikdy
 ho nevyhodia na obrazovku.
 

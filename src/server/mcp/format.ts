@@ -1,8 +1,15 @@
 import "server-only";
 
 import { agendaDateSk, agendaTimeLabel, agendaTypeLabel, hhmm, isCancelled } from "@/lib/agenda";
+import { addDays } from "@/lib/dates";
+import {
+  EVENT_KIND_LABEL,
+  RESPONSE_LABEL,
+  eventsOnDay,
+  reminderLabel,
+  type CalendarEvent,
+} from "@/lib/google-calendar";
 import type { AgendaItemRow } from "@/server/queries/agenda";
-import type { CalendarEvent } from "@/server/queries/calendar";
 import type { LessonRow } from "@/server/queries/school";
 import type { TaskWithRelations } from "@/server/queries/tasks";
 
@@ -119,12 +126,64 @@ export function mcpLesson(lesson: LessonRow) {
   };
 }
 
-export function mcpEvent(event: CalendarEvent) {
-  return {
+/**
+ * Udalosť z Google Kalendára. Prázdne polia sa vynechajú, aby model nečítal
+ * stĺpce `null`. Popis sa skracuje — celý je v Google cez `link`.
+ */
+export function mcpEvent(event: CalendarEvent & { minutes?: number }) {
+  const time = event.allDay
+    ? "celý deň"
+    : `${event.start ?? "?"}–${event.end ?? "?"}`;
+  const description =
+    event.description === null
+      ? null
+      : event.description.length > 500
+        ? `${event.description.slice(0, 500)}…`
+        : event.description;
+
+  const out = {
     title: event.title,
-    time: event.allDay ? "celý deň" : `${event.start ?? "?"}–${event.end ?? "?"}`,
+    calendar: event.calendarName,
+    time,
+    days: event.endDate > event.startDate ? `${event.startDate} až ${event.endDate}` : null,
     minutes: event.minutes,
+    countsInTimeBudget: event.countsInBudget,
+    freeTime: event.busy ? null : true,
+    kind: EVENT_KIND_LABEL[event.kind],
+    category: event.category,
+    tentative: event.tentative || null,
+    myResponse: event.response === null ? null : RESPONSE_LABEL[event.response],
+    location: event.location,
+    description,
+    createdBy: event.createdBy,
+    attendees:
+      event.attendees.length === 0
+        ? null
+        : event.attendees.map((a) => (a.response === null ? a.name : `${a.name} (${RESPONSE_LABEL[a.response]})`)),
+    recurring: event.recurring || null,
+    reminders: event.reminders.length === 0 ? null : event.reminders.map(reminderLabel),
+    private: event.private || null,
+    meetLink: event.meetLink,
+    link: event.link,
   };
+  return Object.fromEntries(
+    Object.entries(out).filter(([, value]) => value !== null && value !== undefined),
+  );
+}
+
+/** Udalosti z kalendára po dňoch od `fromIso` po `toIso` — len dni, kde niečo je. */
+export function calendarByDay(
+  events: readonly CalendarEvent[],
+  fromIso: string,
+  toIso: string,
+  timeZone: string,
+): Record<string, ReturnType<typeof mcpEvent>[]> {
+  const out: Record<string, ReturnType<typeof mcpEvent>[]> = {};
+  for (let day = fromIso; day <= toIso; day = addDays(day, 1)) {
+    const onDay = eventsOnDay(events, day, timeZone);
+    if (onDay.length > 0) out[day] = onDay.map((event) => mcpEvent(event));
+  }
+  return out;
 }
 
 /** Výsledok nástroja — JSON v textovom obsahu, ako ho MCP klienti čítajú najspoľahlivejšie. */

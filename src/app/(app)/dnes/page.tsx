@@ -124,7 +124,7 @@ export default async function DnesPage({ searchParams }: DnesPageProps) {
       // Kalendár je doplnok: keď nie je pripojený alebo Google zlyhá, vráti sa
       // prázdne pole a stránka sa načíta rovnako. Preto smie ísť do rovnakého
       // `Promise.all` ako všetko ostatné — nemá čo zhodiť.
-      getDayEvents(user.id, date, user.settings.timezone),
+      getDayEvents(user.id, user.settings, date),
       // Kontexty pre výber „kde si" v „Čo teraz?".
       listContexts(user.id),
       /*

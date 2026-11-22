@@ -140,6 +140,52 @@ export async function saveSubjectAliases(
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
+   KALENDÁRE
+
+   Ktorý kalendár z Google appka ukazuje a ktorý ráta do času dňa. Ukladá sa
+   po jednom prepínači, rovnako ako prezývky predmetov — bez tlačidla Uložiť.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+const calendarPrefSchema = z.object({
+  calendarId: z.string().min(1).max(300),
+  pref: z
+    .object({ show: z.boolean().optional(), budget: z.boolean().optional() })
+    .refine((p) => p.show !== undefined || p.budget !== undefined, "Nie je čo uložiť."),
+});
+
+/** Najviac kalendárov v nastaveniach — viac ich Google v zozname nevráti. */
+const MAX_CALENDAR_PREFS = 100;
+
+export async function saveCalendarPref(
+  calendarId: string,
+  pref: { show?: boolean; budget?: boolean },
+): Promise<ActionResult<{ show?: boolean; budget?: boolean }>> {
+  const user = await requireUser();
+  const parsed = calendarPrefSchema.safeParse({ calendarId, pref });
+  if (!parsed.success) return invalid(parsed.error, "Nastavenie kalendára sa nepodarilo uložiť.");
+
+  try {
+    const prefs = { ...user.settings.calendarPrefs };
+    const next = { ...prefs[parsed.data.calendarId], ...parsed.data.pref };
+    prefs[parsed.data.calendarId] = next;
+    if (Object.keys(prefs).length > MAX_CALENDAR_PREFS) {
+      return { ok: false, error: "Kalendárov je priveľa." };
+    }
+
+    const db = await getDb();
+    await db
+      .update(users)
+      .set({ settings: { ...user.settings, calendarPrefs: prefs } })
+      .where(eq(users.id, user.id));
+
+    revalidateViews();
+    return { ok: true, data: next };
+  } catch (error) {
+    return fail(error, "Nastavenie kalendára sa nepodarilo uložiť.");
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
    MIESTA
 
    Zvláštna akcia, a nie len ďalšie pole v `updateSettings`, lebo jediná

@@ -6,6 +6,8 @@ import { ArrowRight, CalendarClock, X } from "lucide-react";
 
 import { AgendaShape } from "@/components/agenda/agenda-bits";
 import { AgendaBar, AgendaRow } from "@/components/agenda/agenda-row";
+import { CalendarBar } from "@/components/calendar/calendar-bar";
+import { CalendarEventItem } from "@/components/calendar/calendar-event-item";
 import { AddTaskPopover } from "@/components/task/add-task-inline";
 import { PriorityDot } from "@/components/task/priority-dot";
 import { TaskEmpty } from "@/components/task/task-empty";
@@ -17,11 +19,19 @@ import {
   formatLongSk,
   parseIsoDate,
 } from "@/lib/dates";
+import type { CalendarEvent } from "@/lib/google-calendar";
 import { cn } from "@/lib/utils";
 import type { AgendaItemRow } from "@/server/queries/agenda";
 import type { TaskWithRelations } from "@/server/queries/tasks";
 
-import { BAR_LANE_PX, DayCell, DueMark, type DayAgendaEntry, type DayEntry } from "./day-cell";
+import {
+  BAR_LANE_PX,
+  DayCell,
+  DueMark,
+  type DayAgendaEntry,
+  type DayCalendarEntry,
+  type DayEntry,
+} from "./day-cell";
 
 /** Kotva rozbaleného dňa — bunka na ňu odkazuje, aby po ťuknutí panel neostal pod okrajom. */
 export const MONTH_DAY_PANEL_ID = "den";
@@ -37,6 +47,8 @@ export interface MonthDay {
   entries: DayEntry[];
   /** Jednodňové udalosti a deadliny dňa, zoradené. */
   agenda: DayAgendaEntry[];
+  /** Jednodňové udalosti z Google Kalendára, zoradené. */
+  calendar?: DayCalendarEntry[];
   /** Od `md` — týždeň, do ktorého deň patrí. */
   weekHref: UrlObject;
   /** Telefón — rozbalenie (alebo zavretie) zoznamu úloh dňa. */
@@ -48,7 +60,14 @@ export interface MonthGridProps {
   days: MonthDay[];
   /** Viacdňové udalosti, ktoré zasahujú do mriežky — kreslia sa ako pruhy cez dni. */
   multiDay: AgendaItemRow[];
+  /** Viacdňové udalosti z Google Kalendára — pruhy rovnako ako udalosti appky. */
+  calendarMultiDay?: readonly CalendarEvent[];
 }
+
+/** Pruh v mriežke: udalosť appky alebo z Google Kalendára. */
+type BarItem =
+  | { source: "agenda"; id: string; date: string; endDate: string | null; agenda: AgendaItemRow }
+  | { source: "calendar"; id: string; date: string; endDate: string | null; event: CalendarEvent };
 
 /**
  * Vysvetlivka od `md`, kde bunka kreslí celé riadky úloh.
@@ -159,8 +178,26 @@ function GridLegendPhone() {
  * `days` prichádzajú zo servera a musia ostať serializovateľné: adresy sú
  * preto obyčajné objekty `{ pathname, query }`, nie hotové `<Link>`.
  */
-export function MonthGrid({ days, multiDay }: MonthGridProps) {
+export function MonthGrid({ days, multiDay, calendarMultiDay = [] }: MonthGridProps) {
   const firstWeek = days.slice(0, 7);
+
+  /* Oba druhy pruhov si delia jedny dráhy, inak by sa prekrývali. */
+  const bars: BarItem[] = [
+    ...multiDay.map((item) => ({
+      source: "agenda" as const,
+      id: item.id,
+      date: item.date,
+      endDate: item.endDate,
+      agenda: item,
+    })),
+    ...calendarMultiDay.map((event) => ({
+      source: "calendar" as const,
+      id: event.id,
+      date: event.startDate,
+      endDate: event.endDate,
+      event,
+    })),
+  ];
 
   /*
     Pruhy viacdňových udalostí, týždeň po týždni. Ležia v tej istej mriežke
@@ -169,7 +206,7 @@ export function MonthGrid({ days, multiDay }: MonthGridProps) {
   */
   const weeks = Array.from({ length: Math.ceil(days.length / 7) }, (_, w) => {
     const weekStart = days[w * 7]?.iso ?? "";
-    const spans = weekSpans(multiDay, weekStart);
+    const spans = weekSpans(bars, weekStart);
     const lanes = spans.reduce((max, span) => Math.max(max, span.lane + 1), 0);
     return { weekStart, spans, lanes };
   });
@@ -215,6 +252,7 @@ export function MonthGrid({ days, multiDay }: MonthGridProps) {
             isSelected={day.isSelected}
             entries={day.entries}
             agenda={day.agenda}
+            {...(day.calendar !== undefined ? { calendar: day.calendar } : {})}
             barLanes={weeks[Math.floor(i / 7)]?.lanes ?? 0}
             weekHref={day.weekHref}
             dayHref={day.dayHref}
@@ -223,23 +261,25 @@ export function MonthGrid({ days, multiDay }: MonthGridProps) {
         ))}
 
         {weeks.flatMap((week, w) =>
-          week.spans.map((span) => (
-            <AgendaBar
-              key={`${span.item.id}-${week.weekStart}`}
-              item={span.item}
-              continuesBefore={span.item.date < week.weekStart}
-              continuesAfter={agendaLastDay(span.item) > (days[w * 7 + 6]?.iso ?? "")}
-              className="mx-0.5 mb-[var(--lane-phone)] md:mx-[5px] md:mb-[var(--lane-md)]"
-              style={
-                {
-                  gridRow: w + 1,
-                  gridColumn: `${span.from + 1} / ${span.to + 2}`,
-                  "--lane-phone": `${3 + span.lane * BAR_LANE_PX.phone}px`,
-                  "--lane-md": `${4 + span.lane * BAR_LANE_PX.md}px`,
-                } as CSSProperties
-              }
-            />
-          )),
+          week.spans.map((span) => {
+            const props = {
+              continuesBefore: span.item.date < week.weekStart,
+              continuesAfter: agendaLastDay(span.item) > (days[w * 7 + 6]?.iso ?? ""),
+              className: "mx-0.5 mb-[var(--lane-phone)] md:mx-[5px] md:mb-[var(--lane-md)]",
+              style: {
+                gridRow: w + 1,
+                gridColumn: `${span.from + 1} / ${span.to + 2}`,
+                "--lane-phone": `${3 + span.lane * BAR_LANE_PX.phone}px`,
+                "--lane-md": `${4 + span.lane * BAR_LANE_PX.md}px`,
+              } as CSSProperties,
+            };
+            const key = `${span.item.id}-${week.weekStart}`;
+            return span.item.source === "agenda" ? (
+              <AgendaBar key={key} item={span.item.agenda} {...props} />
+            ) : (
+              <CalendarBar key={key} event={span.item.event} {...props} />
+            );
+          }),
         )}
       </div>
 
@@ -259,6 +299,8 @@ export interface MonthDayPanelProps {
   tasks: TaskWithRelations[];
   /** Udalosti a deadliny dňa vrátane viacdňových, už zoradené. */
   agenda: AgendaItemRow[];
+  /** Udalosti dňa z Google Kalendára vrátane viacdňových, už zoradené. */
+  calendar?: readonly CalendarEvent[];
   /** Dnešok z pásma používateľa — aby sa server a klient nerozišli pri hydratácii. */
   todayIso: string;
   postponeWarnAt: number;
@@ -289,6 +331,7 @@ export function MonthDayPanel({
   iso,
   tasks,
   agenda,
+  calendar = [],
   todayIso,
   postponeWarnAt,
   postponeBlockAt,
@@ -334,7 +377,15 @@ export function MonthDayPanel({
         </div>
       ) : null}
 
-      {tasks.length === 0 && agenda.length > 0 ? null : tasks.length === 0 ? (
+      {calendar.length > 0 ? (
+        <ul aria-label="Kalendár" className="-mx-3 flex flex-col border-t border-border pt-1">
+          {calendar.map((event) => (
+            <CalendarEventItem key={event.id} event={event} />
+          ))}
+        </ul>
+      ) : null}
+
+      {tasks.length === 0 && (agenda.length > 0 || calendar.length > 0) ? null : tasks.length === 0 ? (
         <TaskEmpty
           title="Voľný deň"
           description="Nič naplánované ani s termínom. Úlohu pridáš plusom v hlavičke panela."

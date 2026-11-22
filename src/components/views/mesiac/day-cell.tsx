@@ -5,6 +5,7 @@ import Link from "next/link";
 import { CalendarClock } from "lucide-react";
 
 import { AgendaShape } from "@/components/agenda/agenda-bits";
+import { CalendarDot } from "@/components/calendar/calendar-dot";
 import { AddTaskPopover } from "@/components/task/add-task-inline";
 import { PriorityDot } from "@/components/task/priority-dot";
 import { isAssessment, type AgendaKind, type AgendaType } from "@/lib/agenda";
@@ -70,6 +71,15 @@ export interface DayAgendaEntry {
   cancelled: boolean;
 }
 
+/** Jednodňová udalosť z Google Kalendára v bunke. */
+export interface DayCalendarEntry {
+  key: string;
+  title: string;
+  /** `HH:MM` začiatku; `null` pri celodennej. */
+  time: string | null;
+  color: string | null;
+}
+
 /** Výška jedného pruhu viacdňovej udalosti aj s medzerou — bunka pod ne nechá miesto. */
 export const BAR_LANE_PX = { phone: 18, md: 22 } as const;
 
@@ -84,6 +94,8 @@ export interface DayCellProps {
   entries: DayEntry[];
   /** Jednodňové udalosti a deadliny, zoradené. Majú prednosť pred úlohami. */
   agenda: DayAgendaEntry[];
+  /** Jednodňové udalosti z Google Kalendára, zoradené. Idú za udalosťami appky. */
+  calendar?: DayCalendarEntry[];
   /** Koľko pruhov viacdňových udalostí leží v tomto týždni na spodku bunky. */
   barLanes: number;
   /**
@@ -197,12 +209,23 @@ function entryPhrase(entry: DayEntry): string {
  * inak by čítačka v mriežke 42 rovnakých odkazov čítala len „Otvoriť týždeň".
  * Na telefóne tak čítačka dostane aj názvy úloh, hoci oko vidí len bodky.
  */
-function describeDay(iso: string, entries: DayEntry[], agenda: DayAgendaEntry[]): string {
-  const shown = entries.slice(0, Math.max(0, MAX_ENTRIES_PER_DAY - agenda.length));
+function describeDay(
+  iso: string,
+  entries: DayEntry[],
+  agenda: DayAgendaEntry[],
+  calendar: DayCalendarEntry[],
+): string {
+  const fixed = agenda.length + calendar.length;
+  const shown = entries.slice(0, Math.max(0, MAX_ENTRIES_PER_DAY - fixed));
   const hidden = entries.length - shown.length;
 
-  // Udalosti sa vymenujú vždy všetky — je ich málo a sú to pevné body dňa.
-  const parts = [`${formatLongSk(iso)}.`, ...agenda.map(agendaPhrase), ...shown.map(entryPhrase)];
+  // Udalosti sa vymenujú vždy všetky — sú to pevné body dňa.
+  const parts = [
+    `${formatLongSk(iso)}.`,
+    ...agenda.map(agendaPhrase),
+    ...calendar.map(calendarPhrase),
+    ...shown.map(entryPhrase),
+  ];
   if (hidden > 0) parts.push(`${moreLabel(hidden)}.`);
   return parts.join(" ");
 }
@@ -210,6 +233,26 @@ function describeDay(iso: string, entries: DayEntry[], agenda: DayAgendaEntry[])
 function agendaPhrase(entry: DayAgendaEntry): string {
   const kind = entry.kind === "deadline" ? "deadline" : "udalosť";
   return `${kind}: ${entry.title}${entry.cancelled ? ", zrušená" : ""}.`;
+}
+
+function calendarPhrase(entry: DayCalendarEntry): string {
+  return `kalendár: ${entry.time === null ? "" : `${entry.time} `}${entry.title}.`;
+}
+
+/** Udalosť z Google Kalendára v bunke — iba od `md`. Farbu nesie bodka kalendára. */
+function DayCalendarChip({ entry }: { entry: DayCalendarEntry }) {
+  return (
+    <span
+      title={calendarPhrase(entry)}
+      className="flex min-w-0 items-center gap-1 px-1 py-px text-micro leading-tight text-fg-muted"
+    >
+      <CalendarDot color={entry.color} className="size-1.5" />
+      {entry.time !== null ? (
+        <span className="shrink-0 font-mono tabular-nums text-fg-subtle">{entry.time}</span>
+      ) : null}
+      <span className="min-w-0 truncate">{entry.title}</span>
+    </span>
+  );
 }
 
 /**
@@ -286,6 +329,7 @@ export function DayCell({
   isSelected,
   entries,
   agenda,
+  calendar = [],
   barLanes,
   weekHref,
   dayHref,
@@ -297,11 +341,18 @@ export function DayCell({
   const monthHint = !inMonth && dayNumber === 1 ? MONTHS_SHORT_SK[date.getMonth()] : undefined;
 
   const agendaShown = agenda.slice(0, MAX_ENTRIES_PER_DAY);
-  const shown = entries.slice(0, MAX_ENTRIES_PER_DAY - agendaShown.length);
-  const hiddenCount = agenda.length + entries.length - agendaShown.length - shown.length;
+  const calendarShown = calendar.slice(0, MAX_ENTRIES_PER_DAY - agendaShown.length);
+  const shown = entries.slice(0, MAX_ENTRIES_PER_DAY - agendaShown.length - calendarShown.length);
+  const hiddenCount =
+    agenda.length +
+    calendar.length +
+    entries.length -
+    agendaShown.length -
+    calendarShown.length -
+    shown.length;
   const summary = summarize(entries);
   const agendaSummary = summarizeAgenda(agenda);
-  const description = describeDay(iso, entries, agenda);
+  const description = describeDay(iso, entries, agenda, calendar);
 
   return (
     <div
@@ -383,8 +434,20 @@ export function DayCell({
         {summary.dueCount > 0 ||
         summary.plannedCount > 0 ||
         agendaSummary.events > 0 ||
-        agendaSummary.deadlines > 0 ? (
+        agendaSummary.deadlines > 0 ||
+        calendar.length > 0 ? (
           <span className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 md:hidden">
+            {calendar.length > 0 ? (
+              <span className="inline-flex items-center gap-0.5">
+                <CalendarDot color={calendar[0]?.color ?? null} className="size-1.5" />
+                {calendar.length > 1 ? (
+                  <span className="text-micro leading-none font-mono tabular-nums text-fg-muted">
+                    {calendar.length}
+                  </span>
+                ) : null}
+              </span>
+            ) : null}
+
             {agendaSummary.events > 0 ? (
               <span className="inline-flex items-center gap-0.5">
                 <AgendaShape
@@ -450,10 +513,13 @@ export function DayCell({
         ) : null}
 
         {/* OD `md` — pôvodné riadky s názvami úloh. */}
-        {agendaShown.length > 0 || shown.length > 0 ? (
+        {agendaShown.length > 0 || calendarShown.length > 0 || shown.length > 0 ? (
           <span className="hidden min-w-0 flex-col items-stretch gap-0.5 md:flex">
             {agendaShown.map((entry) => (
               <DayAgendaChip key={entry.key} entry={entry} />
+            ))}
+            {calendarShown.map((entry) => (
+              <DayCalendarChip key={entry.key} entry={entry} />
             ))}
             {shown.map((entry) => (
               <DayEntryChip key={entry.key} entry={entry} />
