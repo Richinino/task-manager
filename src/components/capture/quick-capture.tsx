@@ -28,6 +28,7 @@ import {
   DialogDescription,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { cardFill } from "@/components/task/card-fill";
 import { Kbd } from "@/components/ui/kbd";
 import {
   appendSpoken,
@@ -633,6 +634,9 @@ export function QuickCapture({
       ? saveLabelForDate(baseLabel, parsed?.plannedDate ?? defaultDate)
       : baseLabel;
 
+  /** Karta náhľadu = presne ako sa úloha ukáže na Dnes (bez oblasti → akcentová karta). */
+  const previewFill = cardFill({});
+
   const mirror = useMemo(
     () => (parsed === null || idea ? [] : mirrorSegments(value, parsed.tokens)),
     [parsed, idea, value],
@@ -713,7 +717,7 @@ export function QuickCapture({
           onModeChange={changeMode}
           weekStartsOn={weekStartsOn}
           part="mode"
-          className="shrink-0 px-4 pb-1 md:hidden"
+          className="shrink-0 px-5 pb-1 md:hidden"
         />
 
         {/*
@@ -741,7 +745,7 @@ export function QuickCapture({
           }}
         >
           <div className="max-md:min-h-0 max-md:flex-1 max-md:overflow-y-auto">
-            <div className="flex items-start gap-2 px-4 pt-1 md:items-center md:px-3">
+            <div className="flex items-start gap-2 px-5 pt-1 md:items-center md:px-3">
               <LeadIcon
                 aria-hidden="true"
                 className={cn(
@@ -749,7 +753,13 @@ export function QuickCapture({
                   idea ? "text-accent" : "text-fg-subtle",
                 )}
               />
-              <div className="relative min-w-0 flex-1">
+              <div
+                className={cn(
+                  "relative min-w-0 flex-1",
+                  // Telefón: žiadny rámček, len jemné podčiarknutie, ktoré pri písaní stmavne.
+                  "max-md:border-b-2 max-md:border-border max-md:transition-colors max-md:duration-100 max-md:focus-within:border-fg",
+                )}
+              >
                 {/*
                   Zrkadlo: ten istý text pod priehľadným poľom, v ktorom majú
                   rozpoznané značky farebné pozadie. Len telefón — na počítači
@@ -769,8 +779,8 @@ export function QuickCapture({
                       <mark
                         key={index}
                         className={cn(
-                          "rounded-md text-transparent",
-                          markTone(segment.kind, parsed?.priority),
+                          "rounded-[6px] text-transparent [box-decoration-break:clone]",
+                          markTone(segment.kind),
                         )}
                       >
                         {segment.text}
@@ -869,6 +879,8 @@ export function QuickCapture({
                     FIELD_CLASS,
                     "relative block w-full resize-none overflow-hidden border-0 bg-transparent",
                     "text-fg caret-fg outline-offset-4 placeholder:text-fg-subtle",
+                    // Telefón: bez fokusového rámca — kurzor a podčiarknutie stačia.
+                    "max-md:rounded-none max-md:outline-none",
                     "h-(--field-h) md:h-12 md:whitespace-pre",
                   )}
                 />
@@ -901,7 +913,7 @@ export function QuickCapture({
             </div>
 
             {speech.listening ? (
-              <p role="status" className="px-4 pb-1 text-meta font-medium text-accent md:pl-9">
+              <p role="status" className="px-5 pb-1 text-meta font-medium text-accent md:px-4 md:pl-9">
                 Počúvam…
               </p>
             ) : null}
@@ -911,15 +923,15 @@ export function QuickCapture({
               kam sa úloha chystá — inak by sa deň priradil ticho a človek by
               netušil, prečo mu úloha pribudla práve tam.
             */}
-            {defaultDate !== undefined ? (
+            {defaultDate !== undefined && !(parsed?.plannedDate ?? parsed?.dueDate) ? (
               idea ? (
                 /* Nápad deň neunesie. Predvyplnenie by sa ticho stratilo — povedzme to. */
-                <p className="pb-1 pl-4 pr-3 text-meta text-warn md:pl-9">
+                <p className="pb-1 pl-5 pr-5 text-meta text-warn max-md:pt-2 md:pl-9 md:pr-3">
                   Predvyplnený deň ({formatLongSk(defaultDate)}) sa do nápadu neuloží —
                   nápad nemá dátum.
                 </p>
               ) : (
-                <p className="pb-1 pl-4 pr-3 text-meta text-fg-muted md:pl-9">
+                <p className="pb-1 pl-5 pr-5 text-meta text-fg-subtle max-md:pt-2 md:pl-9 md:pr-3 md:text-fg-muted">
                   Predvyplnený deň: {formatLongSk(defaultDate)} — deň napísaný
                   v texte má prednosť.
                 </p>
@@ -947,7 +959,7 @@ export function QuickCapture({
             parsed?.projectName !== undefined &&
             knownProjects.length > 0 &&
             !projectExists(parsed.projectName, knownProjects) ? (
-              <div className="pb-1 pl-4 pr-3 md:pl-9">
+              <div className="pb-1 pl-5 pr-5 max-md:pt-2 md:pl-9 md:pr-3">
                 <button
                   type="button"
                   disabled={creatingProject}
@@ -978,7 +990,7 @@ export function QuickCapture({
               človek jednoducho neklikne.
             */}
             {hasSuggestion(auto) && !idea ? (
-              <div className="pb-1 pl-4 pr-3 md:pl-9">
+              <div className="pb-1 pl-5 pr-5 max-md:pt-2 md:pl-9 md:pr-3">
                 <button
                   type="button"
                   onMouseDown={(event) => {
@@ -1006,7 +1018,7 @@ export function QuickCapture({
             ) : null}
 
             {agendaMode && parsed !== null ? (
-              <p className="pb-1 pl-4 pr-3 text-meta text-fg-muted md:pl-9">
+              <p className="pb-1 pl-5 pr-5 text-meta text-fg-muted max-md:pt-2 md:pl-9 md:pr-3">
                 {effectiveMode === "deadline"
                   ? "Vznikne deadline: deň a hodina „do“. Neuberá z času dňa, úlohy k nemu pridáš v detaile."
                   : parsed.agendaType !== undefined
@@ -1030,13 +1042,13 @@ export function QuickCapture({
               sem zatiaľ nechodí (okno dostáva len názvy), preto neutrálna.
             */}
             {parsed !== null ? (
-              <section aria-label="Takto bude vyzerať" className="px-4 pt-3 md:hidden">
-                <p className="label mb-2 text-fg-subtle">Takto bude vyzerať</p>
-                <div className="rounded-[22px] bg-surface-2 p-4">
+              <section aria-label="Takto bude vyzerať" className="px-5 pt-4 md:hidden">
+                <p className="mb-2 text-body font-semibold text-fg-muted">Takto bude vyzerať</p>
+                <div className={cn("rounded-[22px] p-5", previewFill.className)} style={previewFill.style}>
                   <p
                     className={cn(
-                      "font-display wrap-break-word text-xl leading-tight",
-                      parsed.title.trim() === "" ? "text-fg-subtle" : "text-fg",
+                      "font-display wrap-break-word line-clamp-2 text-xl leading-tight",
+                      parsed.title.trim() === "" && "opacity-60",
                     )}
                   >
                     {parsed.title.trim() === "" ? "Bez názvu" : parsed.title.trim()}
@@ -1046,16 +1058,25 @@ export function QuickCapture({
                     mode={idea ? "idea" : "task"}
                     projectNames={knownProjects}
                     longDates
+                    pillClass={previewFill.chip}
+                    part="chips"
                     className="mt-3"
                   />
                 </div>
+                <ParsePreview
+                  parsed={parsed}
+                  mode={idea ? "idea" : "task"}
+                  projectNames={knownProjects}
+                  part="notes"
+                  className="mt-2"
+                />
               </section>
             ) : null}
 
             {/* Telefón: mini os cieľového dňa s prerušovaným miestom pre úlohu. */}
             {axisDay !== null && axisDate !== null && axisEstimate !== null ? (
-              <section aria-label="Deň, na ktorý úloha pôjde" className="px-4 pb-3 pt-4 md:hidden">
-                <p className="label mb-2 text-fg-muted">{dayLabel(axisDate)}</p>
+              <section aria-label="Deň, na ktorý úloha pôjde" className="px-5 pb-4 pt-4 md:hidden">
+                <p className="mb-2 text-body font-semibold text-fg-muted">{dayLabel(axisDate)}</p>
                 <DayStrip day={axisDay} size="md" ghost={axisSlot} />
                 <p className="mt-2 text-meta text-fg-muted">
                   {axisSentence(axisDate, axisDay, axisSlot, axisEstimate)}
@@ -1077,7 +1098,7 @@ export function QuickCapture({
           <div
             className={cn(
               "border-t border-border bg-surface-2 px-3 py-2",
-              "max-md:shrink-0 max-md:bg-bg max-md:px-4 max-md:pb-[max(0.75rem,env(safe-area-inset-bottom))]",
+              "max-md:flex max-md:shrink-0 max-md:flex-col max-md:gap-3 max-md:bg-bg max-md:px-5 max-md:pt-3 max-md:pb-[max(0.75rem,env(safe-area-inset-bottom))]",
             )}
           >
             {/* Telefón: značky hneď nad tlačidlom, aby ich nezakryla klávesnica. */}
@@ -1088,13 +1109,13 @@ export function QuickCapture({
               onModeChange={changeMode}
               weekStartsOn={weekStartsOn}
               part="values"
-              className="-mx-4 px-4 pb-1 md:hidden"
+              className="-mx-5 scroll-px-5 px-5 md:hidden"
             />
 
-            <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1.5 max-md:flex-col max-md:items-stretch">
+            <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1.5 max-md:flex-col max-md:items-stretch max-md:gap-3">
               <p
                 className={cn(
-                  "min-w-0 font-mono text-mini",
+                  "min-w-0 font-mono text-mini max-md:font-sans max-md:text-meta",
                   // Nápoveda nápadu nesie akcent — je to štvrtý signál o tom,
                   // že sa neukladá úloha.
                   idea ? "font-medium text-accent" : "text-fg-subtle",
@@ -1134,7 +1155,7 @@ export function QuickCapture({
                   // Prázdny názov po vybratí tokenov znamená, že uložiť sa nedá —
                   // tlačidlo to má povedať vopred, nie až server po odoslaní.
                   disabled={submitDisabled}
-                  className="h-13 w-full text-row md:h-8 md:w-auto md:min-w-0 md:px-3 md:text-body"
+                  className="h-13 w-full text-row max-md:rounded-[14px] md:h-8 md:w-auto md:min-w-0 md:px-3 md:text-body"
                 >
                   <span className="md:hidden">{phoneLabel}</span>
                   <span className="hidden md:inline">{baseLabel}</span>
@@ -1143,14 +1164,14 @@ export function QuickCapture({
             </div>
 
             {error !== null ? (
-              <p role="alert" className="mt-1.5 text-meta font-medium text-danger">
+              <p role="alert" className="mt-1.5 text-meta max-md:mt-0 font-medium text-danger">
                 {error}
               </p>
             ) : saved !== null ? (
               <p
                 role="status"
                 className={cn(
-                  "mt-1.5 truncate text-meta",
+                  "mt-1.5 truncate text-meta max-md:mt-0",
                   saved.queued ? "text-warn" : "text-success",
                 )}
               >
@@ -1184,18 +1205,19 @@ const FIELD_CLASS = [
 ].join(" ");
 
 /** Farba výplne za rozpoznanou značkou — rovnaký význam ako v `ParsePreview`. */
-function markTone(kind: ParsedTokenKind, priority: 1 | 2 | 3 | undefined): string {
+function markTone(kind: ParsedTokenKind): string {
   switch (kind) {
     case "planned":
-    case "time":
-      return "bg-accent-badge";
     case "due":
-      return "bg-danger/20";
+    case "time":
+      return "bg-success/25";
     case "priority":
-      return priority === 1 ? "bg-p1/25" : priority === 2 ? "bg-p2/25" : "bg-border-strong/50";
+      return "bg-danger/25";
     case "estimate":
-      return "bg-accent-badge";
+      return "bg-surface-2";
+    case "project":
+      return "bg-accent/30";
     default:
-      return "bg-border-strong/50";
+      return "bg-accent-badge";
   }
 }

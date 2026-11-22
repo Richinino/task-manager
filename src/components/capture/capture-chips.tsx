@@ -118,11 +118,24 @@ const ACTIVE_ACCENT = "border-accent/60 bg-accent-soft text-accent";
  */
 const ACTIVE_MODE = "border-accent bg-accent text-accent-fg";
 
+/**
+ * Telefón, rad značiek nad tlačidlom: rovnaké pilulky h-9 bez rámu. Zvolená
+ * je plná akcentová, ostatné sedia na `surface-2`.
+ */
+const PILL_BASE = [
+  "inline-flex h-9 shrink-0 select-none items-center justify-center gap-1.5 whitespace-nowrap",
+  "rounded-full border-0 px-3.5 text-body font-medium leading-none",
+  "transition-colors duration-100 ease-out",
+].join(" ");
+const PILL_IDLE = "bg-surface-2 text-fg hover:bg-border";
+const PILL_ACTIVE = "bg-accent text-accent-fg font-semibold";
+
 function Chip({
   label,
   pressed,
   activeClass,
   onClick,
+  pill = false,
   children,
 }: {
   /** Celý popis pre čítačku — na čipe je len skratka („!1"). */
@@ -130,6 +143,7 @@ function Chip({
   pressed: boolean;
   activeClass: string;
   onClick: () => void;
+  pill?: boolean;
   children: ReactNode;
 }) {
   return (
@@ -139,10 +153,11 @@ function Chip({
       aria-pressed={pressed}
       title={label}
       onClick={onClick}
-      className={cn(
-        CHIP_BASE,
-        pressed ? cn(activeClass, "font-semibold") : CHIP_IDLE,
-      )}
+      className={
+        pill
+          ? cn(PILL_BASE, pressed ? PILL_ACTIVE : PILL_IDLE)
+          : cn(CHIP_BASE, pressed ? cn(activeClass, "font-semibold") : CHIP_IDLE)
+      }
     >
       {children}
     </button>
@@ -154,23 +169,29 @@ function ChipGroup({
   children,
   className,
   hideLabel = false,
+  muted = false,
 }: {
   label: string;
   children: ReactNode;
   className?: string;
   hideLabel?: boolean;
+  /** Telefón: popis ako tichá predpona v rade pilulek. */
+  muted?: boolean;
 }) {
   return (
     <div
       role="group"
       aria-label={label}
-      className={cn("flex shrink-0 items-center gap-1", className)}
+      className={cn("flex shrink-0 items-center", muted ? "gap-2" : "gap-1", className)}
     >
       {/* Popis skupiny počuje čítačka z `aria-label`; nahlas by znel dvakrát. */}
       {hideLabel ? null : (
         <span
           aria-hidden="true"
-          className="pr-0.5 text-mini leading-none text-fg-subtle"
+          className={cn(
+            "leading-none text-fg-subtle",
+            muted ? "text-meta" : "pr-0.5 text-mini",
+          )}
         >
           {label}
         </span>
@@ -290,6 +311,7 @@ export function CaptureChips({
 
   const due = active.due;
   const segmented = part === "mode";
+  const pills = part === "values";
 
   // Pod poľom nie je čo ponúknuť, kým ide o nápad, udalosť či deadline.
   if (part === "values" && mode !== "task") return null;
@@ -309,6 +331,8 @@ export function CaptureChips({
           odsadenie + 2 px hrúbka). Menej ako `py-1` sa dať nedá.
         */
         "flex items-center gap-3 overflow-x-auto py-1",
+        "[scrollbar-width:none] [&::-webkit-scrollbar]:hidden",
+        pills && "max-md:gap-2",
         "md:flex-wrap md:gap-x-4 md:gap-y-2 md:overflow-x-visible",
         className,
       )}
@@ -321,7 +345,7 @@ export function CaptureChips({
       <ChipGroup
         label="Ukladám"
         hideLabel={segmented}
-        className={segmented ? "gap-0.5 rounded-full bg-surface-2 p-1" : undefined}
+        className={segmented ? "w-max gap-0.5 rounded-full bg-surface-2 p-1" : undefined}
       >
         {MODE_OPTIONS.map((option) => {
           const on = mode === option.value;
@@ -338,7 +362,7 @@ export function CaptureChips({
                 CHIP_BASE,
                 on ? cn(ACTIVE_MODE, "font-semibold") : CHIP_IDLE,
                 // Telefón: pilulky v jednom pásiku, bez ikon — inak sa nezmestia.
-                segmented && "h-9 min-w-0 rounded-full border-transparent px-3",
+                segmented && "h-10 min-w-0 rounded-full border-transparent px-3",
                 segmented && !on && "bg-transparent hover:bg-transparent",
               )}
             >
@@ -368,7 +392,7 @@ export function CaptureChips({
       {mode !== "task" || part === "mode" ? null : (
         <>
           {/* Termín je prvý zámerne — práve ten sa v poli nedal nájsť. */}
-          <ChipGroup label="Termín">
+          <ChipGroup label="Termín" muted={pills} hideLabel={pills}>
             <span className="relative inline-flex">
               <Chip
                 label={
@@ -379,8 +403,10 @@ export function CaptureChips({
                 pressed={due !== undefined}
                 activeClass={ACTIVE_ACCENT}
                 onClick={openDatePicker}
+                pill={pills}
               >
                 <CalendarClock aria-hidden="true" size={14} className="shrink-0" />
+                {pills ? "Termín · " : ""}
                 {due === undefined ? "vybrať" : formatDayMonthSk(due)}
               </Chip>
 
@@ -418,18 +444,18 @@ export function CaptureChips({
                 aria-label={`Zrušiť termín ${formatLongSk(due)}`}
                 title="Zrušiť termín"
                 onClick={() => onEdit(removeToken(text, "due", options))}
-                className={cn(
-                  CHIP_BASE,
-                  CHIP_IDLE,
-                  "px-0 hover:text-danger md:min-w-7 md:px-0",
-                )}
+                className={
+                  pills
+                    ? cn(PILL_BASE, PILL_IDLE, "w-9 px-0 hover:text-danger")
+                    : cn(CHIP_BASE, CHIP_IDLE, "px-0 hover:text-danger md:min-w-7 md:px-0")
+                }
               >
                 <X aria-hidden="true" size={14} className="shrink-0" />
               </button>
             ) : null}
           </ChipGroup>
 
-          <ChipGroup label="Energia">
+          <ChipGroup label="Energia" muted={pills}>
             {ENERGY_VALUES.map((item) => {
               const pressed = active.energy === item.value;
               return (
@@ -439,6 +465,7 @@ export function CaptureChips({
                   pressed={pressed}
                   activeClass={ACTIVE_ENERGY[item.value]}
                   onClick={() => toggle("energy", item.value, pressed)}
+                  pill={pills}
                 >
                   {item.label}
                 </Chip>
@@ -446,7 +473,7 @@ export function CaptureChips({
             })}
           </ChipGroup>
 
-          <ChipGroup label="Priorita">
+          <ChipGroup label="Priorita" muted={pills}>
             {PRIORITY_VALUES.map((value) => {
               const pressed = active.priority === value;
               return (
@@ -456,6 +483,7 @@ export function CaptureChips({
                   pressed={pressed}
                   activeClass={ACTIVE_PRIORITY[value]}
                   onClick={() => toggle("priority", value, pressed)}
+                  pill={pills}
                 >
                   <span className="font-mono">!{value}</span>
                 </Chip>
@@ -463,7 +491,7 @@ export function CaptureChips({
             })}
           </ChipGroup>
 
-          <ChipGroup label="Odhad">
+          <ChipGroup label="Odhad" muted={pills}>
             {ESTIMATE_VALUES.map((item) => {
               const pressed = active.estimate === item.minutes;
               return (
@@ -473,6 +501,7 @@ export function CaptureChips({
                   pressed={pressed}
                   activeClass={ACTIVE_ACCENT}
                   onClick={() => toggle("estimate", item.minutes, pressed)}
+                  pill={pills}
                 >
                   <span className="font-mono">{item.label}</span>
                 </Chip>
