@@ -1,0 +1,12 @@
+# Lokálne cesty a výstupy buildu
+local.properties
+.gradle/
+build/
+app/build/
+*.apk
+*.aab
+*.idsig
+# Podpisový kľúč NIKDY do repa — bez neho sa appka nedá aktualizovať,
+# s ním ju vie ktokoľvek podvrhnúť.
+*.keystore
+*.jks

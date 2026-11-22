@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { cloneElement, type ReactElement, type ReactNode } from "react";
 import {
   AtSign,
   CalendarClock,
@@ -51,6 +51,13 @@ export interface ParsePreviewProps {
    * predpony „plán:" — čipy sedia na karte „Takto bude vyzerať".
    */
   longDates?: boolean;
+  /**
+   * Telefón na karte: čipy sú pilulky (h-8, bez rámu) s týmto podkladom
+   * (`cardFill(...).chip`) a farbou textu karty.
+   */
+  pillClass?: string;
+  /** `chips` = len čipy, `notes` = len upozornenia pod nimi, `all` = oboje. */
+  part?: "all" | "chips" | "notes";
   className?: string;
 }
 
@@ -89,24 +96,30 @@ function Chip({
   Icon,
   title,
   tone = TONE_NEUTRAL,
+  pill,
   children,
 }: {
   Icon?: LucideIcon;
   /** Celý popis pre myš aj pre pomalé čítanie. */
   title: string;
   tone?: string;
+  /** Podklad pilulky (telefón); keď je zadaný, tón a rám sa nepoužijú. */
+  pill?: string;
   children: ReactNode;
 }) {
   return (
     <li
       title={title}
       className={cn(
-        "inline-flex max-w-full items-center gap-1 whitespace-nowrap rounded border",
-        "px-1.5 py-0.5 text-mini leading-4",
-        tone,
+        "inline-flex max-w-full items-center whitespace-nowrap",
+        pill !== undefined
+          ? cn("h-8 gap-1.5 rounded-full px-3 text-body leading-none", pill)
+          : cn("gap-1 rounded border px-1.5 py-0.5 text-mini leading-4", tone),
       )}
     >
-      {Icon ? <Icon aria-hidden="true" size={11} className="shrink-0" /> : null}
+      {Icon ? (
+        <Icon aria-hidden="true" size={pill !== undefined ? 14 : 11} className="shrink-0" />
+      ) : null}
       <span className="min-w-0 truncate">{children}</span>
     </li>
   );
@@ -244,6 +257,8 @@ export function ParsePreview({
   mode = "task",
   projectNames = [],
   longDates = false,
+  pillClass,
+  part = "all",
   className,
 }: ParsePreviewProps) {
   if (parsed === null) return null;
@@ -252,7 +267,7 @@ export function ParsePreview({
   const dropped = mode === "idea";
   const tone = (base: string): string => (dropped ? TONE_DROPPED : base);
 
-  const chips: ReactNode[] = [];
+  const chips: ReactElement<{ pill?: string }>[] = [];
 
   /* Plán — kedy to idem robiť. */
   if (parsed.plannedDate !== undefined) {
@@ -343,7 +358,9 @@ export function ParsePreview({
         <EstimateChip
           minutes={estimate}
           size="sm"
-          className={clamped ? "text-warn" : undefined}
+          // Na farebnej karte (pilulka) nesmie čip zblednúť do `fg-muted` —
+          // vyzeral by ako vypnutý. Berie farbu a veľkosť karty.
+          className={cn(clamped && "text-warn", pillClass !== undefined && !clamped && "text-inherit text-body")}
         />
         {clamped ? <span className="ml-0.5">(max)</span> : null}
       </Chip>,
@@ -414,6 +431,14 @@ export function ParsePreview({
     ? [buildDroppedNote(parsed)]
     : buildClampNotes(parsed, projectNames);
 
+  if (part === "notes") {
+    return notes.length > 0 ? (
+      <p aria-hidden="true" className={cn("text-meta text-warn", className)}>
+        {notes.join(" ")}
+      </p>
+    ) : null;
+  }
+
   return (
     <div role="status" aria-live="polite" className={className}>
       <span className="sr-only">{buildSummary(parsed, mode)}</span>
@@ -423,11 +448,13 @@ export function ParsePreview({
         aria-hidden="true"
         className={cn("flex flex-wrap items-center gap-1", dropped && "line-through")}
       >
-        {chips}
+        {pillClass === undefined
+          ? chips
+          : chips.map((chip) => cloneElement(chip, { pill: pillClass }))}
       </ul>
       {/* Ticho orezanú hodnotu by používateľ nikdy neodhalil — povieme mu to
           skôr, než stlačí Enter. */}
-      {notes.length > 0 ? (
+      {part === "all" && notes.length > 0 ? (
         <p aria-hidden="true" className="mt-1 text-mini leading-4 text-warn">
           {notes.join(" ")}
         </p>
