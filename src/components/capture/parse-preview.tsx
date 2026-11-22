@@ -14,6 +14,7 @@ import type { CaptureMode } from "@/components/capture/capture-chips";
 import { EnergyBadge, energyLabel } from "@/components/task/energy-badge";
 import { EstimateChip, estimateLabel } from "@/components/task/estimate-chip";
 import { formatDuration, formatLongSk, formatRelativeSk } from "@/lib/dates";
+import { shortDayLabel } from "@/lib/capture-composer";
 import type { ParsedCapture } from "@/lib/parse";
 import { projectExists } from "@/lib/project-match";
 import { cn } from "@/lib/utils";
@@ -45,6 +46,11 @@ export interface ParsePreviewProps {
    * pri `+projekt` nevaruje, aby náhľad nestrašil zbytočne.
    */
   projectNames?: readonly string[];
+  /**
+   * Telefón: dátum plánu sa píše celý („Zajtra, ut 24. 11.") a bez
+   * predpony „plán:" — čipy sedia na karte „Takto bude vyzerať".
+   */
+  longDates?: boolean;
   className?: string;
 }
 
@@ -237,6 +243,7 @@ export function ParsePreview({
   parsed,
   mode = "task",
   projectNames = [],
+  longDates = false,
   className,
 }: ParsePreviewProps) {
   if (parsed === null) return null;
@@ -256,7 +263,9 @@ export function ParsePreview({
         tone={tone(TONE_PLANNED)}
         title={`naplánované na ${longWhen(parsed.plannedDate, parsed.plannedTime)}`}
       >
-        plán: {shortWhen(parsed.plannedDate, parsed.plannedTime)}
+        {longDates
+          ? `${shortDayLabel(parsed.plannedDate)}${parsed.plannedTime === undefined ? "" : ` ${parsed.plannedTime}`}`
+          : `plán: ${shortWhen(parsed.plannedDate, parsed.plannedTime)}`}
       </Chip>,
     );
   } else if (parsed.plannedTime !== undefined) {

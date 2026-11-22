@@ -1,0 +1,369 @@
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Schibsted+Grotesk:wght@400;500;700&amp;family=Martian+Mono:wdth,wght@87,400;87,500&amp;display=swap">
+<style>
+  .screens { display: flex; gap: 32px; flex-wrap: wrap; padding: 24px; }
+
+  .screen {
+    width: 360px; height: 780px; overflow: hidden; position: relative;
+    border-radius: 0; flex: none; box-sizing: border-box;
+    font-family: "Schibsted Grotesk", system-ui, -apple-system, "Segoe UI", sans-serif;
+    font-size: 13px; line-height: 1.3;
+    background: var(--ground); color: var(--ink);
+  }
+  .screen *, .screen *::before, .screen *::after { box-sizing: border-box; margin: 0; }
+  .screen .mono {
+    font-family: "Martian Mono", ui-monospace, "SFMono-Regular", Consolas, monospace;
+    font-stretch: 87%; font-weight: 400;
+  }
+  .screen svg { display: block; flex: none; }
+
+  .screen--light {
+    --ground: #eef1f4; --panel: #f8fafb; --ink: #18212c; --ink2: #4d5866; --ink3: #8a94a1;
+    --line: #d5dbe2; --cobalt: #2c55c7; --cobalt-soft: #dbe4f8; --on-cobalt: #ffffff;
+    --frog: #c98f20; --frog-soft: #f6e8c8; --danger: #c8392b; --danger-soft: #f7dcd8; --ok: #2f8a5a;
+    --c-uc: #7350c8; --c-zd: #2b8a64; --c-do: #b9496f;
+    --past: rgba(24, 33, 44, 0.05); --hatch: rgba(24, 33, 44, 0.08); --hatch2: rgba(77, 88, 102, 0.22);
+    --grey: #c3cad3;
+  }
+  .screen--dark {
+    --ground: #141a22; --panel: #1c242e; --ink: #e8edf3; --ink2: #aab4c1; --ink3: #6f7b89;
+    --line: #2c3642; --cobalt: #7f9df0; --cobalt-soft: #24324f; --on-cobalt: #141a22;
+    --frog: #e6b95f; --frog-soft: #3b3018; --danger: #f08272; --danger-soft: #3a2220; --ok: #63c68c;
+    --c-uc: #a98cf0; --c-zd: #5cc396; --c-do: #e88bab;
+    --past: rgba(232, 237, 243, 0.04); --hatch: rgba(232, 237, 243, 0.07); --hatch2: rgba(170, 180, 193, 0.22);
+    --grey: #3b4654;
+  }
+
+  /* status bar and gesture bar */
+  .status { position: absolute; left: 0; top: 0; width: 360px; height: 24px; display: flex; align-items: center; justify-content: space-between; padding: 0 16px; z-index: 30; color: var(--ink); }
+  .status .time { font-size: 12px; font-weight: 500; }
+  .status .ico { display: flex; align-items: center; gap: 6px; }
+  .gesture { position: absolute; left: 126px; bottom: 8px; width: 108px; height: 4px; border-radius: 2px; background: var(--ink); opacity: 0.4; z-index: 40; }
+
+  /* header */
+  .hdr { position: absolute; left: 0; top: 24px; width: 360px; height: 56px; padding: 5px 12px 0 16px; }
+  .hdr .r1 { display: flex; align-items: baseline; justify-content: space-between; height: 28px; }
+  .hdr h1 { font-size: 22px; font-weight: 700; line-height: 28px; }
+  .hdr .cap { display: flex; gap: 8px; font-size: 11px; color: var(--ink2); white-space: nowrap; }
+  .hdr .cap b { color: var(--ok); font-weight: 700; }
+  .hdr .r2 { display: flex; align-items: baseline; justify-content: space-between; font-size: 13px; color: var(--ink2); line-height: 18px; }
+  .hdr .r2 span:last-child { font-size: 12px; color: var(--ink3); }
+
+  /* overdue strip */
+  .over { position: absolute; left: 8px; top: 82px; width: 344px; height: 40px; background: var(--danger-soft); border-left: 3px solid var(--danger); border-radius: 3px; padding: 0 8px; display: flex; align-items: center; gap: 8px; font-size: 12px; line-height: 15px; z-index: 10; }
+  .over svg { color: var(--danger); }
+  .over b { font-weight: 700; color: var(--danger); }
+
+  /* axis */
+  .ax { position: absolute; left: 0; top: 124px; width: 360px; height: 532px; overflow: hidden; }
+  .ax .past { position: absolute; left: 44px; top: 16px; width: 316px; height: 92px; background-color: var(--past); background-image: repeating-linear-gradient(135deg, transparent 0 6px, var(--hatch) 6px 7px); }
+  .ax .hr { position: absolute; left: 0; width: 360px; height: 0; }
+  .ax .hr i { position: absolute; left: 44px; right: 0; top: 0; height: 1px; background: var(--line); }
+  .ax .hr b { position: absolute; left: 0; top: 2px; width: 38px; text-align: right; font-size: 11px; line-height: 12px; color: var(--ink3); }
+  .ax .blk { position: absolute; border-radius: 3px; display: flex; align-items: center; overflow: hidden; }
+
+  /* school track */
+  .sch { left: 48px; width: 62px; background: var(--cobalt-soft); color: var(--cobalt); padding: 0 5px; gap: 4px; font-size: 12px; font-weight: 700; height: 24px; }
+  .sch.done { opacity: 0.55; }
+  .sch.done span { text-decoration: line-through; text-decoration-thickness: 1.5px; }
+  .sch.next { border-left: 3px solid var(--cobalt); padding-left: 5px; }
+  .sch .room { font-size: 11px; font-weight: 400; margin-left: auto; }
+  .flor { left: 48px; width: 62px; top: 320px; height: 48px; border: 1px solid var(--ink2); color: var(--ink2); flex-direction: column; align-items: flex-start; justify-content: center; padding: 0 6px; font-size: 12px; font-weight: 500; line-height: 15px; }
+  .flor small { font-size: 11px; font-weight: 400; color: var(--ink3); }
+  .busy { left: 116px; width: 236px; top: 320px; height: 48px; background-image: repeating-linear-gradient(135deg, transparent 0 5px, var(--hatch2) 5px 6px); border: 1px solid var(--line); align-items: flex-start; padding: 3px 7px; font-size: 11px; color: var(--ink3); }
+
+  /* task track */
+  .tk { left: 116px; width: 236px; padding: 0 8px; gap: 6px; border-left: 3px solid var(--uc); background: var(--panel); background: color-mix(in srgb, var(--uc) 16%, var(--panel)); }
+  .tk .n { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 12px; font-weight: 500; line-height: 14px; }
+  .tk .d { font-size: 11px; color: var(--ink2); white-space: nowrap; }
+  .tk.uc { --uc: var(--c-uc); }
+  .tk.zd { --uc: var(--c-zd); }
+  .tk.do { --uc: var(--c-do); }
+  .tk.frog { --uc: var(--frog); background: var(--frog-soft); }
+  .tk.frog svg { color: var(--frog); }
+  .tk.past { opacity: 0.55; }
+  .tk.past .n { text-decoration: line-through; font-size: 11px; }
+  .tk svg.sp { color: var(--c-uc); }
+
+  .gap { position: absolute; left: 112px; top: 436px; height: 60px; border-left: 1px dashed var(--ink3); padding-left: 6px; font-size: 11px; font-weight: 500; line-height: 14px; color: var(--ink3); padding-top: 4px; }
+
+  /* now line */
+  .now { position: absolute; left: 40px; right: 0; top: 107px; height: 2px; background: var(--cobalt); z-index: 5; }
+  .nowpill { position: absolute; left: 4px; top: 101px; width: 38px; height: 14px; border-radius: 3px; background: var(--cobalt); color: var(--on-cobalt); font-size: 11px; line-height: 14px; text-align: center; font-weight: 500; z-index: 6; }
+  .nowtxt { position: absolute; right: 8px; top: 91px; font-size: 11px; line-height: 14px; font-weight: 500; color: var(--cobalt); background: var(--ground); padding: 0 4px; z-index: 6; }
+
+  /* tray */
+  .tray { position: absolute; left: 0; top: 656px; width: 360px; height: 64px; background: var(--panel); border-top: 1px solid var(--line); z-index: 12; }
+  .tray .grip { position: absolute; left: 0; top: 0; width: 44px; height: 63px; display: flex; align-items: center; justify-content: center; color: var(--ink3); }
+  .tray .l1 { position: absolute; left: 44px; top: 7px; right: 12px; display: flex; align-items: baseline; gap: 8px; font-size: 13px; line-height: 18px; }
+  .tray .l1 b { font-weight: 700; }
+  .tray .l1 span { color: var(--ink2); font-size: 12px; }
+  .tray .chips { position: absolute; left: 44px; right: 12px; top: 28px; display: flex; gap: 6px; }
+  .chip { height: 30px; padding: 0 10px; border: 1px solid var(--line); border-radius: 3px; background: var(--ground); font-size: 12px; font-weight: 500; line-height: 28px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+  .chip.c1 { flex: 0 1 auto; }
+  .chip.c2 { flex: none; color: var(--ink2); }
+
+  /* fab and nav */
+  .fab { position: absolute; left: 292px; top: 592px; width: 52px; height: 52px; border-radius: 50%; background: var(--cobalt); color: var(--on-cobalt); border: 0; padding: 0; display: flex; align-items: center; justify-content: center; z-index: 20; }
+  .nav { position: absolute; left: 0; top: 720px; width: 360px; height: 60px; background: var(--panel); border-top: 1px solid var(--line); display: flex; z-index: 12; }
+  .nav .it { flex: 1; display: flex; flex-direction: column; align-items: center; padding-top: 7px; gap: 3px; color: var(--ink3); font-size: 12px; line-height: 14px; position: relative; }
+  .nav .it.on { color: var(--cobalt); font-weight: 700; }
+  .nav .dot { position: absolute; top: 6px; left: 50%; margin-left: 5px; width: 7px; height: 7px; border-radius: 2px; background: var(--danger); }
+
+  /* screen 2 */
+  .bgdim { position: absolute; left: 0; top: 0; width: 360px; height: 780px; opacity: 0.3; }
+  .bgdim .blk { position: absolute; border-radius: 3px; }
+  .scrim { position: absolute; left: 0; top: 0; width: 360px; height: 780px; background: rgba(6, 9, 13, 0.55); z-index: 3; }
+  .sheet { position: absolute; left: 0; top: 56px; width: 360px; height: 474px; background: var(--panel); border-radius: 14px 14px 0 0; z-index: 10; padding: 0 16px 14px; display: flex; flex-direction: column; }
+  .sheet .handle { width: 36px; height: 4px; border-radius: 2px; background: var(--ink3); margin: 8px auto 8px; flex: none; }
+  .seg { display: flex; height: 44px; padding: 3px; background: var(--ground); border-radius: 8px; flex: none; }
+  .seg div { flex: 1; display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 500; color: var(--ink2); border-radius: 6px; }
+  .seg div.on { background: var(--cobalt); color: var(--on-cobalt); font-weight: 700; }
+  .inp { margin-top: 12px; min-height: 56px; font-size: 17px; line-height: 28px; color: var(--ink); flex: none; }
+  .inp .t { text-decoration: underline; text-decoration-thickness: 2px; text-underline-offset: 5px; }
+  .inp .t-p { text-decoration-color: var(--cobalt); }
+  .inp .t-d { text-decoration-color: var(--ok); }
+  .inp .t-e { text-decoration-color: var(--ink2); }
+  .inp .t-q { text-decoration-color: #e5b072; }
+  .inp .caret { display: inline-block; width: 2px; height: 20px; background: var(--cobalt); vertical-align: -4px; margin-left: 1px; }
+  .tom { margin-top: 10px; flex: none; }
+  .tom .hd { display: flex; justify-content: space-between; align-items: baseline; font-size: 12px; line-height: 18px; color: var(--ink2); margin-bottom: 4px; }
+  .tom .hd b { font-weight: 700; color: var(--ink); }
+  .mini { position: relative; width: 328px; height: 64px; background: var(--ground); border-radius: 3px; overflow: hidden; }
+  .mini .b { position: absolute; top: 20px; height: 24px; border-radius: 3px; }
+  .mini .school { left: 22px; width: 140px; background: var(--cobalt-soft); color: var(--cobalt); font-size: 11px; font-weight: 500; line-height: 24px; padding-left: 6px; }
+  .mini .tsk { background: var(--grey); }
+  .mini .ghost { top: 16px; height: 30px; left: 175px; width: 11px; border: 1.5px dashed var(--cobalt); background: rgba(127, 157, 240, 0.25); border-radius: 3px; }
+  .mini .gl { position: absolute; left: 172px; top: 0; font-size: 11px; line-height: 14px; font-weight: 500; color: var(--cobalt); white-space: nowrap; }
+  .mini .ruler { position: absolute; left: 0; top: 46px; width: 328px; height: 4px; background-image: repeating-linear-gradient(90deg, var(--ink3) 0 1px, transparent 1px 21.87px); }
+  .mini .base { position: absolute; left: 0; top: 46px; width: 328px; height: 1px; background: var(--ink3); }
+  .mini .lb { position: absolute; top: 51px; font-size: 11px; line-height: 12px; color: var(--ink3); }
+  .tom .cp { margin-top: 8px; font-size: 12px; line-height: 17px; color: var(--ink2); }
+  .tom .cp b { font-weight: 700; color: var(--ink); }
+  .rows { margin-top: 10px; flex: none; }
+  .rows .row { display: flex; justify-content: space-between; align-items: center; height: 24px; font-size: 13px; border-bottom: 1px solid var(--line); }
+  .rows .row:last-child { border-bottom: 0; }
+  .rows .row span { color: var(--ink3); }
+  .rows .row strong { font-weight: 500; color: var(--ink); }
+  .rows .row strong.mono { font-size: 12px; }
+  .acts { margin-top: auto; display: flex; justify-content: flex-end; align-items: center; gap: 8px; flex: none; }
+  .btn { height: 44px; display: flex; align-items: center; justify-content: center; font-size: 15px; font-weight: 500; border-radius: 8px; padding: 0 18px; }
+  .btn.ghostb { color: var(--ink2); }
+  .btn.save { background: var(--cobalt); color: var(--on-cobalt); font-weight: 700; min-width: 128px; }
+
+  /* keyboard */
+  .kb { position: absolute; left: 0; top: 530px; width: 360px; height: 250px; background: #10151b; z-index: 20; }
+  .kb .sug { display: flex; height: 36px; align-items: center; }
+  .kb .sug div { flex: 1; text-align: center; font-size: 15px; color: #e8edf3; line-height: 36px; }
+  .kb .sug div + div { border-left: 1px solid #2a3340; }
+  .kb .kr { display: flex; gap: 4px; padding: 0 3px; margin-top: 6px; height: 44px; }
+  .kb .kr.r2 { padding: 0 19px; }
+  .kb .k { flex: 1; background: #2a3340; border-radius: 6px; color: #e8edf3; font-size: 18px; display: flex; align-items: center; justify-content: center; }
+  .kb .k.w14 { flex: 1.5; }
+  .kb .k.w13 { flex: 1.4; font-size: 14px; }
+  .kb .k.sp { flex: 5; }
+  .kb .k.en { background: var(--cobalt); color: var(--on-cobalt); flex: 1.4; }
+  .kb .k.fn { background: #202833; }
+</style>
+<div class="screens">
+
+  <!-- ============ 1. DNES (svetla) ============ -->
+  <section class="screen screen--light" aria-label="Dnes">
+    <div class="status">
+      <span class="time">9:52</span>
+      <span class="ico">
+        <svg width="14" height="12" viewBox="0 0 14 12" fill="currentColor" aria-hidden="true"><rect x="0" y="8" width="2.5" height="4" rx="0.6"/><rect x="3.8" y="5.5" width="2.5" height="6.5" rx="0.6"/><rect x="7.6" y="3" width="2.5" height="9" rx="0.6"/><rect x="11.4" y="0" width="2.5" height="12" rx="0.6"/></svg>
+        <svg width="14" height="12" viewBox="0 0 14 12" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" aria-hidden="true"><path d="M1 4.2a9.5 9.5 0 0 1 12 0"/><path d="M3.2 6.8a6.3 6.3 0 0 1 7.6 0"/><path d="M5.4 9.2a3 3 0 0 1 3.2 0"/></svg>
+        <svg width="22" height="12" viewBox="0 0 22 12" fill="none" aria-hidden="true"><rect x="0.75" y="1.25" width="18" height="9.5" rx="2.2" stroke="currentColor" stroke-width="1.3"/><rect x="2.5" y="3" width="11.9" height="6" rx="1" fill="currentColor"/><rect x="19.8" y="4" width="1.6" height="4" rx="0.8" fill="currentColor"/></svg>
+      </span>
+    </div>
+
+    <header class="hdr">
+      <div class="r1">
+        <h1>Dnes</h1>
+        <div class="cap"><span>7 h voľna</span><span>3 h 05 naplánované</span><span><b>3 h 55</b> rezerva</span></div>
+      </div>
+      <div class="r2"><span>pondelok 23. novembra</span><span>1 z 7 hotovo</span></div>
+    </header>
+
+    <div class="over">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 2 15 14H1z"/><path d="M8 6.5v3.2"/><path d="M8 11.7v.1"/></svg>
+      <span><b>Po termíne:</b> Odovzdať prihlášku na olympiádu z INF, pred 3 dňami</span>
+    </div>
+
+    <div class="ax">
+      <div class="past"></div>
+
+      <div class="hr" style="top:16px"><i></i><b class="mono">07</b></div>
+      <div class="hr" style="top:48px"><i></i><b class="mono">08</b></div>
+      <div class="hr" style="top:80px"><i></i><b class="mono">09</b></div>
+      <div class="hr" style="top:112px"><i></i><b class="mono">10</b></div>
+      <div class="hr" style="top:144px"><i></i><b class="mono">11</b></div>
+      <div class="hr" style="top:176px"><i></i><b class="mono">12</b></div>
+      <div class="hr" style="top:208px"><i></i><b class="mono">13</b></div>
+      <div class="hr" style="top:240px"><i></i><b class="mono">14</b></div>
+      <div class="hr" style="top:272px"><i></i><b class="mono">15</b></div>
+      <div class="hr" style="top:304px"><i></i><b class="mono">16</b></div>
+      <div class="hr" style="top:336px"><i></i><b class="mono">17</b></div>
+      <div class="hr" style="top:368px"><i></i><b class="mono">18</b></div>
+      <div class="hr" style="top:400px"><i></i><b class="mono">19</b></div>
+      <div class="hr" style="top:432px"><i></i><b class="mono">20</b></div>
+      <div class="hr" style="top:464px"><i></i><b class="mono">21</b></div>
+      <div class="hr" style="top:496px"><i></i><b class="mono">22</b></div>
+
+      <!-- koľaj školy -->
+      <div class="blk sch done" style="top:48px"><span>SJL</span><svg width="11" height="11" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="margin-left:auto"><path d="M2 6.5 5 9.5 10.5 3"/></svg></div>
+      <div class="blk sch done" style="top:77px"><span>MAT</span><svg width="11" height="11" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="margin-left:auto"><path d="M2 6.5 5 9.5 10.5 3"/></svg></div>
+      <div class="blk sch next" style="top:112px"><span>FYZ</span><span class="room mono">F2</span></div>
+      <div class="blk sch" style="top:141px"><span>ANJ</span></div>
+      <div class="blk sch" style="top:171px"><span>INF</span></div>
+      <div class="blk sch" style="top:200px"><span>TSV</span></div>
+
+      <!-- hotovy blok v minulosti -->
+      <div class="blk tk do past" style="top:20px;height:14px;padding:0 8px 0 6px"><span class="n">Zaliať kvety</span><span class="d mono">5m</span></div>
+
+      <!-- ulohy -->
+      <div class="blk tk frog" style="top:232px;height:26px">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" aria-hidden="true"><path d="M12 2.5 14.8 9l7 .6-5.3 4.6 1.6 6.9L12 17.4 5.9 21.1l1.6-6.9L2.2 9.6l7-.6z"/></svg>
+        <span class="n">Dokončiť model držiaka na 3D tlačiareň</span><span class="d mono">45m</span>
+      </div>
+      <div class="blk tk uc" style="top:261px;height:23px"><span class="n">Naučiť sa na písomku z FYZ</span><span class="d mono">40m</span></div>
+      <div class="blk tk uc" style="top:285px;height:26px"><span class="n">Domáca úloha MAT — str. 54/3–8</span><span class="d mono">25m</span></div>
+
+      <!-- florbal -->
+      <div class="blk flor"><span>Florbal</span><small>hala</small></div>
+      <div class="blk busy">obsadené</div>
+
+      <div class="blk tk zd" style="top:384px;height:23px"><span class="n">Beh 5 km</span><span class="d mono">35m</span></div>
+      <div class="blk tk uc" style="top:408px;height:26px">
+        <span class="n">Cvičiť gitaru — akordy F a Bm</span>
+        <svg class="sp" width="11" height="11" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 1.5c.9 5.6 4.9 9.6 10.5 10.5-5.6.9-9.6 4.9-10.5 10.5C11.1 16.9 7.1 12.9 1.5 12 7.1 11.1 11.1 7.1 12 1.5z"/></svg>
+        <span class="d mono">30m</span>
+      </div>
+
+      <div class="gap">voľné 2 h</div>
+
+      <!-- teraz -->
+      <div class="nowtxt">o 8 min FYZ v F2</div>
+      <div class="now"></div>
+      <div class="nowpill mono">9:52</div>
+    </div>
+
+    <div class="tray">
+      <div class="grip">
+        <svg width="16" height="22" viewBox="0 0 16 22" fill="currentColor" aria-hidden="true"><circle cx="4.5" cy="4" r="1.6"/><circle cx="11.5" cy="4" r="1.6"/><circle cx="4.5" cy="11" r="1.6"/><circle cx="11.5" cy="11" r="1.6"/><circle cx="4.5" cy="18" r="1.6"/><circle cx="11.5" cy="18" r="1.6"/></svg>
+      </div>
+      <div class="l1"><b>Bez času</b><span>2 úlohy, 15 min</span></div>
+      <div class="chips"><div class="chip c1">Zavolať do servisu kvôli bicyklu</div><div class="chip c2">+1</div></div>
+    </div>
+
+    <button type="button" class="fab" aria-label="Zachytiť">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+    </button>
+
+    <nav class="nav" aria-label="Navigácia">
+      <div class="it on">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M7 3v18"/><path d="M7 6h4M7 10h7M7 14h4M7 18h7"/><path d="M17 4v16"/></svg>
+        <span>Dnes</span>
+      </div>
+      <div class="it">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3.5" y="5" width="17" height="15" rx="2"/><path d="M3.5 10h17M8 3v4M16 3v4"/></svg>
+        <span>Týždeň</span>
+      </div>
+      <div class="it">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3.5 13.5 6.5 5h11l3 8.5V19a1 1 0 0 1-1 1h-15a1 1 0 0 1-1-1z"/><path d="M3.5 13.5h5l1 2.5h5l1-2.5h5"/></svg>
+        <span>Inbox</span><i class="dot"></i>
+      </div>
+      <div class="it">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3.5 7a1.5 1.5 0 0 1 1.5-1.5h4l2 2.5h8A1.5 1.5 0 0 1 20.5 9.5V18a1.5 1.5 0 0 1-1.5 1.5H5A1.5 1.5 0 0 1 3.5 18z"/></svg>
+        <span>Projekty</span>
+      </div>
+      <div class="it">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M5 7h14M5 12h14M5 17h14"/></svg>
+        <span>Viac</span>
+      </div>
+    </nav>
+    <div class="gesture"></div>
+  </section>
+
+  <!-- ============ 2. ZACHYTENIE (tmava) ============ -->
+  <section class="screen screen--dark" aria-label="Zachytenie">
+    <div class="status">
+      <span class="time">9:52</span>
+      <span class="ico">
+        <svg width="14" height="12" viewBox="0 0 14 12" fill="currentColor" aria-hidden="true"><rect x="0" y="8" width="2.5" height="4" rx="0.6"/><rect x="3.8" y="5.5" width="2.5" height="6.5" rx="0.6"/><rect x="7.6" y="3" width="2.5" height="9" rx="0.6"/><rect x="11.4" y="0" width="2.5" height="12" rx="0.6"/></svg>
+        <svg width="14" height="12" viewBox="0 0 14 12" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" aria-hidden="true"><path d="M1 4.2a9.5 9.5 0 0 1 12 0"/><path d="M3.2 6.8a6.3 6.3 0 0 1 7.6 0"/><path d="M5.4 9.2a3 3 0 0 1 3.2 0"/></svg>
+        <svg width="22" height="12" viewBox="0 0 22 12" fill="none" aria-hidden="true"><rect x="0.75" y="1.25" width="18" height="9.5" rx="2.2" stroke="currentColor" stroke-width="1.3"/><rect x="2.5" y="3" width="11.9" height="6" rx="1" fill="currentColor"/><rect x="19.8" y="4" width="1.6" height="4" rx="0.8" fill="currentColor"/></svg>
+      </span>
+    </div>
+
+    <!-- stlmená obrazovka Dnes -->
+    <div class="bgdim" aria-hidden="true">
+      <div style="position:absolute;left:16px;top:29px;font-size:22px;font-weight:700;line-height:28px">Dnes</div>
+      <div style="position:absolute;left:0;top:124px;width:360px;height:532px">
+        <div class="blk" style="left:48px;top:48px;width:62px;height:24px;background:var(--cobalt-soft)"></div>
+        <div class="blk" style="left:48px;top:77px;width:62px;height:24px;background:var(--cobalt-soft)"></div>
+        <div class="blk" style="left:48px;top:112px;width:62px;height:24px;background:var(--cobalt-soft);border-left:3px solid var(--cobalt)"></div>
+        <div class="blk" style="left:48px;top:141px;width:62px;height:24px;background:var(--cobalt-soft)"></div>
+        <div class="blk" style="left:48px;top:171px;width:62px;height:24px;background:var(--cobalt-soft)"></div>
+        <div class="blk" style="left:116px;top:232px;width:236px;height:26px;background:var(--frog-soft);border-left:3px solid var(--frog)"></div>
+        <div class="blk" style="left:116px;top:261px;width:236px;height:23px;background:var(--panel);border-left:3px solid var(--c-uc)"></div>
+        <div class="blk" style="left:48px;top:107px;width:304px;height:2px;background:var(--cobalt)"></div>
+      </div>
+    </div>
+    <div class="scrim"></div>
+
+    <div class="sheet">
+      <div class="handle"></div>
+      <div class="seg"><div class="on">Úloha</div><div>Nápad</div></div>
+
+      <div class="inp">kúpiť filament PETG <span class="t t-p">+3D tlačiareň</span> <span class="t t-d">zajtra</span> <span class="t t-e">30m</span> <span class="t t-q">!2</span><span class="caret"></span></div>
+
+      <div class="tom">
+        <div class="hd"><b>utorok 24. 11.</b><span>zajtrajšia os</span></div>
+        <div class="mini">
+          <div class="gl">sem sa zmestí, 15:00–15:30</div>
+          <div class="b tsk" style="left:11px;width:7px"></div>
+          <div class="b school">škola</div>
+          <div class="b tsk" style="left:219px;width:16px"></div>
+          <div class="b tsk" style="left:262px;width:11px"></div>
+          <div class="b ghost"></div>
+          <div class="base"></div>
+          <div class="ruler"></div>
+          <span class="lb mono" style="left:0">07</span>
+          <span class="lb mono" style="left:58px">10</span>
+          <span class="lb mono" style="left:123px">13</span>
+          <span class="lb mono" style="left:189px">16</span>
+          <span class="lb mono" style="left:254px">19</span>
+          <span class="lb mono" style="left:313px">22</span>
+        </div>
+        <div class="cp">Zajtra máš voľné <b>4 h 20 min</b>, po tejto úlohe <b>3 h 50 min</b>.</div>
+      </div>
+
+      <div class="rows">
+        <div class="row"><span>Projekt</span><strong>3D tlačiareň</strong></div>
+        <div class="row"><span>Plán</span><strong>zajtra, ut 24. 11.</strong></div>
+        <div class="row"><span>Odhad</span><strong class="mono">30 min</strong></div>
+        <div class="row"><span>Priorita</span><strong>2</strong></div>
+      </div>
+
+      <div class="acts"><div class="btn ghostb">Zrušiť</div><div class="btn save">Uložiť</div></div>
+    </div>
+
+    <div class="kb" aria-hidden="true">
+      <div class="sug"><div>PETG</div><div>petg</div><div>PETG-čko</div></div>
+      <div class="kr"><div class="k">q</div><div class="k">w</div><div class="k">e</div><div class="k">r</div><div class="k">t</div><div class="k">z</div><div class="k">u</div><div class="k">i</div><div class="k">o</div><div class="k">p</div></div>
+      <div class="kr r2"><div class="k">a</div><div class="k">s</div><div class="k">d</div><div class="k">f</div><div class="k">g</div><div class="k">h</div><div class="k">j</div><div class="k">k</div><div class="k">l</div></div>
+      <div class="kr">
+        <div class="k w14 fn"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" aria-hidden="true"><path d="M12 4 4 13h4.5v6h7v-6H20z"/></svg></div>
+        <div class="k">y</div><div class="k">x</div><div class="k">c</div><div class="k">v</div><div class="k">b</div><div class="k">n</div><div class="k">m</div>
+        <div class="k w14 fn"><svg width="20" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 5h11v14H9L2.5 12z"/><path d="m12.5 9.5 5 5M17.5 9.5l-5 5"/></svg></div>
+      </div>
+      <div class="kr">
+        <div class="k w13 fn">?123</div><div class="k fn">,</div><div class="k sp"></div><div class="k fn">.</div>
+        <div class="k en"><svg width="20" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6v6H5"/><path d="m9 8-4 4 4 4"/></svg></div>
+      </div>
+    </div>
+    <div class="gesture" style="background:#e8edf3"></div>
+  </section>
+
+</div>

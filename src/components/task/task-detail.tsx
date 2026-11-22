@@ -8,11 +8,12 @@ import {
   useTransition,
   type ReactNode,
 } from "react";
-import { ArrowLeft, Check, LoaderCircle, Star, Trash2, Undo2, X } from "lucide-react";
+import { Check, LoaderCircle, Star, Trash2, Undo2, X } from "lucide-react";
 
 import type { Area, Energy, Project, TaskStatus } from "@/db/schema";
 import { formatRelativeSk, parseIsoDate } from "@/lib/dates";
 import { cn } from "@/lib/utils";
+import { areaColorValue } from "@/components/task/area-dot";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -587,6 +588,19 @@ export function TaskDetail({
     onOpenChange(next);
   }
 
+  const chipArea = areas.find((area) => area.id === draft.areaId) ?? task.area;
+  const chipSubject = subjects.find((subject) => subject.id === draft.subjectId) ?? null;
+  const phoneChips: { key: string; label: string; color?: string }[] = [];
+  if (chipArea) {
+    phoneChips.push({ key: "area", label: chipArea.name, color: areaColorValue(chipArea.color) });
+  }
+  if (chipSubject) {
+    phoneChips.push({ key: "subject", label: chipSubject.name ?? chipSubject.code });
+  }
+  if (draft.dueDate !== null) {
+    phoneChips.push({ key: "due", label: `Termín ${formatRelativeSk(draft.dueDate, now)}` });
+  }
+
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent
@@ -609,25 +623,33 @@ export function TaskDetail({
         }}
         className={cn(
           "flex h-dvh max-h-dvh w-full max-w-none flex-col overflow-hidden rounded-none border-0 p-0",
+          // Telefón: vysoký spodný list (návrh Detail úlohy) — vrch 22 px,
+          // prilepený k spodku, nad závojom a nad spodnou lištou.
+          "max-md:inset-x-0 max-md:bottom-0 max-md:top-auto max-md:m-0 max-md:h-[92dvh] max-md:max-h-[92dvh] max-md:rounded-b-none max-md:rounded-t-[22px]",
           // Na širokej obrazovke je to bočný panel pri pravom okraji.
           // Návrh má panel 520 px, nie 448.
           "md:ml-auto md:mr-0 md:w-[520px] md:border-l md:border-border",
         )}
       >
-        <div className="flex shrink-0 items-center gap-2 border-b border-border px-2 py-2 md:h-12 md:px-4 md:py-0">
+        {/* Rúčka listu — len telefón. */}
+        <div aria-hidden="true" className="flex shrink-0 justify-center pb-1 pt-2.5 md:hidden">
+          <i className="block h-1 w-10 rounded-full bg-border-strong" />
+        </div>
+
+        <div className="flex shrink-0 items-center gap-2 border-b border-border px-2 py-2 max-md:border-b-0 max-md:py-0 md:h-12 md:px-4 md:py-0">
           <DialogClose
             aria-label="Zavrieť detail úlohy"
             className={cn(
               "inline-flex size-11 shrink-0 items-center justify-center rounded",
               "text-fg-muted transition-colors duration-100 hover:bg-surface-2 hover:text-fg",
-              "md:hidden",
+              "order-last md:hidden",
             )}
           >
-            <ArrowLeft aria-hidden="true" className="size-5" />
+            <X aria-hidden="true" className="size-5" />
           </DialogClose>
 
           {/* V návrhu je to tichý štítok v strojopise, nie nadpis obrazovky. */}
-          <DialogTitle className="label min-w-0 truncate text-fg-subtle">
+          <DialogTitle className="label min-w-0 truncate text-fg-subtle max-md:sr-only">
             Detail úlohy
           </DialogTitle>
           {isPending ? (
@@ -688,9 +710,22 @@ export function TaskDetail({
           </p>
         ) : null}
 
-        <div className="flex min-h-0 flex-1 flex-col gap-5 overflow-y-auto px-4 py-4">
+        <div className="flex min-h-0 flex-1 flex-col gap-5 overflow-y-auto px-4 py-4 max-md:gap-4 max-md:px-5 max-md:pt-1">
           {/* ── názov a poznámka ───────────────────────────────────────── */}
-          <div className="flex flex-col gap-1">
+          <div className="flex items-start gap-3 md:flex-col md:gap-1">
+            <button
+              type="button"
+              role="checkbox"
+              aria-checked={isDone}
+              aria-label={isDone ? "Vrátiť medzi nedokončené" : "Označiť ako hotovú"}
+              onClick={toggleDone}
+              className={cn(
+                "mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-full border-2 md:hidden",
+                isDone ? "border-success bg-success text-white" : "border-border-strong text-transparent",
+              )}
+            >
+              <Check aria-hidden="true" size={15} strokeWidth={3} />
+            </button>
             <label htmlFor={fieldId("title")} className="sr-only">
               Názov úlohy
             </label>
@@ -718,10 +753,33 @@ export function TaskDetail({
               className={cn(
                 "w-full resize-y rounded border border-border bg-surface px-2.5 py-2",
                 "text-base font-medium leading-snug text-fg placeholder:text-fg-subtle",
+                "max-md:min-h-[56px] max-md:min-w-0 max-md:flex-1 max-md:resize-none max-md:border-transparent max-md:bg-transparent max-md:p-0 max-md:font-display max-md:font-extrabold max-md:text-2xl max-md:leading-[28px] max-md:hover:border-transparent",
                 "transition-colors duration-100 ease-out hover:border-border-strong",
               )}
             />
           </div>
+
+
+          {/* Čipy — len telefón: oblasť, predmet, termín. */}
+          {phoneChips.length > 0 ? (
+            <div className="-mt-1 flex flex-wrap gap-2 md:hidden">
+              {phoneChips.map((chip) => (
+                <span
+                  key={chip.key}
+                  className="inline-flex h-7 items-center gap-1.5 rounded-full bg-surface-2 px-3 text-meta font-medium text-fg"
+                >
+                  {chip.color ? (
+                    <i
+                      aria-hidden="true"
+                      className="size-2 rounded-full"
+                      style={{ backgroundColor: chip.color }}
+                    />
+                  ) : null}
+                  {chip.label}
+                </span>
+              ))}
+            </div>
+          ) : null}
 
           <Field label="Poznámka" htmlFor={fieldId("note")}>
             <textarea
@@ -744,6 +802,7 @@ export function TaskDetail({
               }}
               className={cn(
                 "w-full resize-y rounded border border-border bg-surface px-2.5 py-2",
+                "max-md:rounded-[14px] max-md:border-transparent max-md:bg-surface-2 max-md:px-3.5 max-md:py-2.5",
                 "text-base leading-relaxed text-fg placeholder:text-fg-subtle md:text-sm",
                 "transition-colors duration-100 ease-out hover:border-border-strong",
               )}
@@ -986,8 +1045,8 @@ export function TaskDetail({
               </div>
             </Field>
 
-            <div className="grid grid-cols-2 gap-3">
-              <Field label="Odhad">
+            <div className="grid grid-cols-2 gap-3 max-md:grid-cols-1 max-md:gap-0">
+              <Field label="Odhad" inline>
                 <Select
                   value={draft.estimateMin === null ? NONE : String(draft.estimateMin)}
                   onValueChange={(value) => {
@@ -1016,7 +1075,7 @@ export function TaskDetail({
                 </Select>
               </Field>
 
-              <Field label="Energia">
+              <Field label="Energia" inline>
                 <Select
                   value={draft.energy ?? NONE}
                   onValueChange={(value) => {
@@ -1075,7 +1134,7 @@ export function TaskDetail({
           <section className="flex flex-col gap-3">
             <SectionTitle>Kam patrí</SectionTitle>
 
-            <Field label="Projekt">
+            <Field label="Projekt" inline>
               <Select
                 value={draft.projectId ?? NONE}
                 onValueChange={(value) => {
@@ -1113,7 +1172,7 @@ export function TaskDetail({
               />
             </Field>
 
-            <Field label="Oblasť">
+            <Field label="Oblasť" inline>
               <Select
                 value={draft.areaId ?? NONE}
                 onValueChange={(value) => {
@@ -1407,7 +1466,7 @@ export function TaskDetail({
 
         <div
           style={{ paddingBottom: "calc(0.75rem + env(safe-area-inset-bottom))" }}
-          className="flex shrink-0 items-center gap-2 border-t border-border bg-surface px-4 pt-3"
+          className="flex shrink-0 items-center gap-2 border-t border-border bg-surface px-4 pt-3 max-md:gap-2.5 max-md:px-5"
         >
           {/*
             Text je zámerne „Označiť ako hotovú", nie „Hotovo".
@@ -1424,7 +1483,7 @@ export function TaskDetail({
             type="button"
             variant={isDone ? "primary" : "secondary"}
             onClick={toggleDone}
-            className="flex-1"
+            className="flex-1 max-md:h-[52px] max-md:rounded-[14px] max-md:text-row"
           >
             {isDone ? (
               <>
@@ -1444,7 +1503,7 @@ export function TaskDetail({
             variant="ghost"
             onClick={drop}
             aria-label={`Zahodiť úlohu ${draft.title}`}
-            className="h-11 text-danger hover:bg-danger/10 hover:text-danger md:h-9"
+            className="h-11 text-danger hover:bg-danger/10 hover:text-danger max-md:h-[52px] max-md:rounded-[14px] md:h-9"
           >
             <Trash2 size={15} aria-hidden="true" />
             Zahodiť
@@ -1461,7 +1520,7 @@ export function TaskDetail({
 
 function SectionTitle({ children }: { children: ReactNode }) {
   return (
-    <h3 className="label text-fg-subtle">
+    <h3 className="label text-fg-subtle max-md:font-sans max-md:text-body max-md:font-semibold max-md:normal-case max-md:tracking-normal max-md:text-fg-muted">
       {children}
     </h3>
   );
@@ -1472,14 +1531,26 @@ interface FieldProps {
   /** Keď pole nie je natívny prvok (Select, skupina tlačidiel), popis je len text. */
   htmlFor?: string;
   hint?: string;
+  /** Telefón: štítok vľavo, výber vpravo ako riadok v návrhu. */
+  inline?: boolean;
   children: ReactNode;
 }
 
-function Field({ label, htmlFor, hint, children }: FieldProps) {
-  const labelClass = "text-meta font-medium text-fg-muted";
+function Field({ label, htmlFor, hint, inline = false, children }: FieldProps) {
+  const labelClass = cn(
+    "text-meta font-medium text-fg-muted",
+    inline && "max-md:text-row max-md:font-normal max-md:text-fg-subtle",
+  );
 
   return (
-    <div className="flex min-w-0 flex-col gap-1.5">
+    <div
+      className={cn(
+        "flex min-w-0 flex-col gap-1.5",
+        // Telefón: riadok z návrhu — štítok vľavo, hodnota vpravo.
+        inline &&
+          "max-md:min-h-12 max-md:flex-row max-md:flex-wrap max-md:items-center max-md:justify-between max-md:gap-x-3 max-md:border-t max-md:border-border max-md:[&>button]:h-12 max-md:[&>button]:w-auto max-md:[&>button]:max-w-[60%] max-md:[&>button]:justify-end max-md:[&>button]:border-0 max-md:[&>button]:bg-transparent max-md:[&>button]:px-0 max-md:[&>button]:font-medium",
+      )}
+    >
       {htmlFor === undefined ? (
         <span className={labelClass}>{label}</span>
       ) : (

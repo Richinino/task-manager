@@ -15,6 +15,7 @@ import {
   Hourglass,
   Inbox,
   Layers,
+  Library,
   LayoutTemplate,
   Lightbulb,
   LogOut,
@@ -32,7 +33,7 @@ import { cn } from "@/lib/utils";
 import { SignOutForm } from "@/components/shell/sign-out-form";
 
 import { ThemeToggle } from "./theme-toggle";
-import { pluralSk } from "@/lib/sk";
+import { countSk, pluralSk } from "@/lib/sk";
 
 /** Počty pre odznaky v navigácii — presne to, čo vracia `getCounts()`. */
 export interface NavCounts {
@@ -68,16 +69,6 @@ export interface NavItem {
   Icon: LucideIcon;
   group: NavGroup;
   badge?: NavBadgeKey;
-  /**
-   * Je položka v spodnej lište na telefóne?
-   *
-   * Je to ZÁMERNE iná otázka než `group`. `group` hovorí, čo tá obrazovka
-   * znamená (a podľa toho sa delí bočný panel), `bar` hovorí, či sa zmestila
-   * medzi štyri miesta, na ktoré dosiahne palec. Kým to bolo jedno pole,
-   * nedalo sa vytiahnuť Projekty do lišty bez toho, aby sa v paneli
-   * presťahovali medzi dennú prácu, kam nepatria.
-   */
-  bar?: true;
 }
 
 /**
@@ -110,7 +101,6 @@ export const NAV_ITEMS: readonly NavItem[] = [
     Icon: CalendarCheck,
     group: "day",
     badge: "overdue",
-    bar: true,
   },
   {
     href: "/tyzden",
@@ -118,7 +108,6 @@ export const NAV_ITEMS: readonly NavItem[] = [
     shortcut: "w",
     Icon: CalendarRange,
     group: "day",
-    bar: true,
   },
   { href: "/mesiac", label: "Mesiac", shortcut: "m", Icon: CalendarDays, group: "day" },
   /*
@@ -140,7 +129,6 @@ export const NAV_ITEMS: readonly NavItem[] = [
     Icon: Inbox,
     group: "day",
     badge: "inbox",
-    bar: true,
   },
   {
     href: "/projekty",
@@ -154,7 +142,6 @@ export const NAV_ITEMS: readonly NavItem[] = [
       „Mesiac" — mesačný pohľad je vec plánovania, nie behu dňa, a otvára
       sa rádovo menej.
     */
-    bar: true,
   },
   {
     href: "/oblasti",
@@ -261,32 +248,66 @@ export const SECONDARY_NAV: readonly NavItem[] = NAV_ITEMS.filter(
   (item) => item.group === "structure",
 );
 
-/* ── spodná lišta na telefóne (podľa dosahu palca) ─────────────────────── */
+/* ── spodná lišta na telefóne ──────────────────────────────────────────── */
 
-/** Štyri miesta v lište. Piate si berie „Viac". */
-export const BAR_NAV: readonly NavItem[] = NAV_ITEMS.filter((item) => item.bar === true);
+/** Jedno z dvoch krajných miest po stranách tlačidla „+". */
+export interface MobileBarItem {
+  href: Route;
+  label: string;
+  Icon: LucideIcon;
+  badge?: NavBadgeKey;
+  /** Cesty, na ktorých je položka aktívna (okrem vlastného `href`). */
+  also?: readonly string[];
+}
 
-/** Všetko ostatné — vysunie sa v hárku nad lištou. */
-export const SHEET_NAV: readonly NavItem[] = NAV_ITEMS.filter((item) => item.bar !== true);
+/**
+ * Lišta telefónu: Dnes, Plán, [+], Inbox, Knižnica. Prostredné „+" nie je
+ * navigácia — otvára zachytenie, preto ho `MobileNav` kreslí sám.
+ *
+ * Plán zastrešuje štyri pohľady na čas a Knižnica všetko ostatné — deväť
+ * obrazoviek, ktoré sa dnes nezmestili do lišty, je tak najviac dve ťuknutia.
+ */
+export const MOBILE_BAR_LEFT: readonly MobileBarItem[] = [
+  { href: "/dnes", label: "Dnes", Icon: CalendarCheck, badge: "overdue" },
+  {
+    href: "/tyzden",
+    label: "Plán",
+    Icon: CalendarRange,
+    also: ["/mesiac", "/udalosti", "/rozvrh"],
+  },
+];
+
+export const MOBILE_BAR_RIGHT: readonly MobileBarItem[] = [
+  { href: "/inbox", label: "Inbox", Icon: Inbox, badge: "inbox" },
+  {
+    href: "/kniznica",
+    label: "Knižnica",
+    Icon: Library,
+    also: [
+      "/projekty",
+      "/oblasti",
+      "/navyky",
+      "/ucenie",
+      "/opakovane",
+      "/sablony",
+      "/niekedy",
+      "/caka-sa-na",
+      "/napady",
+      "/archiv",
+      "/nastavenia",
+    ],
+  },
+];
+
+export function isMobileBarItemActive(pathname: string, item: MobileBarItem): boolean {
+  return [item.href, ...(item.also ?? [])].some((href) => isNavItemActive(pathname, href));
+}
 
 /** Nadpis druhej skupiny v bočnom paneli. */
 export const SECONDARY_NAV_LABEL = "Štruktúra a odkladiská";
 
-/** Nadpis prvej skupiny. V paneli sa nekreslí, v mobilnom hárku áno. */
-export const PRIMARY_NAV_LABEL = "Deň";
-
 export function isNavItemActive(pathname: string, href: string): boolean {
   return pathname === href || pathname.startsWith(`${href}/`);
-}
-
-/**
- * Je práve otvorená obrazovka, ktorá v spodnej lište nie je?
- *
- * Podľa toho sa rozsvieti „Viac" — inak by človek pri otvorenom Mesiaci
- * alebo Archíve nevidel v lište nič aktívne a nevedel by, kde je.
- */
-export function isSheetActive(pathname: string): boolean {
-  return SHEET_NAV.some((item) => isNavItemActive(pathname, item.href));
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
@@ -301,7 +322,7 @@ export interface NavBadgeData {
 }
 
 /** Číslo k položke, alebo `null`, keď niet čo hlásiť. Nula sa nezobrazuje nikdy. */
-export function navBadge(item: NavItem, counts: NavCounts): NavBadgeData | null {
+export function navBadge(item: { badge?: NavBadgeKey }, counts: NavCounts): NavBadgeData | null {
   switch (item.badge) {
     case "overdue":
       return counts.overdue > 0
@@ -316,7 +337,7 @@ export function navBadge(item: NavItem, counts: NavCounts): NavBadgeData | null 
         ? {
             value: counts.inbox,
             tone: "neutral",
-            label: `${counts.inbox} nezatriedených`,
+            label: countSk(counts.inbox, "nezatriedená vec", "nezatriedené veci", "nezatriedených vecí"),
           }
         : null;
     case "waiting":

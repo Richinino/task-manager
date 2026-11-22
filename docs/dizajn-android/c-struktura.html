@@ -1,0 +1,424 @@
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,100..900&display=swap">
+<style>
+  .screens, .screens * { box-sizing: border-box; margin: 0; }
+  .screens {
+    display: flex; gap: 32px; flex-wrap: wrap; padding: 24px;
+    font-family: "Archivo", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  }
+  .screen {
+    width: 360px; height: 780px; overflow: hidden; position: relative;
+    border-radius: 0; background: var(--ground); color: var(--ink);
+    font-family: "Archivo", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    font-stretch: 100%; font-weight: 400; font-variant-numeric: tabular-nums;
+    -webkit-font-smoothing: antialiased;
+  }
+  .screen--light {
+    --ground: #f7f7f9; --surface: #ffffff; --ink: #141419; --ink2: #55555f; --ink3: #8e8e99;
+    --line: #e2e2e8; --chip: #ececf1; --frog: #d9971c; --onFrog: #1d1405; --frogDeep: #a86f08;
+    --violet: #6a4fe0; --green: #1f8a5f; --rose: #c2417a; --indigo: #3f51c4; --danger: #d23b2c; --ok: #1f8a5f;
+    --acc: #141419; --onAcc: #f7f7f9;
+  }
+  .screen--dark {
+    --ground: #0f0f13; --surface: #1a1a21; --ink: #f2f2f6; --ink2: #a9a9b6; --ink3: #6c6c78;
+    --line: #2a2a33; --chip: #24242d; --frog: #f0b544; --onFrog: #1d1405;
+    --violet: #8f7af2; --green: #4cc38d; --rose: #e7779f; --indigo: #8b97f0; --danger: #f08272; --ok: #4cc38d;
+    --acc: #f2f2f6; --onAcc: #0f0f13;
+  }
+  .screen svg { display: block; flex: none; }
+  .ico { fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+
+  .disp { font-stretch: 125%; font-weight: 800; line-height: 1; letter-spacing: -0.01em; }
+
+  /* status bar */
+  .sb { height: 24px; padding: 0 16px; display: flex; align-items: center; justify-content: space-between;
+        font-size: 12px; font-weight: 600; color: var(--ink); }
+  .sb-r { display: flex; align-items: center; gap: 6px; }
+  .gesture { position: absolute; left: 126px; bottom: 8px; width: 108px; height: 4px; border-radius: 999px;
+             background: var(--ink); opacity: 0.85; z-index: 20; }
+  .icon-btn { width: 44px; height: 44px; border: 0; background: transparent; color: var(--ink);
+              display: flex; align-items: center; justify-content: center; flex: none; padding: 0; }
+
+  /* nav */
+  .nav { position: absolute; left: 0; right: 0; bottom: 0; height: 80px; background: var(--ground);
+         border-top: 1px solid var(--line); }
+  .nav-in { height: 64px; padding: 0 10px; display: flex; align-items: center; justify-content: space-between; }
+  .nav-it { height: 48px; min-width: 48px; padding: 0 4px; display: flex; flex-direction: column; align-items: center;
+            justify-content: center; gap: 2px; font-size: 12px; color: var(--ink3); position: relative; }
+  .nav-it--on { flex-direction: row; gap: 6px; height: 40px; padding: 0 14px; border-radius: 999px;
+                background: var(--acc); color: var(--onAcc); font-weight: 600; }
+  .nav-dot { position: absolute; top: 2px; right: 10px; width: 8px; height: 8px; border-radius: 50%;
+             background: var(--danger); }
+  .fab { width: 56px; height: 56px; border-radius: 50%; border: 0; background: var(--acc); color: var(--onAcc);
+         display: flex; align-items: center; justify-content: center; padding: 0; flex: none; }
+
+  /* ===== screen 1: inbox ===== */
+  .in-top { height: 52px; padding: 0 20px; display: flex; align-items: center; justify-content: space-between; }
+  .in-top div { display: flex; align-items: baseline; gap: 8px; }
+  .in-top b { font-size: 15px; font-weight: 600; }
+  .in-top span { font-size: 13px; color: var(--ink3); }
+  .istack { position: relative; margin: 16px 20px 0; width: 320px; height: 266px; }
+  .iback { position: absolute; height: 250px; border-radius: 22px; }
+  .iback--1 { left: 12px; right: 12px; top: 8px; background: var(--chip); }
+  .iback--2 { left: 24px; right: 24px; top: 16px; background: var(--line); }
+  .icard { position: absolute; left: 0; top: 0; width: 320px; height: 250px; border-radius: 22px;
+           background: var(--surface); border: 1px solid var(--line); padding: 16px; }
+  .icard-src { height: 18px; display: flex; align-items: center; gap: 6px; font-size: 13px; line-height: 18px; color: var(--ink3); }
+  .photo { margin-top: 10px; width: 100%; height: 110px; border-radius: 12px; background: #1e4a38;
+           border: 3px solid #7a5a3a; padding: 6px 12px; color: rgba(255, 255, 255, 0.88);
+           font-family: "Segoe UI", Roboto, system-ui, sans-serif; font-size: 15px; line-height: 28px; overflow: hidden; }
+  .photo span { display: block; white-space: nowrap; }
+  .photo span:nth-child(2) { padding-left: 38px; }
+  .photo span:nth-child(3) { padding-left: 14px; }
+  .icard-title { margin-top: 10px; font-size: 22px; line-height: 24px; height: 48px; }
+  .icard-time { margin-top: 6px; height: 16px; font-size: 12px; line-height: 16px; color: var(--ink3); }
+
+  .lbl { margin: 24px 20px 0; height: 18px; font-size: 13px; line-height: 18px; color: var(--ink2); }
+  .dec { margin: 12px 20px 0; display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+  .dec button { height: 48px; border: 0; border-radius: 14px; background: var(--chip); color: var(--ink); font: inherit;
+                font-size: 14px; font-weight: 600; padding: 0; white-space: nowrap; }
+  .dec .ok { background: var(--ok); color: #ffffff; }
+  .dec .no { background: transparent; border: 1.5px solid var(--danger); color: var(--danger); }
+  .qrow { margin: 12px 20px 0; display: flex; gap: 8px; }
+  .qrow span { height: 36px; padding: 0 12px; border-radius: 999px; background: var(--chip); display: flex;
+               align-items: center; gap: 7px; font-size: 13px; font-weight: 500; white-space: nowrap; }
+  .qrow i { width: 8px; height: 8px; border-radius: 50%; background: var(--violet); flex: none; }
+  .ihint { margin-top: 20px; height: 16px; text-align: center; font-size: 12px; line-height: 16px; color: var(--ink3); }
+
+  /* ===== screen 2: library ===== */
+  .lib-top { height: 52px; padding: 0 10px 0 20px; display: flex; align-items: center; justify-content: space-between; }
+  .lib-top h1 { font-size: 28px; }
+  .search { margin: 4px 20px 0; height: 44px; border-radius: 14px; background: var(--chip); padding: 0 14px;
+            display: flex; align-items: center; gap: 10px; font-size: 14px; color: var(--ink3); }
+  .search span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .sec-h { margin: 14px 20px 0; height: 24px; display: flex; align-items: center; justify-content: space-between; }
+  .sec-h b { font-size: 15px; font-weight: 600; }
+  .sec-h span { font-size: 13px; color: var(--ink3); }
+  .prow { margin-top: 8px; height: 120px; padding: 0 20px; display: flex; gap: 8px; overflow: hidden; }
+  .pc { width: 150px; height: 120px; border-radius: 18px; padding: 14px; color: #ffffff; flex: none;
+        display: flex; flex-direction: column; }
+  .pc h3 { font-size: 16px; font-stretch: 125%; font-weight: 700; line-height: 18px; letter-spacing: -0.01em; }
+  .pc-b { margin-top: auto; }
+  .pc-b p { font-size: 12px; line-height: 16px; font-weight: 500; }
+  .bar { margin: 6px 0; height: 4px; border-radius: 999px; background: rgba(255, 255, 255, 0.3); }
+  .bar i { display: block; height: 4px; border-radius: 999px; background: #ffffff; }
+  .tiles { margin: 14px 20px 0; display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  .tile { height: 104px; border-radius: 18px; background: var(--chip); padding: 12px; display: flex; flex-direction: column; }
+  .tile b { font-size: 15px; font-weight: 600; line-height: 18px; }
+  .tile .n { margin-top: 4px; font-size: 22px; line-height: 24px; height: 24px; }
+  .tile .n small { font-family: inherit; font-stretch: 100%; font-weight: 400; font-size: 12px; color: var(--ink3); margin-left: 4px; }
+  .tile .x { margin-top: auto; font-size: 12px; line-height: 14px; color: var(--ink2); }
+  .dots { display: flex; gap: 4px; }
+  .dots i { width: 10px; height: 10px; border-radius: 50%; }
+  .llist { margin-top: 4px; }
+  .lrow { height: 48px; padding: 0 20px; display: flex; align-items: center; gap: 14px; }
+  .lrow + .lrow { border-top: 1px solid var(--line); }
+  .lrow b { flex: 1; font-size: 15px; font-weight: 400; }
+  .lrow span { font-size: 13px; color: var(--ink3); }
+  .lrow .chev { color: var(--ink3); margin-left: -4px; }
+
+  /* ===== screen 3: detail sheet ===== */
+  .bg-top { height: 52px; padding: 0 20px; display: flex; align-items: center; font-size: 15px; font-weight: 600; }
+  .bg-hero { margin: 40px 20px 0; height: 300px; border-radius: 22px; background: var(--frog); }
+  .scrim { position: absolute; inset: 0; background: rgba(0, 0, 0, 0.55); z-index: 5; }
+  .sheet { position: absolute; left: 0; right: 0; top: 48px; bottom: 0; background: var(--surface);
+           border-radius: 22px 22px 0 0; z-index: 10; padding: 0 20px; }
+  .handle { height: 20px; display: flex; align-items: center; justify-content: center; }
+  .handle i { width: 36px; height: 4px; border-radius: 999px; background: var(--ink3); }
+  .dh { display: flex; gap: 12px; align-items: flex-start; }
+  .cb { width: 28px; height: 28px; border-radius: 50%; border: 2px solid var(--ink2); flex: none; margin-top: 0; }
+  .dh h2 { font-size: 22px; line-height: 24px; height: 48px; }
+  .dchips { margin-top: 10px; height: 30px; display: flex; gap: 6px; }
+  .dchips span { height: 30px; padding: 0 10px; border-radius: 999px; background: var(--chip); display: flex;
+                 align-items: center; gap: 6px; font-size: 12px; font-weight: 500; white-space: nowrap; }
+  .dchips i { width: 8px; height: 8px; border-radius: 50%; background: var(--violet); flex: none; }
+  .fields { margin-top: 8px; }
+  .frow { height: 44px; display: flex; align-items: center; gap: 8px; }
+  .frow + .frow { border-top: 1px solid var(--line); }
+  .frow span { flex: 1; font-size: 13px; color: var(--ink3); }
+  .frow b { font-size: 15px; font-weight: 400; }
+  .frow svg { color: var(--ink3); }
+  .sub-h { margin-top: 10px; height: 28px; display: flex; align-items: center; justify-content: space-between; }
+  .sub-h b { font-size: 15px; font-weight: 600; }
+  .sub-h span { font-size: 13px; color: var(--ink3); }
+  .srow { height: 44px; display: flex; align-items: center; gap: 12px; font-size: 15px; }
+  .srow + .srow { border-top: 1px solid var(--line); }
+  .sc { width: 22px; height: 22px; border-radius: 50%; border: 1.5px solid var(--ink3); flex: none;
+        display: flex; align-items: center; justify-content: center; }
+  .sc--on { background: var(--ok); border-color: var(--ok); color: #0f0f13; }
+  .srow--done span:last-child { text-decoration: line-through; color: var(--ink3); }
+  .srow--add { color: var(--ink2); }
+  .note { margin-top: 8px; height: 40px; border-radius: 12px; background: var(--chip); padding: 0 12px;
+          display: flex; align-items: center; font-size: 13px; color: var(--ink2); white-space: nowrap; }
+  .acts { position: absolute; left: 0; right: 0; bottom: 0; height: 86px; padding: 10px 20px 0; display: flex; gap: 10px;
+          background: var(--surface); border-top: 1px solid var(--line); }
+  .btn-go { flex: 1; height: 52px; border: 0; border-radius: 14px; background: var(--acc); color: var(--onAcc);
+            display: flex; align-items: center; justify-content: center; gap: 8px; font: inherit;
+            font-size: 16px; font-weight: 600; }
+  .btn-sq { width: 52px; height: 52px; border: 0; border-radius: 14px; background: var(--chip); color: var(--ink);
+            display: flex; align-items: center; justify-content: center; padding: 0; flex: none; }
+</style>
+<div class="screens">
+
+  <section class="screen screen--light" aria-label="Inbox">
+    <div class="sb">
+      <span>9:52</span>
+      <span class="sb-r">
+        <svg width="14" height="12" viewBox="0 0 14 12" aria-hidden="true"><path d="M1 11 L13 11 L13 1 Z" fill="currentColor"/></svg>
+        <svg width="14" height="12" viewBox="0 0 14 12" aria-hidden="true"><path d="M1 4.5 A8.5 8.5 0 0 1 13 4.5 M3.2 7 A5.5 5.5 0 0 1 10.8 7 M5.4 9.4 A2.3 2.3 0 0 1 8.6 9.4" class="ico" style="stroke-width:1.5"/></svg>
+        <span style="display:flex;align-items:center;gap:3px">78%
+          <svg width="20" height="10" viewBox="0 0 20 10" aria-hidden="true"><rect x="0.75" y="0.75" width="16.5" height="8.5" rx="2" fill="none" stroke="currentColor" stroke-width="1.5"/><rect x="2.5" y="2.5" width="9.5" height="5" rx="1" fill="currentColor"/><rect x="18" y="3" width="1.5" height="4" rx="0.5" fill="currentColor"/></svg>
+        </span>
+      </span>
+    </div>
+
+    <div class="in-top">
+      <div><b>Inbox</b><span>4 veci</span></div>
+      <span>1 z 4</span>
+    </div>
+
+    <div class="istack">
+      <div class="iback iback--2"></div>
+      <div class="iback iback--1"></div>
+      <article class="icard">
+        <div class="icard-src">
+          <svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path class="ico" d="M12 15V4M8 7.5 12 4l4 3.5M6 11H5.5A1.5 1.5 0 0 0 4 12.5v6A1.5 1.5 0 0 0 5.5 20h13a1.5 1.5 0 0 0 1.5-1.5v-6A1.5 1.5 0 0 0 18.5 11H18"/></svg>
+          Zdieľané z Galérie
+        </div>
+        <div class="photo" aria-hidden="true"><span>F = m · a</span><span>v = s / t</span><span>W = F · s</span></div>
+        <h2 class="disp icard-title">Fotka: zadanie z tabule FYZ</h2>
+        <p class="icard-time">pridané dnes 8:47</p>
+      </article>
+    </div>
+
+    <p class="lbl">Kam to patrí</p>
+    <div class="dec">
+      <button type="button">Dnes</button>
+      <button type="button">Zajtra</button>
+      <button type="button">Tento týždeň</button>
+      <button type="button">Niekedy</button>
+      <button type="button" class="ok">Hotovo</button>
+      <button type="button" class="no">Zahodiť</button>
+    </div>
+
+    <p class="lbl" style="margin-top:28px">Rýchle doplnenie</p>
+    <div class="qrow"><span><i></i>Oblasť: Učenie</span><span>Projekt: bez projektu</span></div>
+    <p class="ihint">Potiahni doprava = Dnes, doľava = Niekedy</p>
+
+    <nav class="nav" aria-label="Hlavná navigácia">
+      <div class="nav-in">
+        <div class="nav-it">
+          <svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true"><circle class="ico" cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="3" fill="currentColor"/></svg>
+          Dnes
+        </div>
+        <div class="nav-it">
+          <svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true"><rect class="ico" x="4" y="5.5" width="16" height="14" rx="2.5"/><path class="ico" d="M4 10h16M8.5 3.5v4M15.5 3.5v4"/></svg>
+          Plán
+        </div>
+        <button class="fab" type="button" aria-label="Zachytiť">
+          <svg width="26" height="26" viewBox="0 0 24 24" aria-hidden="true"><path class="ico" style="stroke-width:2.2" d="M12 5v14M5 12h14"/></svg>
+        </button>
+        <div class="nav-it nav-it--on">
+          <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true"><path class="ico" d="M4 13.5 6.5 5.5h11l2.5 8M4 13.5V18a1.5 1.5 0 0 0 1.5 1.5h13A1.5 1.5 0 0 0 20 18v-4.5M4 13.5h4.5a3.5 3.5 0 0 0 7 0H20"/></svg>
+          Inbox
+        </div>
+        <div class="nav-it">
+          <svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true"><rect class="ico" x="4" y="4" width="6.5" height="6.5" rx="1.5"/><rect class="ico" x="13.5" y="4" width="6.5" height="6.5" rx="1.5"/><rect class="ico" x="4" y="13.5" width="6.5" height="6.5" rx="1.5"/><rect class="ico" x="13.5" y="13.5" width="6.5" height="6.5" rx="1.5"/></svg>
+          Knižnica
+        </div>
+      </div>
+    </nav>
+    <div class="gesture"></div>
+  </section>
+
+  <section class="screen screen--light" aria-label="Knižnica">
+    <div class="sb">
+      <span>9:52</span>
+      <span class="sb-r">
+        <svg width="14" height="12" viewBox="0 0 14 12" aria-hidden="true"><path d="M1 11 L13 11 L13 1 Z" fill="currentColor"/></svg>
+        <svg width="14" height="12" viewBox="0 0 14 12" aria-hidden="true"><path d="M1 4.5 A8.5 8.5 0 0 1 13 4.5 M3.2 7 A5.5 5.5 0 0 1 10.8 7 M5.4 9.4 A2.3 2.3 0 0 1 8.6 9.4" class="ico" style="stroke-width:1.5"/></svg>
+        <span style="display:flex;align-items:center;gap:3px">78%
+          <svg width="20" height="10" viewBox="0 0 20 10" aria-hidden="true"><rect x="0.75" y="0.75" width="16.5" height="8.5" rx="2" fill="none" stroke="currentColor" stroke-width="1.5"/><rect x="2.5" y="2.5" width="9.5" height="5" rx="1" fill="currentColor"/><rect x="18" y="3" width="1.5" height="4" rx="0.5" fill="currentColor"/></svg>
+        </span>
+      </span>
+    </div>
+
+    <div class="lib-top">
+      <h1 class="disp">Knižnica</h1>
+      <button class="icon-btn" type="button" aria-label="Nastavenia">
+        <svg width="24" height="24" viewBox="0 0 24 24" aria-hidden="true"><circle class="ico" cx="12" cy="12" r="3"/><circle class="ico" cx="12" cy="12" r="6"/><path class="ico" d="M12 2v2M12 20v2M2 12h2M20 12h2M17.7 6.3l1.4-1.4M6.3 6.3 4.9 4.9M17.7 17.7l1.4 1.4M6.3 17.7l-1.4 1.4"/></svg>
+      </button>
+    </div>
+
+    <div class="search">
+      <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true"><circle class="ico" cx="11" cy="11" r="6.5"/><path class="ico" d="M16 16l4 4"/></svg>
+      <span>Hľadať v úlohách, projektoch, nápadoch</span>
+    </div>
+
+    <div class="sec-h"><b>Projekty</b><span>Všetky 4</span></div>
+    <div class="prow">
+      <article class="pc" style="background:var(--violet)">
+        <h3>3D tlačiareň</h3>
+        <div class="pc-b"><p>4 z 9</p><div class="bar"><i style="width:44%"></i></div><p>do 15. 12.</p></div>
+      </article>
+      <article class="pc" style="background:var(--violet)">
+        <h3>Olympiáda z INF</h3>
+        <div class="pc-b"><p>1 z 4</p><div class="bar"><i style="width:25%"></i></div><p>termín prešiel</p></div>
+      </article>
+      <article class="pc" style="background:var(--violet)">
+        <h3>Piesne na Vianoce</h3>
+        <div class="pc-b"><p>2 z 6</p><div class="bar"><i style="width:33%"></i></div><p>do 20. 12.</p></div>
+      </article>
+      <article class="pc" style="background:var(--rose)">
+        <h3>Bicykel na jar</h3>
+        <div class="pc-b"><p>0 z 3</p><div class="bar"><i style="width:0"></i></div><p>bez termínu</p></div>
+      </article>
+    </div>
+
+    <div class="tiles">
+      <div class="tile">
+        <b>Oblasti</b>
+        <span class="n disp">5</span>
+        <div class="x dots" aria-hidden="true"><i style="background:var(--violet)"></i><i style="background:var(--green)"></i><i style="background:var(--rose)"></i><i style="background:var(--frog)"></i><i style="background:var(--indigo)"></i></div>
+      </div>
+      <div class="tile">
+        <b>Návyky</b>
+        <span class="n disp">3</span>
+        <span class="x">Čítanie 12 dní</span>
+      </div>
+      <div class="tile">
+        <b>Učenie</b>
+        <span class="n disp">4<small>piliere</small></span>
+      </div>
+    </div>
+
+    <div class="llist">
+      <div class="lrow">
+        <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true"><path class="ico" d="M9 18h6M10 21h4M12 3.5a5.5 5.5 0 0 0-3 10.1V15h6v-1.4A5.5 5.5 0 0 0 12 3.5Z"/></svg>
+        <b>Nápady</b><span>7</span>
+        <svg class="chev" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path class="ico" d="M9 6l6 6-6 6"/></svg>
+      </div>
+      <div class="lrow">
+        <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true"><path class="ico" d="M20 14.5A8 8 0 1 1 9.5 4 6.5 6.5 0 0 0 20 14.5Z"/></svg>
+        <b>Niekedy</b><span>12</span>
+        <svg class="chev" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path class="ico" d="M9 6l6 6-6 6"/></svg>
+      </div>
+      <div class="lrow">
+        <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true"><path class="ico" d="M7 4h10M7 20h10M8 4v3.5L12 12l-4 4.5V20M16 4v3.5L12 12l4 4.5V20"/></svg>
+        <b>Čaká sa na</b><span>2</span>
+        <svg class="chev" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path class="ico" d="M9 6l6 6-6 6"/></svg>
+      </div>
+      <div class="lrow">
+        <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true"><path class="ico" d="M4 11V9.5A2.5 2.5 0 0 1 6.5 7H18M15 4l3 3-3 3M20 13v1.5a2.5 2.5 0 0 1-2.5 2.5H6M9 14l-3 3 3 3"/></svg>
+        <b>Opakované</b><span>5</span>
+        <svg class="chev" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path class="ico" d="M9 6l6 6-6 6"/></svg>
+      </div>
+      <div class="lrow">
+        <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true"><rect class="ico" x="8" y="8" width="11" height="12" rx="2"/><path class="ico" d="M16 8V6.5A1.5 1.5 0 0 0 14.5 5h-8A1.5 1.5 0 0 0 5 6.5v9A1.5 1.5 0 0 0 6.5 17H8"/></svg>
+        <b>Šablóny</b><span>3</span>
+        <svg class="chev" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path class="ico" d="M9 6l6 6-6 6"/></svg>
+      </div>
+      <div class="lrow">
+        <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true"><rect class="ico" x="3.5" y="5" width="17" height="4.5" rx="1.5"/><path class="ico" d="M5 9.5V18a1.5 1.5 0 0 0 1.5 1.5h11A1.5 1.5 0 0 0 19 18V9.5M10 13.5h4"/></svg>
+        <b>Archív</b>
+        <svg class="chev" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path class="ico" d="M9 6l6 6-6 6"/></svg>
+      </div>
+    </div>
+
+    <nav class="nav" aria-label="Hlavná navigácia">
+      <div class="nav-in">
+        <div class="nav-it">
+          <svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true"><circle class="ico" cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="3" fill="currentColor"/></svg>
+          Dnes
+        </div>
+        <div class="nav-it">
+          <svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true"><rect class="ico" x="4" y="5.5" width="16" height="14" rx="2.5"/><path class="ico" d="M4 10h16M8.5 3.5v4M15.5 3.5v4"/></svg>
+          Plán
+        </div>
+        <button class="fab" type="button" aria-label="Zachytiť">
+          <svg width="26" height="26" viewBox="0 0 24 24" aria-hidden="true"><path class="ico" style="stroke-width:2.2" d="M12 5v14M5 12h14"/></svg>
+        </button>
+        <div class="nav-it">
+          <svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true"><path class="ico" d="M4 13.5 6.5 5.5h11l2.5 8M4 13.5V18a1.5 1.5 0 0 0 1.5 1.5h13A1.5 1.5 0 0 0 20 18v-4.5M4 13.5h4.5a3.5 3.5 0 0 0 7 0H20"/></svg>
+          <span class="nav-dot"></span>
+          Inbox
+        </div>
+        <div class="nav-it nav-it--on">
+          <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true"><rect class="ico" x="4" y="4" width="6.5" height="6.5" rx="1.5"/><rect class="ico" x="13.5" y="4" width="6.5" height="6.5" rx="1.5"/><rect class="ico" x="4" y="13.5" width="6.5" height="6.5" rx="1.5"/><rect class="ico" x="13.5" y="13.5" width="6.5" height="6.5" rx="1.5"/></svg>
+          Knižnica
+        </div>
+      </div>
+    </nav>
+    <div class="gesture"></div>
+  </section>
+
+  <section class="screen screen--dark" aria-label="Detail úlohy">
+    <div class="sb" style="position:relative;z-index:30">
+      <span>9:52</span>
+      <span class="sb-r">
+        <svg width="14" height="12" viewBox="0 0 14 12" aria-hidden="true"><path d="M1 11 L13 11 L13 1 Z" fill="currentColor"/></svg>
+        <svg width="14" height="12" viewBox="0 0 14 12" aria-hidden="true"><path d="M1 4.5 A8.5 8.5 0 0 1 13 4.5 M3.2 7 A5.5 5.5 0 0 1 10.8 7 M5.4 9.4 A2.3 2.3 0 0 1 8.6 9.4" class="ico" style="stroke-width:1.5"/></svg>
+        <span style="display:flex;align-items:center;gap:3px">78%
+          <svg width="20" height="10" viewBox="0 0 20 10" aria-hidden="true"><rect x="0.75" y="0.75" width="16.5" height="8.5" rx="2" fill="none" stroke="currentColor" stroke-width="1.5"/><rect x="2.5" y="2.5" width="9.5" height="5" rx="1" fill="currentColor"/><rect x="18" y="3" width="1.5" height="4" rx="0.5" fill="currentColor"/></svg>
+        </span>
+      </span>
+    </div>
+
+    <div class="bg-top">Dnes</div>
+    <div class="bg-hero" aria-hidden="true"></div>
+    <div class="scrim"></div>
+
+    <div class="sheet">
+      <div class="handle"><i></i></div>
+      <div class="dh">
+        <span class="cb" role="checkbox" aria-checked="false" aria-label="Hotovo"></span>
+        <h2 class="disp">Naučiť sa na písomku<br>z FYZ</h2>
+      </div>
+      <div class="dchips">
+        <span><i></i>Učenie</span>
+        <span>FYZ učiť sa</span>
+        <span>
+          <svg width="14" height="14" viewBox="0 0 24 24" aria-hidden="true"><path class="ico" d="M7 3.5h7l4 4V19a1.5 1.5 0 0 1-1.5 1.5h-9A1.5 1.5 0 0 1 6 19V5A1.5 1.5 0 0 1 7.5 3.5ZM9 12h6M9 15.5h4"/></svg>
+          Písomka st 25. 11.
+        </span>
+      </div>
+
+      <div class="fields">
+        <div class="frow"><span>Plán</span><b>Dnes</b><svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path class="ico" d="M9 6l6 6-6 6"/></svg></div>
+        <div class="frow"><span>Termín</span><b>streda 25. 11.</b><svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path class="ico" d="M9 6l6 6-6 6"/></svg></div>
+        <div class="frow"><span>Odhad</span><b>40 min</b><svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path class="ico" d="M9 6l6 6-6 6"/></svg></div>
+        <div class="frow"><span>Energia</span><b>stredná</b><svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path class="ico" d="M9 6l6 6-6 6"/></svg></div>
+        <div class="frow"><span>Projekt</span><b>bez projektu</b><svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path class="ico" d="M9 6l6 6-6 6"/></svg></div>
+        <div class="frow"><span>Opakovanie</span><b>nie</b><svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path class="ico" d="M9 6l6 6-6 6"/></svg></div>
+      </div>
+
+      <div class="sub-h"><b>Podúlohy</b><span>1 z 3</span></div>
+      <div class="srow srow--done">
+        <span class="sc sc--on"><svg width="14" height="14" viewBox="0 0 24 24" aria-hidden="true"><path class="ico" style="stroke-width:3" d="M5 12.5 10 17.5 19 7"/></svg></span>
+        <span>Prečítať kapitolu 4</span>
+      </div>
+      <div class="srow"><span class="sc"></span><span>Vyriešiť príklady 4.1–4.6</span></div>
+      <div class="srow"><span class="sc"></span><span>Zhrnúť vzorce na papier</span></div>
+      <div class="srow srow--add">
+        <svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true"><path class="ico" d="M12 5v14M5 12h14"/></svg>
+        <span>Pridať podúlohu</span>
+      </div>
+
+      <p class="note">Pýtať sa hlavne na pohyb po kružnici.</p>
+
+      <div class="acts">
+        <button class="btn-go" type="button">
+          <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4.5 19 12 7 19.5Z" fill="currentColor"/></svg>
+          Začať
+        </button>
+        <button class="btn-sq" type="button" aria-label="Presunúť">
+          <svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true"><rect class="ico" x="4" y="5.5" width="16" height="14" rx="2.5"/><path class="ico" d="M4 10h16M8.5 3.5v4M15.5 3.5v4"/></svg>
+        </button>
+        <button class="btn-sq" type="button" aria-label="Viac">
+          <svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true"><circle cx="5" cy="12" r="1.8" fill="currentColor"/><circle cx="12" cy="12" r="1.8" fill="currentColor"/><circle cx="19" cy="12" r="1.8" fill="currentColor"/></svg>
+        </button>
+      </div>
+    </div>
+    <div class="gesture"></div>
+  </section>
+
+</div>

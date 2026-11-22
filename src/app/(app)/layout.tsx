@@ -5,6 +5,7 @@ import { CaptureProvider } from "@/components/capture/capture-provider";
 import { OfflineIndicator } from "@/components/pwa/offline-indicator";
 import { OutboxProvider } from "@/components/pwa/outbox-provider";
 import { AppShell } from "@/components/shell/app-shell";
+import { MobileNav } from "@/components/shell/mobile-nav";
 import { PostponeGuardProvider } from "@/components/task/postpone-guard";
 import { TaskDetailProvider } from "@/components/task/task-detail-provider";
 import { AgendaDetailProvider } from "@/components/agenda/agenda-detail-provider";
@@ -145,6 +146,8 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
             </PostponeGuardProvider>
             </AgendaDetailProvider>
           </TaskDetailProvider>
+          {/* Lišta je vnútri `CaptureProvider`, lebo jej „+" otvára zachytenie. */}
+          <MobileNav counts={counts} />
         </CaptureProvider>
 
       </OutboxProvider>

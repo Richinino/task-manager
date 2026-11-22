@@ -1,0 +1,132 @@
+<title>Task manažér v telefóne</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<!--FONTS-->
+<style>
+/* Galéria na porovnanie: tichá stránka, hlas majú telefóny. */
+:root {
+  --bg: #f1f1f3;
+  --panel: #ffffff;
+  --fg: #23232a;
+  --fgm: #676773;
+  --line: #dcdce2;
+  --acc: #5b52d6;
+  --ui: "IBM Plex Sans", system-ui, sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #18181d; --panel: #212128; --fg: #ececf1; --fgm: #a0a0ad; --line: #34343e; --acc: #8b86ee;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #18181d; --panel: #212128; --fg: #ececf1; --fgm: #a0a0ad; --line: #34343e; --acc: #8b86ee;
+  color-scheme: dark;
+}
+body {
+  background: var(--bg); color: var(--fg); font: 16px/1.55 var(--ui);
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+.wrap { max-width: 1040px; margin: 0 auto; padding-block: 48px 80px; }
+h1 { font-size: clamp(30px, 5vw, 44px); line-height: 1.1; font-weight: 600; letter-spacing: -0.02em; margin: 0 0 16px; text-wrap: balance; }
+.lead { max-width: 62ch; color: var(--fgm); margin: 0 0 12px; }
+.jump { display: flex; flex-wrap: wrap; gap: 8px; margin: 28px 0 0; padding: 0; list-style: none; }
+.jump a {
+  display: inline-flex; align-items: center; gap: 10px; min-height: 44px; padding: 0 16px 0 6px;
+  border: 1px solid var(--line); border-radius: 999px; background: var(--panel);
+  color: var(--fg); text-decoration: none; font-weight: 500; font-size: 15px;
+}
+.jump b { display: grid; place-items: center; width: 32px; height: 32px; border-radius: 50%; background: var(--fg); color: var(--bg); font-size: 14px; }
+.jump a:hover { border-color: var(--fgm); }
+a:focus-visible { outline: 2px solid var(--acc); outline-offset: 3px; }
+
+.variant { margin-top: 72px; padding-top: 32px; border-top: 1px solid var(--line); scroll-margin-top: 16px; }
+.vhead { display: grid; grid-template-columns: auto 1fr; gap: 4px 18px; align-items: baseline; }
+.letter { grid-row: span 2; font-size: 56px; line-height: 1; font-weight: 600; letter-spacing: -0.04em; color: var(--fgm); }
+.vhead h2 { margin: 0; font-size: 26px; line-height: 1.2; font-weight: 600; text-wrap: balance; }
+.vhead p { margin: 0; color: var(--fgm); max-width: 60ch; }
+.phones { margin: 28px 0 8px; overflow-x: auto; }
+.trade { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px 32px; margin-top: 16px; }
+.trade div { min-width: 0; }
+.trade h3 { margin: 0 0 4px; font-size: 14px; font-weight: 600; }
+.trade p { margin: 0; color: var(--fgm); font-size: 15px; }
+.next { margin-top: 80px; padding: 28px; border-radius: 10px; background: var(--panel); border: 1px solid var(--line); }
+.next h2 { margin: 0 0 8px; font-size: 22px; font-weight: 600; }
+.next p { margin: 0 0 8px; max-width: 62ch; color: var(--fgm); }
+.next p:last-child { margin: 0; }
+@media (max-width: 820px) { .phones { zoom: .86; } }
+@media (max-width: 440px) { .phones { zoom: .78; } .letter { font-size: 40px; } }
+</style>
+
+<div class="wrap">
+  <header>
+    <h1>Štyri smery pre telefón</h1>
+    <p class="lead">Každý smer ukazuje to isté ráno: pondelok 23. novembra, 9:52, veľká prestávka po druhej hodine. Vľavo je obrazovka Dnes vo svetlej téme, vpravo rozpísané rýchle zachytenie v tmavej.</p>
+    <p class="lead">Vo všetkých štyroch ostáva jantárová farbou priority dňa a červená farbou toho, čo je po termíne. Appka pôjde do Samsungu ako .apk, ale vnútri je to stále tá istá stránka, takže zvolený smer sa postaví raz pre telefón aj počítač.</p>
+    <ul class="jump" aria-label="Smery">
+      <li><a href="#a"><b>A</b>Terminál do ruky</a></li>
+      <li><a href="#b"><b>B</b>Pravítko dňa</a></li>
+      <li><a href="#c"><b>C</b>Jedna karta</a></li>
+      <li><a href="#d"><b>D</b>One UI</a></li>
+    </ul>
+  </header>
+
+  <section class="variant" id="a" aria-labelledby="a-h">
+    <div class="vhead">
+      <span class="letter" aria-hidden="true">A</span>
+      <h2 id="a-h">Terminál do ruky</h2>
+      <p>Tvoj súčasný dizajn bez zmeny farieb a písma. Mení sa len to, kam siaha palec: namiesto plávajúceho tlačidla je nad lištou príkazový riadok a rozpočet dňa je jednoriadkové pravítko.</p>
+    </div>
+    <!--VARIANT-A-->
+    <div class="trade">
+      <div><h3>Získaš</h3><p>Najmenej práce. Telefón a počítač budú vyzerať ako jedna appka a nič, čo už poznáš, sa nepresunie.</p></div>
+      <div><h3>Stratíš</h3><p>Nič nové sa nepridá. Telefón ostane menším počítačom, len s lepším dosahom palca.</p></div>
+    </div>
+  </section>
+
+  <section class="variant" id="b" aria-labelledby="b-h">
+    <div class="vhead">
+      <span class="letter" aria-hidden="true">B</span>
+      <h2 id="b-h">Pravítko dňa</h2>
+      <p>Dnes je zvislá časová os od 7:00 do 22:00, kde výška znamená čas. Hodiny v škole sa prečiarkujú samy, úlohy ležia vo voľných medzerách a rozpočet je to prázdne miesto medzi nimi.</p>
+    </div>
+    <!--VARIANT-B-->
+    <div class="trade">
+      <div><h3>Získaš</h3><p>Odpoveď na otázku „stihnem to?" jedným pohľadom. Pri zachytení hneď vidíš, kam sa nová úloha zajtra zmestí.</p></div>
+      <div><h3>Stratíš</h3><p>Hustotu. Úlohy bez odhadu sa na os nedajú položiť a čakajú v podnose dole, kým im čas nedáš.</p></div>
+    </div>
+  </section>
+
+  <section class="variant" id="c" aria-labelledby="c-h">
+    <div class="vhead">
+      <span class="letter" aria-hidden="true">C</span>
+      <h2 id="c-h">Jedna karta</h2>
+      <p>Telefón odpovedá na jedinú otázku: čo robím ďalej? Dnes je jedna veľká karta s úlohou, ktorá je na rade, a pod ňou vytŕčajú ďalšie. Potiahnutím ide ďalšia, ťuknutím na „Začať“ sa púšťaš do práce. Zvyšok dňa je krátky zoznam pod kartou.</p>
+    </div>
+    <!--VARIANT-C-->
+    <div class="trade">
+      <div><h3>Získaš</h3><p>Najmenej rozhodovania. Ráno neotváraš zoznam, ale jednu vec. Zachytenie ti rovno ukáže kartu, ktorá z textu vznikne.</p></div>
+      <div><h3>Stratíš</h3><p>Prehľad naraz. Celý deň vidíš len v krátkom zozname pod kartou, plánovať sa bude radšej v Týždni alebo na počítači.</p></div>
+    </div>
+  </section>
+
+  <section class="variant" id="d" aria-labelledby="d-h">
+    <div class="vhead">
+      <span class="letter" aria-hidden="true">D</span>
+      <h2 id="d-h">One UI: pozri hore, ťukni dole</h2>
+      <p>Appka, ktorá vyzerá, akoby ju dodal Samsung. Horná tretina sa len číta a nesie jedno veľké číslo, všetko na ťukanie je v dosahu palca. Farby sú tónmi tvojej indigovej.</p>
+    </div>
+    <!--VARIANT-D-->
+    <div class="trade">
+      <div><h3>Získaš</h3><p>Pocit natívnej appky a najpohodlnejšie ovládanie jednou rukou. Zbalí sa pekne aj na menší telefón.</p></div>
+      <div><h3>Stratíš</h3><p>Vlastnú tvár. Bude vyzerať ako ostatné appky v telefóne a s verziou na počítači sa rozíde viac než ostatné smery.</p></div>
+    </div>
+  </section>
+
+  <section class="next" aria-labelledby="next-h">
+    <h2 id="next-h">Ako ďalej</h2>
+    <p>Napíš mi písmeno. Kombinácie sú v poriadku, napríklad „B, ale v písme a farbách A".</p>
+    <p>Zvolený smer potom dotiahnem na ďalšie obrazovky (Týždeň, Inbox, detail úlohy, hárok Viac), postavím ho v appke a pripravím .apk na stiahnutie do Samsungu.</p>
+  </section>
+</div>

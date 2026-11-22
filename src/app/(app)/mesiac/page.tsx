@@ -17,11 +17,20 @@ import {
   formatMonthTitleSk,
 } from "@/components/views/mesiac/month-header";
 import { MonthSidebar } from "@/components/views/mesiac/month-sidebar";
-import { agendaShortTitle, compareAgenda, isMultiDay, isOnDay } from "@/lib/agenda";
+import {
+  agendaShortTitle,
+  compareAgenda,
+  hhmm,
+  isCancelled,
+  isMultiDay,
+  isOnDay,
+} from "@/lib/agenda";
 import { isEventOnDay, isMultiDayEvent } from "@/lib/google-calendar";
 import {
   addDays,
+  WEEKDAYS_SHORT_SK,
   addMonths,
+  formatDuration,
   monthGrid,
   parseIsoDate,
   startOfWeek,
@@ -43,6 +52,9 @@ import {
 } from "@/server/queries/rituals";
 import { listProjects } from "@/server/queries/structure";
 import { getTasksForRange, type TaskWithRelations } from "@/server/queries/tasks";
+import { cardFill } from "@/components/task/card-fill";
+import { MobileMonth, type MobileMonthCell } from "@/components/views/mesiac/mobile-month";
+import { pickDots } from "@/lib/plan-mobile";
 
 export const metadata: Metadata = { title: "Mesiac" };
 
@@ -351,13 +363,71 @@ export default async function MesiacPage({ searchParams }: MesiacPageProps) {
     ...(agendaTotal > 0 ? [`${agendaTotal} ${pluralSk(agendaTotal, "udalosť", "udalosti", "udalostí")}`] : []),
   ].join(" · ");
 
+  /* ── Telefón ─────────────────────────────────────────────────────────────
+     Bunky pre `MobileMonth`: dni mimo mesiaca ostávajú prázdne, bodky sú
+     farby oblastí otvorených úloh (najviac tri), pruh je udalosť z agendy.   */
+  const todayInMonth = todayIso >= firstOfMonth && todayIso <= lastOfMonth;
+  const mobileCells: (MobileMonthCell | null)[] = gridDays.map((iso) => {
+    if (iso < firstOfMonth || iso > lastOfMonth) return null;
+    const dayTasks = tasks.filter(
+      (task) => !isSettled(task) && (task.plannedDate === iso || task.dueDate === iso),
+    );
+    const dayAgenda = sortedAgenda.filter((item) => !isCancelled(item) && isOnDay(item, iso));
+    return {
+      iso,
+      day: parseIsoDate(iso).getDate(),
+      isToday: iso === todayIso,
+      isPast: iso < todayIso,
+      dots: pickDots(
+        dayTasks.map((task) => cardFill({ area: task.area, subject: task.subject }).color),
+        3,
+      ),
+      hasAgenda: dayAgenda.length > 0,
+      rows: [
+        ...dayAgenda.map((item) => ({
+          key: `a-${item.id}`,
+          kind: "agenda" as const,
+          title: agendaShortTitle(item, item.subject?.code ?? null),
+          meta: hhmm(item.startTime) ?? "",
+          color: null,
+        })),
+        ...dayTasks.map((task) => ({
+          key: `t-${task.id}`,
+          kind: "task" as const,
+          title: task.title,
+          meta: task.estimateMin ? formatDuration(task.estimateMin) : "",
+          color: cardFill({ area: task.area, subject: task.subject }).color,
+        })),
+      ],
+    };
+  });
+  const prevMonth = addMonths(firstOfMonth, -1);
+  const nextMonth = addMonths(firstOfMonth, 1);
+  const monthLink = (iso: string): string => {
+    const d = parseIsoDate(iso);
+    return `/mesiac?rok=${d.getFullYear()}&mesiac=${d.getMonth() + 1}`;
+  };
+  const weekdayLabels = Array.from(
+    { length: 7 },
+    (_, i) => WEEKDAYS_SHORT_SK[(weekStartsOn + i) % 7] ?? "",
+  );
+
   return (
-    /*
+    <>
+    <MobileMonth
+      monthLabel={formatMonthTitleSk(year, month)}
+      prevHref={monthLink(prevMonth)}
+      nextHref={monthLink(nextMonth)}
+      weekdays={weekdayLabels}
+      cells={mobileCells}
+      initialIso={selectedIso ?? (todayInMonth ? todayIso : null)}
+    />
+    {/*
       Na počítači je obrazovka presne vysoká ako okno — mriežka si rozdelí
       zvyšok výšky na šesť riadkov a nikdy sa neroluje. Na telefóne sa naopak
       roluje normálne celá stránka.
-    */
-    <div className="flex w-full flex-col md:h-dvh">
+    */}
+    <div className="hidden w-full flex-col md:flex md:h-dvh">
       <MonthHeader
         year={year}
         month={month}
@@ -418,5 +488,6 @@ export default async function MesiacPage({ searchParams }: MesiacPageProps) {
 
       <ScreenFooter summary={headerMeta} />
     </div>
+    </>
   );
 }

@@ -4,6 +4,7 @@ import { AgendaList } from "@/components/views/udalosti/agenda-list";
 import { todayIn } from "@/lib/dates";
 import { requireUser } from "@/server/auth-guard";
 import { getAgendaList } from "@/server/queries/agenda";
+import { PlanTabs } from "@/components/views/plan/plan-tabs";
 
 export const metadata: Metadata = {
   title: "Udalosti",
@@ -40,11 +41,14 @@ export default async function UdalostiPage({ searchParams }: UdalostiPageProps) 
   const openId = typeof raw === "string" && raw.length > 0 && raw.length <= 64 ? raw : null;
 
   return (
-    <AgendaList
-      items={items}
-      todayIso={todayIso}
-      weekStartsOn={user.settings.weekStartsOn}
-      openId={openId}
-    />
+    <>
+      <PlanTabs />
+      <AgendaList
+        items={items}
+        todayIso={todayIso}
+        weekStartsOn={user.settings.weekStartsOn}
+        openId={openId}
+      />
+    </>
   );
 }

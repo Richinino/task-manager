@@ -16,6 +16,9 @@ import { LiveTimeBudget } from "@/components/views/dnes/live-time-budget";
 import { WhatNow } from "@/components/views/dnes/what-now";
 import { DayAgenda, UpcomingAgenda } from "@/components/views/dnes/day-agenda";
 import { RitualHost } from "@/components/rituals/ritual-host";
+import { MediaSlot } from "@/components/views/dnes/mobile/media-slot";
+import { MobileToday } from "@/components/views/dnes/mobile/mobile-today";
+import { toTimelineInput } from "@/server/queries/day-timeline";
 import {
   addDays,
   diffDays,
@@ -252,13 +255,118 @@ export default async function DnesPage({ searchParams }: DnesPageProps) {
     ? dayTasks.filter((task) => task.id !== frog.id)
     : dayTasks;
 
+  /*
+    Akcie patria len dnešku. „Čo teraz?" je otázka o TERAZ a rituál je
+    záväzok na dnešný deň — pri prezeraní včerajška by oboje ponúkalo
+    rozhodnutia o čase, ktorý už prešiel. Rituál by sa navyše otvoril sám.
+    Kreslí sa len raz, na šírke, ktorá je práve vidieť (viď `MediaSlot`).
+  */
+  const actionNode = isToday ? (
+    <>
+      <WhatNow
+        tasks={actionable}
+        todayIso={todayIso}
+        contexts={contexts.map((item) => item.name)}
+        places={user.settings.places}
+      />
+      <RitualHost
+        period={dailyPeriod}
+        dayStartHour={user.settings.dayStartHour}
+        morningRitualAt={user.settings.morningRitualAt}
+        eveningRitualAt={user.settings.eveningRitualAt}
+        morning={{
+          completed: morningState.completed,
+          ...(morningState.review
+            ? {
+                initialPayload: morningState.review.payload as Record<
+                  string,
+                  unknown
+                >,
+              }
+            : {}),
+          overdue: overdueOffScreen,
+          // Priorita dňa sa viaže na `plannedDate`, takže kandidáti musia
+          // byť dnešné nevybavené úlohy — inak by sa označila úloha,
+          // ktorá na obrazovke „Dnes" nikde nesvieti.
+          candidates: openTasks,
+          plannedMin,
+          availableMin,
+          // Rituál dostáva porady tiež — rozpočet aj rozsudok v ňom
+          // musia stáť na tom istom dni ako pruh nad zoznamom.
+          meetingMin,
+          withoutEstimate,
+          postponeWarnAt: user.settings.postponeWarnAt,
+          postponeBlockAt: user.settings.postponeBlockAt,
+        }}
+        completed={shutdown.completed}
+        {...(shutdown.review
+          ? { initialPayload: shutdown.review.payload as Record<string, unknown> }
+          : {})}
+        {...(journalToday
+          ? { initialJournal: { body: journalToday.body, mood: journalToday.mood } }
+          : {})}
+        tasks={dayTasks}
+        todayIso={todayIso}
+        timeZone={user.settings.timezone}
+        dayEndHour={user.settings.dayEndHour}
+        autoOpen={user.settings.ritualAutoOpen}
+      />
+    </>
+  ) : null;
+
+  /*
+    Telefón: jedna karta, pravítko dňa a zoznam. Časová os sa skladá z údajov,
+    ktoré stránka už má — Google ani databáza sa nevolajú druhýkrát.
+  */
+  const timeline = toTimelineInput({
+    dateIso: date,
+    dayStartHour: user.settings.dayStartHour,
+    dayEndHour: user.settings.dayEndHour,
+    lessons: schoolLessons,
+    breaks: schoolBreaks,
+    events,
+    agenda,
+    planned,
+  });
+  const mobileLessons = volnoDna !== null
+    ? []
+    : schoolLessons.map((lesson) => ({
+        startTime: lesson.startTime,
+        endTime: lesson.endTime,
+        subjectCode: lesson.subjectCode,
+        room: lesson.room,
+        cancelled: lesson.cancelled,
+      }));
+
   return (
-    /*
+    <>
+    <div className="md:hidden">
+      <MobileToday
+        key={date}
+        date={date}
+        todayIso={todayIso}
+        timeZone={user.settings.timezone}
+        nowMin={nowMin}
+        timeline={timeline}
+        lessons={mobileLessons}
+        openTasks={openTasks}
+        doneTasks={dayTasks.filter((task) => task.status === "done")}
+        overdueTasks={isToday ? overdueOffScreen : []}
+        action={<MediaSlot on="phone">{actionNode}</MediaSlot>}
+        agenda={
+          <>
+            <DayAgenda items={agendaDay} todayIso={todayIso} />
+            <UpcomingAgenda items={agendaUpcoming} todayIso={todayIso} />
+          </>
+        }
+      />
+    </div>
+    {/*
       Návrh nemá vonkajšie odsadenie ani `max-w`: stĺpec ide od kraja po kraj
       a sekcie sa oddeľujú vlastnými linkami, nie medzerami. Pravá lišta stojí
       vedľa hlavného stĺpca a siaha cez celú výšku okna.
-    */
-    <div className="flex w-full items-stretch">
+    */}
+    <div className="hidden w-full items-stretch md:flex">
       <div className="flex min-w-0 flex-1 flex-col">
       <DayHeader
         date={date}
@@ -286,66 +394,7 @@ export default async function DnesPage({ searchParams }: DnesPageProps) {
             nowMin={nowMin}
           />
         }
-        action={
-          /*
-            Akcie patria len dnešku. „Čo teraz?" je otázka o TERAZ a rituál je
-            záväzok na dnešný deň — pri prezeraní včerajška by oboje ponúkalo
-            rozhodnutia o čase, ktorý už prešiel. Rituál by sa navyše otvoril
-            sám, čo by pri listovaní dozadu bolo priam nepríjemné.
-          */
-          isToday ? (
-          <>
-            <WhatNow
-              tasks={actionable}
-              todayIso={todayIso}
-              contexts={contexts.map((item) => item.name)}
-              places={user.settings.places}
-            />
-            <RitualHost
-              period={dailyPeriod}
-              dayStartHour={user.settings.dayStartHour}
-              morningRitualAt={user.settings.morningRitualAt}
-              eveningRitualAt={user.settings.eveningRitualAt}
-              morning={{
-                completed: morningState.completed,
-                ...(morningState.review
-                  ? {
-                      initialPayload: morningState.review.payload as Record<
-                        string,
-                        unknown
-                      >,
-                    }
-                  : {}),
-                overdue: overdueOffScreen,
-                // Priorita dňa sa viaže na `plannedDate`, takže kandidáti musia
-                // byť dnešné nevybavené úlohy — inak by sa označila úloha,
-                // ktorá na obrazovke „Dnes" nikde nesvieti.
-                candidates: openTasks,
-                plannedMin,
-                availableMin,
-                // Rituál dostáva porady tiež — rozpočet aj rozsudok v ňom
-                // musia stáť na tom istom dni ako pruh nad zoznamom.
-                meetingMin,
-                withoutEstimate,
-                postponeWarnAt: user.settings.postponeWarnAt,
-                postponeBlockAt: user.settings.postponeBlockAt,
-              }}
-              completed={shutdown.completed}
-              {...(shutdown.review
-                ? { initialPayload: shutdown.review.payload as Record<string, unknown> }
-                : {})}
-              {...(journalToday
-                ? { initialJournal: { body: journalToday.body, mood: journalToday.mood } }
-                : {})}
-              tasks={dayTasks}
-              todayIso={todayIso}
-              timeZone={user.settings.timezone}
-              dayEndHour={user.settings.dayEndHour}
-              autoOpen={user.settings.ritualAutoOpen}
-            />
-          </>
-          ) : null
-        }
+        action={isToday ? <MediaSlot on="desktop">{actionNode}</MediaSlot> : null}
       />
 
       {/*
@@ -507,5 +556,6 @@ export default async function DnesPage({ searchParams }: DnesPageProps) {
         />
       </div>
     </div>
+    </>
   );
 }

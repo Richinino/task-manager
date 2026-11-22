@@ -1,7 +1,15 @@
 "use client";
 
-import { useEffect, useId, useMemo, useRef, useState, useTransition } from "react";
-import { Lightbulb, LoaderCircle, Sparkles } from "lucide-react";
+import {
+  useEffect,
+  useId,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+  useTransition,
+} from "react";
+import { Lightbulb, LoaderCircle, Mic, Sparkles, X } from "lucide-react";
 
 import { CaptureChips, type CaptureMode } from "@/components/capture/capture-chips";
 import { ParsePreview } from "@/components/capture/parse-preview";
@@ -9,7 +17,10 @@ import {
   CaptureSuggestions,
   type Suggestion,
 } from "@/components/capture/capture-suggestions";
+import { useSpeech } from "@/components/capture/use-speech";
+import { useTargetDay } from "@/components/capture/use-target-day";
 import { useOutbox } from "@/components/pwa/outbox-provider";
+import { DayStrip } from "@/components/timeline/day-strip";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -17,11 +28,18 @@ import {
   DialogDescription,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
 import { Kbd } from "@/components/ui/kbd";
+import {
+  appendSpoken,
+  axisSentence,
+  dayLabel,
+  ghostSlot,
+  mirrorSegments,
+  saveLabelForDate,
+} from "@/lib/capture-composer";
 import type { SyntaxEdit } from "@/lib/capture-syntax";
 import { formatLongSk } from "@/lib/dates";
-import { parseCapture, type ParsedCapture } from "@/lib/parse";
+import { parseCapture, type ParsedCapture, type ParsedTokenKind } from "@/lib/parse";
 import { projectExists } from "@/lib/project-match";
 import { cn } from "@/lib/utils";
 import { fold } from "@/lib/fold";
@@ -175,7 +193,7 @@ export function QuickCapture({
     mode: CaptureMode;
   } | null>(null);
   const [isPending, startTransition] = useTransition();
-  const inputRef = useRef<HTMLInputElement>(null);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
 
   /**
    * Kam patrí kurzor po ťuknutí na čip. Počítadlo sa zvyšuje pri každom
@@ -209,6 +227,7 @@ export function QuickCapture({
   const outbox = useOutbox();
 
   const trimmed = value.trim();
+  const online = outbox?.online ?? true;
 
   /** Projekty zo servera plus tie, čo práve vznikli v tomto okne. */
   const knownProjects = useMemo(
@@ -226,6 +245,52 @@ export function QuickCapture({
   /** Čo sa naozaj uloží — prepínač, alebo písomka rozpoznaná v texte. */
   const effectiveMode: CaptureMode =
     !modeChosen && mode === "task" && parsed?.agendaType !== undefined ? "event" : mode;
+
+  /* ── telefón: mini os dňa a diktovanie ──────────────────────────────────── */
+
+  const idea = mode === "idea";
+
+  /** Os dáva zmysel len pri úlohe, ktorá má deň aj odhad. */
+  const axisEstimate =
+    effectiveMode === "task" && parsed?.estimateMin !== undefined && parsed.allDay !== true
+      ? Math.min(parsed.estimateMin, 1440)
+      : null;
+  const axisDate =
+    axisEstimate !== null ? (parsed?.plannedDate ?? defaultDate ?? null) : null;
+  const { day: axisDay, reset: resetAxis } = useTargetDay(axisDate, open, online);
+  const axisSlot =
+    axisDay !== null && axisEstimate !== null
+      ? ghostSlot(axisDay, axisEstimate, parsed?.plannedTime)
+      : null;
+
+  /** Text v poli v okamihu, keď sa začalo diktovať — diktát sa k nemu pripája. */
+  const speechBase = useRef("");
+  const speech = useSpeech(
+    (spoken) => {
+      const text = appendSpoken(speechBase.current, spoken);
+      setValue(text);
+      setCaret(text.length);
+      if (saved !== null) setSaved(null);
+      if (error !== null) setError(null);
+    },
+    () => {
+      speechBase.current = value;
+    },
+  );
+  const stopSpeech = speech.stop;
+  useEffect(() => {
+    if (!open) stopSpeech();
+  }, [open, stopSpeech]);
+
+  /* Pole rastie s textom (telefón); na počítači drží výšku jedného riadka. */
+  useLayoutEffect(() => {
+    const el = inputRef.current;
+    if (el === null) return;
+    el.style.height = "auto";
+    const next = el.scrollHeight;
+    el.style.removeProperty("height");
+    el.style.setProperty("--field-h", `${next}px`);
+  }, [value, open]);
 
   /* ── našepkávanie značiek ────────────────────────────────────────────────
      Zoznam sa neriadi tým, čo je v texte, ale tým, čo sa práve píše POD
@@ -434,6 +499,8 @@ export function QuickCapture({
     /** Spoločný koniec pre uložené aj odložené — jedno miesto, jedno správanie. */
     function finish(title: string, queued: boolean, savedMode: CaptureMode = effectiveMode): void {
       setValue("");
+      resetAxis();
+      stopSpeech();
       if (keepOpen) {
         setSaved({ title, queued, mode: savedMode });
         inputRef.current?.focus();
@@ -542,10 +609,54 @@ export function QuickCapture({
     });
   }
 
-  const idea = mode === "idea";
   const agendaMode = effectiveMode === "event" || effectiveMode === "deadline";
   /** Ikona pri poli je prvá vec, ktorú oko chytí — musí hovoriť, čo sa ukladá. */
   const LeadIcon = idea ? Lightbulb : Sparkles;
+
+  const titleByMode: Record<CaptureMode, string> = {
+    task: "Nová úloha",
+    idea: "Nový nápad",
+    event: "Nová udalosť",
+    deadline: "Nový termín",
+  };
+
+  const baseLabel = idea
+    ? "Uložiť nápad"
+    : effectiveMode === "event"
+      ? "Uložiť udalosť"
+      : effectiveMode === "deadline"
+        ? "Uložiť deadline"
+        : "Uložiť";
+  /** Telefón pomenuje aj deň, kam úloha pôjde („Uložiť na zajtra"). */
+  const phoneLabel =
+    effectiveMode === "task" && !idea
+      ? saveLabelForDate(baseLabel, parsed?.plannedDate ?? defaultDate)
+      : baseLabel;
+
+  const mirror = useMemo(
+    () => (parsed === null || idea ? [] : mirrorSegments(value, parsed.tokens)),
+    [parsed, idea, value],
+  );
+
+  const shortHint = idea
+    ? IDEA_HINT_SHORT
+    : effectiveMode === "event"
+      ? EVENT_HINT_SHORT
+      : effectiveMode === "deadline"
+        ? DEADLINE_HINT_SHORT
+        : SYNTAX_HINT_SHORT;
+  const longHint = idea
+    ? IDEA_HINT
+    : effectiveMode === "event"
+      ? EVENT_HINT
+      : effectiveMode === "deadline"
+        ? DEADLINE_HINT
+        : SYNTAX_HINT;
+
+  const submitDisabled =
+    trimmed === "" ||
+    (parsed?.title.trim() === "" && !(agendaMode && parsed?.agendaType !== undefined)) ||
+    isPending;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -553,13 +664,16 @@ export function QuickCapture({
         showClose={false}
         aria-label="Rýchle zachytenie"
         /*
-          Pod `sm` sedí okno tesne pri hornom okraji, nie v strede obrazovky.
-          Vysunutá klávesnica na Androide neposunie rozloženie stránky, len
-          prekryje jej spodok — a 12 vh navrchu je presne toľko, koľko chýba
-          na to, aby tlačidlo „Uložiť" ostalo nad ňou. Od `sm` je okno tam,
-          kde bolo.
+          Telefón (pod `md`): celá obrazovka. Od `md` je okno tam, kde bolo —
+          tesne pod horným okrajom, aby tlačidlo „Uložiť" ostalo nad klávesnicou
+          aj na malých výškach.
         */
-        className="mt-3 max-w-[660px] overflow-hidden p-0 sm:mt-[132px]"
+        className={cn(
+          "m-0 h-dvh max-h-none w-full max-w-none overflow-hidden rounded-none border-0 bg-bg p-0",
+          "max-md:flex max-md:flex-col",
+          "md:m-auto md:mt-[132px] md:h-fit md:max-h-[calc(100dvh-4rem)] md:w-[calc(100%-2rem)]",
+          "md:max-w-[660px] md:rounded md:border md:bg-surface",
+        )}
       >
         <DialogTitle className="sr-only">
           {idea ? "Rýchle zachytenie nápadu" : "Rýchle zachytenie úlohy"}
@@ -575,261 +689,409 @@ export function QuickCapture({
                Uložiť sa dá aj tlačidlom Uložiť pod poľom.`}
         </DialogDescription>
 
+        {/* ── telefón: horný riadok a prepínač cieľa ── */}
+        <div className="flex h-14 shrink-0 items-center gap-1 px-2 md:hidden">
+          <button
+            type="button"
+            aria-label="Zavrieť"
+            onClick={() => onOpenChange(false)}
+            className={cn(
+              "inline-flex size-11 shrink-0 items-center justify-center rounded-full",
+              "text-fg-muted transition-colors duration-100 hover:bg-surface-2 hover:text-fg",
+            )}
+          >
+            <X aria-hidden="true" className="size-5" />
+          </button>
+          <p aria-hidden="true" className="font-display min-w-0 truncate text-row text-fg">
+            {titleByMode[effectiveMode]}
+          </p>
+        </div>
+        <CaptureChips
+          text={value}
+          onEdit={applyEdit}
+          mode={effectiveMode}
+          onModeChange={changeMode}
+          weekStartsOn={weekStartsOn}
+          part="mode"
+          className="shrink-0 px-4 pb-1 md:hidden"
+        />
+
         {/*
-          Hlavička panela je z návrhu. Nie je to ozdoba: bez nej sa okno na
-          tmavom závoji nedá odlíšiť od palety príkazov, ktorá vyzerá skoro
-          rovnako a otvára sa vedľajšou klávesou.
+          Hlavička panela na počítači je z návrhu. Nie je to ozdoba: bez nej sa
+          okno na tmavom závoji nedá odlíšiť od palety príkazov, ktorá vyzerá
+          skoro rovnako a otvára sa vedľajšou klávesou.
         */}
         <div
           aria-hidden="true"
-          className="flex items-center gap-2.5 border-b border-border px-4 py-[11px]"
+          className="hidden items-center gap-2.5 border-b border-border px-4 py-[11px] md:flex"
         >
           <span className="label text-fg-muted">
             {idea ? "Zachytenie nápadu" : "Zachytenie"}
           </span>
-          <span className="ml-auto hidden font-mono text-mini text-fg-subtle sm:block">
+          <span className="ml-auto font-mono text-mini text-fg-subtle">
             n odkiaľkoľvek · esc zavrieť
           </span>
         </div>
 
         <form
+          className="max-md:flex max-md:min-h-0 max-md:flex-1 max-md:flex-col"
           onSubmit={(event) => {
             event.preventDefault();
             save(false);
           }}
         >
-          <div className="flex items-center gap-2 px-3 pt-1">
-            <LeadIcon
-              aria-hidden="true"
-              className={cn("size-4 shrink-0", idea ? "text-accent" : "text-fg-subtle")}
-            />
-            <Input
-              ref={inputRef}
-              // Preverená výnimka: pravidlo mieri na zaostrenie pri načítaní stránky,
-              // ktoré človeka odhodí z miesta, kde bol. Tu je to naopak — okno rýchleho zachytenia sa otvára klávesou alebo klikom a jediné,
-              // čo sa v ňom robí, je písanie.
-              // eslint-disable-next-line jsx-a11y/no-autofocus
-              autoFocus
-              value={value}
-              onChange={(event) => {
-                setValue(event.target.value);
-                setCaret(event.target.selectionStart ?? event.target.value.length);
-                // Písanie zoznam vracia — Escape ho skryl len pre tú chvíľu.
-                if (dismissed) setDismissed(false);
-                if (saved !== null) setSaved(null);
-                if (error !== null) setError(null);
-              }}
-              onSelect={(event) => {
-                // Klik aj šípky hýbu kurzorom bez `onChange` — bez tohto by
-                // zoznam ostal viazaný na starú polohu.
-                const el = event.target as HTMLInputElement;
-                setCaret(el.selectionStart ?? 0);
-              }}
-              role="combobox"
-              aria-expanded={offered.length > 0}
-              aria-controls={suggestionsId}
-              aria-autocomplete="list"
-              {...(offered.length > 0
-                ? { "aria-activedescendant": `${suggestionsId}-${highlight}` }
-                : {})}
-              onKeyDown={(event) => {
-                /*
-                  Kým je otvorený zoznam návrhov, patria mu šípky, Tab aj
-                  Enter. Enter je tu ten chúlostivý: bez tejto vetvy by uložil
-                  úlohu s rozpísanou značkou namiesto toho, aby ju dokončil —
-                  presne v momente, keď človek čaká doplnenie.
-                */
-                if (offered.length > 0) {
-                  if (event.key === "ArrowDown") {
-                    event.preventDefault();
-                    setHighlight((index) => (index + 1) % offered.length);
-                    return;
-                  }
-                  if (event.key === "ArrowUp") {
-                    event.preventDefault();
-                    setHighlight((index) => (index - 1 + offered.length) % offered.length);
-                    return;
-                  }
-                  if (event.key === "Escape") {
-                    // Zoznam sa zavrie, dialóg NIE — preto sa šírenie zastaví.
-                    event.preventDefault();
-                    event.stopPropagation();
-                    setDismissed(true);
-                    return;
-                  }
-                  if (event.key === "Enter" || event.key === "Tab") {
-                    const pick = offered[highlight];
-                    if (pick !== undefined) {
-                      event.preventDefault();
-                      pickSuggestion(pick.name);
-                      return;
-                    }
-                  }
-                }
-
-                if (event.key !== "Enter") return;
-                /*
-                  Enter obsluhujeme sami, oba varianty.
-
-                  Na implicitné odoslanie formulára sa tu spoľahnúť NEDÁ:
-                  formulár žije v portáli dialógu a prehliadač ho pri Enteri
-                  neodošle — overené na bežiacej aplikácii, `submit` sa vôbec
-                  nespustí, hoci nikto nevolá preventDefault. Bez tejto vetvy
-                  by rýchle zachytenie neuložilo nič.
-                */
-                // Enter, ktorým sa potvrdzuje kandidát z IME, nie je uloženie.
-                if (event.nativeEvent.isComposing) return;
-                event.preventDefault();
-                // Ctrl/Cmd+Enter = ulož a nechaj okno otvorené (dávkové písanie).
-                save(event.ctrlKey || event.metaKey);
-              }}
-              placeholder={idea ? "Čo ťa napadlo?" : "Čo treba spraviť?"}
-              aria-label={idea ? "Text nápadu" : "Text úlohy"}
-              autoComplete="off"
-              spellCheck={false}
-              /* Fokusový krúžok necháme na globálne `:focus-visible`. */
-              className={cn("h-12 border-0 bg-transparent px-0 text-lg", "hover:border-0")}
-            />
-            {isPending ? (
-              <LoaderCircle
+          <div className="max-md:min-h-0 max-md:flex-1 max-md:overflow-y-auto">
+            <div className="flex items-start gap-2 px-4 pt-1 md:items-center md:px-3">
+              <LeadIcon
                 aria-hidden="true"
-                className="size-4 shrink-0 animate-spin text-fg-subtle"
+                className={cn(
+                  "size-4 shrink-0 max-md:hidden",
+                  idea ? "text-accent" : "text-fg-subtle",
+                )}
               />
+              <div className="relative min-w-0 flex-1">
+                {/*
+                  Zrkadlo: ten istý text pod priehľadným poľom, v ktorom majú
+                  rozpoznané značky farebné pozadie. Len telefón — na počítači
+                  ostáva pole také, aké bolo. Obe vrstvy MUSIA mať rovnaké
+                  písmo, odsadenie a zalamovanie, inak sa výplň rozíde s textom.
+                */}
+                <div
+                  aria-hidden="true"
+                  className={cn(FIELD_CLASS, "pointer-events-none absolute inset-0 md:hidden")}
+                >
+                  {mirror.map((segment, index) =>
+                    segment.kind === null ? (
+                      <span key={index} className="text-transparent">
+                        {segment.text}
+                      </span>
+                    ) : (
+                      <mark
+                        key={index}
+                        className={cn(
+                          "rounded-md text-transparent",
+                          markTone(segment.kind, parsed?.priority),
+                        )}
+                      >
+                        {segment.text}
+                      </mark>
+                    ),
+                  )}
+                </div>
+                <textarea
+                  ref={inputRef}
+                  rows={1}
+                  // Preverená výnimka: pravidlo mieri na zaostrenie pri načítaní stránky,
+                  // ktoré človeka odhodí z miesta, kde bol. Tu je to naopak — okno rýchleho zachytenia sa otvára klávesou alebo klikom a jediné,
+                  // čo sa v ňom robí, je písanie.
+                  // eslint-disable-next-line jsx-a11y/no-autofocus
+                  autoFocus
+                  value={value}
+                  onChange={(event) => {
+                    setValue(event.target.value);
+                    setCaret(event.target.selectionStart ?? event.target.value.length);
+                    // Písanie zoznam vracia — Escape ho skryl len pre tú chvíľu.
+                    if (dismissed) setDismissed(false);
+                    if (saved !== null) setSaved(null);
+                    if (error !== null) setError(null);
+                  }}
+                  onSelect={(event) => {
+                    // Klik aj šípky hýbu kurzorom bez `onChange` — bez tohto by
+                    // zoznam ostal viazaný na starú polohu.
+                    const el = event.target as HTMLTextAreaElement;
+                    setCaret(el.selectionStart ?? 0);
+                  }}
+                  role="combobox"
+                  aria-expanded={offered.length > 0}
+                  aria-controls={suggestionsId}
+                  aria-autocomplete="list"
+                  {...(offered.length > 0
+                    ? { "aria-activedescendant": `${suggestionsId}-${highlight}` }
+                    : {})}
+                  onKeyDown={(event) => {
+                    /*
+                      Kým je otvorený zoznam návrhov, patria mu šípky, Tab aj
+                      Enter. Enter je tu ten chúlostivý: bez tejto vetvy by uložil
+                      úlohu s rozpísanou značkou namiesto toho, aby ju dokončil —
+                      presne v momente, keď človek čaká doplnenie.
+                    */
+                    if (offered.length > 0) {
+                      if (event.key === "ArrowDown") {
+                        event.preventDefault();
+                        setHighlight((index) => (index + 1) % offered.length);
+                        return;
+                      }
+                      if (event.key === "ArrowUp") {
+                        event.preventDefault();
+                        setHighlight((index) => (index - 1 + offered.length) % offered.length);
+                        return;
+                      }
+                      if (event.key === "Escape") {
+                        // Zoznam sa zavrie, dialóg NIE — preto sa šírenie zastaví.
+                        event.preventDefault();
+                        event.stopPropagation();
+                        setDismissed(true);
+                        return;
+                      }
+                      if (event.key === "Enter" || event.key === "Tab") {
+                        const pick = offered[highlight];
+                        if (pick !== undefined) {
+                          event.preventDefault();
+                          pickSuggestion(pick.name);
+                          return;
+                        }
+                      }
+                    }
+
+                    if (event.key !== "Enter") return;
+                    /*
+                      Enter obsluhujeme sami, oba varianty.
+
+                      Na implicitné odoslanie formulára sa tu spoľahnúť NEDÁ:
+                      formulár žije v portáli dialógu a prehliadač ho pri Enteri
+                      neodošle — overené na bežiacej aplikácii, `submit` sa vôbec
+                      nespustí, hoci nikto nevolá preventDefault. Bez tejto vetvy
+                      by rýchle zachytenie neuložilo nič. Pole je viacriadkové len
+                      vzhľadom (zalamovanie), nový riadok sa nevkladá nikdy.
+                    */
+                    // Enter, ktorým sa potvrdzuje kandidát z IME, nie je uloženie.
+                    if (event.nativeEvent.isComposing) return;
+                    event.preventDefault();
+                    // Ctrl/Cmd+Enter = ulož a nechaj okno otvorené (dávkové písanie).
+                    save(event.ctrlKey || event.metaKey);
+                  }}
+                  placeholder={idea ? "Čo ťa napadlo?" : "Čo treba spraviť?"}
+                  aria-label={idea ? "Text nápadu" : "Text úlohy"}
+                  autoComplete="off"
+                  spellCheck={false}
+                  /* Fokusový krúžok necháme na globálne `:focus-visible`. */
+                  className={cn(
+                    FIELD_CLASS,
+                    "relative block w-full resize-none overflow-hidden border-0 bg-transparent",
+                    "text-fg caret-fg outline-offset-4 placeholder:text-fg-subtle",
+                    "h-(--field-h) md:h-12 md:whitespace-pre",
+                  )}
+                />
+              </div>
+
+              {speech.supported ? (
+                <button
+                  type="button"
+                  aria-label={speech.listening ? "Zastaviť diktovanie" : "Diktovať"}
+                  aria-pressed={speech.listening}
+                  onClick={speech.toggle}
+                  className={cn(
+                    "mt-1 inline-flex size-11 shrink-0 items-center justify-center rounded-full border md:mt-0",
+                    "transition-colors duration-100 ease-out",
+                    speech.listening
+                      ? "border-transparent bg-accent text-accent-fg"
+                      : "border-border bg-surface text-fg-muted hover:border-border-strong hover:text-fg",
+                  )}
+                >
+                  <Mic aria-hidden="true" className="size-5" />
+                </button>
+              ) : null}
+
+              {isPending ? (
+                <LoaderCircle
+                  aria-hidden="true"
+                  className="mt-4 size-4 shrink-0 animate-spin text-fg-subtle md:mt-0"
+                />
+              ) : null}
+            </div>
+
+            {speech.listening ? (
+              <p role="status" className="px-4 pb-1 text-meta font-medium text-accent md:pl-9">
+                Počúvam…
+              </p>
             ) : null}
+
+            {/*
+              Keď okno otvorilo tlačidlo „+" na konkrétnom dni, musí byť vidieť,
+              kam sa úloha chystá — inak by sa deň priradil ticho a človek by
+              netušil, prečo mu úloha pribudla práve tam.
+            */}
+            {defaultDate !== undefined ? (
+              idea ? (
+                /* Nápad deň neunesie. Predvyplnenie by sa ticho stratilo — povedzme to. */
+                <p className="pb-1 pl-4 pr-3 text-meta text-warn md:pl-9">
+                  Predvyplnený deň ({formatLongSk(defaultDate)}) sa do nápadu neuloží —
+                  nápad nemá dátum.
+                </p>
+              ) : (
+                <p className="pb-1 pl-4 pr-3 text-meta text-fg-muted md:pl-9">
+                  Predvyplnený deň: {formatLongSk(defaultDate)} — deň napísaný
+                  v texte má prednosť.
+                </p>
+              )
+            ) : null}
+
+            {/*
+              Návrhy idú NAD náhľad: sú to jediná vec v okne, s ktorou sa
+              v tej chvíli pracuje, a náhľad je len zrkadlo.
+            */}
+            <CaptureSuggestions
+              id={suggestionsId}
+              kind={trigger?.kind ?? "context"}
+              items={offered}
+              activeIndex={highlight}
+              onPick={pickSuggestion}
+            />
+
+            {/*
+              Neznámy projekt sa dá založiť rovno odtiaľto. Bez toho by
+              varovanie len konštatovalo problém a poslalo človeka preč
+              z rozpísanej úlohy — čo je presne to, po čom sa úloha nezapíše.
+            */}
+            {!idea &&
+            parsed?.projectName !== undefined &&
+            knownProjects.length > 0 &&
+            !projectExists(parsed.projectName, knownProjects) ? (
+              <div className="pb-1 pl-4 pr-3 md:pl-9">
+                <button
+                  type="button"
+                  disabled={creatingProject}
+                  onMouseDown={(event) => {
+                    event.preventDefault();
+                    createMissingProject();
+                  }}
+                  className={cn(
+                    "inline-flex min-h-11 items-center gap-1.5 rounded border border-warn/40",
+                    "bg-warn/10 px-2.5 text-body text-warn md:min-h-8",
+                    "transition-colors duration-100 ease-out hover:border-warn",
+                    "disabled:pointer-events-none disabled:opacity-45",
+                  )}
+                >
+                  {creatingProject ? (
+                    <LoaderCircle aria-hidden="true" size={13} className="animate-spin" />
+                  ) : null}
+                  <span className="min-w-0">
+                    Založiť projekt „{parsed.projectName.trim()}“
+                  </span>
+                </button>
+              </div>
+            ) : null}
+
+            {/*
+              Ponuka podľa pravidiel. Je to tlačidlo, nie automatický zásah do
+              textu — návrh sa má dať prehliadnuť aj odmietnuť tým, že naň
+              človek jednoducho neklikne.
+            */}
+            {hasSuggestion(auto) && !idea ? (
+              <div className="pb-1 pl-4 pr-3 md:pl-9">
+                <button
+                  type="button"
+                  onMouseDown={(event) => {
+                    // Fokus musí ostať v poli — rovnaký dôvod ako pri návrhoch.
+                    event.preventDefault();
+                    applyAuto();
+                  }}
+                  className={cn(
+                    "inline-flex min-h-11 items-center gap-1.5 rounded border border-border",
+                    "bg-surface-2 px-2.5 text-body text-fg-muted md:min-h-8",
+                    "transition-colors duration-100 ease-out",
+                    "hover:border-border-strong hover:text-fg",
+                  )}
+                >
+                  <Sparkles aria-hidden="true" size={13} className="shrink-0" />
+                  <span className="min-w-0">
+                    Doplniť{" "}
+                    {[
+                      ...auto.tags.map((tag) => `#${tag}`),
+                      ...(auto.context !== null ? [`@${auto.context}`] : []),
+                    ].join(" ")}
+                  </span>
+                </button>
+              </div>
+            ) : null}
+
+            {agendaMode && parsed !== null ? (
+              <p className="pb-1 pl-4 pr-3 text-meta text-fg-muted md:pl-9">
+                {effectiveMode === "deadline"
+                  ? "Vznikne deadline: deň a hodina „do“. Neuberá z času dňa, úlohy k nemu pridáš v detaile."
+                  : parsed.agendaType !== undefined
+                    ? `Vznikne udalosť — ${parsed.agendaType === "oral" ? "skúšanie" : "písomka"} sa neodškrtáva, prebehne sama. Deň a hodinu doplní rozvrh, keď v texte chýbajú.`
+                    : "Vznikne udalosť: deň a voliteľne čas. Neodškrtáva sa, prebehne sama."}
+              </p>
+            ) : null}
+
+            {/* Počítač: čipy rozpoznaného tak, ako boli. */}
+            <ParsePreview
+              parsed={parsed}
+              mode={idea ? "idea" : "task"}
+              projectNames={knownProjects}
+              className="hidden pb-1 pl-9 pr-3 md:block"
+            />
+
+            {/*
+              Telefón: karta „Takto bude vyzerať" — v reči karty Dnes. Čipy
+              v nej sú ten istý náhľad parsera (s upozorneniami), takže nič
+              z toho, čo počítač ukáže, tu nechýba. Farba oblasti projektu
+              sem zatiaľ nechodí (okno dostáva len názvy), preto neutrálna.
+            */}
+            {parsed !== null ? (
+              <section aria-label="Takto bude vyzerať" className="px-4 pt-3 md:hidden">
+                <p className="label mb-2 text-fg-subtle">Takto bude vyzerať</p>
+                <div className="rounded-[22px] bg-surface-2 p-4">
+                  <p
+                    className={cn(
+                      "font-display wrap-break-word text-xl leading-tight",
+                      parsed.title.trim() === "" ? "text-fg-subtle" : "text-fg",
+                    )}
+                  >
+                    {parsed.title.trim() === "" ? "Bez názvu" : parsed.title.trim()}
+                  </p>
+                  <ParsePreview
+                    parsed={parsed}
+                    mode={idea ? "idea" : "task"}
+                    projectNames={knownProjects}
+                    longDates
+                    className="mt-3"
+                  />
+                </div>
+              </section>
+            ) : null}
+
+            {/* Telefón: mini os cieľového dňa s prerušovaným miestom pre úlohu. */}
+            {axisDay !== null && axisDate !== null && axisEstimate !== null ? (
+              <section aria-label="Deň, na ktorý úloha pôjde" className="px-4 pb-3 pt-4 md:hidden">
+                <p className="label mb-2 text-fg-muted">{dayLabel(axisDate)}</p>
+                <DayStrip day={axisDay} size="md" ghost={axisSlot} />
+                <p className="mt-2 text-meta text-fg-muted">
+                  {axisSentence(axisDate, axisDay, axisSlot, axisEstimate)}
+                </p>
+              </section>
+            ) : null}
+
+            {/* Počítač: čipy pod poľom. */}
+            <CaptureChips
+              text={value}
+              onEdit={applyEdit}
+              mode={effectiveMode}
+              onModeChange={changeMode}
+              weekStartsOn={weekStartsOn}
+              className="hidden pb-1 pl-9 pr-3 md:flex"
+            />
           </div>
 
-          {/*
-            Keď okno otvorilo tlačidlo „+" na konkrétnom dni, musí byť vidieť,
-            kam sa úloha chystá — inak by sa deň priradil ticho a človek by
-            netušil, prečo mu úloha pribudla práve tam.
-          */}
-          {defaultDate !== undefined ? (
-            idea ? (
-              /* Nápad deň neunesie. Predvyplnenie by sa ticho stratilo — povedzme to. */
-              <p className="pb-1 pl-9 pr-3 text-meta text-warn">
-                Predvyplnený deň ({formatLongSk(defaultDate)}) sa do nápadu neuloží —
-                nápad nemá dátum.
-              </p>
-            ) : (
-              <p className="pb-1 pl-9 pr-3 text-meta text-fg-muted">
-                Predvyplnený deň: {formatLongSk(defaultDate)} — deň napísaný
-                v texte má prednosť.
-              </p>
-            )
-          ) : null}
+          <div
+            className={cn(
+              "border-t border-border bg-surface-2 px-3 py-2",
+              "max-md:shrink-0 max-md:bg-bg max-md:px-4 max-md:pb-[max(0.75rem,env(safe-area-inset-bottom))]",
+            )}
+          >
+            {/* Telefón: značky hneď nad tlačidlom, aby ich nezakryla klávesnica. */}
+            <CaptureChips
+              text={value}
+              onEdit={applyEdit}
+              mode={effectiveMode}
+              onModeChange={changeMode}
+              weekStartsOn={weekStartsOn}
+              part="values"
+              className="-mx-4 px-4 pb-1 md:hidden"
+            />
 
-          {/* Náhľad sa objaví, až keď parser naozaj niečo našiel. */}
-          {/*
-            Návrhy idú NAD náhľad: sú to jediná vec v okne, s ktorou sa
-            v tej chvíli pracuje, a náhľad je len zrkadlo.
-          */}
-          <CaptureSuggestions
-            id={suggestionsId}
-            kind={trigger?.kind ?? "context"}
-            items={offered}
-            activeIndex={highlight}
-            onPick={pickSuggestion}
-          />
-
-          {/*
-            Neznámy projekt sa dá založiť rovno odtiaľto. Bez toho by
-            varovanie len konštatovalo problém a poslalo človeka preč
-            z rozpísanej úlohy — čo je presne to, po čom sa úloha nezapíše.
-          */}
-          {!idea &&
-          parsed?.projectName !== undefined &&
-          knownProjects.length > 0 &&
-          !projectExists(parsed.projectName, knownProjects) ? (
-            <div className="px-3 pb-1 pl-9">
-              <button
-                type="button"
-                disabled={creatingProject}
-                onMouseDown={(event) => {
-                  event.preventDefault();
-                  createMissingProject();
-                }}
-                className={cn(
-                  "inline-flex min-h-11 items-center gap-1.5 rounded border border-warn/40",
-                  "bg-warn/10 px-2.5 text-body text-warn sm:min-h-8",
-                  "transition-colors duration-100 ease-out hover:border-warn",
-                  "disabled:pointer-events-none disabled:opacity-45",
-                )}
-              >
-                {creatingProject ? (
-                  <LoaderCircle aria-hidden="true" size={13} className="animate-spin" />
-                ) : null}
-                <span className="min-w-0">
-                  Založiť projekt „{parsed.projectName.trim()}“
-                </span>
-              </button>
-            </div>
-          ) : null}
-
-          {/*
-            Ponuka podľa pravidiel. Je to tlačidlo, nie automatický zásah do
-            textu — návrh sa má dať prehliadnuť aj odmietnuť tým, že naň
-            človek jednoducho neklikne.
-          */}
-          {hasSuggestion(auto) && !idea ? (
-            <div className="px-3 pb-1 pl-9">
-              <button
-                type="button"
-                onMouseDown={(event) => {
-                  // Fokus musí ostať v poli — rovnaký dôvod ako pri návrhoch.
-                  event.preventDefault();
-                  applyAuto();
-                }}
-                className={cn(
-                  "inline-flex min-h-11 items-center gap-1.5 rounded border border-border",
-                  "bg-surface-2 px-2.5 text-body text-fg-muted sm:min-h-8",
-                  "transition-colors duration-100 ease-out",
-                  "hover:border-border-strong hover:text-fg",
-                )}
-              >
-                <Sparkles aria-hidden="true" size={13} className="shrink-0" />
-                <span className="min-w-0">
-                  Doplniť{" "}
-                  {[
-                    ...auto.tags.map((tag) => `#${tag}`),
-                    ...(auto.context !== null ? [`@${auto.context}`] : []),
-                  ].join(" ")}
-                </span>
-              </button>
-            </div>
-          ) : null}
-
-          {agendaMode && parsed !== null ? (
-            <p className="pb-1 pl-9 pr-3 text-meta text-fg-muted">
-              {effectiveMode === "deadline"
-                ? "Vznikne deadline: deň a hodina „do“. Neuberá z času dňa, úlohy k nemu pridáš v detaile."
-                : parsed.agendaType !== undefined
-                  ? `Vznikne udalosť — ${parsed.agendaType === "oral" ? "skúšanie" : "písomka"} sa neodškrtáva, prebehne sama. Deň a hodinu doplní rozvrh, keď v texte chýbajú.`
-                  : "Vznikne udalosť: deň a voliteľne čas. Neodškrtáva sa, prebehne sama."}
-            </p>
-          ) : null}
-
-          <ParsePreview
-            parsed={parsed}
-            mode={idea ? "idea" : "task"}
-            projectNames={knownProjects}
-            className="pb-1 pl-9 pr-3"
-          />
-
-          {/*
-            Čipy sú medzi náhľadom a nápovedou zámerne: nad nimi je vidieť, čo
-            už parser rozpoznal, pod nimi to, čo sa dá dopísať ručne.
-          */}
-          <CaptureChips
-            text={value}
-            onEdit={applyEdit}
-            mode={effectiveMode}
-            onModeChange={changeMode}
-            weekStartsOn={weekStartsOn}
-            className="pb-1 pl-9 pr-3"
-          />
-
-          <div className="border-t border-border bg-surface-2 px-3 py-2">
-            <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1.5">
+            <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1.5 max-md:flex-col max-md:items-stretch">
               <p
                 className={cn(
                   "min-w-0 font-mono text-mini",
@@ -838,31 +1100,15 @@ export function QuickCapture({
                   idea ? "font-medium text-accent" : "text-fg-subtle",
                 )}
               >
-                <span className="sm:hidden">
-                  {idea
-                    ? IDEA_HINT_SHORT
-                    : effectiveMode === "event"
-                      ? EVENT_HINT_SHORT
-                      : effectiveMode === "deadline"
-                        ? DEADLINE_HINT_SHORT
-                        : SYNTAX_HINT_SHORT}
-                </span>
-                <span className="hidden sm:inline">
-                  {idea
-                    ? IDEA_HINT
-                    : effectiveMode === "event"
-                      ? EVENT_HINT
-                      : effectiveMode === "deadline"
-                        ? DEADLINE_HINT
-                        : SYNTAX_HINT}
-                </span>
+                <span className="md:hidden">{shortHint}</span>
+                <span className="hidden md:inline">{longHint}</span>
               </p>
 
-              <div className="flex shrink-0 items-center gap-2">
+              <div className="flex shrink-0 items-center gap-2 max-md:w-full">
                 {/* Klávesová nápoveda dáva zmysel len tam, kde je klávesnica. */}
                 <p
                   aria-hidden="true"
-                  className="hidden flex-wrap items-center gap-x-2 gap-y-1 text-mini text-fg-subtle sm:flex"
+                  className="hidden flex-wrap items-center gap-x-2 gap-y-1 text-mini text-fg-subtle md:flex"
                 >
                   <span className="inline-flex items-center gap-1">
                     <Kbd>↵</Kbd> uložiť
@@ -878,29 +1124,20 @@ export function QuickCapture({
 
                 {/*
                   Skutočné tlačidlo, nie ozdoba: na dotykovom zariadení je to
-                  jediná cesta, ako úlohu uložiť. Preto má na mobile plnú
-                  dotykovú plochu (44 × 44 px) a na väčších obrazovkách sa
-                  stiahne, aby neprekrikovalo klávesovú skratku.
+                  jediná cesta, ako úlohu uložiť. Na telefóne má celú šírku
+                  a 52 px, na počítači sa stiahne, aby neprekrikovalo klávesovú
+                  skratku.
                 */}
                 <Button
                   type="submit"
                   variant="primary"
                   // Prázdny názov po vybratí tokenov znamená, že uložiť sa nedá —
                   // tlačidlo to má povedať vopred, nie až server po odoslaní.
-                  disabled={
-                    trimmed === "" ||
-                    (parsed?.title.trim() === "" && !(agendaMode && parsed?.agendaType !== undefined)) ||
-                    isPending
-                  }
-                  className="h-11 min-w-[5.5rem] px-4 sm:h-8 sm:min-w-0 sm:px-3 sm:text-body"
+                  disabled={submitDisabled}
+                  className="h-13 w-full text-row md:h-8 md:w-auto md:min-w-0 md:px-3 md:text-body"
                 >
-                  {idea
-                    ? "Uložiť nápad"
-                    : effectiveMode === "event"
-                      ? "Uložiť udalosť"
-                      : effectiveMode === "deadline"
-                        ? "Uložiť deadline"
-                        : "Uložiť"}
+                  <span className="md:hidden">{phoneLabel}</span>
+                  <span className="hidden md:inline">{baseLabel}</span>
                 </Button>
               </div>
             </div>
@@ -934,4 +1171,31 @@ export function QuickCapture({
       </DialogContent>
     </Dialog>
   );
+}
+
+/**
+ * Písmo poľa aj zrkadla. Telefón: Archivo v rozšírenom reze, 24 px, zalamuje
+ * sa. Počítač: obyčajné písmo 18 px na jednom riadku, presne ako `<input>`.
+ */
+const FIELD_CLASS = [
+  "m-0 block min-w-0 whitespace-pre-wrap break-words px-0 py-2 text-2xl font-bold leading-8",
+  "max-md:[font-family:var(--font-display)] max-md:[font-stretch:125%]",
+  "md:py-[14px] md:text-sm md:font-normal md:leading-5",
+].join(" ");
+
+/** Farba výplne za rozpoznanou značkou — rovnaký význam ako v `ParsePreview`. */
+function markTone(kind: ParsedTokenKind, priority: 1 | 2 | 3 | undefined): string {
+  switch (kind) {
+    case "planned":
+    case "time":
+      return "bg-accent-badge";
+    case "due":
+      return "bg-danger/20";
+    case "priority":
+      return priority === 1 ? "bg-p1/25" : priority === 2 ? "bg-p2/25" : "bg-border-strong/50";
+    case "estimate":
+      return "bg-accent-badge";
+    default:
+      return "bg-border-strong/50";
+  }
 }

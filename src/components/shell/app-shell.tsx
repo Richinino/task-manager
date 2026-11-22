@@ -1,12 +1,6 @@
 import type { ReactNode } from "react";
-import { LogOut } from "lucide-react";
 
-import { Button } from "@/components/ui/button";
-import { SignOutForm } from "@/components/shell/sign-out-form";
-
-import { MobileNav } from "./mobile-nav";
 import { Sidebar, type NavCounts } from "./sidebar";
-import { ThemeToggle } from "./theme-toggle";
 
 export interface AppShellProps {
   user: { name: string | null; email: string };
@@ -18,7 +12,8 @@ export interface AppShellProps {
 
 /**
  * Kostra prihlásenej časti: pripnutý sidebar na desktope,
- * hlavička + spodná lišta na telefóne.
+ * spodná lišta na telefóne (tú vykresľuje layout vnútri `CaptureProvider`,
+ * lebo jej „+" otvára zachytenie).
  */
 export function AppShell({ user, counts, signOutAction, children }: AppShellProps) {
   return (
@@ -27,45 +22,15 @@ export function AppShell({ user, counts, signOutAction, children }: AppShellProp
 
       <div className="flex min-w-0 flex-1 flex-col">
         {/*
-          Na telefóne nie je sidebar, takže téma a odhlásenie musia byť tu.
-          Lišta je vysoká `--bar-height`, aby sa do nej zmestili dotykové ciele 44 px —
-          na 12 rem (48 px) by sa prepínač témy nevošiel.
+          Spodný odstup na telefóne uvoľní spodnú lištu aj s výrezom telefónu
+          (`--bar-inset`) a malú rezervu. Plávajúce tlačidlo zachytenia už
+          nie je — „+" je súčasťou lišty. Téma a odhlásenie sú v Knižnici.
         */}
-        <header className="sticky top-0 z-30 flex h-14 shrink-0 items-center justify-between gap-2 border-b border-border bg-bg/90 px-3 backdrop-blur-sm md:hidden">
-          <span className="min-w-0 truncate text-body font-semibold tracking-tight text-fg">
-            Task manažér
-          </span>
-          <div className="flex shrink-0 items-center gap-1">
-            <ThemeToggle />
-            <SignOutForm action={signOutAction}>
-              <Button
-                type="submit"
-                variant="ghost"
-                size="icon"
-                aria-label="Odhlásiť sa"
-              >
-                <LogOut className="size-[18px] md:size-4" />
-              </Button>
-            </SignOutForm>
-          </div>
-        </header>
-
-        {/*
-          Spodný odstup na telefóne musí uvoľniť všetko, čo nad obsahom pláva:
-            --bar-inset  spodná lišta aj s výrezom telefónu
-          + 0.75rem + 3rem  plávajúce tlačidlo zachytenia (`capture-provider`)
-          Indikátor pripojenia sedí medzi lištou a tlačidlom, takže sa uvoľní
-          spolu s ním. Bez toho posledné riadky zoznamu končia pod tlačidlom.
-
-          Výška lišty je teraz JEDEN token — dovtedy to bola tá istá hodnota
-          opísaná na štyroch nezávislých miestach.
-        */}
-        <main className="min-w-0 flex-1 pb-[calc(var(--bar-inset)+3.75rem)] md:pb-0">
+        <main className="min-w-0 flex-1 pb-[calc(var(--bar-inset)+1rem)] md:pb-0">
           {children}
         </main>
       </div>
 
-      <MobileNav counts={counts} />
     </div>
   );
 }

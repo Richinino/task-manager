@@ -1,0 +1,421 @@
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+  .screens { display: flex; gap: 32px; flex-wrap: wrap; padding: 24px; }
+  .screen, .screen * { box-sizing: border-box; }
+  .screen {
+    width: 360px; height: 780px; position: relative; overflow: hidden; border-radius: 0;
+    background: var(--bg); color: var(--fg);
+    font-family: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+    font-size: 14px; line-height: 1.3;
+  }
+  .screen--light {
+    --bg: #faf9f7; --surface: #ffffff; --surface2: #f4f3f0; --border: #e3e1dd; --borderS: #cfccc6;
+    --fg: #2b2b31; --fgm: #7b7a83; --fgs: #a3a1a9; --acc: #5b52d6; --accfg: #ffffff; --accsoft: #e6e4fb;
+    --p1: #db4133; --p2: #c88431; --p3: #9a99a1; --frog: #c98f20; --frogsoft: #fbefd9;
+    --frogtint: rgba(201,143,32,.14); --danger: #db4133; --dangertint: rgba(219,65,51,.10); --succ: #3f8f5f;
+    --a-uce: #7a4fd6; --a-zdr: #2f8f6a; --a-dom: #c04f7a; --a-fin: #b8801f; --a-pra: #5b52d6;
+  }
+  .screen--dark {
+    --bg: #22242e; --surface: #2b2d38; --surface2: #333542; --border: #3d3f4d; --borderS: #4f5262;
+    --fg: #eceef3; --fgm: #9ea3b3; --fgs: #787d8e; --acc: #8b86ee; --accfg: #1b1d26; --accsoft: #3a3660;
+    --p1: #f08272; --p2: #e5b072; --p3: #787d8e; --frog: #e6b95f; --frogsoft: #3d331c;
+    --frogtint: rgba(230,185,95,.14); --danger: #f08272; --dangertint: rgba(240,130,114,.12); --succ: #63c68c;
+    --a-uce: #a98cf0; --a-zdr: #5cc396; --a-dom: #e88bab; --a-fin: #e5b072; --a-pra: #8b86ee;
+  }
+  .mono { font-family: "JetBrains Mono", ui-monospace, "Cascadia Mono", Consolas, monospace; }
+  .screen svg { display: block; flex: none; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+
+  /* status bar */
+  .status { height: 24px; padding: 0 14px 0 16px; display: flex; align-items: center; justify-content: space-between;
+    font-family: "JetBrains Mono", ui-monospace, Consolas, monospace; font-size: 11px; font-weight: 500; color: var(--fg); }
+  .status .sys { display: flex; align-items: center; gap: 6px; }
+  .status svg { stroke-width: 1.5; }
+
+  /* header */
+  .head { height: 48px; padding: 0 4px 0 16px; display: flex; align-items: center; border-bottom: 1px solid var(--border); background: var(--bg); }
+  .head h1 { margin: 0; font-size: 20px; font-weight: 600; letter-spacing: -.01em; }
+  .head .sub { margin-left: 10px; font-family: "JetBrains Mono", ui-monospace, Consolas, monospace; font-size: 11px; color: var(--fgm); }
+  .head .count { margin-left: auto; font-family: "JetBrains Mono", ui-monospace, Consolas, monospace; font-size: 12px; color: var(--fgm); }
+  .ibtn { width: 44px; height: 44px; border: 0; background: transparent; color: var(--fg); display: flex; align-items: center; justify-content: center; border-radius: 5px; padding: 0; }
+
+  /* day ruler */
+  .ruler { height: 60px; padding: 4px 16px 0; border-bottom: 1px solid var(--border); background: var(--bg); }
+  .ruler-row { display: flex; gap: 6px; height: 28px; }
+  .ruler-lbl { width: 14px; margin-top: 12px; font-family: "JetBrains Mono", ui-monospace, Consolas, monospace; font-size: 10px; line-height: 12px; color: var(--fgs); }
+  .ruler-lbl.r { text-align: right; width: 14px; }
+  .track { position: relative; flex: 1; height: 28px; }
+  .track .bar { position: absolute; left: 0; right: 0; top: 16px; height: 4px; background: var(--border); border-radius: 2px; }
+  .track .tick { position: absolute; top: 14px; width: 1px; height: 8px; background: var(--borderS); }
+  .track .blk { position: absolute; top: 16px; height: 4px; border-radius: 1px; }
+  .track .school { left: 6.667%; width: 36.667%; background: var(--fgs); }
+  .track .flor { left: 63.333%; width: 10%; background: var(--accsoft); border: 1px solid var(--acc); }
+  .track .past { position: absolute; left: 0; width: 19.11%; top: 16px; height: 4px; background: repeating-linear-gradient(135deg, var(--bg) 0 1.5px, transparent 1.5px 3px); }
+  .track .now { position: absolute; left: 19.11%; top: 14px; width: 8px; height: 8px; margin-left: -4px; border-radius: 50%; background: var(--acc); }
+  .track .nowt { position: absolute; left: 19.11%; top: 0; transform: translateX(-50%); font-family: "JetBrains Mono", ui-monospace, Consolas, monospace; font-size: 10px; line-height: 12px; color: var(--acc); font-weight: 500; }
+  .budget { display: flex; gap: 14px; height: 22px; align-items: center; font-family: "JetBrains Mono", ui-monospace, Consolas, monospace; font-size: 11px; color: var(--fg); white-space: nowrap; }
+  .budget span { color: var(--fgs); margin-right: 4px; }
+
+  /* section label */
+  .lbl { height: 28px; padding: 0 16px; display: flex; align-items: center; justify-content: space-between; background: var(--surface2);
+    border-bottom: 1px solid var(--border); font-family: "JetBrains Mono", ui-monospace, Consolas, monospace; font-size: 10px; letter-spacing: .14em; text-transform: uppercase; color: var(--fgm); }
+  .lbl .tot { letter-spacing: 0; text-transform: none; font-size: 11px; color: var(--fg); }
+
+  /* school strip */
+  .school-band { padding: 8px 16px 0; border-bottom: 1px solid var(--border); background: var(--bg); height: 98px; }
+  .school-band .t { height: 12px; margin-bottom: 6px; font-family: "JetBrains Mono", ui-monospace, Consolas, monospace; font-size: 10px; line-height: 12px; letter-spacing: .14em; text-transform: uppercase; color: var(--fgm); }
+  .cells { display: flex; gap: 4px; height: 44px; align-items: stretch; }
+  .cell { flex: 1; border: 1px solid var(--border); border-radius: 4px; background: var(--surface); padding: 5px 0 0 6px; font-family: "JetBrains Mono", ui-monospace, Consolas, monospace; position: relative; overflow: hidden; }
+  .cell b { display: block; font-size: 12px; font-weight: 500; line-height: 16px; }
+  .cell i { display: block; font-style: normal; font-size: 10px; line-height: 14px; color: var(--fgm); white-space: nowrap; }
+  .cell.done { background: var(--surface2); color: var(--fgs); }
+  .cell.done b { text-decoration: line-through; }
+  .cell.done i { color: var(--fgs); }
+  .cell.done svg { position: absolute; right: 4px; top: 5px; color: var(--succ); stroke-width: 2; }
+  .cell.now { flex: 1.45; border: 1.5px solid var(--acc); background: var(--accsoft); padding: 4px 0 0 5px; }
+  .cell.now i { color: var(--acc); }
+  .gap { width: 14px; flex: none; display: flex; justify-content: center; }
+  .gap span { display: block; width: 0; border-left: 1px dashed var(--borderS); }
+  .school-note { height: 28px; padding-top: 6px; font-size: 12px; line-height: 16px; color: var(--fgm); }
+
+  /* priority (frog) band */
+  .frog { height: 68px; display: flex; align-items: center; gap: 10px; padding: 0 16px 0 14px; background: var(--frogtint); border-left: 2px solid var(--frog); border-bottom: 1px solid var(--border); }
+  .frog svg { color: var(--frog); }
+  .frog .tx { flex: 1; min-width: 0; }
+  .frog .ti { font-size: 14px; font-weight: 500; line-height: 18px; }
+  .frog .me { margin-top: 3px; display: flex; gap: 10px; font-family: "JetBrains Mono", ui-monospace, Consolas, monospace; font-size: 11px; color: var(--fgm); }
+  .btn-frog { height: 32px; padding: 0 12px; border: 0; border-radius: 5px; background: var(--frog); color: #ffffff; font-family: inherit; font-size: 13px; font-weight: 600; flex: none; }
+
+  /* rows */
+  .row { min-height: 60px; display: flex; align-items: center; gap: 10px; padding: 0 16px; background: var(--surface); border-bottom: 1px solid var(--border); position: relative; }
+  .row .cb { width: 18px; height: 18px; border: 1.5px solid var(--borderS); border-radius: 4px; flex: none; display: flex; align-items: center; justify-content: center; }
+  .row .pd { width: 8px; height: 8px; border-radius: 50%; flex: none; }
+  .row .pd.p1 { background: var(--p1); }
+  .row .pd.p2 { background: var(--p2); }
+  .row .pd.p0 { visibility: hidden; }
+  .row .tx { flex: 1; min-width: 0; }
+  .row .ti { font-size: 14px; font-weight: 500; line-height: 19px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .row .me { margin-top: 2px; font-family: "JetBrains Mono", ui-monospace, Consolas, monospace; font-size: 12px; line-height: 16px; color: var(--fgm); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .row .rt { display: flex; align-items: center; gap: 7px; flex: none; font-family: "JetBrains Mono", ui-monospace, Consolas, monospace; font-size: 12px; color: var(--fgm); }
+  .row .ad { width: 8px; height: 8px; border-radius: 50%; }
+  .ad.uce { background: var(--a-uce); } .ad.zdr { background: var(--a-zdr); } .ad.dom { background: var(--a-dom); } .ad.fin { background: var(--a-fin); } .ad.pra { background: var(--a-pra); }
+  .row.over { background: var(--dangertint); border-left: 2px solid var(--danger); padding-left: 14px; }
+  .row.over .me { color: var(--danger); display: flex; gap: 10px; }
+  .row.finished .ti { text-decoration: line-through; color: var(--fgs); font-weight: 400; }
+  .row.finished .me, .row.finished .rt { color: var(--fgs); }
+  .row.finished .cb { background: var(--succ); border-color: var(--succ); color: #ffffff; }
+  .row.finished .cb svg { stroke-width: 2.2; }
+  .swipe { position: relative; overflow: hidden; border-bottom: 1px solid var(--border); background: var(--succ); }
+  .swipe .back { position: absolute; left: 0; top: 0; bottom: 0; width: 96px; display: flex; align-items: center; gap: 8px; padding-left: 16px; color: #ffffff; font-size: 13px; font-weight: 600; }
+  .swipe .back svg { stroke-width: 2.2; }
+  .swipe .row { transform: translateX(96px); border-bottom: 0; }
+  .list { position: absolute; left: 0; right: 0; top: 0; bottom: 0; }
+
+  /* command line + nav */
+  .cmd { position: absolute; left: 0; right: 0; bottom: 80px; height: 52px; background: var(--surface); border-top: 1px solid var(--border); display: flex; align-items: center; gap: 10px; padding: 0 16px; font-family: "JetBrains Mono", ui-monospace, Consolas, monospace; }
+  .cmd .pr { color: var(--acc); font-size: 18px; font-weight: 500; line-height: 1; }
+  .cmd .ph { color: var(--fgs); font-size: 14px; }
+  .cmd .hint { margin-left: auto; min-width: 22px; height: 22px; padding: 0 6px; display: flex; align-items: center; justify-content: center; border: 1px solid var(--border); border-radius: 4px; font-size: 11px; color: var(--fgs); }
+  .nav { position: absolute; left: 0; right: 0; bottom: 0; height: 80px; padding-bottom: 16px; box-sizing: border-box; background: var(--surface); border-top: 1px solid var(--border); display: flex; }
+  .nav .it { flex: 1; position: relative; display: flex; flex-direction: column; align-items: center; padding-top: 9px; gap: 4px; color: var(--fgm); font-size: 11px; line-height: 14px; }
+  .nav .it svg { stroke-width: 1.6; }
+  .nav .it.on { color: var(--acc); font-weight: 500; }
+  .nav .it.on::before { content: ""; position: absolute; left: 14px; right: 14px; top: -1px; height: 2px; background: var(--acc); }
+  .nav .dot { position: absolute; top: 8px; left: calc(50% + 6px); width: 7px; height: 7px; border-radius: 50%; background: var(--acc); }
+  .gest { position: absolute; left: 50%; bottom: 8px; width: 108px; height: 4px; margin-left: -54px; border-radius: 2px; background: var(--fg); opacity: .55; z-index: 5; }
+
+  /* screen 2 */
+  .behind { position: absolute; left: 0; right: 0; top: 24px; bottom: 0; opacity: .35; }
+  .scrim { position: absolute; inset: 0; background: rgba(0,0,0,.5); }
+  .screen--dark .status { position: relative; z-index: 4; }
+  .sheet { position: absolute; left: 0; right: 0; bottom: 260px; background: var(--surface); border-top: 1px solid var(--border); border-radius: 6px 6px 0 0;
+    box-shadow: 0 18px 40px -24px rgba(0,0,0,.55); padding: 12px 16px 10px; z-index: 3; }
+  .sh-top { display: flex; align-items: center; justify-content: space-between; height: 32px; }
+  .sh-top .l { font-family: "JetBrains Mono", ui-monospace, Consolas, monospace; font-size: 10px; letter-spacing: .14em; color: var(--fgm); text-transform: uppercase; }
+  .seg { display: flex; height: 32px; border: 1px solid var(--border); border-radius: 5px; overflow: hidden; background: var(--bg); }
+  .seg span { width: 68px; display: flex; align-items: center; justify-content: center; font-size: 13px; color: var(--fgm); }
+  .seg span.on { background: var(--acc); color: var(--accfg); font-weight: 600; }
+  .inp { margin-top: 10px; height: 56px; padding: 6px 0; font-family: "JetBrains Mono", ui-monospace, Consolas, monospace; font-size: 15px; line-height: 22px; color: var(--fg); }
+  .inp .acc { color: var(--acc); } .inp .ok { color: var(--succ); } .inp .est { color: #e5b072; } .inp .pri { color: var(--p2); }
+  .caret { display: inline-block; width: 2px; height: 17px; background: var(--acc); vertical-align: -3px; margin-left: 1px; }
+  .parse { margin-top: 6px; padding: 8px 0; border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); display: grid; grid-template-columns: 72px 1fr; row-gap: 1px; font-family: "JetBrains Mono", ui-monospace, Consolas, monospace; font-size: 12px; line-height: 19px; }
+  .parse .pk { color: var(--fgs); } .parse .pv { color: var(--fg); }
+  .syn { margin-top: 8px; display: flex; flex-wrap: wrap; gap: 3px 12px; font-family: "JetBrains Mono", ui-monospace, Consolas, monospace; font-size: 11px; line-height: 14px; color: var(--fgs); }
+  .syn b { font-weight: 500; color: var(--fgm); margin-right: 4px; }
+  .sh-act { margin-top: 10px; display: flex; align-items: center; justify-content: space-between; height: 44px; }
+  .ghost { height: 40px; padding: 0 8px; display: flex; align-items: center; gap: 8px; border: 0; background: transparent; color: var(--fgm); font-family: "JetBrains Mono", ui-monospace, Consolas, monospace; font-size: 12px; }
+  .ghost kbd { font: inherit; border: 1px solid var(--border); border-radius: 4px; padding: 1px 5px; color: var(--fgs); }
+  .btn-acc { height: 40px; padding: 0 24px; border: 0; border-radius: 5px; background: var(--acc); color: var(--accfg); font-family: inherit; font-size: 14px; font-weight: 600; }
+
+  .kb { position: absolute; left: 0; right: 0; bottom: 0; height: 260px; background: #1b1d26; z-index: 3; padding: 0 4px; }
+  .sug { height: 36px; display: flex; align-items: center; }
+  .sug span { flex: 1; text-align: center; font-size: 15px; color: #d6d9e3; position: relative; }
+  .sug span + span::before { content: ""; position: absolute; left: 0; top: 4px; bottom: 4px; width: 1px; background: #3a3c48; }
+  .kr { height: 42px; margin-top: 6px; display: flex; gap: 4px; }
+  .kr.i { padding: 0 16px; }
+  .k { flex: 1; border-radius: 6px; background: #3a3c48; color: #eceef3; display: flex; align-items: center; justify-content: center; font-size: 17px; font-weight: 400; }
+  .k.w { flex: 1.45; background: #2c2e39; }
+  .k.sp { flex: 4.6; }
+  .k.en { flex: 1.45; background: #5b52d6; color: #ffffff; }
+  .k svg { stroke-width: 1.8; }
+</style>
+<div class="screens">
+
+  <section class="screen screen--light" aria-label="Dnes">
+    <div class="status">
+      <span>9:52</span>
+      <span class="sys">
+        <svg width="14" height="12" viewBox="0 0 14 12" aria-hidden="true"><path d="M1 11h1M5 11V8M9 11V5M13 11V1"/></svg>
+        <svg width="14" height="12" viewBox="0 0 14 12" aria-hidden="true"><path d="M1 4.5a8.5 8.5 0 0 1 12 0M3.2 7a5.5 5.5 0 0 1 7.6 0M5.5 9.4a2.2 2.2 0 0 1 3 0"/></svg>
+        <svg width="22" height="12" viewBox="0 0 22 12" aria-hidden="true"><rect x="1" y="2" width="17" height="8" rx="2"/><path d="M20 5v2"/><rect x="2.8" y="3.8" width="10.5" height="4.4" rx="1" fill="currentColor" stroke="none"/></svg>
+        <span>78</span>
+      </span>
+    </div>
+
+    <div class="head">
+      <h1>Dnes</h1>
+      <span class="sub">po 23. 11.</span>
+      <span class="count">1/7</span>
+      <button class="ibtn" type="button" aria-label="Kalendár">
+        <svg width="20" height="20" viewBox="0 0 20 20" aria-hidden="true"><rect x="3" y="4" width="14" height="13" rx="2"/><path d="M3 8h14M7 2v3M13 2v3"/></svg>
+      </button>
+    </div>
+
+    <div class="ruler">
+      <div class="ruler-row">
+        <span class="ruler-lbl">07</span>
+        <div class="track">
+          <div class="bar"></div>
+          <span class="tick" style="left:0%"></span><span class="tick" style="left:6.667%"></span><span class="tick" style="left:13.333%"></span><span class="tick" style="left:20%"></span><span class="tick" style="left:26.667%"></span><span class="tick" style="left:33.333%"></span><span class="tick" style="left:40%"></span><span class="tick" style="left:46.667%"></span><span class="tick" style="left:53.333%"></span><span class="tick" style="left:60%"></span><span class="tick" style="left:66.667%"></span><span class="tick" style="left:73.333%"></span><span class="tick" style="left:80%"></span><span class="tick" style="left:86.667%"></span><span class="tick" style="left:93.333%"></span><span class="tick" style="left:99.9%"></span>
+          <div class="blk school"></div>
+          <div class="blk flor"></div>
+          <div class="past"></div>
+          <span class="nowt">9:52</span>
+          <div class="now"></div>
+        </div>
+        <span class="ruler-lbl r">22</span>
+      </div>
+      <div class="budget">
+        <div><span>voľné</span>7 h</div>
+        <div><span>plán</span>3 h 05</div>
+        <div><span>rezerva</span>3 h 55</div>
+      </div>
+    </div>
+
+    <div class="school-band">
+      <div class="t">Škola</div>
+      <div class="cells">
+        <div class="cell done"><b>SJL</b><i>8:00</i><svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true"><path d="M2 6.5l2.5 2.5L10 3.5"/></svg></div>
+        <div class="cell done"><b>MAT</b><i>8:55</i><svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true"><path d="M2 6.5l2.5 2.5L10 3.5"/></svg></div>
+        <div class="gap" aria-label="prestávka"><span></span></div>
+        <div class="cell now"><b>FYZ</b><i>10:00 F2</i></div>
+        <div class="cell"><b>ANJ</b><i>10:55</i></div>
+        <div class="cell"><b>INF</b><i>11:50</i></div>
+        <div class="cell"><b>TSV</b><i>12:45</i></div>
+      </div>
+      <div class="school-note">Teraz prestávka, o 8 min fyzika v F2</div>
+    </div>
+
+    <div class="frog">
+      <svg width="20" height="20" viewBox="0 0 20 20" aria-hidden="true"><path d="M10 2.5l2.3 4.8 5.2.7-3.8 3.6.9 5.2L10 14.3 5.4 16.8l.9-5.2L2.5 8l5.2-.7z"/></svg>
+      <div class="tx">
+        <div class="ti">Dokončiť model držiaka na 3D tlačiareň</div>
+        <div class="me"><span>+3D tlačiareň</span><span>45 min</span></div>
+      </div>
+      <button class="btn-frog" type="button">Začať</button>
+    </div>
+
+    <div class="lbl"><span>Po termíne</span></div>
+    <div class="row over">
+      <span class="cb"></span>
+      <span class="pd p1"></span>
+      <div class="tx">
+        <div class="ti">Odovzdať prihlášku na olympiádu z INF</div>
+        <div class="me"><span>pred 3 dňami</span><span>15 min</span></div>
+      </div>
+      <div class="rt"><span class="ad uce"></span></div>
+    </div>
+
+    <div class="lbl"><span>Naplánované na dnes</span><span class="tot mono">3 h 05 min</span></div>
+
+    <div style="position:absolute; left:0; right:0; top:414px; bottom:116px; overflow:hidden;">
+      <div class="row">
+        <span class="cb"></span>
+        <span class="pd p0"></span>
+        <div class="tx">
+          <div class="ti">Naučiť sa na písomku z FYZ</div>
+          <div class="me">FYZ učiť sa</div>
+        </div>
+        <div class="rt"><span class="ad uce"></span><span>40 min</span></div>
+      </div>
+      <div class="row">
+        <span class="cb"></span>
+        <span class="pd p0"></span>
+        <div class="tx">
+          <div class="ti">Domáca úloha MAT — str. 54/3–8</div>
+          <div class="me">du MAT do zajtra</div>
+        </div>
+        <div class="rt"><span class="ad uce"></span><span>25 min</span></div>
+      </div>
+      <div class="swipe">
+        <div class="back">
+          <svg width="20" height="20" viewBox="0 0 20 20" aria-hidden="true"><path d="M4 10.5l4 4 8-9"/></svg>
+          <span>Hotovo</span>
+        </div>
+        <div class="row">
+          <span class="cb"></span>
+          <span class="pd p0"></span>
+          <div class="tx">
+            <div class="ti">Cvičiť gitaru — akordy F a Bm</div>
+            <div class="me">✦ Hudba ↺</div>
+          </div>
+          <div class="rt"><span class="ad uce"></span><span>30 min</span></div>
+        </div>
+      </div>
+      <div class="row">
+        <span class="cb"></span>
+        <span class="pd p2"></span>
+        <div class="tx">
+          <div class="ti">Zavolať do servisu kvôli bicyklu</div>
+          <div class="me">@telefon</div>
+        </div>
+        <div class="rt"><span class="ad dom"></span><span>10 min</span></div>
+      </div>
+      <div class="row">
+        <span class="cb"></span>
+        <span class="pd p0"></span>
+        <div class="tx">
+          <div class="ti">Beh 5 km</div>
+          <div class="me">↺</div>
+        </div>
+        <div class="rt"><span class="ad zdr"></span><span>35 min</span></div>
+      </div>
+      <div class="row finished">
+        <span class="cb"><svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true"><path d="M2 6.5l2.5 2.5L10 3.5"/></svg></span>
+        <span class="pd p0"></span>
+        <div class="tx">
+          <div class="ti">Zaliať kvety</div>
+          <div class="me">hotovo 7:20</div>
+        </div>
+        <div class="rt"><span class="ad dom"></span><span>5 min</span></div>
+      </div>
+    </div>
+
+    <div class="cmd">
+      <span class="pr">›</span>
+      <span class="ph">Zachytiť…</span>
+      <span class="hint">n</span>
+    </div>
+    <nav class="nav" aria-label="Hlavná navigácia">
+      <div class="it on">
+        <svg width="20" height="20" viewBox="0 0 20 20" aria-hidden="true"><rect x="3" y="4" width="14" height="13" rx="2"/><path d="M3 8h14M7 2v3M13 2v3"/></svg>
+        <span>Dnes</span>
+      </div>
+      <div class="it">
+        <svg width="20" height="20" viewBox="0 0 20 20" aria-hidden="true"><rect x="3" y="4" width="14" height="12" rx="2"/><path d="M8 4v12M13 4v12"/></svg>
+        <span>Týždeň</span>
+      </div>
+      <div class="it">
+        <svg width="20" height="20" viewBox="0 0 20 20" aria-hidden="true"><path d="M3 11l2-6h10l2 6v5H3zM3 11h4l1 2h4l1-2h4"/></svg>
+        <span>Inbox</span>
+        <i class="dot"></i>
+      </div>
+      <div class="it">
+        <svg width="20" height="20" viewBox="0 0 20 20" aria-hidden="true"><path d="M2.5 5h5.5l2 2h7.5v9h-15z"/></svg>
+        <span>Projekty</span>
+      </div>
+      <div class="it">
+        <svg width="20" height="20" viewBox="0 0 20 20" aria-hidden="true"><circle cx="4.5" cy="10" r="1" fill="currentColor"/><circle cx="10" cy="10" r="1" fill="currentColor"/><circle cx="15.5" cy="10" r="1" fill="currentColor"/></svg>
+        <span>Viac</span>
+      </div>
+    </nav>
+    <div class="gest"></div>
+  </section>
+
+  <section class="screen screen--dark" aria-label="Zachytenie">
+    <div class="status">
+      <span>9:52</span>
+      <span class="sys">
+        <svg width="14" height="12" viewBox="0 0 14 12" aria-hidden="true"><path d="M1 11h1M5 11V8M9 11V5M13 11V1"/></svg>
+        <svg width="14" height="12" viewBox="0 0 14 12" aria-hidden="true"><path d="M1 4.5a8.5 8.5 0 0 1 12 0M3.2 7a5.5 5.5 0 0 1 7.6 0M5.5 9.4a2.2 2.2 0 0 1 3 0"/></svg>
+        <svg width="22" height="12" viewBox="0 0 22 12" aria-hidden="true"><rect x="1" y="2" width="17" height="8" rx="2"/><path d="M20 5v2"/><rect x="2.8" y="3.8" width="10.5" height="4.4" rx="1" fill="currentColor" stroke="none"/></svg>
+        <span>78</span>
+      </span>
+    </div>
+
+    <div class="behind" aria-hidden="true">
+      <div class="head">
+        <h1>Dnes</h1>
+        <span class="sub">po 23. 11.</span>
+        <span class="count">1/7</span>
+        <span class="ibtn">
+          <svg width="20" height="20" viewBox="0 0 20 20"><rect x="3" y="4" width="14" height="13" rx="2"/><path d="M3 8h14M7 2v3M13 2v3"/></svg>
+        </span>
+      </div>
+      <div class="lbl"><span>Naplánované na dnes</span><span class="tot mono">3 h 05 min</span></div>
+      <div class="row">
+        <span class="cb"></span><span class="pd p0"></span>
+        <div class="tx"><div class="ti">Naučiť sa na písomku z FYZ</div><div class="me">FYZ učiť sa</div></div>
+        <div class="rt"><span class="ad uce"></span><span>40 min</span></div>
+      </div>
+      <div class="row">
+        <span class="cb"></span><span class="pd p0"></span>
+        <div class="tx"><div class="ti">Domáca úloha MAT — str. 54/3–8</div><div class="me">du MAT do zajtra</div></div>
+        <div class="rt"><span class="ad uce"></span><span>25 min</span></div>
+      </div>
+      <div class="row">
+        <span class="cb"></span><span class="pd p0"></span>
+        <div class="tx"><div class="ti">Cvičiť gitaru — akordy F a Bm</div><div class="me">✦ Hudba ↺</div></div>
+        <div class="rt"><span class="ad uce"></span><span>30 min</span></div>
+      </div>
+    </div>
+    <div class="scrim"></div>
+
+    <div class="sheet">
+      <div class="sh-top">
+        <span class="l">Zachytiť</span>
+        <div class="seg"><span class="on">Úloha</span><span>Nápad</span></div>
+      </div>
+      <div class="inp">kúpiť filament PETG <span class="acc">+3D tlačiareň</span> <span class="ok">zajtra</span> <span class="est">30m</span> <span class="pri">!2</span><i class="caret"></i></div>
+      <div class="parse">
+        <span class="pk">názov</span><span class="pv">kúpiť filament PETG</span>
+        <span class="pk">projekt</span><span class="pv">3D tlačiareň</span>
+        <span class="pk">plán</span><span class="pv">zajtra, ut 24. 11.</span>
+        <span class="pk">odhad</span><span class="pv">30 min</span>
+        <span class="pk">priorita</span><span class="pv">2</span>
+      </div>
+      <div class="syn">
+        <span><b>v piatok</b>plán</span>
+        <span><b>do 31.3.</b>termín</span>
+        <span><b>!1</b></span>
+        <span><b>30m</b></span>
+        <span><b>@telefon</b></span>
+        <span><b>#štítok</b></span>
+        <span><b>+projekt</b></span>
+      </div>
+      <div class="sh-act">
+        <button class="ghost" type="button"><kbd>Esc</kbd>zrušiť</button>
+        <button class="btn-acc" type="button">Uložiť</button>
+      </div>
+    </div>
+
+    <div class="kb" aria-label="Klávesnica">
+      <div class="sug"><span>PETG</span><span>petg</span><span>PETG-čko</span></div>
+      <div class="kr"><span class="k">q</span><span class="k">w</span><span class="k">e</span><span class="k">r</span><span class="k">t</span><span class="k">z</span><span class="k">u</span><span class="k">i</span><span class="k">o</span><span class="k">p</span></div>
+      <div class="kr i"><span class="k">a</span><span class="k">s</span><span class="k">d</span><span class="k">f</span><span class="k">g</span><span class="k">h</span><span class="k">j</span><span class="k">k</span><span class="k">l</span></div>
+      <div class="kr">
+        <span class="k w"><svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true"><path d="M9 3l6 6h-3.5v5h-5V9H3z"/></svg></span>
+        <span class="k">y</span><span class="k">x</span><span class="k">c</span><span class="k">v</span><span class="k">b</span><span class="k">n</span><span class="k">m</span>
+        <span class="k w"><svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true"><path d="M7 4h8v10H7l-5-5zM9.5 7l4 4M13.5 7l-4 4"/></svg></span>
+      </div>
+      <div class="kr">
+        <span class="k w">123</span>
+        <span class="k">,</span>
+        <span class="k sp"></span>
+        <span class="k">.</span>
+        <span class="k en"><svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true"><path d="M15 4v6H4M7.5 6.5L4 10l3.5 3.5"/></svg></span>
+      </div>
+    </div>
+    <div class="gest" style="background:#eceef3; opacity:.7;"></div>
+  </section>
+
+</div>
