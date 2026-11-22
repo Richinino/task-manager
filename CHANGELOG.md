@@ -24,6 +24,16 @@ Všetky podstatné zmeny v projekte. Formát podľa
   priradí. Bežné meno jazyka („nemčina", „angličtina", „slovenčina") appka
   pozná sama, s diakritikou aj bez nej, v každom páde.
 
+- **Celý Google Kalendár** — appka číta všetky tvoje kalendáre, nielen
+  hlavný: rodinný, zdieľané aj sviatky. Udalosti sú na Dnes, v Týždni aj
+  v Mesiaci (viacdňové ako pruh) a Claude ich vidí cez `get_day`
+  a `get_upcoming`. Pri každej je kalendár a farba (aj vlastná farba
+  udalosti ako kategória), miesto, popis, druh (narodeniny, z Gmailu…),
+  voľný či obsadený čas, kto ju pridal, hostia s odpoveďami, opakovanie,
+  pripomienky a odkaz do Google aj na videohovor. V Nastaveniach si pri
+  každom kalendári vyberieš, či sa ukazuje a či sa ráta do času dňa;
+  predvolene sa ráta len hlavný. Popis v [docs/KALENDAR.md](docs/KALENDAR.md).
+
 ### Zmenené
 
 - **Rozvrh cez víkend** — od soboty sa otvorí už týždeň, ktorý príde, nie
@@ -138,6 +148,17 @@ All notable changes to this project. The format follows
   each subject ("matika", "nj") and quick capture assigns it. The everyday
   name of a language subject ("nemčina", "angličtina", "slovenčina") is
   recognised out of the box, with or without diacritics, in any case form.
+
+- **All of Google Calendar** — the app reads all your calendars, not just
+  the primary one: family, shared and holidays. Events show in Today, Week
+  and Month (multi-day ones as bars) and Claude sees them via `get_day` and
+  `get_upcoming`. Each carries its calendar and colour (an event's own
+  colour as a category), place, description, kind (birthday, from Gmail…),
+  free or busy, who added it, guests with their replies, recurrence,
+  reminders and links to Google and the video call. In Settings you choose
+  per calendar whether it is shown and whether it counts toward the day's
+  time; by default only the primary one counts. Details in
+  [docs/KALENDAR.md](docs/KALENDAR.md) (Slovak).
 
 ### Changed
 

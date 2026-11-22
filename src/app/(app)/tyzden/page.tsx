@@ -42,6 +42,8 @@ import { capitalizeSk } from "@/lib/day-label";
 import { dayHeadline, dayLoad, pickDots, weekRangeShort, weekdayShort } from "@/lib/plan-mobile";
 import { toTimelineInput } from "@/server/queries/day-timeline";
 import { getLessonsForRange, listBreaks } from "@/server/queries/school";
+import { isEventOnDay } from "@/lib/google-calendar";
+import { getCalendarEvents } from "@/server/queries/calendar";
 
 export const metadata: Metadata = {
   title: "Týždeň",
@@ -93,6 +95,7 @@ export default async function TyzdenPage({ searchParams }: TyzdenPageProps) {
     agenda,
     lessons,
     breaks,
+    calendar,
   ] = await Promise.all([
     // Celý týždeň jedným dotazom — sedem samostatných by bolo sedem ciest do databázy.
     getTasksForRange(user.id, weekStart, weekEnd),
@@ -115,6 +118,7 @@ export default async function TyzdenPage({ searchParams }: TyzdenPageProps) {
     // Telefón: voľný čas dňa = okno dňa mínus hodiny a udalosti.
     getLessonsForRange(user.id, weekStart, weekEnd),
     listBreaks(user.id),
+    getCalendarEvents(user.id, user.settings, weekStart, weekEnd),
   ]);
 
   // Vek nápadu počíta server. V klientovi by `new Date()` po hydratácii dal
@@ -157,9 +161,8 @@ export default async function TyzdenPage({ searchParams }: TyzdenPageProps) {
   ].filter((part): part is string => part !== null);
 
   /*
-    Telefón: riadok na deň. Voľný čas = okno dňa − hodiny − udalosti z agendy.
-    Kalendár Google sa tu zámerne nečíta (jeden dotaz na deň by týždeň
-    spomalil), takže schôdzky z kalendára voľný čas neuberajú.
+    Telefón: riadok na deň. Voľný čas = okno dňa − hodiny − udalosti z agendy
+    − udalosti z Google Kalendára (načítané raz pre celý týždeň vyššie).
   */
   const mobileDays: MobileWeekDay[] = days.map((iso) => {
     const dayTasks = openTasks.filter((task) => task.plannedDate === iso);
@@ -171,7 +174,7 @@ export default async function TyzdenPage({ searchParams }: TyzdenPageProps) {
         dayEndHour: user.settings.dayEndHour,
         lessons: lessons.filter((lesson) => lesson.date === iso),
         breaks,
-        events: [],
+        events: calendar.filter((event) => isEventOnDay(event, iso)),
         agenda,
         planned: [],
       }),
@@ -260,6 +263,7 @@ export default async function TyzdenPage({ searchParams }: TyzdenPageProps) {
         capacityMin={capacityMin}
         postponeWarnAt={user.settings.postponeWarnAt}
         agenda={agenda}
+        calendar={calendar}
       />
 
       <ScreenFooter summary={summary.join(" · ")} />

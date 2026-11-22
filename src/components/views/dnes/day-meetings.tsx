@@ -1,44 +1,30 @@
-import { cn } from "@/lib/utils";
 import { CalendarClock } from "lucide-react";
 
-import type { CalendarEvent } from "@/server/queries/calendar";
+import { CalendarEventItem } from "@/components/calendar/calendar-event-item";
+import type { DayCalendarEvent } from "@/lib/google-calendar";
+import { cn } from "@/lib/utils";
 
 export interface DayMeetingsProps {
   /**
    * Bez vlastnej karty — sekciu vtedy ohraničuje pravá lišta.
-   * V návrhu je PORADY jedna zo štyroch sekcií vnútri jednej plochy,
+   * V návrhu je KALENDÁR jedna zo štyroch sekcií vnútri jednej plochy,
    * nie samostatná kartička.
    */
   flush?: boolean;
-  /** Udalosti dňa z kalendára, zoradené podľa začiatku. */
-  events: readonly CalendarEvent[];
+  /** Udalosti dňa z Google Kalendára, celodenné prvé, potom podľa začiatku. */
+  events: readonly DayCalendarEvent[];
 }
 
 /**
- * Čas porady ako `08:30–09:00`. `null`, keď sa čas nedá zložiť.
+ * Udalosti dňa zo všetkých zobrazených kalendárov.
  *
- * Google občas vráti pečiatku, ktorú sa nepodarí naformátovať (`start` je
- * potom `null`), a stáva sa aj to, že chýba koniec. Radšej ukážeme názov bez
- * času než riadok s pomlčkou, ktorá nič nehovorí.
- */
-function timeRange(event: CalendarEvent): string | null {
-  if (event.start === null) return null;
-  return event.end === null ? event.start : `${event.start}–${event.end}`;
-}
-
-/**
- * Časová os porád dňa.
+ * Doplnok k rozpočtu času: rozpočet povie, koľko času udalosti zjedli, tento
+ * zoznam povie, ktoré to boli. Každý riadok sa rozbalí do detailu — miesto,
+ * popis, kto ju pridal, hostia, pripomienky, odkaz do Google.
  *
- * Doplnok k rozpočtu času: rozpočet povie, koľko času porady zjedli, tento
- * zoznam povie, ktoré to boli. Preto sedí hneď pod ním.
- *
- * Keď v kalendári nič nie je — alebo kalendár vôbec nie je pripojený a
- * `getDayEvents` vrátil prázdne pole — komponent nevykreslí nič. Sekcia
- * „žiadne porady" je šum a výzva na pripojenie kalendára by z doplnku robila
+ * Keď v kalendári nič nie je — alebo kalendár vôbec nie je pripojený —
+ * komponent nevykreslí nič. Výzva na pripojenie by z doplnku robila
  * povinnosť; appka bez kalendára funguje ďalej a nemá to komentovať.
- *
- * Názvy porád sú CUDZIE dáta z Google Calendar. Vykresľujú sa výhradne ako
- * text cez JSX, ktorý ich escapuje — nikdy ako HTML.
  */
 export function DayMeetings({ events, flush = false }: DayMeetingsProps) {
   if (events.length === 0) return null;
@@ -48,63 +34,38 @@ export function DayMeetings({ events, flush = false }: DayMeetingsProps) {
 
   return (
     <section
-      aria-labelledby="dnes-porady"
+      aria-labelledby="dnes-kalendar"
       className={cn(!flush && "rounded border border-border bg-surface")}
     >
       <h2
-        id="dnes-porady"
+        id="dnes-kalendar"
         className={cn(
           "label flex min-w-0 items-center gap-2 text-fg-muted",
           flush ? "pb-2" : "px-3 pb-1.5 pt-2.5",
         )}
       >
         <CalendarClock aria-hidden="true" size={13} className="shrink-0" />
-        <span className="min-w-0 truncate">Porady</span>
+        <span className="min-w-0 truncate">Kalendár</span>
       </h2>
 
       {timed.length > 0 ? (
-        <ul className="flex flex-col">
-          {timed.map((event) => {
-            const range = timeRange(event);
-            return (
-              <li
-                key={event.id}
-                className="flex min-h-11 items-center gap-3 px-3 py-1.5 sm:min-h-0"
-              >
-                {range === null ? null : (
-                  // Časy sú v pásme používateľa a majú pod sebou držať stĺpec,
-                  // preto font-mono tabular-nums a žiadne zalamovanie.
-                  <span className="shrink-0 text-xs tabular-nums whitespace-nowrap text-fg-muted">
-                    {range}
-                  </span>
-                )}
-                <span className="min-w-0 flex-1 truncate text-sm text-fg">
-                  {event.title}
-                </span>
-              </li>
-            );
-          })}
+        <ul className={cn("flex flex-col", flush && "-mx-3")}>
+          {timed.map((event) => (
+            <CalendarEventItem key={event.id} event={event} />
+          ))}
         </ul>
       ) : null}
 
       {allDay.length > 0 ? (
         // Celodenné udalosti nemajú čas a rozpočet nemenia — „dovolenka"
-        // hodiny neujedá. Preto stoja zvlášť, pod vysvetľujúcou poznámkou,
-        // a nie premiešané medzi poradami.
-        <div className="border-t border-border px-3 py-2">
-          <p className="text-body text-fg-subtle sm:text-xs">
+        // hodiny neujedá. Preto stoja zvlášť, pod vysvetľujúcou poznámkou.
+        <div className={cn("border-t border-border py-2", !flush && "px-0", timed.length === 0 && "border-t-0")}>
+          <p className={cn("text-body text-fg-subtle sm:text-xs", flush ? "" : "px-3")}>
             Celodenné — do rozpočtu času sa nerátajú.
           </p>
-          <ul className="mt-1 flex flex-col">
+          <ul className={cn("mt-1 flex flex-col", flush && "-mx-3")}>
             {allDay.map((event) => (
-              <li
-                key={event.id}
-                className="flex min-h-11 items-center py-1 sm:min-h-0"
-              >
-                <span className="min-w-0 flex-1 truncate text-sm text-fg">
-                  {event.title}
-                </span>
-              </li>
+              <CalendarEventItem key={event.id} event={event} />
             ))}
           </ul>
         </div>

@@ -4,6 +4,7 @@ import { isCancelled, isOnDay, isMultiDay, hhmm } from "@/lib/agenda";
 import { timeToMinutes } from "@/lib/dates";
 import type { TimelineBusy, TimelineInput, TimelineTask } from "@/lib/day-timeline";
 import { schoolBreakOn, type SkolskeVolno } from "@/lib/school";
+import type { Settings } from "@/lib/settings";
 import { getAgendaForRange, type AgendaItemRow } from "@/server/queries/agenda";
 import { getDayEvents, type CalendarEvent } from "@/server/queries/calendar";
 import { getLessonsForDay, listBreaks, type LessonRow } from "@/server/queries/school";
@@ -49,10 +50,14 @@ export function toTimelineInput(
   }
 
   for (const event of events) {
-    if (event.allDay) continue;
-    const startMin = timeToMinutes(event.start);
-    const endMin = timeToMinutes(event.end);
-    if (startMin === null || endMin === null) continue;
+    // Odmietnutá pozvánka, udalosť „voľný" alebo rodinná bez teba čas nezaberá
+    // — rovnaké pravidlo ako rozpočet dňa (`countsInBudget`).
+    if (event.allDay || !event.countsInBudget) continue;
+    // Viacdňová udalosť: v prostredných dňoch zaberá celý deň, v prvom od
+    // začiatku, v poslednom do konca. Okno dňa ju potom oreže.
+    const startMin = event.startDate < dateIso ? 0 : timeToMinutes(event.start);
+    const endMin = event.endDate > dateIso ? 24 * 60 : timeToMinutes(event.end);
+    if (startMin === null || endMin === null || endMin <= startMin) continue;
     busy.push({ id: event.id, kind: "meeting", label: event.title, startMin, endMin });
   }
 
@@ -97,14 +102,13 @@ export function toTimelineInput(
 export async function getDayTimelineInput(
   userId: string,
   dateIso: string,
-  timeZone: string,
-  dayStartHour: number,
-  dayEndHour: number,
+  settings: Pick<Settings, "timezone" | "calendarPrefs" | "dayStartHour" | "dayEndHour">,
 ): Promise<Omit<TimelineInput, "nowMin">> {
+  const { dayStartHour, dayEndHour } = settings;
   const [lessons, breaks, events, agenda, planned] = await Promise.all([
     getLessonsForDay(userId, dateIso),
     listBreaks(userId),
-    getDayEvents(userId, dateIso, timeZone),
+    getDayEvents(userId, settings, dateIso),
     getAgendaForRange(userId, dateIso, dateIso),
     getTasksForDay(userId, dateIso),
   ]);

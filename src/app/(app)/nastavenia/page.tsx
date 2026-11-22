@@ -12,6 +12,7 @@ import { builtInAliases } from "@/lib/subject-match";
 import { pushPublicKey } from "@/server/push";
 import { requireUser } from "@/server/auth-guard";
 import { hasCalendarAccess } from "@/server/google-tokens";
+import { listCalendars } from "@/server/queries/calendar";
 import { listConnectedApps, mcpResource, originOf } from "@/server/oauth";
 import { listSubjects } from "@/server/queries/school";
 
@@ -33,6 +34,7 @@ export default async function NastaveniaPage() {
     listConnectedApps(user.id),
     listSubjects(user.id),
   ]);
+  const calendars = calendarConnected ? await listCalendars(user.id, user.settings) : [];
   const mcpUrl = mcpResource(originOf(await headers()));
 
   /* Dátumy pripojení v pásme používateľa, ako všade inde v appke. */
@@ -64,7 +66,17 @@ export default async function NastaveniaPage() {
               Google Kalendár
             </h2>
             <div className="border-b border-border px-5 py-4">
-              <CalendarCard connected={calendarConnected} />
+              <CalendarCard
+                connected={calendarConnected}
+                calendars={calendars.map(({ id, name, color, primary, show, budget }) => ({
+                  id,
+                  name,
+                  color,
+                  primary,
+                  show,
+                  budget,
+                }))}
+              />
             </div>
           </section>
 

@@ -179,6 +179,23 @@ export const settingsSchema = z.object({
     .record(z.string().min(1).max(40), z.array(z.string().min(1).max(60)).max(12))
     .catch({}),
 
+  /**
+   * Ktoré kalendáre z Google appka ukazuje a ktoré ráta do času dňa.
+   *
+   * Kľúčom je id kalendára v Google. Chýbajúci záznam znamená predvolené:
+   * ukazuje sa, čo máš zapnuté aj v Google Kalendári, a do rozpočtu času sa
+   * ráta len hlavný kalendár — rodinný či zdieľaný je plný cudzích termínov.
+   * Viac v `src/lib/google-calendar.ts`.
+   *
+   * `.catch({})` z rovnakého dôvodu ako pri prezývkach predmetov.
+   */
+  calendarPrefs: z
+    .record(
+      z.string().min(1).max(300),
+      z.object({ show: z.boolean().optional(), budget: z.boolean().optional() }),
+    )
+    .catch({}),
+
   theme: z.enum(["system", "light", "dark"]).default("system"),
 });
 

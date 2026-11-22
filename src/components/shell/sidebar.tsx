@@ -33,7 +33,7 @@ import { cn } from "@/lib/utils";
 import { SignOutForm } from "@/components/shell/sign-out-form";
 
 import { ThemeToggle } from "./theme-toggle";
-import { pluralSk } from "@/lib/sk";
+import { countSk, pluralSk } from "@/lib/sk";
 
 /** Počty pre odznaky v navigácii — presne to, čo vracia `getCounts()`. */
 export interface NavCounts {
@@ -337,7 +337,7 @@ export function navBadge(item: { badge?: NavBadgeKey }, counts: NavCounts): NavB
         ? {
             value: counts.inbox,
             tone: "neutral",
-            label: `${counts.inbox} nezatriedených`,
+            label: countSk(counts.inbox, "nezatriedená vec", "nezatriedené veci", "nezatriedených vecí"),
           }
         : null;
     case "waiting":

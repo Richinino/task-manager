@@ -22,15 +22,9 @@ export async function loadDayTimeline(dateIso: string): Promise<ActionResult<Day
   }
 
   const user = await requireUser();
-  const { timezone, dayStartHour, dayEndHour } = user.settings;
+  const { timezone } = user.settings;
 
-  const base = await getDayTimelineInput(
-    user.id,
-    parsed.data,
-    timezone,
-    dayStartHour,
-    dayEndHour,
-  );
+  const base = await getDayTimelineInput(user.id, parsed.data, user.settings);
   const nowMin = parsed.data === todayIn(timezone) ? minutesIn(timezone) : null;
 
   return { ok: true, data: layoutDay({ ...base, nowMin }) };
