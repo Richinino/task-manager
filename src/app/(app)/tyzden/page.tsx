@@ -27,6 +27,7 @@ import { listProjects } from "@/server/queries/structure";
 import { getRitualState } from "@/server/queries/rituals";
 import { daysSinceTouch } from "@/lib/ideas";
 import { getAgendaForRange } from "@/server/queries/agenda";
+import { getCalendarEvents } from "@/server/queries/calendar";
 
 export const metadata: Metadata = {
   title: "Týždeň",
@@ -76,6 +77,7 @@ export default async function TyzdenPage({ searchParams }: TyzdenPageProps) {
     // z `weeklyState` úplne inú vec — príznak, že revízia je už uzavretá.
     completedTasks,
     agenda,
+    calendar,
   ] = await Promise.all([
     // Celý týždeň jedným dotazom — sedem samostatných by bolo sedem ciest do databázy.
     getTasksForRange(user.id, weekStart, weekEnd),
@@ -95,6 +97,7 @@ export default async function TyzdenPage({ searchParams }: TyzdenPageProps) {
         user.settings.timezone,
       ),
     getAgendaForRange(user.id, weekStart, weekEnd),
+    getCalendarEvents(user.id, user.settings, weekStart, weekEnd),
   ]);
 
   // Vek nápadu počíta server. V klientovi by `new Date()` po hydratácii dal
@@ -182,6 +185,7 @@ export default async function TyzdenPage({ searchParams }: TyzdenPageProps) {
         capacityMin={capacityMin}
         postponeWarnAt={user.settings.postponeWarnAt}
         agenda={agenda}
+        calendar={calendar}
       />
 
       <ScreenFooter summary={summary.join(" · ")} />

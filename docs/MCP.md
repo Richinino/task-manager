@@ -37,9 +37,9 @@ opisuje poradie a ponúka aj hotový prompt **ranny-ritual**:
 
 | Nástroj | Čo robí |
 |---|---|
-| `get_day` | prehľad dňa: otvorené a prepadnuté úlohy, priorita dňa, rozpočet času, rozvrh, porady, udalosti (a 14 dní dopredu), návyky, inbox |
+| `get_day` | prehľad dňa: otvorené a prepadnuté úlohy, priorita dňa, rozpočet času, rozvrh, udalosti z Google Kalendára (`calendar`, so všetkými údajmi), udalosti appky (a 14 dní dopredu), návyky, inbox |
 | `get_inbox` | nezatriedené úlohy aj s poznámkami |
-| `get_upcoming` | úlohy a udalosti na najbližšie dni |
+| `get_upcoming` | úlohy a udalosti na najbližšie dni, aj udalosti z Google Kalendára po dňoch (`calendarByDay`) |
 | `search` | hľadanie ako v Archíve, vrátane hotových a prebehnutých; pri úlohe aj stav |
 | `get_structure` | aktívne projekty, oblasti, predmety, štítky a kontexty — platné mená pre úpravy |
 | `capture` | nová úloha zo zápisu rýchleho zachytenia (`zavolať Petrovi zajtra 15:00 !1`) |

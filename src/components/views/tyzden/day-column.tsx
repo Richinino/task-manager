@@ -23,6 +23,8 @@ import { cn } from "@/lib/utils";
 import type { TaskWithRelations } from "@/server/queries/tasks";
 import type { AgendaItemRow } from "@/server/queries/agenda";
 import { AgendaChip } from "@/components/agenda/agenda-row";
+import { CalendarEventChip } from "@/components/calendar/calendar-event-item";
+import type { CalendarEvent } from "@/lib/google-calendar";
 
 /**
  * Jeden deň týždňa.
@@ -57,6 +59,8 @@ export interface DayColumnProps {
    * úlohy, nedajú sa odškrtnúť ani potiahnuť (docs/UDALOSTI.md).
    */
   agenda?: AgendaItemRow[];
+  /** Udalosti dňa z Google Kalendára. */
+  calendar?: readonly CalendarEvent[];
 }
 
 /** Stĺpec musí mať vlastné id droppable plochy, aby sa nepomiešalo s id úloh. */
@@ -196,6 +200,7 @@ export function DayColumn({
   isLast = false,
   capacityMin,
   agenda = [],
+  calendar = [],
 }: DayColumnProps) {
   const { setNodeRef, isOver } = useDroppable({ id: dayDroppableId(date) });
 
@@ -326,7 +331,7 @@ export function DayColumn({
         />
       </div>
 
-      {agenda.length > 0 ? (
+      {agenda.length > 0 || calendar.length > 0 ? (
         <ul
           aria-label="Udalosti dňa"
           className="flex shrink-0 flex-col gap-1 border-b border-dashed border-border bg-bg px-4 py-1.5 md:px-1.5"
@@ -334,6 +339,11 @@ export function DayColumn({
           {agenda.map((item) => (
             <li key={item.id}>
               <AgendaChip item={item} />
+            </li>
+          ))}
+          {calendar.map((event) => (
+            <li key={event.id} className="min-w-0">
+              <CalendarEventChip event={event} />
             </li>
           ))}
         </ul>

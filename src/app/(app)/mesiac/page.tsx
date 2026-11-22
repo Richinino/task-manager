@@ -1,7 +1,11 @@
 import type { Metadata } from "next";
 
 import { ScreenFooter } from "@/components/shell/screen-chrome";
-import type { DayAgendaEntry, DayEntry } from "@/components/views/mesiac/day-cell";
+import type {
+  DayAgendaEntry,
+  DayCalendarEntry,
+  DayEntry,
+} from "@/components/views/mesiac/day-cell";
 import {
   MONTH_DAY_PANEL_ID,
   MonthDayPanel,
@@ -14,6 +18,7 @@ import {
 } from "@/components/views/mesiac/month-header";
 import { MonthSidebar } from "@/components/views/mesiac/month-sidebar";
 import { agendaShortTitle, compareAgenda, isMultiDay, isOnDay } from "@/lib/agenda";
+import { isEventOnDay, isMultiDayEvent } from "@/lib/google-calendar";
 import {
   addDays,
   addMonths,
@@ -28,6 +33,7 @@ import { ritualPeriod } from "@/lib/rituals";
 import { pluralSk } from "@/lib/sk";
 import { requireUser } from "@/server/auth-guard";
 import { getAgendaForRange } from "@/server/queries/agenda";
+import { getCalendarEvents } from "@/server/queries/calendar";
 import {
   getCompletedCount,
   getJournalRange,
@@ -132,10 +138,28 @@ export default async function MesiacPage({ searchParams }: MesiacPageProps) {
    * zachytenia). Týždenný pohľad si ten istý dotaz pýta bez tohto prepínača,
    * lebo úlohu bez `plannedDate` nemá kam zaradiť.
    */
-  const [tasks, agendaItems] = await Promise.all([
+  const [tasks, agendaItems, calendarEvents] = await Promise.all([
     getTasksForRange(user.id, from, to, { includeDue: true }),
     getAgendaForRange(user.id, from, to),
+    getCalendarEvents(user.id, user.settings, from, to),
   ]);
+
+  /* ── Google Kalendár ─────────────────────────────────────────────────────
+     Rovnako ako udalosti appky: jednodňové do bunky, viacdňové ako pruh.    */
+  const calendarMultiDay = calendarEvents.filter(isMultiDayEvent);
+  const calendarByDay = new Map<string, DayCalendarEntry[]>();
+  for (const event of calendarEvents) {
+    if (isMultiDayEvent(event)) continue;
+    const entry: DayCalendarEntry = {
+      key: event.id,
+      title: event.title,
+      time: event.allDay ? null : event.start,
+      color: event.color,
+    };
+    const bucket = calendarByDay.get(event.startDate);
+    if (bucket === undefined) calendarByDay.set(event.startDate, [entry]);
+    else bucket.push(entry);
+  }
 
   /* ── Rozsev úloh do dní ──────────────────────────────────────────────────
      Úloha sa v bunke objaví, ak sa na daný deň zhoduje `plannedDate` ALEBO
@@ -223,6 +247,7 @@ export default async function MesiacPage({ searchParams }: MesiacPageProps) {
       // Bez orezania — `DayCell` potrebuje úplný počet pre signál na telefóne.
       entries: bucket,
       agenda: agendaByDay.get(iso) ?? [],
+      calendar: calendarByDay.get(iso) ?? [],
       weekHref: { pathname: "/tyzden", query: { od: startOfWeek(iso, weekStartsOn) } },
       // Ťuknutie na už rozbalený deň ho zavrie; kotva pošle stránku na panel.
       dayHref: isSelected
@@ -245,6 +270,8 @@ export default async function MesiacPage({ searchParams }: MesiacPageProps) {
           .sort((a, b) => dayTaskRank(a, selectedIso) - dayTaskRank(b, selectedIso));
   const selectedAgenda =
     selectedIso === null ? [] : sortedAgenda.filter((item) => isOnDay(item, selectedIso));
+  const selectedCalendar =
+    selectedIso === null ? [] : calendarEvents.filter((event) => isEventOnDay(event, selectedIso));
 
   /* ── Bočný panel ─────────────────────────────────────────────────────────
      `flatMap` namiesto `filter` preto, aby sa `dueDate` zúžil na `string`
@@ -359,13 +386,14 @@ export default async function MesiacPage({ searchParams }: MesiacPageProps) {
 
       <div className="flex min-h-0 flex-1 flex-col lg:flex-row">
         <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-          <MonthGrid days={days} multiDay={multiDay} />
+          <MonthGrid days={days} multiDay={multiDay} calendarMultiDay={calendarMultiDay} />
 
           {selectedIso !== null ? (
             <MonthDayPanel
               iso={selectedIso}
               tasks={selectedTasks}
               agenda={selectedAgenda}
+              calendar={selectedCalendar}
               todayIso={todayIso}
               postponeWarnAt={user.settings.postponeWarnAt}
               postponeBlockAt={user.settings.postponeBlockAt}

@@ -20,7 +20,7 @@ Návrh celého systému je v [PLAN.md](PLAN.md), záväzné rozhrania v [docs/CO
 | **Návyky · Opakované · Šablóny** | čo sa vracia pravidelne |
 | **Učenie · Nápady · Archív** | piliere a zručnosti, doska nápadov, všetko hotové |
 | **Pripomienky** | web push na telefón aj počítač — úlohy s hodinou, udalosti, dni prípravy |
-| **Google Kalendár** | udalosti z kalendára v pláne dňa (len čítanie) |
+| **Google Kalendár** | udalosti zo všetkých tvojich kalendárov na Dnes, v Týždni a Mesiaci, s miestom, popisom, farbou, hosťami a odkazom; výber kalendárov a čo sa ráta do času dňa (len čítanie, [docs/KALENDAR.md](docs/KALENDAR.md)) |
 | **Claude (MCP)** | Claude na počítači, webe aj v mobile zhrnie deň a urobí s tebou ranný rituál — [docs/MCP.md](docs/MCP.md) |
 
 ## Spustenie
@@ -185,7 +185,7 @@ The app itself is in Slovak. The overall design lives in [PLAN.md](PLAN.md) and 
 | **Habits · Recurring · Templates** | what comes back on a schedule |
 | **Learning · Ideas · Archive** | pillars and skills, an idea board, everything done |
 | **Reminders** | web push to phone and desktop — timed tasks, events, prep days |
-| **Google Calendar** | calendar events in the day plan (read-only) |
+| **Google Calendar** | events from all your calendars in Today, Week and Month, with place, description, colour, guests and link; choose calendars and which count toward the day's time (read-only, [docs/KALENDAR.md](docs/KALENDAR.md), Slovak) |
 | **Claude (MCP)** | Claude on desktop, web and mobile summarizes your day and runs the morning routine with you — [docs/MCP.md](docs/MCP.md) (Slovak) |
 
 ## Getting started

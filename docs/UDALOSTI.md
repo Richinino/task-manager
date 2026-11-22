@@ -239,4 +239,5 @@ ale v rozhraní sa už ponúkajú len tri druhy školskej práce.
    Ctrl+K, zmazané v archíve s vrátením, export formátu 3.
 
 Zápis do Google Kalendára zatiaľ nie — potreboval by nový súhlas s právom
-zápisu a appka stojí na tom, že kalendár je doplnok, nie podmienka.
+zápisu a appka stojí na tom, že kalendár je doplnok, nie podmienka. Čítanie
+udalostí z Google je opísané v [KALENDAR.md](KALENDAR.md).

@@ -26,6 +26,7 @@ import type { TaskWithRelations } from "@/server/queries/tasks";
 import { DayColumn, WeekTaskOverlay, dayFromDroppableId } from "./day-column";
 import type { AgendaItemRow } from "@/server/queries/agenda";
 import { compareAgenda, isOnDay } from "@/lib/agenda";
+import { isEventOnDay, type CalendarEvent } from "@/lib/google-calendar";
 
 /**
  * Doska týždňa: sedem stĺpcov, presúvanie úloh medzi dňami a ručné poradie
@@ -48,6 +49,8 @@ export interface WeekBoardProps {
   postponeWarnAt: number;
   /** Udalosti týždňa — každý stĺpec si vezme tie, ktoré naň pripadajú. */
   agenda?: AgendaItemRow[];
+  /** Udalosti týždňa z Google Kalendára. */
+  calendar?: readonly CalendarEvent[];
 }
 
 /**
@@ -98,6 +101,7 @@ export function WeekBoard({
   capacityMin,
   postponeWarnAt,
   agenda = [],
+  calendar = [],
 }: WeekBoardProps) {
   const [optimisticTasks, applyChange] = useOptimistic(
     tasks,
@@ -327,6 +331,7 @@ export function WeekBoard({
             isLast={index === days.length - 1}
             capacityMin={capacityMin}
             agenda={agenda.filter((item) => isOnDay(item, day)).sort(compareAgenda)}
+            calendar={calendar.filter((event) => isEventOnDay(event, day))}
           />
         ))}
       </div>

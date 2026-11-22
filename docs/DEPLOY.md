@@ -209,6 +209,10 @@ exposes it.
 2. Consent screen → **Scopes** (*Data Access*) → add
    `https://www.googleapis.com/auth/calendar.readonly`.
 3. In the app: **Nastavenia → Google Kalendár → Prepojiť kalendár**.
+4. On the same card, pick which calendars the app shows and which count
+   toward the day's time budget (by default all calendars you show in
+   Google, and only the primary one counts). Details in
+   [KALENDAR.md](KALENDAR.md) (Slovak).
 
 While the Google app is in *Testing*, calendar consent expires after 7 days;
 reconnect from the same card. (Publishing the app with a calendar scope means
