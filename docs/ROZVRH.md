@@ -96,6 +96,25 @@ Suplovanie a voľná sú teda dve rôzne veci: prvé zdroj dodáva, druhé nie.
 Ručné zadanie suplovania ostáva — na riaditeľské voľno, výlety a všetko, čo
 v EduPage nikdy nebude.
 
+### Kto odber sťahuje
+
+Pôvodne vždy appka na Verceli. **23. 11. 2026** sa ukázalo, že sa k EduPage
+nepripojí vôbec: ručné tlačidlo aj cron padali na `UND_ERR_CONNECT_TIMEOUT`
+pri oboch pokusoch (funkcie bežia vo `fra1`, AWS), hoci z domácej siete
+odber fungoval. V septembri to bolo len občas (25. 9.), teraz zakaždým.
+Spojenie zlyhá ešte pred HTTP, takže to nie je zlá adresa ani zmena formátu
+— EduPage tieto spojenia zahadzuje.
+
+Preto `/api/rozvrh` prijme odber aj **v tele požiadavky**
+(`zdrojOdberu` v `src/lib/ics.ts`): GitHub workflow **Rozvrh** ho stiahne sám
+zo svojej siete a appke ho len pošle. Prázdne telo znamená pôvodný spôsob
+(cron-job.org, ručné tlačidlo). Telo, ktoré nie je kalendár, sa odmietne —
+keby ho appka potichu ignorovala a odber stiahla sama, zlyhanie v plánovači
+by sa tvárilo ako úspech.
+
+Ručné tlačidlo *Stiahnuť z EduPage* sťahuje stále z Vercelu, takže kým to
+EduPage blokuje, hlási chybu; nahratie `.ics` súboru funguje vždy.
+
 ### Sviatky sa dajú vypočítať, prázdniny nie
 
 **Štátne sviatky** sú v zákone a nemenia sa — appka ich vie doplniť na jedno

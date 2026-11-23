@@ -343,3 +343,29 @@ export function ukazkaTela(text: string): string {
   if (/:\/\/|https?|webcal|www\./i.test(zaciatok)) return "(skryté — vyzerá ako odkaz)";
   return zaciatok;
 }
+
+/**
+ * Odkiaľ vziať odber pri synchronizácii cronom — rozhoduje podľa tela
+ * požiadavky na `/api/rozvrh`.
+ *
+ * - **prázdne telo** (cron-job.org): server si odber stiahne sám
+ * - **kalendár v tele** (GitHub Actions): odber už stiahol plánovač
+ *   a server ho len načíta
+ * - **čokoľvek iné**: odmietne sa. Keby sa také telo potichu ignorovalo
+ *   a server odber stiahol sám, zlyhanie sťahovania v plánovači by sa
+ *   tvárilo ako úspech.
+ *
+ * Prečo plánovač vôbec sťahuje: v novembri 2026 EduPage neodpovedal na
+ * spojenie z Vercelu (AWS, `fra1`) — `UND_ERR_CONNECT_TIMEOUT` pri oboch
+ * pokusoch — hoci z domácej siete fungoval. Podrobnosti v `docs/ROZVRH.md`.
+ */
+export type ZdrojOdberu =
+  | { druh: "stiahnut" }
+  | { druh: "telo"; ics: string }
+  | { druh: "chyba"; detail: string };
+
+export function zdrojOdberu(telo: string): ZdrojOdberu {
+  if (telo.replace(/^﻿/, "").trim() === "") return { druh: "stiahnut" };
+  if (vyzeraAkoKalendar(telo)) return { druh: "telo", ics: telo };
+  return { druh: "chyba", detail: ukazkaTela(telo) };
+}

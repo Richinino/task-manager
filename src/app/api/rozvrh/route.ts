@@ -3,6 +3,7 @@ import { eq } from "drizzle-orm";
 
 import { getDb } from "@/db";
 import { schoolSubjects, users } from "@/db/schema";
+import { zdrojOdberu } from "@/lib/ics";
 import { parseSettings } from "@/lib/settings";
 import {
   OdberNedostupny,
@@ -25,6 +26,14 @@ import {
  * ešte v ten deň, keď sa odber stiahne aj cez vyučovanie. Hlavný plánovač
  * (externý cron) volá túto cestu každú hodinu cez školský deň; GitHub
  * workflow je záloha. Podrobnosti v `docs/NASADENIE.md`.
+ *
+ * ## Kto sťahuje
+ *
+ * Bez tela si odber stiahne táto cesta sama z `SKOLA_ICS_URL`. S kalendárom
+ * v tele (`Content-Type: text/calendar`) ho len načíta — tak to robí GitHub
+ * workflow, lebo EduPage spojenia z Vercelu niekedy zahadzuje
+ * (`UND_ERR_CONNECT_TIMEOUT`). Tajomstvo platí v oboch prípadoch rovnako:
+ * bez neho by ktokoľvek vedel podstrčiť vlastný rozvrh.
  *
  * ## Komu sa rozvrh načíta
  *
@@ -66,7 +75,22 @@ export async function POST(request: Request): Promise<Response> {
     return neopravneny();
   }
 
-  if (!maOdber()) {
+  /*
+    Plánovač môže poslať odber rovno v tele — stiahol ho sám, z inej siete
+    (GitHub Actions). Vercel sa totiž k EduPage niekedy vôbec nepripojí;
+    pozri `zdrojOdberu`. Prázdne telo znamená starý spôsob: stiahnuť tu.
+  */
+  const zdroj = zdrojOdberu(await request.text());
+
+  if (zdroj.druh === "chyba") {
+    console.warn("[api/rozvrh] V tele neprišiel kalendár:", zdroj.detail);
+    return odpoved(
+      { ok: false, dovod: "V tele požiadavky neprišiel kalendár.", detail: { zaciatok: zdroj.detail } },
+      400,
+    );
+  }
+
+  if (zdroj.druh === "stiahnut" && !maOdber()) {
     console.warn("[api/rozvrh] SKOLA_ICS_URL nie je nastavená.");
     return odpoved({ ok: false, dovod: "SKOLA_ICS_URL nie je nastavená." }, 503);
   }
@@ -117,7 +141,7 @@ export async function POST(request: Request): Promise<Response> {
       userId,
       nastavenia.timezone,
       nastavenia.schoolGroups,
-      await stiahniOdber(),
+      zdroj.druh === "telo" ? zdroj.ics : await stiahniOdber(),
     );
 
     /*
@@ -127,8 +151,8 @@ export async function POST(request: Request): Promise<Response> {
     */
     for (const cesta of ["/rozvrh", "/dnes", "/tyzden", "/udalosti", "/mesiac"]) revalidatePath(cesta);
 
-    console.info("[api/rozvrh] Rozvrh stiahnutý", summary);
-    return odpoved({ ok: true, ...summary });
+    console.info("[api/rozvrh] Rozvrh načítaný", { zdroj: zdroj.druh, ...summary });
+    return odpoved({ ok: true, zdroj: zdroj.druh, ...summary });
   } catch (chyba) {
     /*
       Dôvod ide do logu Vercelu aj do odpovede — tú si pamätá história

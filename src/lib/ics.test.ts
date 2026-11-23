@@ -6,6 +6,7 @@ import {
   groupsInFeed,
   parseIcs,
   ukazkaTela,
+  zdrojOdberu,
   vyzeraAkoKalendar,
 } from "./ics";
 
@@ -314,3 +315,31 @@ describe("diagnostika odberu", () => {
     expect(ukazkaTela("Moved: webcal://x")).toBe("(skryté — vyzerá ako odkaz)");
   });
 });
+
+describe("zdroj odberu pre cron", () => {
+  it("prázdne telo znamená stiahnuť odber z adresy na serveri", () => {
+    expect(zdrojOdberu("")).toEqual({ druh: "stiahnut" });
+    expect(zdrojOdberu("  \r\n")).toEqual({ druh: "stiahnut" });
+  });
+
+  it("kalendár v tele sa načíta rovno — stiahol ho niekto iný", () => {
+    expect(zdrojOdberu(FEED)).toEqual({ druh: "telo", ics: FEED });
+    const sBom = "﻿BEGIN:VCALENDAR\r\nEND:VCALENDAR";
+    expect(zdrojOdberu(sBom)).toEqual({ druh: "telo", ics: sBom });
+  });
+
+  it("telo, ktoré nie je kalendár, sa odmietne a nič sa nesťahuje", () => {
+    expect(zdrojOdberu("<!DOCTYPE html><html><body>Prihlásenie</body></html>")).toEqual({
+      druh: "chyba",
+      detail: "<!DOCTYPE html><html",
+    });
+  });
+
+  it("v detaile chyby nikdy nie je odkaz", () => {
+    expect(zdrojOdberu("https://skola.edupage.org/ics?key=tajne")).toEqual({
+      druh: "chyba",
+      detail: "(skryté — vyzerá ako odkaz)",
+    });
+  });
+});
+

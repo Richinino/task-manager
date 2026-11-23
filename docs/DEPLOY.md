@@ -201,6 +201,11 @@ exposes it.
   more than one timetable user the endpoint answers `409` and does nothing.
 - Holidays aren't in the feed; public holidays can be added in one click,
   school holidays are entered manually.
+- If Vercel can't reach EduPage (`UND_ERR_CONNECT_TIMEOUT` — seen in
+  November 2026), add the same URL as the GitHub repository secret
+  `SKOLA_ICS_URL` and enable the backup (`ZALOZNY_PLANOVAC` = `1`). The
+  **Rozvrh** workflow then downloads the feed itself and POSTs it to
+  `/api/rozvrh` as `text/calendar`; the app no longer contacts EduPage.
 
 ## 8. Optional: Google Calendar (read-only)
 
