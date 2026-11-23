@@ -18,10 +18,8 @@ public class PairActivity extends Activity {
             getSharedPreferences(TodayWidget.PREFS, Context.MODE_PRIVATE).edit()
                     .putString("token", token).remove("json").putBoolean("offline", false).apply();
             Toast.makeText(this, "Widget je pripojený", Toast.LENGTH_SHORT).show();
-            Intent refresh = new Intent(this, TodayWidget.class);
-            refresh.setAction(TodayWidget.ACTION_REFRESH);
-            sendBroadcast(refresh);
             TodayWidget.updateAll(this);
+            WidgetRefreshJob.schedule(this, null);
         } else {
             Toast.makeText(this, "Neplatný odkaz na pripojenie", Toast.LENGTH_SHORT).show();
         }

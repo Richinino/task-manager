@@ -316,6 +316,16 @@
     -webkit-font-smoothing: antialiased;
     text-rendering: optimizeLegibility;
     overscroll-behavior-y: none;
+
+    /*
+      Telefón nesmie rolovať do strany. Stačil jeden dlhý odkaz bez medzier
+      (zo zdieľania) v názve úlohy a Chrome v appke stránku „prizoomoval",
+      aby sa celá zmestila. `clip`, nie `hidden` — `hidden` by z tela
+      spravilo rolovací kontajner a pokazil `position: sticky`.
+    */
+    @media (max-width: 767.98px) {
+      overflow-x: clip;
+    }
   }
 
   /* Klávesnicový fokus musí byť vždy jasne viditeľný — appka je keyboard-first. */

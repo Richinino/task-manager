@@ -341,13 +341,13 @@ function InboxCard({
         ) : null}
       </div>
       <h2
-        className="mt-3 line-clamp-3 break-words font-display leading-[1.1] tracking-tight"
+        className="mt-3 line-clamp-3 font-display [overflow-wrap:anywhere] leading-[1.1] tracking-tight"
         style={{ fontSize: 22 }}
       >
         {task.title}
       </h2>
       {task.note ? (
-        <p className="mt-3 line-clamp-4 break-words text-body text-fg-muted">{task.note}</p>
+        <p className="mt-3 line-clamp-4 text-body [overflow-wrap:anywhere] text-fg-muted">{task.note}</p>
       ) : null}
     </article>
   );

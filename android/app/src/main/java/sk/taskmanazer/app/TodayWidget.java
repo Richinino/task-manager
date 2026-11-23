@@ -42,50 +42,30 @@ public class TodayWidget extends AppWidgetProvider {
     public void onUpdate(Context context, AppWidgetManager manager, int[] ids) {
         // Hneď ukáž poslednú uloženú verziu, potom obnov zo siete.
         updateAll(context);
-        runAsync(context, goAsync(), null);
+        WidgetRefreshJob.schedule(context, null);
     }
 
     @Override
     public void onReceive(Context context, Intent intent) {
         String action = intent.getAction();
         if (ACTION_DONE.equals(action)) {
-            String taskId = intent.getStringExtra(EXTRA_TASK_ID);
-            runAsync(context, goAsync(), taskId);
+            WidgetRefreshJob.schedule(context, intent.getStringExtra(EXTRA_TASK_ID));
         } else if (ACTION_REFRESH.equals(action)) {
-            runAsync(context, goAsync(), null);
+            // Hneď ukáž, že sa niečo deje — inak ťuknutie vyzerá, akoby nefungovalo.
+            context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
+                    .putString("error", "obnovujem…").apply();
+            updateAll(context);
+            WidgetRefreshJob.schedule(context, null);
         } else {
             super.onReceive(context, intent);
         }
-    }
-
-    private static void runAsync(final Context context, final PendingResult result, final String doneTaskId) {
-        final Context app = context.getApplicationContext();
-        new Thread(new Runnable() {
-            @Override
-            public void run() {
-                try {
-                    if (doneTaskId != null && !doneTaskId.isEmpty()) {
-                        postDone(app, doneTaskId);
-                    }
-                    refresh(app);
-                } catch (Throwable ignored) {
-                    // widget nesmie spadnúť
-                } finally {
-                    try {
-                        updateAll(app);
-                    } catch (Throwable ignored) {
-                    }
-                    result.finish();
-                }
-            }
-        }).start();
     }
 
     private static String token(Context c) {
         return c.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getString("token", null);
     }
 
-    private static void postDone(Context c, String taskId) {
+    static void postDone(Context c, String taskId) {
         String token = token(c);
         if (token == null) return;
         HttpURLConnection conn = null;
@@ -114,7 +94,7 @@ public class TodayWidget extends AppWidgetProvider {
                 .remove("token").remove("json").putBoolean("offline", false).apply();
     }
 
-    private static void refresh(Context c) {
+    static void refresh(Context c) {
         String token = token(c);
         if (token == null) return;
         SharedPreferences prefs = c.getSharedPreferences(PREFS, Context.MODE_PRIVATE);
@@ -131,7 +111,8 @@ public class TodayWidget extends AppWidgetProvider {
                 return;
             }
             if (code != 200) {
-                prefs.edit().putBoolean("offline", true).apply();
+                prefs.edit().putBoolean("offline", true)
+                        .putString("error", "server " + code).apply();
                 return;
             }
             InputStream in = conn.getInputStream();
@@ -142,9 +123,12 @@ public class TodayWidget extends AppWidgetProvider {
             r.close();
             String json = sb.toString();
             new JSONObject(json); // overenie, že je to platný JSON
-            prefs.edit().putString("json", json).putBoolean("offline", false).apply();
+            prefs.edit().putString("json", json).putBoolean("offline", false)
+                    .remove("error").apply();
         } catch (Exception e) {
-            prefs.edit().putBoolean("offline", true).apply();
+            // Presný dôvod do widgetu — „bez spojenia" samo o sebe nič nepovie.
+            prefs.edit().putBoolean("offline", true)
+                    .putString("error", e.getClass().getSimpleName()).apply();
         } finally {
             if (conn != null) conn.disconnect();
         }
@@ -173,14 +157,15 @@ public class TodayWidget extends AppWidgetProvider {
             return v;
         }
         if (json == null) {
-            showMessage(v, "Načítavam…", prefs.getBoolean("offline", false) ? "bez spojenia" : "");
+            showMessage(v, "Načítavam…", status(prefs));
             return v;
         }
 
         try {
             JSONObject o = new JSONObject(json);
             String summary = o.optString("summary", "");
-            if (prefs.getBoolean("offline", false)) summary = "bez spojenia";
+            String st = status(prefs);
+            if (!st.isEmpty()) summary = st;
             v.setTextViewText(R.id.summary, summary);
             v.setViewVisibility(R.id.message, View.GONE);
 
@@ -228,6 +213,14 @@ public class TodayWidget extends AppWidgetProvider {
             showMessage(v, "Dáta sa nepodarilo prečítať", "bez spojenia");
         }
         return v;
+    }
+
+    /** „bez spojenia (UnknownHostException)", „obnovujem…", alebo prázdne. */
+    private static String status(SharedPreferences prefs) {
+        String err = prefs.getString("error", null);
+        if ("obnovujem…".equals(err)) return err;
+        if (!prefs.getBoolean("offline", false)) return "";
+        return err == null ? "bez spojenia" : "bez spojenia (" + err + ")";
     }
 
     private static void showMessage(RemoteViews v, String message, String summary) {
