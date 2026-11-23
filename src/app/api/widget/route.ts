@@ -38,6 +38,7 @@ export async function GET(request: Request): Promise<Response> {
       figures: budgetFigures(day),
       dayOver: nowMin >= timeline.dayEndMin,
       inboxCount: inbox.length,
+      day,
     });
     return Response.json(payload, { headers: NO_STORE });
   });

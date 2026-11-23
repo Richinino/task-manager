@@ -6,6 +6,7 @@ import {
   formatDuration,
   parseIsoDate,
 } from "@/lib/dates";
+import type { DayTimeline } from "@/lib/day-timeline";
 import { cssColorToHex } from "@/lib/oklch";
 import type { BudgetFigures } from "@/lib/today-budget";
 
@@ -43,7 +44,35 @@ export interface WidgetPayload {
   tasks: WidgetTask[];
   openCount: number;
   inboxCount: number;
+  reserveMin: number;
+  over: boolean;
+  dayOver: boolean;
+  timeline: WidgetTimeline;
+  next: WidgetNext[];
 }
+
+export interface WidgetTimelineBlock {
+  kind: "lesson" | "meeting" | "event" | "task";
+  startMin: number;
+  endMin: number;
+  color: string | null;
+  frog: boolean;
+}
+
+export interface WidgetTimeline {
+  startMin: number;
+  endMin: number;
+  nowMin: number | null;
+  blocks: WidgetTimelineBlock[];
+}
+
+export interface WidgetNext {
+  id: string;
+  title: string;
+  color: string | null;
+}
+
+export const WIDGET_MAX_NEXT = 2;
 
 /** 45 → „45 min", 90 → „1 h 30 min"; bez odhadu alebo s nulou `null`. */
 export function estimateText(estimateMin: number | null): string | null {
@@ -74,6 +103,47 @@ function colorOf(task: WidgetTaskSource): string | null {
   return cssColorToHex(areaColorValue(named));
 }
 
+function hexOrNull(named: string | null | undefined): string | null {
+  if (named === null || named === undefined) return null;
+  return cssColorToHex(areaColorValue(named));
+}
+
+/** Pravítko dňa pre widget: rovnaké bloky ako na obrazovke Dnes. */
+export function widgetTimeline(day: DayTimeline): WidgetTimeline {
+  return {
+    startMin: day.dayStartMin,
+    endMin: day.dayEndMin,
+    nowMin: day.nowMin,
+    blocks: day.blocks.map((b) => ({
+      kind: b.kind,
+      startMin: b.startMin,
+      endMin: b.endMin,
+      color: b.kind === "task" ? hexOrNull(b.areaColor) : null,
+      frog: b.isFrog === true,
+    })),
+  };
+}
+
+/**
+ * Najviac dve nasledujúce úlohy: bloky úloh, ktoré začínajú o `nowMin` alebo
+ * neskôr (podľa začiatku); keď žiadna nie je, prvé otvorené v poradí Dnes.
+ */
+export function widgetNext(
+  day: DayTimeline,
+  open: readonly WidgetTaskSource[],
+): WidgetNext[] {
+  const now = day.nowMin ?? day.dayStartMin;
+  const upcoming = day.blocks
+    .filter((b) => b.kind === "task" && b.startMin >= now)
+    .sort((a, b) => a.startMin - b.startMin)
+    .slice(0, WIDGET_MAX_NEXT)
+    .map((b) => ({ id: b.id, title: b.label, color: hexOrNull(b.areaColor) }));
+  if (upcoming.length > 0) return upcoming;
+  return open
+    .slice(0, WIDGET_MAX_NEXT)
+    .map((t) => ({ id: t.id, title: t.title, color: colorOf(t) }));
+}
+
 export interface WidgetInput {
   date: string;
   /** Úlohy dňa (aj hotové) v poradí stránky Dnes. */
@@ -81,6 +151,8 @@ export interface WidgetInput {
   figures: BudgetFigures;
   dayOver: boolean;
   inboxCount: number;
+  /** Rozložený dnešok (s `nowMin`) — zdroj pravítka a `next`. */
+  day: DayTimeline;
 }
 
 export function buildWidgetPayload(input: WidgetInput): WidgetPayload {
@@ -103,5 +175,10 @@ export function buildWidgetPayload(input: WidgetInput): WidgetPayload {
     })),
     openCount: open.length,
     inboxCount: input.inboxCount,
+    reserveMin: input.figures.reserveMin,
+    over: input.figures.reserveMin < 0,
+    dayOver: input.dayOver,
+    timeline: widgetTimeline(input.day),
+    next: widgetNext(input.day, open),
   };
 }

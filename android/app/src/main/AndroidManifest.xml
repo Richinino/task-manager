@@ -192,6 +192,24 @@
                 android:resource="@xml/today_widget_info" />
         </receiver>
 
+        <receiver android:name=".RulerWidget" android:exported="true"
+            android:label="Pravítko">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data android:name="android.appwidget.provider"
+                android:resource="@xml/ruler_widget_info" />
+        </receiver>
+
+        <receiver android:name=".CaptureWidget" android:exported="true"
+            android:label="Zapísať">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data android:name="android.appwidget.provider"
+                android:resource="@xml/capture_widget_info" />
+        </receiver>
+
         <service android:name=".CaptureTileService"
             android:exported="true"
             android:icon="@drawable/ic_tile_plus"
