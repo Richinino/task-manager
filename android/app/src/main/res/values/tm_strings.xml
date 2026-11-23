@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="widgetDescription">Dnes: priorita dňa a úlohy</string>
+    <string name="tileLabel">Zapísať úlohu</string>
+    <string name="shareTarget">{\"action\": \"/zdielat\", \"method\": \"GET\", \"params\": {\"title\": \"title\", \"text\": \"text\", \"url\": \"url\"}}</string>
+</resources>

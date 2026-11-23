@@ -26,7 +26,8 @@
 
 // Zvýšením verzie sa pri aktivácii zahodia všetky staršie cache.
 // v2: vypnutý navigation preload, ktorý zdvojoval prihlasovací callback.
-const VERSION = "tm-v2";
+// v3: tlačidlá akcií v notifikáciách (Hotovo / O hodinu).
+const VERSION = "tm-v3";
 const STATIC_CACHE = VERSION + "-static";
 const PAGES_CACHE = VERSION + "-pages";
 const OWN_CACHES = [STATIC_CACHE, PAGES_CACHE];
@@ -396,6 +397,13 @@ function readPush(event) {
       body: typeof data.body === "string" ? data.body : "",
       url: typeof data.url === "string" ? data.url : PUSH_FALLBACK.url,
       tag: typeof data.tag === "string" ? data.tag : PUSH_FALLBACK.tag,
+      taskId: typeof data.taskId === "string" ? data.taskId : undefined,
+      actions: Array.isArray(data.actions)
+        ? data.actions
+            .filter((a) => a && typeof a.action === "string" && typeof a.title === "string")
+            .slice(0, 2)
+            .map((a) => ({ action: a.action, title: a.title }))
+        : [],
     };
   } catch {
     return PUSH_FALLBACK;
@@ -415,7 +423,9 @@ self.addEventListener("push", (event) => {
       badge: "/icon",
       // Cestu si prevezme `notificationclick` — v udalosti kliknutia už
       // pôvodná správa nie je.
-      data: { url: data.url },
+      data: { url: data.url, taskId: data.taskId },
+      // Tlačidlá (Hotovo / O hodinu) — vybavia sa bez otvorenia appky.
+      actions: data.actions || [],
       // Bez interakcie zmizne sama; pripomienka nemá blokovať lištu.
       requireInteraction: false,
     }),
@@ -432,9 +442,30 @@ self.addEventListener("notificationclick", (event) => {
   event.notification.close();
 
   const url = (event.notification.data && event.notification.data.url) || "/dnes";
+  const taskId = event.notification.data && event.notification.data.taskId;
 
   event.waitUntil(
     (async () => {
+      /*
+        Tlačidlá akcií. Požiadavka ide s cookie relácie; keď server odmietne
+        (relácia vypršala, sieť padla), správame sa ako pri obyčajnom ťuknutí —
+        človek aspoň uvidí appku a môže sa prihlásiť. Pri úspechu sa neukáže
+        nič: notifikácia už zmizla a úloha je vybavená.
+      */
+      if ((event.action === "hotovo" || event.action === "odlozit") && taskId) {
+        try {
+          const response = await fetch("/api/pripomienky/akcia", {
+            method: "POST",
+            credentials: "same-origin",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({ taskId, akcia: event.action }),
+          });
+          if (response.ok) return;
+        } catch {
+          // Bez siete: spadne na otvorenie appky nižšie.
+        }
+      }
+
       const target = new URL(url, self.location.origin);
 
       const clients = await self.clients.matchAll({

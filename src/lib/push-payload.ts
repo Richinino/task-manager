@@ -27,7 +27,17 @@ export interface PushPayload {
   url: string;
   /** Zoskupovanie notifikácií — rovnaká značka prepíše predošlú. */
   tag: string;
+  /** Úloha, ktorej sa notifikácia týka — potrebuje ju tlačidlo akcie. */
+  taskId?: string;
+  /** Tlačidlá pod notifikáciou. Neznáma akcia sa v SW berie ako obyčajné ťuknutie. */
+  actions?: { action: string; title: string }[];
 }
+
+/** Tlačidlá pripomienky úlohy: odškrtnúť alebo posunúť o hodinu. */
+export const TASK_REMINDER_ACTIONS: { action: string; title: string }[] = [
+  { action: "hotovo", title: "Hotovo" },
+  { action: "odlozit", title: "O hodinu" },
+];
 
 export interface ReminderTask {
   id: string;
@@ -92,5 +102,7 @@ export function buildPushPayload(task: ReminderTask): PushPayload {
     */
     url: "/dnes",
     tag: `uloha-${task.id}`,
+    taskId: task.id,
+    actions: TASK_REMINDER_ACTIONS,
   };
 }

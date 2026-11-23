@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  useCallback,
   useEffect,
   useId,
   useLayoutEffect,
@@ -284,14 +285,28 @@ export function QuickCapture({
   }, [open, stopSpeech]);
 
   /* Pole rastie s textom (telefón); na počítači drží výšku jedného riadka. */
-  useLayoutEffect(() => {
+  const measureField = useCallback(() => {
     const el = inputRef.current;
     if (el === null) return;
     el.style.height = "auto";
     const next = el.scrollHeight;
     el.style.removeProperty("height");
     el.style.setProperty("--field-h", `${next}px`);
-  }, [value, open]);
+  }, []);
+  useLayoutEffect(() => {
+    measureField();
+  }, [value, open, measureField]);
+  /*
+    Predvyplnený text (zdieľanie, widget) príde naraz s otvorením — pole je
+    vtedy ešte v portáli bez rozmerov a písmo Archivo sa možno ešte len
+    načítava. Bez druhého merania ostal vidieť len prvý riadok.
+  */
+  useEffect(() => {
+    if (!open) return;
+    const frame = requestAnimationFrame(measureField);
+    document.fonts?.ready.then(measureField).catch(() => {});
+    return () => cancelAnimationFrame(frame);
+  }, [open, measureField]);
 
   /* ── našepkávanie značiek ────────────────────────────────────────────────
      Zoznam sa neriadi tým, čo je v texte, ale tým, čo sa práve píše POD

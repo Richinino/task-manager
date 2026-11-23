@@ -11,6 +11,12 @@ import type { MetadataRoute } from "next";
  * Next.js z tohto súboru vygeneruje `/manifest.webmanifest` a sám doplní
  * `<link rel="manifest">` do `<head>`.
  */
+/** Skratky bez ikon Bubblewrap preskakuje — preto ich majú všetky. */
+const SHORTCUT_ICONS = [
+  { src: "/icon", sizes: "192x192", type: "image/png" },
+  { src: "/icon", sizes: "512x512", type: "image/png" },
+];
+
 export default function manifest(): MetadataRoute.Manifest {
   return {
     id: "/",
@@ -48,18 +54,35 @@ export default function manifest(): MetadataRoute.Manifest {
     ],
 
     // Skratky v kontextovom menu ikony na ploche (dlhé podržanie / pravý klik).
+    // Zdieľanie z iných appiek (Android): `/zdielat` spojí title/text/url
+    // a presmeruje na rýchle zachytenie.
+    share_target: {
+      action: "/zdielat",
+      method: "GET",
+      params: { title: "title", text: "text", url: "url" },
+    },
+
     shortcuts: [
       {
         name: "Dnes",
         short_name: "Dnes",
         description: "Úlohy naplánované na dnešný deň",
         url: "/dnes",
+        icons: SHORTCUT_ICONS,
       },
       {
         name: "Inbox",
         short_name: "Inbox",
         description: "Nezatriedené nápady a úlohy",
         url: "/inbox",
+        icons: SHORTCUT_ICONS,
+      },
+      {
+        name: "Zapísať",
+        short_name: "Zapísať",
+        description: "Rýchlo zapísať úlohu alebo nápad",
+        url: "/dnes?zachytit=1",
+        icons: SHORTCUT_ICONS,
       },
     ],
   };

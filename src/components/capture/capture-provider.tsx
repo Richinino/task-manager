@@ -20,6 +20,7 @@ import {
   type CommandTask,
 } from "@/components/command/command-palette";
 import { NAV_ITEMS } from "@/components/shell/sidebar";
+import { readCaptureParams, stripCaptureParams } from "@/lib/capture-link";
 import { registerShortcuts, type Shortcut } from "@/lib/keyboard";
 import type { TaskWithRelations } from "@/server/queries/tasks";
 
@@ -216,6 +217,20 @@ export function CaptureProvider({
     () => ({ openCapture, closeCapture, openPalette, registerAgendaOpener }),
     [openCapture, closeCapture, openPalette, registerAgendaOpener],
   );
+
+  /*
+    Otvorenie odkazom: `?zachytit=1[&text=…]` (skratka ikony, widget,
+    zdieľanie). Otvorí sa raz a parametre sa z adresy hneď odstránia, aby ich
+    obnovenie stránky neotvorilo znova. Ostatné parametre aj cesta ostanú.
+  */
+  useEffect(() => {
+    const { open, text } = readCaptureParams(searchParams);
+    if (!open) return;
+    // Mimo synchrónneho tela efektu — otvorenie mení stav providera.
+    queueMicrotask(() => openCapture(text !== undefined ? { defaultText: text } : undefined));
+    const rest = stripCaptureParams(searchParams).toString();
+    router.replace((rest === "" ? pathname : `${pathname}?${rest}`) as RouterHref);
+  }, [searchParams, openCapture, pathname, router]);
 
   /* ── globálne skratky ─────────────────────────────────────────────────── */
 

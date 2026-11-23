@@ -1,11 +1,14 @@
-import { and, eq, gte, isNotNull, isNull, lte, ne, or, sql } from "drizzle-orm";
+import { and, asc, eq, gte, inArray, isNotNull, isNull, lte, ne, or, sql } from "drizzle-orm";
 
 import { getDb } from "@/db";
 import {
   agendaItems,
   agendaReminders,
+  dailyPushes,
   pushSubscriptions,
   reminders,
+  schoolBreaks,
+  schoolLessons,
   schoolSubjects,
   tasks,
   users,
@@ -17,7 +20,20 @@ import {
   prepReminderAt,
   prepReminderPayload,
 } from "@/lib/agenda-reminders";
-import { addDays, todayIn } from "@/lib/dates";
+import {
+  AFTER_SCHOOL_KEY,
+  AFTER_SCHOOL_WINDOW_MIN,
+  EXAM_EVENING_WINDOW_MIN,
+  afterSchoolPayload,
+  afterSchoolSendMinute,
+  examEveningKey,
+  examEveningMinute,
+  examEveningPayload,
+  isWithinWindow,
+  pickStartTask,
+} from "@/lib/daily-push";
+import { addDays, minutesIn, todayIn } from "@/lib/dates";
+import { isSchoolBreak } from "@/lib/school";
 import { buildPushPayload, type PushPayload } from "@/lib/push-payload";
 import {
   MAX_MESKANIE_MIN,
@@ -466,6 +482,162 @@ export async function POST(request: Request): Promise<Response> {
         subjectCode: uloha.subjectCode,
       }),
     );
+  }
+
+  /* ── Denné notifikácie ───────────────────────────────────────────────────
+     Zhrnutie „po škole" a upozornenie večer pred písomkou. Idú najviac raz
+     za deň — stráži to `daily_pushes`, riadok sa vkladá PRED odoslaním.   */
+
+  /*
+    bez-filtra: plánovač obsluhuje všetkých; berú sa len ľudia s aspoň jedným
+    prihlásením na notifikácie a všetko ďalej sa pýta s ich `userId`.
+  */
+  const adresati = await db
+    .selectDistinct({ userId: pushSubscriptions.userId, settings: users.settings })
+    .from(pushSubscriptions)
+    .innerJoin(users, eq(pushSubscriptions.userId, users.id))
+    .limit(200);
+  suhrn.preverenych += adresati.length;
+
+  /** Vloží záznam o dennej notifikácii; `false`, keď už existuje. */
+  async function zapisatDennu(userId: string, den: string, kluc: string): Promise<boolean> {
+    const vlozene = await db
+      .insert(dailyPushes)
+      .values({ id: uuidv7(), userId, date: den, key: kluc, sentAt: teraz })
+      .onConflictDoNothing()
+      .returning();
+    return vlozene.length > 0;
+  }
+
+  for (const clovek of adresati) {
+    if (suhrn.odoslanych >= MAX_NA_BEH) break;
+
+    const settings = parseSettings(clovek.settings);
+    const dnes = todayIn(settings.timezone, teraz);
+    const minuta = minutesIn(settings.timezone, teraz);
+
+    /* Zhrnutie po škole. */
+    if (settings.afterSchoolSummary) {
+      const [uzOdoslane] = await db
+        .select({ id: dailyPushes.id })
+        .from(dailyPushes)
+        .where(
+          and(
+            eq(dailyPushes.userId, clovek.userId),
+            eq(dailyPushes.date, dnes),
+            eq(dailyPushes.key, AFTER_SCHOOL_KEY),
+          ),
+        )
+        .limit(1);
+
+      if (!uzOdoslane) {
+        const volna = await db
+          .select({ fromDate: schoolBreaks.fromDate, toDate: schoolBreaks.toDate })
+          .from(schoolBreaks)
+          .where(
+            and(
+              eq(schoolBreaks.userId, clovek.userId),
+              lte(schoolBreaks.fromDate, dnes),
+              gte(schoolBreaks.toDate, dnes),
+            ),
+          );
+        const hodiny = await db
+          .select({ endTime: schoolLessons.endTime, cancelled: schoolLessons.cancelled })
+          .from(schoolLessons)
+          .where(and(eq(schoolLessons.userId, clovek.userId), eq(schoolLessons.date, dnes)));
+
+        const odKedy = afterSchoolSendMinute(
+          hodiny,
+          !isSchoolBreak(dnes, volna),
+          settings.summaryFallbackAt,
+        );
+
+        if (odKedy !== null && isWithinWindow(minuta, odKedy, AFTER_SCHOOL_WINDOW_MIN)) {
+          // Otvorené: naplánované na dnes alebo po termíne naplánovania.
+          const otvorene = await db
+            .select({
+              id: tasks.id,
+              title: tasks.title,
+              isFrog: tasks.isFrog,
+              plannedDate: tasks.plannedDate,
+            })
+            .from(tasks)
+            .where(
+              and(
+                eq(tasks.userId, clovek.userId),
+                ne(tasks.status, "done"),
+                ne(tasks.status, "dropped"),
+                isNull(tasks.deletedAt),
+                lte(tasks.plannedDate, dnes),
+              ),
+            )
+            .orderBy(asc(tasks.priority), asc(tasks.sort), asc(tasks.createdAt))
+            .limit(200);
+
+          const prva = pickStartTask(otvorene, dnes);
+          if (prva !== null && (await zapisatDennu(clovek.userId, dnes, AFTER_SCHOOL_KEY))) {
+            await dorucit(clovek.userId, afterSchoolPayload(otvorene.length, prva));
+          }
+        }
+      }
+    }
+
+    if (suhrn.odoslanych >= MAX_NA_BEH) break;
+
+    /* Večer pred písomkou alebo skúšaním — len bez vlastnej pripomienky. */
+    if (settings.examEveningPush && isWithinWindow(minuta, examEveningMinute(), EXAM_EVENING_WINDOW_MIN)) {
+      const zajtra = addDays(dnes, 1);
+      const pisomky = await db
+        .select({
+          id: agendaItems.id,
+          type: agendaItems.type,
+          title: agendaItems.title,
+          subjectCode: schoolSubjects.code,
+        })
+        .from(agendaItems)
+        .leftJoin(schoolSubjects, eq(schoolSubjects.id, agendaItems.subjectId))
+        .where(
+          and(
+            eq(agendaItems.userId, clovek.userId),
+            eq(agendaItems.date, zajtra),
+            inArray(agendaItems.type, ["exam", "oral"]),
+            isNull(agendaItems.remind),
+            isNull(agendaItems.cancelledAt),
+            isNull(agendaItems.deletedAt),
+          ),
+        )
+        .limit(10);
+
+      for (const pisomka of pisomky) {
+        if (suhrn.odoslanych >= MAX_NA_BEH) break;
+        if (pisomka.type !== "exam" && pisomka.type !== "oral") continue;
+
+        if (!(await zapisatDennu(clovek.userId, dnes, examEveningKey(pisomka.id)))) continue;
+
+        const priprava = await db
+          .select({ estimateMin: tasks.estimateMin })
+          .from(tasks)
+          .where(
+            and(
+              eq(tasks.userId, clovek.userId),
+              eq(tasks.agendaItemId, pisomka.id),
+              isNull(tasks.deletedAt),
+              ne(tasks.status, "done"),
+              ne(tasks.status, "dropped"),
+            ),
+          );
+
+        await dorucit(
+          clovek.userId,
+          examEveningPayload({
+            id: pisomka.id,
+            type: pisomka.type,
+            subject: pisomka.subjectCode ?? pisomka.title,
+            prep: priprava,
+          }),
+        );
+      }
+    }
   }
 
   return Response.json(
