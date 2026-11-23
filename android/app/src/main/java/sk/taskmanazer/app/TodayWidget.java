@@ -135,10 +135,21 @@ public class TodayWidget extends AppWidgetProvider {
     }
 
     static void updateAll(Context c) {
-        AppWidgetManager mgr = AppWidgetManager.getInstance(c);
-        int[] ids = mgr.getAppWidgetIds(new ComponentName(c, TodayWidget.class));
-        if (ids == null || ids.length == 0) return;
-        mgr.updateAppWidget(ids, build(c));
+        try {
+            AppWidgetManager mgr = AppWidgetManager.getInstance(c);
+            int[] ids = mgr.getAppWidgetIds(new ComponentName(c, TodayWidget.class));
+            if (ids != null && ids.length > 0) mgr.updateAppWidget(ids, build(c));
+        } catch (Throwable ignored) {
+        }
+        // Dáta sú spoločné: prekresli aj ostatné druhy widgetov.
+        try {
+            RulerWidget.updateAll(c);
+        } catch (Throwable ignored) {
+        }
+        try {
+            CaptureWidget.updateAll(c);
+        } catch (Throwable ignored) {
+        }
     }
 
     private static RemoteViews build(Context c) {
@@ -216,7 +227,7 @@ public class TodayWidget extends AppWidgetProvider {
     }
 
     /** „bez spojenia (UnknownHostException)", „obnovujem…", alebo prázdne. */
-    private static String status(SharedPreferences prefs) {
+    static String status(SharedPreferences prefs) {
         String err = prefs.getString("error", null);
         if ("obnovujem…".equals(err)) return err;
         if (!prefs.getBoolean("offline", false)) return "";
@@ -244,7 +255,7 @@ public class TodayWidget extends AppWidgetProvider {
         return i;
     }
 
-    private static PendingIntent openUrl(Context c, int code, String url) {
+    static PendingIntent openUrl(Context c, int code, String url) {
         return PendingIntent.getActivity(c, code, viewIntent(c, url), flags());
     }
 

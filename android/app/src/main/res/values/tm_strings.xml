@@ -3,4 +3,6 @@
     <string name="widgetDescription">Dnes: priorita dňa a úlohy</string>
     <string name="tileLabel">Zapísať úlohu</string>
     <string name="shareTarget">{\"action\": \"/zdielat\", \"method\": \"GET\", \"params\": {\"title\": \"title\", \"text\": \"text\", \"url\": \"url\"}}</string>
+    <string name="rulerDescription">Pravítko dňa: celý deň na jednom páse</string>
+    <string name="captureDescription">Zapísať úlohu</string>
 </resources>

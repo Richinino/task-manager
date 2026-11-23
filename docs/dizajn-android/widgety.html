@@ -1,0 +1,380 @@
+<title>Widgety na plochu</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,100..900&display=swap">
+<style>
+:root {
+  --bg: #f1f1f3; --panel: #ffffff; --fg: #23232a; --fgm: #676773; --line: #dcdce2; --acc: #5b52d6; --field: #d3d3da;
+  --ui: "IBM Plex Sans", system-ui, sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #18181d; --panel: #212128; --fg: #ececf1; --fgm: #a0a0ad; --line: #34343e; --acc: #8b86ee; --field: #3a3a43;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #18181d; --panel: #212128; --fg: #ececf1; --fgm: #a0a0ad; --line: #34343e; --acc: #8b86ee; --field: #3a3a43;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0; background: var(--bg); color: var(--fg); font: 16px/1.55 var(--ui);
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+.wrap { max-width: 1100px; margin: 0 auto; padding-block: 48px 80px; }
+h1 { font-size: clamp(30px, 5vw, 44px); line-height: 1.1; font-weight: 600; letter-spacing: -0.02em; margin: 0 0 16px; text-wrap: balance; }
+.lead { max-width: 62ch; color: var(--fgm); margin: 0 0 12px; }
+.jump { display: flex; flex-wrap: wrap; gap: 8px; margin: 28px 0 0; padding: 0; list-style: none; }
+.jump a { display: inline-flex; align-items: center; min-height: 44px; padding: 0 18px; border: 1px solid var(--line); border-radius: 999px;
+  background: var(--panel); color: var(--fg); text-decoration: none; font-weight: 500; font-size: 15px; }
+.jump a:hover { border-color: var(--fgm); }
+a:focus-visible { outline: 2px solid var(--acc); outline-offset: 3px; }
+.sec { margin-top: 72px; padding-top: 32px; border-top: 1px solid var(--line); scroll-margin-top: 16px; }
+.sec h2 { margin: 0 0 8px; font-size: 26px; line-height: 1.2; font-weight: 600; text-wrap: balance; }
+.sec > p { margin: 0; color: var(--fgm); max-width: 62ch; }
+
+/* ukážky plochy */
+.phones { display: flex; flex-wrap: wrap; gap: 40px 36px; margin-top: 32px; justify-content: center; }
+.demo { width: 376px; }
+.frame { padding: 8px; }
+.demo > h3 { margin: 16px 0 4px; font-size: 18px; font-weight: 600; }
+.demo > p { margin: 0; color: var(--fgm); font-size: 15px; }
+
+/* katalóg */
+.cat { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 380px), 1fr)); gap: 48px 32px; margin-top: 32px; }
+.entry { min-width: 0; }
+.entry--wide { grid-column: 1 / -1; }
+.field { display: flex; flex-wrap: wrap; gap: 20px 16px; align-items: flex-start; padding: 20px 16px; border-radius: 14px; background: var(--field); }
+.v { margin: 0; }
+.v figcaption { margin-top: 8px; font-size: 12px; line-height: 16px; color: var(--fgm); }
+.shrink { zoom: .64; }
+.entry > h3 { margin: 16px 0 6px; font-size: 20px; line-height: 1.3; font-weight: 600; display: flex; align-items: center; flex-wrap: wrap; gap: 4px 8px; }
+.entry > h3 .n { font-weight: 600; color: var(--fgm); }
+.sz { display: inline-block; padding: 0 10px; border-radius: 999px; border: 1px solid var(--line); font-size: 13px; line-height: 22px; font-weight: 500; color: var(--fgm); }
+.what, .how { margin: 0 0 6px; max-width: 70ch; font-size: 15px; }
+.how { color: var(--fgm); }
+.how b { color: var(--fg); font-weight: 600; }
+
+.pick { margin-top: 20px; padding: 18px 22px; border-left: 3px solid var(--acc); background: var(--panel); border-radius: 0 10px 10px 0; max-width: 72ch; }
+.pick p { margin: 0; }
+
+@media (max-width: 820px) { .phones { zoom: .9; } }
+@media (max-width: 440px) { .phones { zoom: .86; } .field { zoom: .86; } .shrink { zoom: .64; } }
+
+/* ===== widgety ===== */
+.w, .w * { margin: 0; box-sizing: border-box; }
+.w {
+  --k: 19.7333px;
+  position: relative; flex: none; overflow: hidden; border-radius: 26px; background: var(--bg); color: var(--ink);
+  font-family: "Archivo", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; font-stretch: 100%; font-weight: 400;
+  font-variant-numeric: tabular-nums; -webkit-font-smoothing: antialiased; text-align: left; line-height: 1.2;
+}
+.w svg { display: block; flex: none; }
+.ico { fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.w--light {
+  --bg: #f7f7f9; --ink: #141419; --ink2: #55555f; --ink3: #8e8e99; --line: #e2e2e8; --chip: #ececf1; --s2: #ececf1;
+  --school: #c6c6cf; --veil: rgba(247, 247, 249, 0.62); --frog: #d9971c; --onFrog: #1d1405; --violet: #6a4fe0; --onVio: #ffffff;
+  --green: #1f8a5f; --rose: #c2417a; --danger: #d23b2c; --acc: #141419; --onAcc: #f7f7f9; --pillbad: rgba(210, 59, 44, 0.14);
+}
+.w--dark {
+  --bg: #1a1a21; --ink: #f2f2f6; --ink2: #a9a9b6; --ink3: #6c6c78; --line: #2a2a33; --chip: #24242d; --s2: #2a2a33;
+  --school: #3c3c48; --veil: rgba(26, 26, 33, 0.62); --frog: #f0b544; --onFrog: #1d1405; --violet: #8f7af2; --onVio: #17123a;
+  --green: #4cc38d; --rose: #e7779f; --danger: #f08272; --acc: #f2f2f6; --onAcc: #0f0f13; --pillbad: rgba(240, 130, 114, 0.2);
+}
+.s11 { width: 70px; height: 70px; }
+.s21 { width: 156px; height: 70px; }
+.s22 { width: 156px; height: 156px; }
+.s41 { width: 328px; height: 70px; }
+.s42 { width: 328px; height: 156px; }
+.s43 { width: 328px; height: 242px; }
+.s44 { width: 328px; height: 328px; }
+.w h3 { font-stretch: 125%; font-weight: 800; letter-spacing: -0.01em; }
+
+/* 1 Žaba */
+.wf { background: var(--frog); color: var(--onFrog); padding: 14px; display: flex; flex-direction: column; }
+.wf-top { height: 16px; display: flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 600; line-height: 16px; }
+.wf-t { margin-top: 8px; font-size: 16px; line-height: 18px; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+.wf-b { margin-top: auto; height: 40px; display: flex; align-items: center; justify-content: space-between; font-size: 14px; font-weight: 600; }
+.wf-ok { width: 40px; height: 40px; border-radius: 50%; border: 2px solid currentColor; display: grid; place-items: center; }
+.wf--done { background: var(--violet); color: var(--onVio); }
+
+/* 2 Teraz */
+.wn { display: flex; align-items: center; padding: 0 12px 0 18px; }
+.wn-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--frog); flex: none; margin-right: 10px; }
+.wn-dot--free { background: var(--green); }
+.wn-tx { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.wn-tx b { font-size: 15px; line-height: 18px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.wn-tx span { font-size: 13px; line-height: 16px; color: var(--ink2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.wn-pill { flex: none; width: 104px; height: 30px; margin: 0 8px 0 10px; padding: 0 10px; border-radius: 999px; background: var(--chip); display: flex; align-items: center; font-size: 12px; font-weight: 600; }
+.wn-pill span { min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.wn-add { width: 44px; height: 44px; border-radius: 50%; background: var(--acc); color: var(--onAcc); display: grid; place-items: center; flex: none; }
+
+/* 3 Pravítko */
+.wp-head { position: absolute; left: 16px; right: 16px; top: 12px; height: 20px; display: flex; justify-content: space-between; align-items: center; }
+.wp-head b { font-size: 15px; font-weight: 600; }
+.wp-head span { font-size: 13px; font-weight: 600; color: var(--green); }
+.wp-ru { position: absolute; left: 16px; right: 16px; top: 48px; height: 28px; }
+.wp-track { position: absolute; inset: 0; border-radius: 10px; background: var(--s2); overflow: hidden; }
+.wp-track i { position: absolute; top: 0; height: 28px; left: calc((var(--a) - 7) * var(--k)); width: calc((var(--b) - var(--a)) * var(--k)); border-radius: 4px; }
+.wp-s { background: var(--school); }
+.wp-f { border: 1.5px solid var(--ink2); background: transparent; }
+.wp-t--frog { background: var(--frog); }
+.wp-t--violet { background: var(--violet); }
+.wp-t--rose { background: var(--rose); }
+.wp-t--green { background: var(--green); }
+.wp-track i.wp-veil { left: 0; border-radius: 0; background: var(--veil); }
+.wp-now { position: absolute; top: -4px; bottom: -4px; width: 2px; margin-left: -1px; border-radius: 1px; background: var(--ink); left: calc((var(--a) - 7) * var(--k)); }
+.wp-lbl { position: absolute; top: -20px; height: 15px; padding: 0 6px; border-radius: 999px; background: var(--ink); color: var(--bg); font-style: normal; font-size: 11px; line-height: 15px; font-weight: 600; transform: translateX(-50%); left: calc((var(--a) - 7) * var(--k)); }
+.wp-hrs { position: absolute; left: 16px; right: 16px; top: 80px; height: 14px; }
+.wp-hrs span { position: absolute; top: 0; font-size: 11px; line-height: 14px; color: var(--ink3); left: calc((var(--a) - 7) * var(--k)); transform: translateX(-50%); }
+.wp-hrs span.f { transform: none; }
+.wp-hrs span.l { transform: translateX(-100%); }
+.wp-chips { position: absolute; left: 16px; right: 16px; top: 106px; height: 36px; display: flex; gap: 8px; }
+.wp-chip { flex: 1; min-width: 0; height: 36px; padding: 0 12px; border-radius: 999px; background: var(--chip); display: flex; align-items: center; gap: 8px; }
+.wp-chip i { width: 8px; height: 8px; border-radius: 50%; flex: none; }
+.wp-chip b { min-width: 0; font-size: 12.5px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* 4 Zoznam */
+.wl-h { position: absolute; left: 16px; right: 10px; top: 8px; height: 30px; display: flex; align-items: center; gap: 10px; }
+.wl-h b { font-size: 17px; font-weight: 600; }
+.wl-h span { font-size: 13px; color: var(--ink3); }
+.wl-h i { margin-left: auto; width: 30px; height: 30px; display: grid; place-items: center; color: var(--ink3); }
+.wl-f { position: absolute; left: 12px; right: 12px; top: 42px; height: 56px; border-radius: 16px; background: var(--frog); color: var(--onFrog); padding: 0 10px 0 12px; display: flex; align-items: center; gap: 8px; }
+.wl-f h3 { flex: 1; min-width: 0; font-size: 14px; line-height: 16px; font-weight: 700; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.wl-f em { font-style: normal; height: 26px; padding: 0 10px; border-radius: 999px; background: rgba(0, 0, 0, 0.12); display: flex; align-items: center; font-size: 12px; font-weight: 600; flex: none; }
+.wl-ok { width: 34px; height: 34px; border-radius: 50%; border: 2px solid currentColor; display: grid; place-items: center; flex: none; }
+.wl-rows { position: absolute; left: 0; right: 0; top: 102px; bottom: 62px; overflow: hidden; }
+.wl-r { height: 40px; padding: 0 16px; display: flex; align-items: center; gap: 12px; }
+.wl-c { width: 22px; height: 22px; border-radius: 50%; border: 1.8px solid var(--ink3); flex: none; }
+.wl-r b { flex: 1; min-width: 0; font-size: 14px; font-weight: 400; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.wl-r span { font-size: 12px; color: var(--ink3); flex: none; }
+.wl-r u { width: 8px; height: 8px; border-radius: 2.5px; flex: none; }
+.wl-r--late { color: var(--danger); }
+.wl-r--late .wl-c { border-color: var(--danger); }
+.wl-r--late span { color: var(--danger); font-weight: 600; }
+.wl-sb { position: absolute; right: 4px; top: 108px; width: 3px; height: 64px; border-radius: 2px; background: var(--line); }
+.wl-bar { position: absolute; left: 0; right: 0; bottom: 0; height: 62px; background: var(--bg); padding: 0 12px 12px; display: flex; align-items: flex-end; gap: 8px; }
+.wl-add { flex: 1; height: 40px; border-radius: 999px; background: var(--acc); color: var(--onAcc); display: flex; align-items: center; justify-content: center; gap: 6px; font-size: 14px; font-weight: 600; }
+.wl-mic { width: 40px; height: 40px; border-radius: 50%; background: var(--chip); color: var(--ink); display: grid; place-items: center; }
+
+/* 5 Kopa */
+.wk-b { position: absolute; display: block; border-radius: 22px; }
+.wk-c { position: absolute; border-radius: 22px; background: var(--frog); color: var(--onFrog); display: flex; flex-direction: column; }
+.wk-top { display: flex; align-items: center; justify-content: space-between; height: 14px; font-size: 11px; line-height: 14px; font-weight: 600; }
+.wk-top em { font-style: normal; }
+.wk-c h3 { display: -webkit-box; -webkit-box-orient: vertical; overflow: hidden; }
+.wk-bot { margin-top: auto; display: flex; align-items: center; gap: 6px; }
+.wk-bot em { margin-right: auto; font-style: normal; font-size: 12px; font-weight: 600; }
+.wk-ok, .wk-nx { border-radius: 50%; display: grid; place-items: center; flex: none; }
+.wk-ok { background: var(--onFrog); color: var(--frog); }
+.wk-nx { border: 2px solid rgba(29, 20, 5, 0.4); }
+.wk:not(.wk--wide) .wk-b2 { left: 20px; top: 20px; width: 116px; height: 124px; background: var(--line); }
+.wk:not(.wk--wide) .wk-b1 { left: 14px; top: 14px; width: 128px; height: 124px; background: var(--violet); }
+.wk:not(.wk--wide) .wk-c { left: 8px; top: 8px; width: 140px; height: 124px; padding: 12px; }
+.wk:not(.wk--wide) .wk-c h3 { margin-top: 6px; font-size: 14px; line-height: 16px; -webkit-line-clamp: 3; }
+.wk:not(.wk--wide) .wk-ok, .wk:not(.wk--wide) .wk-nx { width: 32px; height: 32px; }
+.wk--wide .wk-b2 { left: 24px; top: 22px; width: 280px; height: 120px; background: var(--line); }
+.wk--wide .wk-b1 { left: 18px; top: 16px; width: 292px; height: 120px; background: var(--violet); }
+.wk--wide .wk-c { left: 12px; top: 10px; width: 304px; height: 120px; padding: 14px; }
+.wk--wide .wk-top { font-size: 12px; }
+.wk--wide .wk-top em { height: 20px; padding: 0 9px; border-radius: 999px; background: rgba(0, 0, 0, 0.12); display: flex; align-items: center; }
+.wk--wide .wk-top { justify-content: flex-start; gap: 8px; height: 20px; margin-top: -3px; }
+.wk--wide .wk-c h3 { margin-top: 3px; font-size: 18px; line-height: 19px; -webkit-line-clamp: 2; }
+.wk--wide .wk-bot { gap: 8px; }
+.wk--wide .wk-bot em { font-size: 13px; }
+.wk--wide .wk-ok, .wk--wide .wk-nx { width: 36px; height: 36px; }
+
+/* 6 Škola */
+.ws { padding: 14px; display: flex; flex-direction: column; }
+.ws-l { height: 20px; display: flex; align-items: center; font-size: 12px; line-height: 20px; color: var(--ink3); }
+.ws-p { height: 20px; padding: 0 9px; border-radius: 999px; background: var(--pillbad); color: var(--danger); display: flex; align-items: center; font-size: 11px; font-weight: 600; }
+.ws-k { margin-top: 8px; font-stretch: 125%; font-weight: 800; font-size: 44px; line-height: 44px; letter-spacing: -0.01em; color: var(--violet); }
+.ws-t { margin-top: 4px; font-size: 14px; line-height: 20px; font-weight: 500; color: var(--ink2); }
+.ws-after { margin-top: 8px; font-size: 18px; line-height: 20px; }
+.ws-t--2 { font-size: 13px; line-height: 17px; }
+.ws-d { margin-top: auto; display: flex; gap: 10px; height: 10px; }
+.ws-d i { width: 10px; height: 10px; border-radius: 50%; background: var(--s2); }
+.ws-d i.on { background: var(--ink); }
+.ws-d i.cur { background: transparent; box-shadow: inset 0 0 0 2px var(--ink); }
+
+/* 7 Týždeň */
+.wt-h { position: absolute; left: 16px; right: 16px; top: 12px; height: 20px; display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.wt-h b { font-size: 14px; font-weight: 600; white-space: nowrap; }
+.wt-h span { font-size: 12px; color: var(--ink3); white-space: nowrap; }
+.wt-g { position: absolute; left: 16px; right: 16px; top: 38px; display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; }
+.wt-c { min-width: 0; display: flex; flex-direction: column; align-items: center; }
+.wt-c span { font-size: 11px; line-height: 14px; font-weight: 600; color: var(--ink3); }
+.wt-c b { font-size: 14px; line-height: 18px; font-weight: 700; }
+.wt-c--today span { color: var(--ink); }
+.wt-bar { position: relative; width: 100%; height: 70px; margin-top: 4px; border-radius: 12px; background: var(--s2); overflow: hidden; }
+.wt-bar i { position: absolute; left: 0; right: 0; bottom: 0; background: var(--ink3); }
+.wt-bar.today i { background: var(--ink); }
+.wt-bar u { position: absolute; left: 0; right: 0; top: 8px; display: grid; place-items: center; color: var(--ink2); text-decoration: none; }
+
+/* 8 Zapísať */
+.wz1 { background: var(--acc); color: var(--onAcc); display: grid; place-items: center; }
+.wz2 { padding: 8px; display: flex; align-items: center; gap: 6px; }
+.wz2-p { flex: 1; min-width: 0; height: 54px; border-radius: 999px; background: var(--acc); color: var(--onAcc); display: flex; align-items: center; justify-content: center; gap: 4px; font-size: 13px; font-weight: 600; }
+.wz2-m { width: 48px; height: 48px; border-radius: 50%; background: var(--chip); display: grid; place-items: center; flex: none; }
+
+/* 9 Rezerva */
+.wr { padding: 9px 14px 0; }
+.wr-n { font-stretch: 125%; font-weight: 800; font-size: 28px; line-height: 28px; letter-spacing: -0.01em; white-space: nowrap; }
+.wr-n--s { font-size: 14px; letter-spacing: 0; }
+.wr-n--s { margin-top: 7px; margin-bottom: 7px; }
+.wr-l { font-size: 12px; line-height: 14px; color: var(--ink2); }
+.wr-b { margin-top: 5px; height: 6px; border-radius: 3px; background: var(--s2); overflow: hidden; }
+.wr-b i { display: block; height: 6px; border-radius: 3px; background: var(--ink); }
+
+/* ===== telefón ===== */
+.phone {
+  --ink: #141419; --ink2: #3d4a43; --dockbg: rgba(255, 255, 255, 0.35);
+  width: 360px; height: 780px; overflow: hidden; position: relative; border-radius: 34px; color: var(--ink);
+  box-shadow: 0 0 0 8px #0c0c10, 0 18px 40px -18px rgba(0, 0, 0, 0.5);
+  font-family: "Archivo", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; font-stretch: 100%; font-variant-numeric: tabular-nums;
+  -webkit-font-smoothing: antialiased; line-height: 1.2;
+}
+.phone *, .phone { box-sizing: border-box; }
+.phone svg { display: block; flex: none; }
+.home--sage { background: #c9d3cc; }
+.home--slate { background: #2b303b; --ink: #f2f2f6; --ink2: #b8bcc8; --dockbg: rgba(255, 255, 255, 0.1); }
+.home--sand { background: #e6dccf; --ink2: #5a5247; --dockbg: rgba(255, 255, 255, 0.4); }
+.sb { height: 24px; padding: 0 16px; display: flex; align-items: center; justify-content: space-between; font-size: 12px; font-weight: 600; color: var(--ink); }
+.sb-r { display: flex; align-items: center; gap: 6px; }
+.gesture { position: absolute; left: 126px; bottom: 8px; width: 108px; height: 4px; border-radius: 999px; background: var(--ink); opacity: 0.85; }
+.clock { position: absolute; left: 0; right: 0; top: 44px; height: 64px; text-align: center; font-size: 64px; line-height: 64px; font-weight: 300; letter-spacing: -0.02em; }
+.date { position: absolute; left: 0; right: 0; top: 114px; height: 22px; text-align: center; font-size: 16px; line-height: 22px; color: var(--ink2); }
+.clock--big { top: 66px; height: 88px; font-size: 88px; line-height: 88px; }
+.date--big { top: 158px; }
+.home .w { position: absolute; box-shadow: 0 6px 18px -10px rgba(0, 0, 0, 0.35); }
+.app { position: absolute; width: 82px; height: 84px; display: flex; flex-direction: column; align-items: center; gap: 6px; font-size: 12px; line-height: 16px; color: var(--ink); }
+.app > i { width: 56px; height: 56px; border-radius: 16px; display: flex; align-items: center; justify-content: center; flex: none; }
+.app > span { height: 16px; white-space: nowrap; }
+.dock { position: absolute; left: 12px; right: 12px; top: 664px; height: 84px; border-radius: 32px; background: var(--dockbg); }
+.dock .app { top: 14px; height: 56px; }
+</style>
+<div class="wrap">
+  <header>
+    <h1>Widgety na plochu</h1>
+    <p class="lead">Súčasný widget je dosť hlučný, preto tu je sada deviatich, ktoré pekne sedia na ploche. Majú rôzne veľkosti aj zameranie a každý je v svetlej aj tmavej verzii.</p>
+    <p class="lead">Všetko ukazuje ten istý pondelok 23. novembra o 9:52. Najprv uvidíš tri hotové plochy, potom každý widget samostatne v skutočnej veľkosti.</p>
+    <ul class="jump" aria-label="Časti">
+      <li><a href="#plochy">Tri ukážky plochy</a></li>
+      <li><a href="#katalog">Katalóg widgetov</a></li>
+      <li><a href="#vyber">Ako vybrať</a></li>
+    </ul>
+  </header>
+
+  <section class="sec" id="plochy" aria-labelledby="plochy-h">
+    <h2 id="plochy-h">Tri ukážky plochy</h2>
+    <p>Každá plocha má inú tapetu a inú kombináciu. Na tmavej tapete sedia tmavé widgety, na svetlých svetlé.</p>
+    <div class="phones">
+      <div class="demo"><div class="frame"><div class="phone home home--sage" role="img" aria-label="Plocha Študent"><div class="sb"><span>9:52</span><span class="sb-r"><svg width="14" height="12" viewBox="0 0 14 12" aria-hidden="true"><path d="M1 11 L13 11 L13 1 Z" fill="currentColor"/></svg><svg width="14" height="12" viewBox="0 0 14 12" aria-hidden="true"><path d="M1 4.5 A8.5 8.5 0 0 1 13 4.5 M3.2 7 A5.5 5.5 0 0 1 10.8 7 M5.4 9.4 A2.3 2.3 0 0 1 8.6 9.4" class="ico" style="stroke-width:1.5"/></svg><span style="display:flex;align-items:center;gap:3px">78%<svg width="20" height="10" viewBox="0 0 20 10" aria-hidden="true"><rect x="0.75" y="0.75" width="16.5" height="8.5" rx="2" fill="none" stroke="currentColor" stroke-width="1.5"/><rect x="2.5" y="2.5" width="9.5" height="5" rx="1" fill="currentColor"/><rect x="18" y="3" width="1.5" height="4" rx="0.5" fill="currentColor"/></svg></span></span></div><div class="clock">9:52</div><div class="date">pondelok 23. novembra</div><div style="left:16px;top:160px" class="w w--light s41 wn"><i class="wn-dot"></i><div class="wn-tx"><b>Prestávka</b><span>o 8 min FYZ v F2</span></div><span class="wn-pill"><span>Dokončiť model držiaka</span></span><i class="wn-add"><svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true"><path class="ico" style="stroke-width:2.4" d="M12 5v14M5 12h14"/></svg></i></div><div style="left:16px;top:246px" class="w w--light s22 ws"><div class="ws-l">Ďalšia hodina</div><div class="ws-k">FYZ</div><p class="ws-t">10:00 v F2</p><div class="ws-d"><i class="on"></i><i class="on"></i><i class="cur"></i><i class=""></i><i class=""></i><i class=""></i></div></div><div style="left:188px;top:246px" class="w w--light s22 wf"><div class="wf-top"><svg width="14" height="14" viewBox="0 0 24 24" aria-hidden="true"><path class="ico" d="M12 3.5 14.6 9 20.5 9.7 16.2 13.8 17.3 19.7 12 16.8 6.7 19.7 7.8 13.8 3.5 9.7 9.4 9Z" fill="currentColor"/></svg><span>Priorita dňa</span></div><h3 class="wf-t">Dokončiť model držiaka na 3D tlačiareň</h3><div class="wf-b"><span>45 min</span><i class="wf-ok"><svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true"><path class="ico" style="stroke-width:2.4" d="M5 12.5 9.5 17 19 7.5"/></svg></i></div></div><div style="left:16px;top:418px" class="w w--light s21 wz2"><span class="wz2-p"><svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path class="ico" style="stroke-width:2.4" d="M12 5v14M5 12h14"/></svg>Zapísať</span><i class="wz2-m"><svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true"><rect class="ico" x="9" y="3.5" width="6" height="11" rx="3"/><path class="ico" d="M5.5 11.5a6.5 6.5 0 0 0 13 0M12 18v2.5"/></svg></i></div><div class="app" style="left:182px;top:418px"><i style="background:#6f86b5"></i><span>Hodiny</span></div><div class="app" style="left:268px;top:418px"><i style="background:#9b87b8"></i><span>Kalkulačka</span></div><div class="app" style="left:10px;top:548px"><i style="background:#5f8f86"></i><span>Fotoaparát</span></div><div class="app" style="left:96px;top:548px"><i style="background:#c28a6a"></i><span>Galéria</span></div><div class="app" style="left:182px;top:548px"><i style="background:#c98fa0"></i><span>Poznámky</span></div><div class="app" style="left:268px;top:548px"><i style="background:#8a9a6a"></i><span>Mapy</span></div><div class="dock"><div class="app" style="left:4px"><i style="background:#4f8f6a"></i></div><div class="app" style="left:86px"><i style="background:#5a82b8"></i></div><div class="app" style="left:168px"><i style="background:#c98a4a"></i></div><div class="app" style="left:250px"><i style="background:#8a8f99"></i></div></div><div class="gesture"></div></div></div><h3>Študent</h3><p>Teraz 4×1, Škola 2×2, Žaba 2×2, Zapísať 2×1 a rad ikon na šalviovej tapete.</p></div>
+      <div class="demo"><div class="frame"><div class="phone home home--slate" role="img" aria-label="Plocha Plánovač"><div class="sb"><span>9:52</span><span class="sb-r"><svg width="14" height="12" viewBox="0 0 14 12" aria-hidden="true"><path d="M1 11 L13 11 L13 1 Z" fill="currentColor"/></svg><svg width="14" height="12" viewBox="0 0 14 12" aria-hidden="true"><path d="M1 4.5 A8.5 8.5 0 0 1 13 4.5 M3.2 7 A5.5 5.5 0 0 1 10.8 7 M5.4 9.4 A2.3 2.3 0 0 1 8.6 9.4" class="ico" style="stroke-width:1.5"/></svg><span style="display:flex;align-items:center;gap:3px">78%<svg width="20" height="10" viewBox="0 0 20 10" aria-hidden="true"><rect x="0.75" y="0.75" width="16.5" height="8.5" rx="2" fill="none" stroke="currentColor" stroke-width="1.5"/><rect x="2.5" y="2.5" width="9.5" height="5" rx="1" fill="currentColor"/><rect x="18" y="3" width="1.5" height="4" rx="0.5" fill="currentColor"/></svg></span></span></div><div class="clock">9:52</div><div class="date">pondelok 23. novembra</div><div style="left:16px;top:160px" class="w w--dark s42 wp">
+<div class="wp-head"><b>Dnes</b><span>Rezerva 3 h 55</span></div>
+<div class="wp-ru"><div class="wp-track"><i class="wp-s" style="--a:8;--b:8.75"></i><i class="wp-s" style="--a:8.917;--b:9.667"></i><i class="wp-s" style="--a:10;--b:10.75"></i><i class="wp-s" style="--a:10.917;--b:11.667"></i><i class="wp-s" style="--a:11.833;--b:12.583"></i><i class="wp-s" style="--a:12.75;--b:13.5"></i><i class="wp-f" style="--a:16.5;--b:18"></i><i class="wp-t wp-t--frog" style="--a:13.667;--b:14.417"></i><i class="wp-t wp-t--rose" style="--a:14.5;--b:14.667"></i><i class="wp-t wp-t--violet" style="--a:14.75;--b:15.417"></i><i class="wp-t wp-t--violet" style="--a:15.5;--b:15.917"></i><i class="wp-t wp-t--violet" style="--a:18.167;--b:18.667"></i><i class="wp-t wp-t--green" style="--a:18.833;--b:19.417"></i><i class="wp-veil" style="--a:7;--b:9.867"></i></div><i class="wp-now" style="--a:9.867"></i><em class="wp-lbl" style="--a:9.867">9:52</em></div>
+<div class="wp-hrs"><span class="f" style="--a:7">7</span><span class="" style="--a:10">10</span><span class="" style="--a:13">13</span><span class="" style="--a:16">16</span><span class="" style="--a:19">19</span><span class="l" style="--a:22">22</span></div>
+<div class="wp-chips"><span class="wp-chip"><i style="background:var(--frog)"></i><b>Dokončiť model držiaka</b></span><span class="wp-chip"><i style="background:var(--violet)"></i><b>Naučiť sa na písomku z FYZ</b></span></div>
+</div><div style="left:16px;top:332px" class="w w--dark s42 wt"><div class="wt-h"><b>Týždeň 23.–29. 11.</b><span>12 h naplánované</span></div><div class="wt-g"><div class="wt-c wt-c--today"><span>po</span><b>23</b><div class="wt-bar today"><i style="height:44%"></i></div></div><div class="wt-c"><span>ut</span><b>24</b><div class="wt-bar"><i style="height:38%"></i></div></div><div class="wt-c"><span>st</span><b>25</b><div class="wt-bar"><i style="height:40%"></i><u><svg width="14" height="14" viewBox="0 0 24 24" aria-hidden="true"><path class="ico"  d="M6 3.5h8.5l3.5 3.5V20.5H6ZM9 11.5h6M9 15h6"/></svg></u></div></div><div class="wt-c"><span>št</span><b>26</b><div class="wt-bar"><i style="height:12.5%"></i></div></div><div class="wt-c"><span>pi</span><b>27</b><div class="wt-bar"><i style="height:100%"></i></div></div><div class="wt-c"><span>so</span><b>28</b><div class="wt-bar"><i style="height:10%"></i></div></div><div class="wt-c"><span>ne</span><b>29</b><div class="wt-bar"><i style="height:0%"></i></div></div></div></div><div style="left:16px;top:504px" class="w w--dark s11 wz1"><svg width="34" height="34" viewBox="0 0 24 24" aria-hidden="true"><path class="ico" style="stroke-width:2.4" d="M12 5v14M5 12h14"/></svg></div><div class="app" style="left:96px;top:504px"><i style="background:#5f8f86"></i><span>Fotoaparát</span></div><div class="app" style="left:182px;top:504px"><i style="background:#c28a6a"></i><span>Galéria</span></div><div class="app" style="left:268px;top:504px"><i style="background:#6f86b5"></i><span>Hodiny</span></div><div class="dock"><div class="app" style="left:4px"><i style="background:#4f8f6a"></i></div><div class="app" style="left:86px"><i style="background:#5a82b8"></i></div><div class="app" style="left:168px"><i style="background:#c98a4a"></i></div><div class="app" style="left:250px"><i style="background:#8a8f99"></i></div></div><div class="gesture"></div></div></div><h3>Plánovač</h3><p>Pravítko 4×2, Týždeň 4×2 a Zapísať 1×1 na tmavej bridlici.</p></div>
+      <div class="demo"><div class="frame"><div class="phone home home--sand" role="img" aria-label="Plocha Minimal"><div class="sb"><span>9:52</span><span class="sb-r"><svg width="14" height="12" viewBox="0 0 14 12" aria-hidden="true"><path d="M1 11 L13 11 L13 1 Z" fill="currentColor"/></svg><svg width="14" height="12" viewBox="0 0 14 12" aria-hidden="true"><path d="M1 4.5 A8.5 8.5 0 0 1 13 4.5 M3.2 7 A5.5 5.5 0 0 1 10.8 7 M5.4 9.4 A2.3 2.3 0 0 1 8.6 9.4" class="ico" style="stroke-width:1.5"/></svg><span style="display:flex;align-items:center;gap:3px">78%<svg width="20" height="10" viewBox="0 0 20 10" aria-hidden="true"><rect x="0.75" y="0.75" width="16.5" height="8.5" rx="2" fill="none" stroke="currentColor" stroke-width="1.5"/><rect x="2.5" y="2.5" width="9.5" height="5" rx="1" fill="currentColor"/><rect x="18" y="3" width="1.5" height="4" rx="0.5" fill="currentColor"/></svg></span></span></div><div class="clock clock--big">9:52</div><div class="date date--big">pondelok 23. novembra</div><div style="left:16px;top:232px" class="w w--light s22 wk"><i class="wk-b wk-b2"></i><i class="wk-b wk-b1"></i><div class="wk-c"><div class="wk-top"><span>1 z 6</span></div><h3>Dokončiť model držiaka na 3D tlačiareň</h3><div class="wk-bot"><em>45 min</em><i class="wk-ok"><svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><path class="ico" style="stroke-width:2.4" d="M5 12.5 9.5 17 19 7.5"/></svg></i><i class="wk-nx"><svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><path class="ico" style="stroke-width:2.2" d="M5 12h14M13 6l6 6-6 6"/></svg></i></div></div></div><div style="left:188px;top:232px" class="w w--light s21 wr"><div class="wr-n">3 h 55</div><div class="wr-l">rezerva dnes</div><div class="wr-b"><i style="width:44%"></i></div></div><div style="left:188px;top:318px" class="w w--light s21 wz2"><span class="wz2-p"><svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path class="ico" style="stroke-width:2.4" d="M12 5v14M5 12h14"/></svg>Zapísať</span><i class="wz2-m"><svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true"><rect class="ico" x="9" y="3.5" width="6" height="11" rx="3"/><path class="ico" d="M5.5 11.5a6.5 6.5 0 0 0 13 0M12 18v2.5"/></svg></i></div><div class="app" style="left:10px;top:520px"><i style="background:#5f8f86"></i><span>Fotoaparát</span></div><div class="app" style="left:96px;top:520px"><i style="background:#c28a6a"></i><span>Galéria</span></div><div class="app" style="left:182px;top:520px"><i style="background:#6f86b5"></i><span>Hodiny</span></div><div class="app" style="left:268px;top:520px"><i style="background:#9b87b8"></i><span>Prehliadač</span></div><div class="dock"><div class="app" style="left:4px"><i style="background:#4f8f6a"></i></div><div class="app" style="left:86px"><i style="background:#5a82b8"></i></div><div class="app" style="left:168px"><i style="background:#c98a4a"></i></div><div class="app" style="left:250px"><i style="background:#8a8f99"></i></div></div><div class="gesture"></div></div></div><h3>Minimal</h3><p>Kopa 2×2, Rezerva 2×1 a Zapísať 2×1 pod veľkými hodinami na piesku.</p></div>
+    </div>
+  </section>
+
+  <section class="sec" id="katalog" aria-labelledby="katalog-h">
+    <h2 id="katalog-h">Katalóg widgetov</h2>
+    <p>Každý widget v skutočnej veľkosti na sivom poli, svetlá a tmavá verzia vedľa seba. Pri niektorých je pod nimi aj ďalší stav.</p>
+    <div class="cat">
+<article class="entry " aria-labelledby="e1">
+<div class="field"><figure class="v"><div class="w w--light s22 wf"><div class="wf-top"><svg width="14" height="14" viewBox="0 0 24 24" aria-hidden="true"><path class="ico" d="M12 3.5 14.6 9 20.5 9.7 16.2 13.8 17.3 19.7 12 16.8 6.7 19.7 7.8 13.8 3.5 9.7 9.4 9Z" fill="currentColor"/></svg><span>Priorita dňa</span></div><h3 class="wf-t">Dokončiť model držiaka na 3D tlačiareň</h3><div class="wf-b"><span>45 min</span><i class="wf-ok"><svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true"><path class="ico" style="stroke-width:2.4" d="M5 12.5 9.5 17 19 7.5"/></svg></i></div></div><figcaption>Svetlá</figcaption></figure><figure class="v"><div class="w w--dark s22 wf"><div class="wf-top"><svg width="14" height="14" viewBox="0 0 24 24" aria-hidden="true"><path class="ico" d="M12 3.5 14.6 9 20.5 9.7 16.2 13.8 17.3 19.7 12 16.8 6.7 19.7 7.8 13.8 3.5 9.7 9.4 9Z" fill="currentColor"/></svg><span>Priorita dňa</span></div><h3 class="wf-t">Dokončiť model držiaka na 3D tlačiareň</h3><div class="wf-b"><span>45 min</span><i class="wf-ok"><svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true"><path class="ico" style="stroke-width:2.4" d="M5 12.5 9.5 17 19 7.5"/></svg></i></div></div><figcaption>Tmavá</figcaption></figure><figure class="v"><div class="shrink"><div class="w w--light s22 wf wf--done"><div class="wf-top"><svg width="14" height="14" viewBox="0 0 24 24" aria-hidden="true"><path class="ico" style="stroke-width:2.4" d="M5 12.5 9.5 17 19 7.5"/></svg><span>Hotovo.</span></div><h3 class="wf-t">Ďalšia: Naučiť sa na písomku z FYZ</h3><div class="wf-b"><span>40 min</span><i class="wf-ok"><svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true"><path class="ico" style="stroke-width:2.4" d="M5 12.5 9.5 17 19 7.5"/></svg></i></div></div></div><figcaption>Po odškrtnutí</figcaption></figure></div>
+<h3 id="e1"><b class="n">1</b> Žaba <span class="sz">2×2</span></h3>
+<p class="what">Jedna vec, ktorú dnes spravíš ako prvú, celá na jednej jantárovej ploche.</p>
+<p class="how"><b>Ako sa postaví.</b> Ťuknutie na kruh odškrtne úlohu a plocha sa prefarbí na ďalšiu v poradí; Archivo príde ako písmo zabalené v appke, ktoré Android pozná od verzie 8.</p>
+</article>
+<article class="entry entry--wide" aria-labelledby="e2">
+<div class="field"><figure class="v"><div class="w w--light s41 wn"><i class="wn-dot"></i><div class="wn-tx"><b>Prestávka</b><span>o 8 min FYZ v F2</span></div><span class="wn-pill"><span>Dokončiť model držiaka</span></span><i class="wn-add"><svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true"><path class="ico" style="stroke-width:2.4" d="M12 5v14M5 12h14"/></svg></i></div><figcaption>Svetlá</figcaption></figure><figure class="v"><div class="w w--dark s41 wn"><i class="wn-dot"></i><div class="wn-tx"><b>Prestávka</b><span>o 8 min FYZ v F2</span></div><span class="wn-pill"><span>Dokončiť model držiaka</span></span><i class="wn-add"><svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true"><path class="ico" style="stroke-width:2.4" d="M12 5v14M5 12h14"/></svg></i></div><figcaption>Tmavá</figcaption></figure><figure class="v"><div class="w w--light s41 wn"><i class="wn-dot wn-dot--free"></i><div class="wn-tx"><b>Po škole</b><span>voľno do 16:30</span></div><span class="wn-pill"><span>Ďalej: Dokončiť model držiaka</span></span><i class="wn-add"><svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true"><path class="ico" style="stroke-width:2.4" d="M12 5v14M5 12h14"/></svg></i></div><figcaption>Po škole</figcaption></figure></div>
+<h3 id="e2"><b class="n">2</b> Teraz <span class="sz">4×1</span></h3>
+<p class="what">Tenký pás pod hodinami, ktorý ukáže, čo je práve teraz a čo príde potom.</p>
+<p class="how"><b>Ako sa postaví.</b> Obyčajný widget s dvoma riadkami textu a dvoma tlačidlami; text appka mení podľa rozvrhu a po škole prepne na voľno do tréningu.</p>
+</article>
+<article class="entry entry--wide" aria-labelledby="e3">
+<div class="field"><figure class="v"><div class="w w--light s42 wp">
+<div class="wp-head"><b>Dnes</b><span>Rezerva 3 h 55</span></div>
+<div class="wp-ru"><div class="wp-track"><i class="wp-s" style="--a:8;--b:8.75"></i><i class="wp-s" style="--a:8.917;--b:9.667"></i><i class="wp-s" style="--a:10;--b:10.75"></i><i class="wp-s" style="--a:10.917;--b:11.667"></i><i class="wp-s" style="--a:11.833;--b:12.583"></i><i class="wp-s" style="--a:12.75;--b:13.5"></i><i class="wp-f" style="--a:16.5;--b:18"></i><i class="wp-t wp-t--frog" style="--a:13.667;--b:14.417"></i><i class="wp-t wp-t--rose" style="--a:14.5;--b:14.667"></i><i class="wp-t wp-t--violet" style="--a:14.75;--b:15.417"></i><i class="wp-t wp-t--violet" style="--a:15.5;--b:15.917"></i><i class="wp-t wp-t--violet" style="--a:18.167;--b:18.667"></i><i class="wp-t wp-t--green" style="--a:18.833;--b:19.417"></i><i class="wp-veil" style="--a:7;--b:9.867"></i></div><i class="wp-now" style="--a:9.867"></i><em class="wp-lbl" style="--a:9.867">9:52</em></div>
+<div class="wp-hrs"><span class="f" style="--a:7">7</span><span class="" style="--a:10">10</span><span class="" style="--a:13">13</span><span class="" style="--a:16">16</span><span class="" style="--a:19">19</span><span class="l" style="--a:22">22</span></div>
+<div class="wp-chips"><span class="wp-chip"><i style="background:var(--frog)"></i><b>Dokončiť model držiaka</b></span><span class="wp-chip"><i style="background:var(--violet)"></i><b>Naučiť sa na písomku z FYZ</b></span></div>
+</div><figcaption>Svetlá</figcaption></figure><figure class="v"><div class="w w--dark s42 wp">
+<div class="wp-head"><b>Dnes</b><span>Rezerva 3 h 55</span></div>
+<div class="wp-ru"><div class="wp-track"><i class="wp-s" style="--a:8;--b:8.75"></i><i class="wp-s" style="--a:8.917;--b:9.667"></i><i class="wp-s" style="--a:10;--b:10.75"></i><i class="wp-s" style="--a:10.917;--b:11.667"></i><i class="wp-s" style="--a:11.833;--b:12.583"></i><i class="wp-s" style="--a:12.75;--b:13.5"></i><i class="wp-f" style="--a:16.5;--b:18"></i><i class="wp-t wp-t--frog" style="--a:13.667;--b:14.417"></i><i class="wp-t wp-t--rose" style="--a:14.5;--b:14.667"></i><i class="wp-t wp-t--violet" style="--a:14.75;--b:15.417"></i><i class="wp-t wp-t--violet" style="--a:15.5;--b:15.917"></i><i class="wp-t wp-t--violet" style="--a:18.167;--b:18.667"></i><i class="wp-t wp-t--green" style="--a:18.833;--b:19.417"></i><i class="wp-veil" style="--a:7;--b:9.867"></i></div><i class="wp-now" style="--a:9.867"></i><em class="wp-lbl" style="--a:9.867">9:52</em></div>
+<div class="wp-hrs"><span class="f" style="--a:7">7</span><span class="" style="--a:10">10</span><span class="" style="--a:13">13</span><span class="" style="--a:16">16</span><span class="" style="--a:19">19</span><span class="l" style="--a:22">22</span></div>
+<div class="wp-chips"><span class="wp-chip"><i style="background:var(--frog)"></i><b>Dokončiť model držiaka</b></span><span class="wp-chip"><i style="background:var(--violet)"></i><b>Naučiť sa na písomku z FYZ</b></span></div>
+</div><figcaption>Tmavá</figcaption></figure></div>
+<h3 id="e3"><b class="n">3</b> Pravítko <span class="sz">4×2</span></h3>
+<p class="what">Odpoveď na otázku „stihnem to?“: celý deň od siedmej do desiatej večer na jednom páse.</p>
+<p class="how"><b>Ako sa postaví.</b> Android widget nevie kresliť vlastné tvary, preto appka pravítko vykreslí ako obrázok a prekreslí ho pri každej zmene aj každých pár minút.</p>
+</article>
+<article class="entry entry--wide" aria-labelledby="e4">
+<div class="field"><figure class="v"><div class="w w--light s43 wl">
+<div class="wl-h"><b>Dnes</b><span>1 z 7 hotovo</span><i><svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><path class="ico"  d="M20 12a8 8 0 1 1-2.6-5.9M20 4v5h-5"/></svg></i></div>
+<div class="wl-f"><svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path class="ico" d="M12 3.5 14.6 9 20.5 9.7 16.2 13.8 17.3 19.7 12 16.8 6.7 19.7 7.8 13.8 3.5 9.7 9.4 9Z" fill="currentColor"/></svg><h3>Dokončiť model držiaka na 3D tlačiareň</h3><em>45 min</em><i class="wl-ok"><svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><path class="ico" style="stroke-width:2.4" d="M5 12.5 9.5 17 19 7.5"/></svg></i></div>
+<div class="wl-rows"><div class="wl-r wl-r--late"><i class="wl-c"></i><b>Odovzdať prihlášku na olympiádu z INF</b><span>pred 3 dňami</span><u style="background:var(--danger)"></u></div><div class="wl-r"><i class="wl-c"></i><b>Naučiť sa na písomku z FYZ</b><span>40 min</span><u style="background:var(--violet)"></u></div><div class="wl-r"><i class="wl-c"></i><b>Domáca úloha MAT — str. 54/3–8</b><span>25 min</span><u style="background:var(--violet)"></u></div><div class="wl-r"><i class="wl-c"></i><b>Cvičiť gitaru — akordy F a Bm</b><span>30 min</span><u style="background:var(--violet)"></u></div><div class="wl-r"><i class="wl-c"></i><b>Zavolať do servisu kvôli bicyklu</b><span>10 min</span><u style="background:var(--rose)"></u></div><div class="wl-r"><i class="wl-c"></i><b>Beh 5 km</b><span>35 min</span><u style="background:var(--green)"></u></div></div>
+<div class="wl-bar"><span class="wl-add"><svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><path class="ico" style="stroke-width:2.4" d="M12 5v14M5 12h14"/></svg>Zapísať úlohu</span><i class="wl-mic"><svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true"><rect class="ico" x="9" y="3.5" width="6" height="11" rx="3"/><path class="ico" d="M5.5 11.5a6.5 6.5 0 0 0 13 0M12 18v2.5"/></svg></i></div>
+</div><figcaption>Svetlá</figcaption></figure><figure class="v"><div class="w w--dark s43 wl">
+<div class="wl-h"><b>Dnes</b><span>1 z 7 hotovo</span><i><svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><path class="ico"  d="M20 12a8 8 0 1 1-2.6-5.9M20 4v5h-5"/></svg></i></div>
+<div class="wl-f"><svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path class="ico" d="M12 3.5 14.6 9 20.5 9.7 16.2 13.8 17.3 19.7 12 16.8 6.7 19.7 7.8 13.8 3.5 9.7 9.4 9Z" fill="currentColor"/></svg><h3>Dokončiť model držiaka na 3D tlačiareň</h3><em>45 min</em><i class="wl-ok"><svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><path class="ico" style="stroke-width:2.4" d="M5 12.5 9.5 17 19 7.5"/></svg></i></div>
+<div class="wl-rows"><div class="wl-r wl-r--late"><i class="wl-c"></i><b>Odovzdať prihlášku na olympiádu z INF</b><span>pred 3 dňami</span><u style="background:var(--danger)"></u></div><div class="wl-r"><i class="wl-c"></i><b>Naučiť sa na písomku z FYZ</b><span>40 min</span><u style="background:var(--violet)"></u></div><div class="wl-r"><i class="wl-c"></i><b>Domáca úloha MAT — str. 54/3–8</b><span>25 min</span><u style="background:var(--violet)"></u></div><div class="wl-r"><i class="wl-c"></i><b>Cvičiť gitaru — akordy F a Bm</b><span>30 min</span><u style="background:var(--violet)"></u></div><div class="wl-r"><i class="wl-c"></i><b>Zavolať do servisu kvôli bicyklu</b><span>10 min</span><u style="background:var(--rose)"></u></div><div class="wl-r"><i class="wl-c"></i><b>Beh 5 km</b><span>35 min</span><u style="background:var(--green)"></u></div></div>
+<div class="wl-bar"><span class="wl-add"><svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><path class="ico" style="stroke-width:2.4" d="M12 5v14M5 12h14"/></svg>Zapísať úlohu</span><i class="wl-mic"><svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true"><rect class="ico" x="9" y="3.5" width="6" height="11" rx="3"/><path class="ico" d="M5.5 11.5a6.5 6.5 0 0 0 13 0M12 18v2.5"/></svg></i></div>
+</div><figcaption>Tmavá</figcaption></figure><figure class="v"><div class="w w--light s44 wl">
+<div class="wl-h"><b>Dnes</b><span>1 z 7 hotovo</span><i><svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><path class="ico"  d="M20 12a8 8 0 1 1-2.6-5.9M20 4v5h-5"/></svg></i></div>
+<div class="wl-f"><svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path class="ico" d="M12 3.5 14.6 9 20.5 9.7 16.2 13.8 17.3 19.7 12 16.8 6.7 19.7 7.8 13.8 3.5 9.7 9.4 9Z" fill="currentColor"/></svg><h3>Dokončiť model držiaka na 3D tlačiareň</h3><em>45 min</em><i class="wl-ok"><svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><path class="ico" style="stroke-width:2.4" d="M5 12.5 9.5 17 19 7.5"/></svg></i></div>
+<div class="wl-rows"><div class="wl-r wl-r--late"><i class="wl-c"></i><b>Odovzdať prihlášku na olympiádu z INF</b><span>pred 3 dňami</span><u style="background:var(--danger)"></u></div><div class="wl-r"><i class="wl-c"></i><b>Naučiť sa na písomku z FYZ</b><span>40 min</span><u style="background:var(--violet)"></u></div><div class="wl-r"><i class="wl-c"></i><b>Domáca úloha MAT — str. 54/3–8</b><span>25 min</span><u style="background:var(--violet)"></u></div><div class="wl-r"><i class="wl-c"></i><b>Cvičiť gitaru — akordy F a Bm</b><span>30 min</span><u style="background:var(--violet)"></u></div><div class="wl-r"><i class="wl-c"></i><b>Zavolať do servisu kvôli bicyklu</b><span>10 min</span><u style="background:var(--rose)"></u></div><div class="wl-r"><i class="wl-c"></i><b>Beh 5 km</b><span>35 min</span><u style="background:var(--green)"></u></div></div><i class="wl-sb"></i>
+<div class="wl-bar"><span class="wl-add"><svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><path class="ico" style="stroke-width:2.4" d="M12 5v14M5 12h14"/></svg>Zapísať úlohu</span><i class="wl-mic"><svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true"><rect class="ico" x="9" y="3.5" width="6" height="11" rx="3"/><path class="ico" d="M5.5 11.5a6.5 6.5 0 0 0 13 0M12 18v2.5"/></svg></i></div>
+</div><figcaption>Svetlá</figcaption></figure><figure class="v"><div class="w w--dark s44 wl">
+<div class="wl-h"><b>Dnes</b><span>1 z 7 hotovo</span><i><svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><path class="ico"  d="M20 12a8 8 0 1 1-2.6-5.9M20 4v5h-5"/></svg></i></div>
+<div class="wl-f"><svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path class="ico" d="M12 3.5 14.6 9 20.5 9.7 16.2 13.8 17.3 19.7 12 16.8 6.7 19.7 7.8 13.8 3.5 9.7 9.4 9Z" fill="currentColor"/></svg><h3>Dokončiť model držiaka na 3D tlačiareň</h3><em>45 min</em><i class="wl-ok"><svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><path class="ico" style="stroke-width:2.4" d="M5 12.5 9.5 17 19 7.5"/></svg></i></div>
+<div class="wl-rows"><div class="wl-r wl-r--late"><i class="wl-c"></i><b>Odovzdať prihlášku na olympiádu z INF</b><span>pred 3 dňami</span><u style="background:var(--danger)"></u></div><div class="wl-r"><i class="wl-c"></i><b>Naučiť sa na písomku z FYZ</b><span>40 min</span><u style="background:var(--violet)"></u></div><div class="wl-r"><i class="wl-c"></i><b>Domáca úloha MAT — str. 54/3–8</b><span>25 min</span><u style="background:var(--violet)"></u></div><div class="wl-r"><i class="wl-c"></i><b>Cvičiť gitaru — akordy F a Bm</b><span>30 min</span><u style="background:var(--violet)"></u></div><div class="wl-r"><i class="wl-c"></i><b>Zavolať do servisu kvôli bicyklu</b><span>10 min</span><u style="background:var(--rose)"></u></div><div class="wl-r"><i class="wl-c"></i><b>Beh 5 km</b><span>35 min</span><u style="background:var(--green)"></u></div></div><i class="wl-sb"></i>
+<div class="wl-bar"><span class="wl-add"><svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><path class="ico" style="stroke-width:2.4" d="M12 5v14M5 12h14"/></svg>Zapísať úlohu</span><i class="wl-mic"><svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true"><rect class="ico" x="9" y="3.5" width="6" height="11" rx="3"/><path class="ico" d="M5.5 11.5a6.5 6.5 0 0 0 13 0M12 18v2.5"/></svg></i></div>
+</div><figcaption>Tmavá</figcaption></figure></div>
+<h3 id="e4"><b class="n">4</b> Zoznam <span class="sz">4×3 a 4×4</span></h3>
+<p class="what">Prepracovaný súčasný widget: priorita dňa navrchu a pod ňou úlohy, ktoré sa dajú odškrtnúť.</p>
+<p class="how"><b>Ako sa postaví.</b> Postaví sa ako widget so zoznamom, ktorý sa vo veľkosti 4×4 rolovaním dostane aj k ďalším riadkom; pilulka a mikrofón otvoria zápis alebo hlas.</p>
+</article>
+<article class="entry entry--wide" aria-labelledby="e5">
+<div class="field"><figure class="v"><div class="w w--light s22 wk"><i class="wk-b wk-b2"></i><i class="wk-b wk-b1"></i><div class="wk-c"><div class="wk-top"><span>1 z 6</span></div><h3>Dokončiť model držiaka na 3D tlačiareň</h3><div class="wk-bot"><em>45 min</em><i class="wk-ok"><svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><path class="ico" style="stroke-width:2.4" d="M5 12.5 9.5 17 19 7.5"/></svg></i><i class="wk-nx"><svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><path class="ico" style="stroke-width:2.2" d="M5 12h14M13 6l6 6-6 6"/></svg></i></div></div></div><figcaption>Svetlá</figcaption></figure><figure class="v"><div class="w w--dark s22 wk"><i class="wk-b wk-b2"></i><i class="wk-b wk-b1"></i><div class="wk-c"><div class="wk-top"><span>1 z 6</span></div><h3>Dokončiť model držiaka na 3D tlačiareň</h3><div class="wk-bot"><em>45 min</em><i class="wk-ok"><svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><path class="ico" style="stroke-width:2.4" d="M5 12.5 9.5 17 19 7.5"/></svg></i><i class="wk-nx"><svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><path class="ico" style="stroke-width:2.2" d="M5 12h14M13 6l6 6-6 6"/></svg></i></div></div></div><figcaption>Tmavá</figcaption></figure><figure class="v"><div class="w w--light s42 wk wk--wide"><i class="wk-b wk-b2"></i><i class="wk-b wk-b1"></i><div class="wk-c"><div class="wk-top"><span>1 z 6</span><em>3D tlačiareň</em></div><h3>Dokončiť model držiaka na 3D tlačiareň</h3><div class="wk-bot"><em>45 min</em><i class="wk-ok"><svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true"><path class="ico" style="stroke-width:2.4" d="M5 12.5 9.5 17 19 7.5"/></svg></i><i class="wk-nx"><svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true"><path class="ico" style="stroke-width:2.2" d="M5 12h14M13 6l6 6-6 6"/></svg></i></div></div></div><figcaption>Svetlá</figcaption></figure><figure class="v"><div class="w w--dark s42 wk wk--wide"><i class="wk-b wk-b2"></i><i class="wk-b wk-b1"></i><div class="wk-c"><div class="wk-top"><span>1 z 6</span><em>3D tlačiareň</em></div><h3>Dokončiť model držiaka na 3D tlačiareň</h3><div class="wk-bot"><em>45 min</em><i class="wk-ok"><svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true"><path class="ico" style="stroke-width:2.4" d="M5 12.5 9.5 17 19 7.5"/></svg></i><i class="wk-nx"><svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true"><path class="ico" style="stroke-width:2.2" d="M5 12h14M13 6l6 6-6 6"/></svg></i></div></div></div><figcaption>Tmavá</figcaption></figure></div>
+<h3 id="e5"><b class="n">5</b> Kopa <span class="sz">2×2 a 4×2</span></h3>
+<p class="what">Jedna úloha naraz ako na obrazovke Dnes: vrchná karta a za ňou dve čakajúce.</p>
+<p class="how"><b>Ako sa postaví.</b> Karta je vykreslený obrázok s dvoma tlačidlami; fajka úlohu odškrtne a šípka posunie kopu o jednu kartu ďalej.</p>
+</article>
+<article class="entry entry--wide" aria-labelledby="e6">
+<div class="field"><figure class="v"><div class="w w--light s22 ws"><div class="ws-l">Ďalšia hodina</div><div class="ws-k">FYZ</div><p class="ws-t">10:00 v F2</p><div class="ws-d"><i class="on"></i><i class="on"></i><i class="cur"></i><i class=""></i><i class=""></i><i class=""></i></div></div><figcaption>Svetlá</figcaption></figure><figure class="v"><div class="w w--dark s22 ws"><div class="ws-l">Ďalšia hodina</div><div class="ws-k">FYZ</div><p class="ws-t">10:00 v F2</p><div class="ws-d"><i class="on"></i><i class="on"></i><i class="cur"></i><i class=""></i><i class=""></i><i class=""></i></div></div><figcaption>Tmavá</figcaption></figure><figure class="v"><div class="w w--light s22 ws"><div class="ws-l">Dnes</div><h3 class="ws-after">Škola skončila</h3><p class="ws-t ws-t--2">Zajtra prvá SJL o 8:00</p><div class="ws-d"><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i></div></div><figcaption>Po škole</figcaption></figure><figure class="v"><div class="w w--light s22 ws"><div class="ws-l"><span class="ws-p">písomka</span></div><div class="ws-k">FYZ</div><p class="ws-t">10:00 v F2</p><div class="ws-d"><i class="on"></i><i class="on"></i><i class="cur"></i><i class=""></i><i class=""></i><i class=""></i></div></div><figcaption>Deň s písomkou</figcaption></figure></div>
+<h3 id="e6"><b class="n">6</b> Škola <span class="sz">2×2</span></h3>
+<p class="what">Pre študenta: skratka ďalšej hodiny, miestnosť a čas, aby nemusel otvárať rozvrh.</p>
+<p class="how"><b>Ako sa postaví.</b> Číta rozvrh z appky a bodky odškrtáva podľa času; po poslednej hodine ukáže, kedy začína zajtrajšok.</p>
+</article>
+<article class="entry entry--wide" aria-labelledby="e7">
+<div class="field"><figure class="v"><div class="w w--light s42 wt"><div class="wt-h"><b>Týždeň 23.–29. 11.</b><span>12 h naplánované</span></div><div class="wt-g"><div class="wt-c wt-c--today"><span>po</span><b>23</b><div class="wt-bar today"><i style="height:44%"></i></div></div><div class="wt-c"><span>ut</span><b>24</b><div class="wt-bar"><i style="height:38%"></i></div></div><div class="wt-c"><span>st</span><b>25</b><div class="wt-bar"><i style="height:40%"></i><u><svg width="14" height="14" viewBox="0 0 24 24" aria-hidden="true"><path class="ico"  d="M6 3.5h8.5l3.5 3.5V20.5H6ZM9 11.5h6M9 15h6"/></svg></u></div></div><div class="wt-c"><span>št</span><b>26</b><div class="wt-bar"><i style="height:12.5%"></i></div></div><div class="wt-c"><span>pi</span><b>27</b><div class="wt-bar"><i style="height:100%"></i></div></div><div class="wt-c"><span>so</span><b>28</b><div class="wt-bar"><i style="height:10%"></i></div></div><div class="wt-c"><span>ne</span><b>29</b><div class="wt-bar"><i style="height:0%"></i></div></div></div></div><figcaption>Svetlá</figcaption></figure><figure class="v"><div class="w w--dark s42 wt"><div class="wt-h"><b>Týždeň 23.–29. 11.</b><span>12 h naplánované</span></div><div class="wt-g"><div class="wt-c wt-c--today"><span>po</span><b>23</b><div class="wt-bar today"><i style="height:44%"></i></div></div><div class="wt-c"><span>ut</span><b>24</b><div class="wt-bar"><i style="height:38%"></i></div></div><div class="wt-c"><span>st</span><b>25</b><div class="wt-bar"><i style="height:40%"></i><u><svg width="14" height="14" viewBox="0 0 24 24" aria-hidden="true"><path class="ico"  d="M6 3.5h8.5l3.5 3.5V20.5H6ZM9 11.5h6M9 15h6"/></svg></u></div></div><div class="wt-c"><span>št</span><b>26</b><div class="wt-bar"><i style="height:12.5%"></i></div></div><div class="wt-c"><span>pi</span><b>27</b><div class="wt-bar"><i style="height:100%"></i></div></div><div class="wt-c"><span>so</span><b>28</b><div class="wt-bar"><i style="height:10%"></i></div></div><div class="wt-c"><span>ne</span><b>29</b><div class="wt-bar"><i style="height:0%"></i></div></div></div></div><figcaption>Tmavá</figcaption></figure></div>
+<h3 id="e7"><b class="n">7</b> Týždeň <span class="sz">4×2</span></h3>
+<p class="what">Sedem dní po sebe a koľko z voľného času každý zaberie; preplnený piatok je pokojný, nie červený.</p>
+<p class="how"><b>Ako sa postaví.</b> Pásy kreslí appka do jedného obrázka, takže widget ostane jednoduchý a vojde sa aj do úzkeho 4×2.</p>
+</article>
+<article class="entry " aria-labelledby="e8">
+<div class="field"><figure class="v"><div class="w w--light s11 wz1"><svg width="34" height="34" viewBox="0 0 24 24" aria-hidden="true"><path class="ico" style="stroke-width:2.4" d="M12 5v14M5 12h14"/></svg></div><figcaption>Svetlá</figcaption></figure><figure class="v"><div class="w w--dark s11 wz1"><svg width="34" height="34" viewBox="0 0 24 24" aria-hidden="true"><path class="ico" style="stroke-width:2.4" d="M12 5v14M5 12h14"/></svg></div><figcaption>Tmavá</figcaption></figure><figure class="v"><div class="w w--light s21 wz2"><span class="wz2-p"><svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path class="ico" style="stroke-width:2.4" d="M12 5v14M5 12h14"/></svg>Zapísať</span><i class="wz2-m"><svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true"><rect class="ico" x="9" y="3.5" width="6" height="11" rx="3"/><path class="ico" d="M5.5 11.5a6.5 6.5 0 0 0 13 0M12 18v2.5"/></svg></i></div><figcaption>Svetlá</figcaption></figure><figure class="v"><div class="w w--dark s21 wz2"><span class="wz2-p"><svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path class="ico" style="stroke-width:2.4" d="M12 5v14M5 12h14"/></svg>Zapísať</span><i class="wz2-m"><svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true"><rect class="ico" x="9" y="3.5" width="6" height="11" rx="3"/><path class="ico" d="M5.5 11.5a6.5 6.5 0 0 0 13 0M12 18v2.5"/></svg></i></div><figcaption>Tmavá</figcaption></figure></div>
+<h3 id="e8"><b class="n">8</b> Zapísať <span class="sz">1×1 a 2×1</span></h3>
+<p class="what">Rýchly zápis jedným ťuknutím alebo hlasom, bez otvárania celej appky.</p>
+<p class="how"><b>Ako sa postaví.</b> Najjednoduchší widget: dve tlačidlá, ktoré otvoria zachytenie, jedno rovno v hlasovom režime.</p>
+</article>
+<article class="entry " aria-labelledby="e9">
+<div class="field"><figure class="v"><div class="w w--light s21 wr"><div class="wr-n">3 h 55</div><div class="wr-l">rezerva dnes</div><div class="wr-b"><i style="width:44%"></i></div></div><figcaption>Svetlá</figcaption></figure><figure class="v"><div class="w w--dark s21 wr"><div class="wr-n">3 h 55</div><div class="wr-l">rezerva dnes</div><div class="wr-b"><i style="width:44%"></i></div></div><figcaption>Tmavá</figcaption></figure><figure class="v"><div class="w w--light s21 wr"><div class="wr-n wr-n--s">o 30 min viac</div><div class="wr-l">než sa dnes zmestí</div><div class="wr-b"><i style="width:100%;background:var(--ink3)"></i></div></div><figcaption>Keď je preplnené</figcaption></figure></div>
+<h3 id="e9"><b class="n">9</b> Rezerva <span class="sz">2×1</span></h3>
+<p class="what">Jediné číslo, ktoré dnes treba poznať: koľko času ti ostane po úlohách.</p>
+<p class="how"><b>Ako sa postaví.</b> Text a tenký pás z čísel v appke, ktoré sa obnovia pri každej zmene úloh; v preplnený deň povie pokojne, o koľko je viac.</p>
+</article>
+    </div>
+  </section>
+
+  <section class="sec" id="vyber" aria-labelledby="vyber-h">
+    <h2 id="vyber-h">Ako vybrať</h2>
+    <div class="pick"><p>Napíš mi čísla widgetov, ktoré chceš, napríklad „1, 3, 4 a 8“, a postavím ich naraz.</p></div>
+  </section>
+</div>
