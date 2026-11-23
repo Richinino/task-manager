@@ -205,7 +205,7 @@ function TopCard({
         </span>
       </div>
 
-      <h2 className="mt-3.5 line-clamp-3 break-words font-display text-hero leading-[1.05] tracking-tight">
+      <h2 className="mt-3.5 line-clamp-3 font-display [overflow-wrap:anywhere] text-hero leading-[1.05] tracking-tight">
         {task.title}
       </h2>
 

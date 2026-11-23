@@ -25,6 +25,8 @@
     
         <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
     <uses-permission android:name="android.permission.INTERNET"/>
+    <!-- JobScheduler s podmienkou siete to od Androidu 14 vyžaduje. -->
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>
     
 
     
@@ -237,5 +239,9 @@
         
 
         
+            <service
+            android:name=".WidgetRefreshJob"
+            android:permission="android.permission.BIND_JOB_SERVICE"
+            android:exported="false" />
     </application>
 </manifest>
