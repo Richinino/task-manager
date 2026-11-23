@@ -10,6 +10,25 @@ Všetky podstatné zmeny v projekte. Formát podľa
 
 ### Pribudlo
 
+- **Telefón v novom dizajne „Jedna karta"** — na telefóne je Dnes kopa
+  kariet v plnej farbe (priorita dňa, po termíne, ostatné), pod ňou pravítko
+  dňa a prepínač Karta | Deň s celou časovou osou. Lišta Dnes · Plán · + ·
+  Inbox · Knižnica; Plán (týždeň a mesiac), Inbox po jednej veci, Knižnica,
+  projekt a detail úlohy ako spodný hárok. Zachytenie na celú obrazovku
+  s náhľadom karty, osou dňa a diktovaním. Počítač ostal v dizajne
+  „Terminál". Návrhy v [docs/dizajn-android/](docs/dizajn-android/).
+- **Android appka** — `.apk` (TWA) v [android/](android/), podpis cez
+  `android/podpisat.ps1`, prepojenie so stránkou cez `assetlinks.json`.
+- **Widgety a dlaždica** — Pravítko 4×2 (celý deň na jednom páse), Zapísať
+  1×1 a Dnes 4×3 s odškrtávaním; farby z palety Samsungu (Android 12+),
+  inak svetlá/tmavá podľa systému. Dlaždica „Zapísať úlohu" v rýchlych
+  nastaveniach. Pripojenie v Nastaveniach → Telefón.
+- **Notifikácie s tlačidlami** — pripomienka úlohy má „Hotovo" a „O hodinu";
+  zhrnutie dňa 15 minút po poslednej hodine; večer pred písomkou pripomenie
+  prípravu. Všetko sa dá vypnúť v Nastaveniach → Pripomienky.
+- **Zdieľanie do appky** — odkaz alebo text z inej appky otvorí zachytenie
+  s predvyplneným textom; skratka „Zapísať" pri podržaní ikony.
+
 - **Claude (MCP)** — appka má vlastný MCP server s prihlásením cez OAuth.
   Claude na počítači, webe aj v mobile prečíta deň (úlohy, rozvrh, porady,
   udalosti, rozpočet času) a urobí s tebou ranný rituál. Pripojenie
