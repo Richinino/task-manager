@@ -352,9 +352,15 @@ Aby appka nemala navrchu adresný riadok, musí Android overiť, že stránka
 a appka patria k sebe. Slúži na to `/.well-known/assetlinks.json`, ktorý
 appka **už vie vydať** — chýbajú mu len dve premenné:
 
-1. Postav `.apk` (napr. cez [Bubblewrap](https://github.com/GoogleChromeLabs/bubblewrap)
-   alebo [PWABuilder](https://www.pwabuilder.com/)) a nechaj si vytvoriť
-   podpisový kľúč. **Kľúč si odlož** — bez neho sa appka nedá aktualizovať.
+1. Postav `.apk`. Hotový projekt je v [`android/`](../android/) (Bubblewrap
+   + widgety a dlaždica); zmeň v ňom adresu (`HOST` v
+   `TodayWidget.java`, `host` v `twa-manifest.json` a `app/build.gradle`)
+   a názov balíka, ak nasadzuješ vlastnú kópiu. Postav ho
+   `android\gradlew.bat assembleRelease` a podpíš
+   `android\podpisat.ps1` — skript vytvorí podpisový kľúč mimo repa a
+   vypíše odtlačok. Inak poslúži [Bubblewrap](https://github.com/GoogleChromeLabs/bubblewrap)
+   alebo [PWABuilder](https://www.pwabuilder.com/).
+   **Kľúč si odlož** — bez neho sa appka nedá aktualizovať.
 2. Zisti odtlačok:
 
    ```
@@ -374,6 +380,10 @@ appka **už vie vydať** — chýbajú mu len dve premenné:
 > **Ak appku niekedy dáš do Google Play,** Play si ju podpíše vlastným kľúčom
 > a odtlačok sa zmení. Vtedy do premennej patria **oba** — svoj aj ten z Play
 > Console (oddelené čiarkou). Appka ich unesie viac naraz.
+
+> **Samsung a widgety:** widget sťahuje dáta na pozadí. Kým appka nemá
+> v Nastaveniach → Aplikácie → Úlohy → Batéria voľbu **Neobmedzené**, Samsung
+> jej na pozadí zablokuje sieť a widget ostane na „obnovujem…".
 
 > **Prihlásenie cez Google v TWA funguje**, lebo vnútri beží skutočný Chrome.
 > Neplatí to pre natívny obal (Capacitor a spol.): tam Google prihlásenie vo

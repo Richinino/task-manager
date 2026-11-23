@@ -22,6 +22,8 @@ Návrh celého systému je v [PLAN.md](PLAN.md), záväzné rozhrania v [docs/CO
 | **Pripomienky** | web push na telefón aj počítač — úlohy s hodinou, udalosti, dni prípravy |
 | **Google Kalendár** | udalosti zo všetkých tvojich kalendárov na Dnes, v Týždni a Mesiaci, s miestom, popisom, farbou, hosťami a odkazom; výber kalendárov a čo sa ráta do času dňa (len čítanie, [docs/KALENDAR.md](docs/KALENDAR.md)) |
 | **Claude (MCP)** | Claude na počítači, webe aj v mobile zhrnie deň a urobí s tebou ranný rituál — [docs/MCP.md](docs/MCP.md) |
+| **Telefón** | vlastný vzhľad „Jedna karta": Dnes ako kopa kariet s pravítkom a celou osou dňa, Plán (týždeň, mesiac), Inbox po jednej veci, Knižnica, zachytenie na celú obrazovku aj hlasom |
+| **Android appka** | `.apk` pre Samsung a iné Androidy — widgety Pravítko, Zapísať a Dnes, dlaždica „Zapísať úlohu", zdieľanie do appky, notifikácie s tlačidlami „Hotovo" a „O hodinu", zhrnutie dňa po škole |
 
 ## Spustenie
 
@@ -80,6 +82,41 @@ v [docs/DEPLOY.md](docs/DEPLOY.md).
 
 Čo pribudlo v ktorej verzii, je v [CHANGELOG.md](CHANGELOG.md); ako nahlásiť
 chybu alebo poslať zmenu, v [CONTRIBUTING.md](CONTRIBUTING.md).
+
+## Android appka
+
+Appka v telefóne je **TWA** — vo vnútri `.apk` beží skutočný Chrome, ktorý
+zobrazuje stránku z Vercelu. Preto sa **všetko okrem widgetov a dlaždice
+aktualizuje samo** po nasadení; nové `.apk` treba len pri zmene natívneho
+kódu v `android/`.
+
+| Čo | Kde |
+|---|---|
+| Android projekt (Bubblewrap + vlastné widgety v Jave) | [`android/`](android/) |
+| Návrh telefónu a widgetov, rozhodnutia | [`docs/dizajn-android/`](docs/dizajn-android/) |
+| Čo telefón ešte potrebuje | [`docs/TELEFON.md`](docs/TELEFON.md) |
+| Prepojenie appky a stránky (`assetlinks.json`) | [docs/NASADENIE.md](docs/NASADENIE.md), sekcia Vlastné `.apk` |
+
+**Postavenie a podpis** (Windows, Android Studio nainštalované):
+
+```powershell
+cd android
+$env:JAVA_HOME = "C:\Program Files\Android\Android Studio\jbr"
+.\gradlew.bat assembleRelease
+powershell -ExecutionPolicy Bypass -File .\podpisat.ps1
+```
+
+`podpisat.ps1` pri prvom spustení vytvorí podpisový kľúč v
+`~/.android-kluce/ulohy.keystore` (heslo zadáva len človek, do repa nejde)
+a vypíše odtlačok pre premennú `ANDROID_CERT_FINGERPRINTS`. **Kľúč si
+odlož** — každá ďalšia verzia musí byť podpísaná tým istým, inak sa nedá
+nainštalovať cez starú. Pred novou verziou zvýš `versionCode` v
+`android/app/build.gradle` aj `android/twa-manifest.json`.
+
+**Widgety** sa pripájajú v appke: Nastavenia → Telefón → Pripojiť widget
+(dlhodobý token zariadenia, ukladá sa len jeho odtlačok). Na Samsungu daj
+appke **Nastavenia → Aplikácie → Úlohy → Batéria → Neobmedzené** — inak
+Samsung widgetu na pozadí zablokuje sieť a ostane na „obnovujem…".
 
 ## Klávesové skratky
 
@@ -150,6 +187,7 @@ Next.js 16 (App Router) · React 19 · TypeScript 6 · Tailwind CSS 4 · Drizzle
 | Školský rozvrh — import z EduPage, suplovanie, prázdniny, úlohy k predmetom | hotové |
 | Učenie — piliere, zručnosti, míľniky, lekcia z dokončenej úlohy | hotové |
 | Udalosti a deadliny — písomky, viacdňové udalosti, príprava na písomku, pripomienky, hľadanie a export | hotové |
+| Telefón — dizajn „Jedna karta", Android appka, widgety, dlaždica, zdieľanie, notifikácie s tlačidlami | hotové, ďalšie widgety z návrhu čakajú |
 
 **Všetko je nasadené a používa sa.** Rozpis míľnikov aj rozhodnutia za nimi sú
 v [PLAN.md](PLAN.md). Podprojekty majú vlastné dokumenty:
@@ -187,6 +225,8 @@ The app itself is in Slovak. The overall design lives in [PLAN.md](PLAN.md) and 
 | **Reminders** | web push to phone and desktop — timed tasks, events, prep days |
 | **Google Calendar** | events from all your calendars in Today, Week and Month, with place, description, colour, guests and link; choose calendars and which count toward the day's time (read-only, [docs/KALENDAR.md](docs/KALENDAR.md), Slovak) |
 | **Claude (MCP)** | Claude on desktop, web and mobile summarizes your day and runs the morning routine with you — [docs/MCP.md](docs/MCP.md) (Slovak) |
+| **Phone** | its own "one card" look: Today as a card stack with a day ruler and full timeline, Plan (week, month), Inbox one item at a time, Library, full-screen capture with voice |
+| **Android app** | an `.apk` — home-screen widgets (Ruler, Capture, Today), a Quick Settings tile, share-to-app, notifications with "Done" and "In an hour" buttons, an after-school summary |
 
 ## Getting started
 
@@ -250,6 +290,18 @@ EduPage.
 
 Release history is in [CHANGELOG.md](CHANGELOG.md); how to report a bug or
 send a change is in [CONTRIBUTING.md](CONTRIBUTING.md).
+
+## Android app
+
+The phone app is a **TWA**: Chrome inside an `.apk` showing the deployed
+site, so everything except the widgets and the tile updates by itself on
+deploy. The project is in [`android/`](android/), design notes in
+[`docs/dizajn-android/`](docs/dizajn-android/). Build with
+`android\gradlew.bat assembleRelease` (JAVA_HOME = Android Studio's `jbr`) and
+sign with `android\podpisat.ps1`, which creates the signing key outside the
+repo on first run and prints the fingerprint for `ANDROID_CERT_FINGERPRINTS`.
+Widgets are paired in the app (Settings → Telefón). On Samsung, set the app's
+battery usage to *Unrestricted*, or the widget can't reach the network.
 
 ## Keyboard shortcuts
 
@@ -326,6 +378,7 @@ Next.js 16 (App Router) · React 19 · TypeScript 6 · Tailwind CSS 4 · Drizzle
 | School timetable — EduPage import, substitutions, holidays, tasks per subject | done |
 | Learning — pillars, skills, milestones, a lesson from a finished task | done |
 | Events and deadlines — exams, multi-day events, exam prep, reminders, search and export | done |
+| Phone — "one card" design, Android app, widgets, tile, share target, actionable notifications | done; more widgets from the design are pending |
 
 **Everything is deployed and in daily use.** The milestone breakdown and the
 decisions behind it are in [PLAN.md](PLAN.md). Sub-projects have their own
