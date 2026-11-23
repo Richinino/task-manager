@@ -30,9 +30,9 @@ import {
  * ## Kto sťahuje
  *
  * Bez tela si odber stiahne táto cesta sama z `SKOLA_ICS_URL`. S kalendárom
- * v tele (`Content-Type: text/calendar`) ho len načíta — tak to robí GitHub
- * workflow, lebo EduPage spojenia z Vercelu niekedy zahadzuje
- * (`UND_ERR_CONNECT_TIMEOUT`). Tajomstvo platí v oboch prípadoch rovnako:
+ * v tele (`Content-Type: text/calendar`) ho len načíta — tak to robí
+ * `scripts/rozvrh-zo-servera.sh` na domácom serveri, lebo EduPage zahadzuje
+ * spojenia z dátových centier, Vercelu aj GitHubu (`UND_ERR_CONNECT_TIMEOUT`). Tajomstvo platí v oboch prípadoch rovnako:
  * bez neho by ktokoľvek vedel podstrčiť vlastný rozvrh.
  *
  * ## Komu sa rozvrh načíta
@@ -76,9 +76,8 @@ export async function POST(request: Request): Promise<Response> {
   }
 
   /*
-    Plánovač môže poslať odber rovno v tele — stiahol ho sám, z inej siete
-    (GitHub Actions). Vercel sa totiž k EduPage niekedy vôbec nepripojí;
-    pozri `zdrojOdberu`. Prázdne telo znamená starý spôsob: stiahnuť tu.
+    Odber môže prísť rovno v tele — stiahol ho domáci server, lebo Vercel sa
+    k EduPage nepripojí; pozri `zdrojOdberu`. Prázdne telo znamená starý spôsob: stiahnuť tu.
   */
   const zdroj = zdrojOdberu(await request.text());
 

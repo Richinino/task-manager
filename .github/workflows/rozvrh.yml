@@ -23,20 +23,15 @@
 #   ROZVRH_URL     celá adresa, napr. https://tvoja-adresa.vercel.app/api/rozvrh
 #   CRON_SECRET    to isté tajomstvo, aké je v premenných na Verceli
 #
-#   SKOLA_ICS_URL  adresa Webcal odberu z EduPage (tá istá ako na Verceli)
-#                  — nepovinné, ale bez nej to dnes nefunguje, pozri nižšie
+# Na Verceli musí byť SKOLA_ICS_URL — adresa Webcal odberu z EduPage.
+# Tá sem NEPATRÍ: appka si ju vytiahne sama a nikdy ju nevydá von.
 #
-# PREČO SI ODBER SŤAHUJE GITHUB SÁM
-#
-# V novembri 2026 sa Vercel (AWS, fra1) k EduPage prestal pripájať:
-# `UND_ERR_CONNECT_TIMEOUT` pri oboch pokusoch, ručný import aj cron, hoci
-# z domácej siete odber fungoval. Keď je SKOLA_ICS_URL aj tu, beh odber
-# stiahne sám a appke ho pošle v tele — Vercel sa k EduPage vôbec nepripája.
-# Bez nej appke pošle prázdne telo a tá si odber stiahne sama (pôvodný
-# spôsob, ten istý ako cron-job.org).
-#
-# Adresa odberu je prístup k rozvrhu: v logu behu sa nikdy nevypisuje,
-# ani v chybe curlu (z tej ide von len číselný kód).
+# POZOR, OD NOVEMBRA 2026 TO NESTAČÍ: EduPage zahadzuje spojenia zo
+# serverov v dátových centrách — z Vercelu (AWS) aj z GitHubu (Azure);
+# 23. 11. 2026 sme to skúšali oboma cestami, obe skončili časovým limitom
+# pri pripájaní. Odber preto sťahuje domáci server skriptom
+# scripts/rozvrh-zo-servera.sh (docs/NASADENIE.md, sekcia 7). Tento
+# workflow ostáva pre prípad, že EduPage blokovanie zruší.
 #
 # Kým nie sú nastavené, beh ZLYHÁ — nech je na prvý pohľad vidno, že sa
 # rozvrh neaktualizuje. To pravidlo sme sa naučili draho pri pripomienkach:
@@ -70,64 +65,15 @@ jobs:
         env:
           URL: ${{ secrets.ROZVRH_URL }}
           SECRET: ${{ secrets.CRON_SECRET }}
-          # Nepovinné. Keď je nastavené, odber stiahne tento beh sám a appke
-          # ho pošle v tele — Vercel sa k EduPage niekedy vôbec nepripojí.
-          ODBER: ${{ secrets.SKOLA_ICS_URL }}
         run: |
           if [ -z "$URL" ] || [ -z "$SECRET" ]; then
             echo "::error::Chýba ROZVRH_URL alebo CRON_SECRET medzi tajomstvami repozitára (Settings → Secrets and variables → Actions). Rozvrh sa nesynchronizuje."
             exit 1
           fi
 
-          # Telo požiadavky: prázdne = appka si odber stiahne sama,
-          # kalendár = appka ho len načíta (zdrojOdberu v src/lib/ics.ts).
-          subor="$RUNNER_TEMP/rozvrh.ics"
-          : > "$subor"
-
-          if [ -n "$ODBER" ]; then
-            # Webcal je len iné meno pre https — curl ho nepozná.
-            adresa=$(printf '%s' "$ODBER" | tr -d '[:space:]' | sed -E 's#^[Ww][Ee][Bb][Cc][Aa][Ll]://#https://#')
-
-            # Adresa sa nikdy nevypisuje: je to prístup k rozvrhu. GitHub
-            # tajomstvá v logu maskuje, ale prepísaná na https:// by prešla.
-            # Preto sa z chyby curlu berie len jej číslo.
-            chyba=0
-            stav=$(curl -s -o "$subor" -w "%{http_code}" \
-              -H "Accept: text/calendar, text/plain" \
-              --connect-timeout 20 --max-time 60 \
-              --retry 2 --retry-delay 5 --retry-connrefused \
-              "$adresa") || chyba=$?
-
-            if [ "$chyba" != "0" ]; then
-              echo "::error::K odberu EduPage sa nepodarilo pripojiť ani z GitHubu (curl kód $chyba; 28 = časový limit, 7 = spojenie odmietnuté, 6 = neznáma adresa)."
-              exit 1
-            fi
-
-            if [ "$stav" != "200" ]; then
-              echo "::error::Odber EduPage odpovedal $stav. Skontroluj, či adresa Webcal v EduPage stále platí."
-              exit 1
-            fi
-
-            # Prvý neprázdny riadok (bez BOM) musí byť BEGIN:VCALENDAR —
-            # HTML stránka s prihlásením by sa inak tvárila ako prázdny rozvrh.
-            # Bez `grep -m1` a podobných: pri `pipefail` by predčasný koniec
-            # rúry zhodil beh aj na správnom kalendári.
-            prvy=$(head -c 500 "$subor" | LC_ALL=C sed -e '1s/^\xEF\xBB\xBF//' -e 's/\r$//' | awk 'NF && !n { print; n = 1 }' | tr '[:lower:]' '[:upper:]')
-            case "$prvy" in
-              *BEGIN:VCALENDAR*) ;;
-              *)
-                echo "::error::Z odberu EduPage neprišiel kalendár (začiatok: $(head -c 20 "$subor" | tr -cd '[:alnum:] <>!_-'))."
-                exit 1
-                ;;
-            esac
-
-            echo "Odber stiahnutý z GitHubu: $(wc -c < "$subor") bajtov."
-          fi
-
           telo=$(curl -sS -X POST "$URL" \
             -H "Authorization: Bearer $SECRET" \
-            -H "Content-Type: text/calendar; charset=utf-8" \
-            --data-binary "@$subor" \
+            -H "Content-Length: 0" \
             -w "\n%{http_code}" \
             --max-time 90)
 
@@ -137,10 +83,10 @@ jobs:
           echo "odpoveď: $vypis"
           echo "kód: $kod"
 
-          # 503 = SKOLA_ICS_URL nie je ani na Verceli, ani tu. Beh technicky
-          # prešiel, ale nič nestiahol, tak nech to aspoň nie je ticho.
+          # 503 = SKOLA_ICS_URL na Verceli ešte nie je. Beh technicky prešiel,
+          # ale nič nestiahol, tak nech to aspoň nie je ticho.
           if [ "$kod" = "503" ]; then
-            echo "::warning::Rozvrh ešte nie je nastavený — SKOLA_ICS_URL chýba na Verceli aj medzi tajomstvami repozitára."
+            echo "::warning::Rozvrh ešte nie je nastavený — na Verceli chýba SKOLA_ICS_URL."
             exit 0
           fi
 

@@ -349,15 +349,16 @@ export function ukazkaTela(text: string): string {
  * požiadavky na `/api/rozvrh`.
  *
  * - **prázdne telo** (cron-job.org): server si odber stiahne sám
- * - **kalendár v tele** (GitHub Actions): odber už stiahol plánovač
- *   a server ho len načíta
+ * - **kalendár v tele** (domáci server, `scripts/rozvrh-zo-servera.sh`):
+ *   odber už stiahol niekto iný a appka ho len načíta
  * - **čokoľvek iné**: odmietne sa. Keby sa také telo potichu ignorovalo
  *   a server odber stiahol sám, zlyhanie sťahovania v plánovači by sa
  *   tvárilo ako úspech.
  *
- * Prečo plánovač vôbec sťahuje: v novembri 2026 EduPage neodpovedal na
- * spojenie z Vercelu (AWS, `fra1`) — `UND_ERR_CONNECT_TIMEOUT` pri oboch
- * pokusoch — hoci z domácej siete fungoval. Podrobnosti v `docs/ROZVRH.md`.
+ * Prečo sťahuje niekto iný: od novembra 2026 EduPage zahadzuje spojenia
+ * zo serverov v dátových centrách — Vercel (AWS, `fra1`) aj GitHub Actions
+ * (Azure) skončia časovým limitom pri pripájaní, z bežnej siete odber
+ * prejde. Podrobnosti v `docs/ROZVRH.md`.
  */
 export type ZdrojOdberu =
   | { druh: "stiahnut" }

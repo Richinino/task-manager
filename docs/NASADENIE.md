@@ -249,7 +249,6 @@ druhý pokus zastaví.
 | `PRIPOMIENKY_URL` | `https://TVOJA-ADRESA.vercel.app/api/pripomienky` |
 | `ROZVRH_URL` | `https://TVOJA-ADRESA.vercel.app/api/rozvrh` *(len s rozvrhom)* |
 | `CRON_SECRET` | **to isté** tajomstvo, aké je na Verceli |
-| `SKOLA_ICS_URL` | adresa Webcal odberu z EduPage *(len s rozvrhom — prečo, je v sekcii 7)* |
 
 Zálohu **zapni premennou** — tamže, záložka **Variables → New repository
 variable**: `ZALOZNY_PLANOVAC` = `1`. Bez nej sa naplánované behy preskočia,
@@ -405,13 +404,41 @@ Adresa odberu do cron-job.org NEPATRÍ — appka si ju vytiahne sama
 z premenných a nikdy ju nevydá von, ani do chybovej hlášky. Cron volá len
 `/api/rozvrh` (sekcia 5.3).
 
-**Do GitHubu ju daj tiež** — ako tajomstvo `SKOLA_ICS_URL` (sekcia 5.4) a so
-zapnutou zálohou (`ZALOZNY_PLANOVAC` = `1`). V novembri 2026 sa Vercel
-k EduPage prestal pripájať (`UND_ERR_CONNECT_TIMEOUT`, viď nižšie), hoci
-z domácej siete odber fungoval. Workflow **Rozvrh** si potom odber stiahne
-sám a appke ho pošle v tele požiadavky — Vercel sa k EduPage vôbec
-nepripája. V logu behu sa adresa nikdy nevypisuje. Bez tohto tajomstva
-workflow pošle prázdne telo a appka si odber stiahne sama, ako predtým.
+### Odber sťahuje domáci server
+
+Od novembra 2026 EduPage **zahadzuje spojenia zo serverov v dátových
+centrách** — Vercel (AWS) aj GitHub Actions (Azure) skončia časovým limitom
+pri pripájaní (`UND_ERR_CONNECT_TIMEOUT`, `curl` kód 28). Z bežnej siete sa
+odber stiahne bez problému. Odber preto sťahuje počítač doma a appke ho
+pošle v tele požiadavky — Vercel sa k EduPage vôbec nepripája.
+
+Na Linuxe, ktorý beží stále (domáci server):
+
+1. Skript: `curl -fsSL -o ~/bin/rozvrh-zo-servera.sh https://raw.githubusercontent.com/Richinino/task-manager/main/scripts/rozvrh-zo-servera.sh && chmod +x ~/bin/rozvrh-zo-servera.sh`
+   (alebo ho skopíruj z repozitára; treba `bash`, `curl`, `awk`, `sed`).
+2. Nastavenie `~/.config/rozvrh/nastavenie`, **`chmod 600`**:
+
+        SKOLA_ICS_URL=https://…edupage.org/…   (tá istá adresa ako na Verceli)
+        ROZVRH_URL=https://TVOJA-ADRESA.vercel.app/api/rozvrh
+        CRON_SECRET=to isté tajomstvo, aké je na Verceli
+
+3. Skús ho raz ručne. Úspech vypíše `… bajtov z EduPage → appka:
+   {"ok":true,"zdroj":"telo",…}`.
+4. `crontab -e` — každú hodinu 6:00–20:00 v pracovné dni a raz nadránom:
+
+        CRON_TZ=Europe/Bratislava
+        7 6-20 * * 1-5  $HOME/bin/rozvrh-zo-servera.sh
+        14 4 * * *      $HOME/bin/rozvrh-zo-servera.sh
+
+   Časy sú v pásme servera. `CRON_TZ` poznajú len niektoré crony
+   (cronie áno, Debian/Ubuntu nie) — keď server nebeží v čase
+   `Europe/Bratislava` (`timedatectl`), riadok s `CRON_TZ` vynechaj
+   a hodiny prepočítaj.
+   Výstup ide cronu do pošty/logu; chyby začínajú `rozvrh:` a nikdy
+   neobsahujú adresu odberu.
+
+Úloha na rozvrh v cron-job.org potom už len zlyháva s `502` — vypni ju
+(pripomienky nechaj).
 
 **Adresa odberu je jedna na celú appku**, takže automatická synchronizácia je
 pre jedného človeka. Keď rozvrh má viac ľudí, cron radšej neurobí nič
@@ -444,7 +471,7 @@ aj v logoch Vercelu pod `[api/rozvrh]`:
 
 | `detail` | Čo to znamená |
 |---|---|
-| `kod: UND_ERR_CONNECT_TIMEOUT`, `ECONNREFUSED`… | k EduPage sa nedalo pripojiť ani na druhý pokus — výpadok alebo sieť. **Keď to trvá dni, EduPage spojenia z Vercelu zahadzuje** (november 2026) — sťahovanie prenechaj GitHubu, viď vyššie |
+| `kod: UND_ERR_CONNECT_TIMEOUT`, `ECONNREFUSED`… | k EduPage sa nedalo pripojiť ani na druhý pokus — výpadok alebo sieť. **Keď to trvá dni, EduPage spojenia z dátových centier zahadzuje** (november 2026) — sťahovanie prenechaj domácemu serveru, viď vyššie |
 | `status: 403` / `429`, `cfMitigated`, `retryAfter` | EduPage (alebo ochrana pred ním) požiadavku odmietla; `429` = priveľa požiadaviek |
 | `status: 200`, `zaciatok: <!DOCTYPE html…` | namiesto kalendára prišla stránka — údržba alebo prihlásenie |
 | `status: 404` / `410` | adresa odberu už neplatí — vygeneruj novú v EduPage |
@@ -452,11 +479,11 @@ aj v logoch Vercelu pod `[api/rozvrh]`:
 Adresa odberu v detaile nikdy nie je; zo začiatku tela sa ukáže len pár
 znakov a nič, čo vyzerá ako odkaz.
 
-**`400` s dôvodom „V tele požiadavky neprišiel kalendár"** — workflow poslal
-niečo, čo kalendár nie je. Workflow to kontroluje skôr, než pošle, takže sa
-to stane len pri ručnom volaní s nesprávnym telom.
+**`400` s dôvodom „V tele požiadavky neprišiel kalendár"** — niekto poslal
+niečo, čo kalendár nie je. Skript na serveri to kontroluje skôr, než pošle,
+takže sa to stane len pri ručnom volaní s nesprávnym telom.
 
-**Úspešná odpoveď nesie `zdroj`:** `telo` = odber stiahol GitHub, `stiahnut`
+**Úspešná odpoveď nesie `zdroj`:** `telo` = odber stiahol domáci server, `stiahnut`
 = stiahla si ho appka sama.
 
 Rozhodnutia za rozvrhom sú v [ROZVRH.md](ROZVRH.md).

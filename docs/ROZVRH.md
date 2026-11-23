@@ -100,17 +100,22 @@ v EduPage nikdy nebude.
 
 Pôvodne vždy appka na Verceli. **23. 11. 2026** sa ukázalo, že sa k EduPage
 nepripojí vôbec: ručné tlačidlo aj cron padali na `UND_ERR_CONNECT_TIMEOUT`
-pri oboch pokusoch (funkcie bežia vo `fra1`, AWS), hoci z domácej siete
-odber fungoval. V septembri to bolo len občas (25. 9.), teraz zakaždým.
-Spojenie zlyhá ešte pred HTTP, takže to nie je zlá adresa ani zmena formátu
-— EduPage tieto spojenia zahadzuje.
+pri oboch pokusoch (funkcie bežia vo `fra1`, AWS). Skúsili sme aj GitHub
+Actions (Azure) — rovnaký časový limit pri pripájaní. Zo školského
+notebooku sa ten istý odber stiahol za desatinu sekundy (kód 200, 160 kB).
+Adresa teda platí; **EduPage zahadzuje spojenia zo serverov v dátových
+centrách.** V septembri to bolo len občas (25. 9.), teraz zakaždým.
 
 Preto `/api/rozvrh` prijme odber aj **v tele požiadavky**
-(`zdrojOdberu` v `src/lib/ics.ts`): GitHub workflow **Rozvrh** ho stiahne sám
-zo svojej siete a appke ho len pošle. Prázdne telo znamená pôvodný spôsob
-(cron-job.org, ručné tlačidlo). Telo, ktoré nie je kalendár, sa odmietne —
-keby ho appka potichu ignorovala a odber stiahla sama, zlyhanie v plánovači
-by sa tvárilo ako úspech.
+(`zdrojOdberu` v `src/lib/ics.ts`) a sťahuje **domáci server** skriptom
+`scripts/rozvrh-zo-servera.sh` (cron, návod v `docs/NASADENIE.md`, sekcia 7).
+Prázdne telo znamená pôvodný spôsob (cron-job.org, GitHub workflow) — keby
+EduPage blokovanie zrušil, funguje to samo. Telo, ktoré nie je kalendár, sa
+odmietne: keby ho appka potichu ignorovala a odber stiahla sama, zlyhanie
+na serveri by sa tvárilo ako úspech.
+
+Priamo z prehliadača sa odber stiahnuť nedá: EduPage neposiela
+`Access-Control-Allow-Origin`.
 
 Ručné tlačidlo *Stiahnuť z EduPage* sťahuje stále z Vercelu, takže kým to
 EduPage blokuje, hlási chybu; nahratie `.ics` súboru funguje vždy.
