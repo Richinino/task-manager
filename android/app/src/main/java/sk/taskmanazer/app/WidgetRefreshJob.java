@@ -31,11 +31,38 @@ public class WidgetRefreshJob extends JobService {
         PersistableBundle extras = new PersistableBundle();
         if (done) extras.putString(EXTRA_TASK, taskId);
 
-        JobInfo job = new JobInfo.Builder(id, new ComponentName(context, WidgetRefreshJob.class))
-                .setRequiredNetworkType(JobInfo.NETWORK_TYPE_ANY)
-                .setExtras(extras)
-                .build();
-        js.schedule(job);
+        try {
+            JobInfo job = new JobInfo.Builder(id, new ComponentName(context, WidgetRefreshJob.class))
+                    .setRequiredNetworkType(JobInfo.NETWORK_TYPE_ANY)
+                    .setExtras(extras)
+                    .build();
+            if (js.schedule(job) == JobScheduler.RESULT_SUCCESS) return;
+        } catch (RuntimeException e) {
+            // Napr. SecurityException bez ACCESS_NETWORK_STATE (Android 14+) —
+            // vo verzii 1.2 práve toto nechalo widget navždy na „obnovujem…".
+            context.getSharedPreferences(TodayWidget.PREFS, Context.MODE_PRIVATE).edit()
+                    .putString("error", "plánovač: " + e.getClass().getSimpleName()).apply();
+        }
+        runNow(context.getApplicationContext(), done ? taskId : null);
+    }
+
+    /** Záloha, keď plánovač odmietne: stiahne hneď vo vlákne. */
+    private static void runNow(final Context app, final String taskId) {
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                try {
+                    if (taskId != null) TodayWidget.postDone(app, taskId);
+                    TodayWidget.refresh(app);
+                } catch (Throwable ignored) {
+                } finally {
+                    try {
+                        TodayWidget.updateAll(app);
+                    } catch (Throwable ignored) {
+                    }
+                }
+            }
+        }).start();
     }
 
     @Override

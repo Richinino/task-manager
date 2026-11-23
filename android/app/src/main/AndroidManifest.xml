@@ -25,6 +25,8 @@
     
         <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
     <uses-permission android:name="android.permission.INTERNET"/>
+    <!-- JobScheduler s podmienkou siete to od Androidu 14 vyžaduje. -->
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>
     
 
     
