@@ -1,0 +1,95 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/widget_root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/w_background">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:orientation="vertical"
+        android:padding="14dp">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="20dp"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
+            <TextView
+                android:id="@+id/wb_sc_label"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:ellipsize="end"
+                android:singleLine="true"
+                android:text="Ďalšia hodina"
+                android:textColor="@color/w_muted"
+                android:textSize="12sp" />
+
+            <TextView
+                android:id="@+id/wb_sc_exam"
+                android:layout_width="wrap_content"
+                android:layout_height="20dp"
+                android:background="@drawable/wb_pill_bg"
+                android:gravity="center"
+                android:paddingLeft="9dp"
+                android:paddingRight="9dp"
+                android:text="písomka"
+                android:textColor="@color/w_fg"
+                android:textSize="11sp"
+                android:textStyle="bold"
+                android:visibility="gone" />
+        </LinearLayout>
+
+        <TextView
+            android:id="@+id/wb_sc_code"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="6dp"
+            android:ellipsize="end"
+            android:fontFamily="sans-serif-black"
+            android:includeFontPadding="false"
+            android:singleLine="true"
+            android:text="FYZ"
+            android:textColor="@color/w_fg"
+            android:textSize="44sp" />
+
+        <TextView
+            android:id="@+id/wb_sc_time"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:ellipsize="end"
+            android:singleLine="true"
+            android:text="10:00 v F2"
+            android:textColor="@color/w_muted"
+            android:textSize="14sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/wb_sc_after"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="6dp"
+            android:ellipsize="end"
+            android:maxLines="3"
+            android:textColor="@color/w_fg"
+            android:textSize="15sp"
+            android:visibility="gone" />
+
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1" />
+
+        <ImageView
+            android:id="@+id/wb_sc_dots"
+            android:layout_width="match_parent"
+            android:layout_height="10dp"
+            android:contentDescription="Hodiny dnes"
+            android:scaleType="fitXY"
+            android:src="@drawable/wb_dots_preview" />
+    </LinearLayout>
+</FrameLayout>

@@ -2,7 +2,8 @@ import "server-only";
 
 import { isCancelled, isOnDay, isMultiDay, hhmm } from "@/lib/agenda";
 import { timeToMinutes } from "@/lib/dates";
-import type { TimelineBusy, TimelineInput, TimelineTask } from "@/lib/day-timeline";
+import { layoutDay, type DayTimeline, type TimelineBusy, TimelineInput, TimelineTask } from "@/lib/day-timeline";
+import { isEventOnDay } from "@/lib/google-calendar";
 import { schoolBreakOn, type SkolskeVolno } from "@/lib/school";
 import type { Settings } from "@/lib/settings";
 import { getAgendaForRange, type AgendaItemRow } from "@/server/queries/agenda";
@@ -121,5 +122,40 @@ export async function getDayTimelineInput(
     events,
     agenda,
     planned,
+  });
+}
+
+export interface WeekDaySources {
+  dayStartHour: number;
+  dayEndHour: number;
+  /** Hodiny aj z iných dní — filtruje sa podľa dňa. */
+  lessons: readonly LessonRow[];
+  breaks: readonly SkolskeVolno[];
+  /** Udalosti Google Kalendára načítané raz pre celý rozsah. */
+  calendar: readonly CalendarEvent[];
+  agenda: readonly AgendaItemRow[];
+}
+
+/**
+ * Rozloženie jedného dňa z údajov načítaných raz pre celý týždeň (telefónny
+ * Týždeň aj widget). `nowMin` je `null` pre iný deň než dnešok.
+ */
+export function layoutDayFromWeek(
+  dateIso: string,
+  src: WeekDaySources,
+  options: { planned?: readonly TaskWithRelations[]; nowMin?: number | null } = {},
+): DayTimeline {
+  return layoutDay({
+    ...toTimelineInput({
+      dateIso,
+      dayStartHour: src.dayStartHour,
+      dayEndHour: src.dayEndHour,
+      lessons: src.lessons.filter((lesson) => lesson.date === dateIso),
+      breaks: src.breaks,
+      events: src.calendar.filter((event) => isEventOnDay(event, dateIso)),
+      agenda: src.agenda,
+      planned: options.planned ?? [],
+    }),
+    nowMin: options.nowMin ?? null,
   });
 }

@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/widget_root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/w_background"
+    android:gravity="center_vertical"
+    android:orientation="vertical"
+    android:paddingLeft="14dp"
+    android:paddingTop="6dp"
+    android:paddingRight="14dp"
+    android:paddingBottom="6dp">
+
+    <TextView
+        android:id="@+id/num"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:fontFamily="sans-serif-black"
+        android:includeFontPadding="false"
+        android:singleLine="true"
+        android:text="3 h 55"
+        android:textColor="@color/w_fg"
+        android:textSize="28sp" />
+
+    <TextView
+        android:id="@+id/label"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="1dp"
+        android:ellipsize="end"
+        android:singleLine="true"
+        android:text="@string/wa_reserve_label"
+        android:textColor="@color/w_muted"
+        android:textSize="12sp" />
+
+    <FrameLayout
+        android:id="@+id/bars"
+        android:layout_width="match_parent"
+        android:layout_height="6dp"
+        android:layout_marginTop="5dp">
+
+        <ProgressBar
+            android:id="@+id/bar"
+            style="?android:attr/progressBarStyleHorizontal"
+            android:layout_width="match_parent"
+            android:layout_height="6dp"
+            android:indeterminate="false"
+            android:max="100"
+            android:progress="44"
+            android:progressDrawable="@drawable/wa_bar_fg" />
+
+        <ProgressBar
+            android:id="@+id/bar_muted"
+            style="?android:attr/progressBarStyleHorizontal"
+            android:layout_width="match_parent"
+            android:layout_height="6dp"
+            android:indeterminate="false"
+            android:max="100"
+            android:progress="100"
+            android:progressDrawable="@drawable/wa_bar_muted"
+            android:visibility="gone" />
+    </FrameLayout>
+</LinearLayout>

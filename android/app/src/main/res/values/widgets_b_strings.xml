@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="wbNowDescription">Teraz: čo sa deje a najbližšia úloha</string>
+    <string name="wbSchoolDescription">Škola: najbližšia hodina a dnešné hodiny</string>
+    <string name="wbWeekDescription">Týždeň: kapacita jednotlivých dní</string>
+</resources>

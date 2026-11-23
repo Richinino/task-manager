@@ -37,12 +37,10 @@ import {
   isCancelled,
   isOnDay,
 } from "@/lib/agenda";
-import { layoutDay } from "@/lib/day-timeline";
 import { capitalizeSk } from "@/lib/day-label";
 import { dayHeadline, dayLoad, pickDots, weekRangeShort, weekdayShort } from "@/lib/plan-mobile";
-import { toTimelineInput } from "@/server/queries/day-timeline";
+import { layoutDayFromWeek } from "@/server/queries/day-timeline";
 import { getLessonsForRange, listBreaks } from "@/server/queries/school";
-import { isEventOnDay } from "@/lib/google-calendar";
 import { getCalendarEvents } from "@/server/queries/calendar";
 
 export const metadata: Metadata = {
@@ -167,18 +165,13 @@ export default async function TyzdenPage({ searchParams }: TyzdenPageProps) {
   const mobileDays: MobileWeekDay[] = days.map((iso) => {
     const dayTasks = openTasks.filter((task) => task.plannedDate === iso);
     const plannedMin = dayTasks.reduce((sum, task) => sum + (task.estimateMin ?? 0), 0);
-    const timeline = layoutDay({
-      ...toTimelineInput({
-        dateIso: iso,
-        dayStartHour: user.settings.dayStartHour,
-        dayEndHour: user.settings.dayEndHour,
-        lessons: lessons.filter((lesson) => lesson.date === iso),
-        breaks,
-        events: calendar.filter((event) => isEventOnDay(event, iso)),
-        agenda,
-        planned: [],
-      }),
-      nowMin: null,
+    const timeline = layoutDayFromWeek(iso, {
+      dayStartHour: user.settings.dayStartHour,
+      dayEndHour: user.settings.dayEndHour,
+      lessons,
+      breaks,
+      calendar,
+      agenda,
     });
 
     const dayAgenda = agenda.filter((item) => !isCancelled(item) && isOnDay(item, iso));

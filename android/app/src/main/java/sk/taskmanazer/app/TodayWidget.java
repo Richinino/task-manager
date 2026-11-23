@@ -150,6 +150,34 @@ public class TodayWidget extends AppWidgetProvider {
             CaptureWidget.updateAll(c);
         } catch (Throwable ignored) {
         }
+        try {
+            FrogWidget.updateAll(c);
+        } catch (Throwable ignored) {
+        }
+        try {
+            StackWidget.updateAll(c);
+        } catch (Throwable ignored) {
+        }
+        try {
+            CaptureWideWidget.updateAll(c);
+        } catch (Throwable ignored) {
+        }
+        try {
+            ReserveWidget.updateAll(c);
+        } catch (Throwable ignored) {
+        }
+        try {
+            NowWidget.updateAll(c);
+        } catch (Throwable ignored) {
+        }
+        try {
+            SchoolWidget.updateAll(c);
+        } catch (Throwable ignored) {
+        }
+        try {
+            WeekWidget.updateAll(c);
+        } catch (Throwable ignored) {
+        }
     }
 
     private static RemoteViews build(Context c) {

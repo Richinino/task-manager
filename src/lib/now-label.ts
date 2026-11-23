@@ -33,7 +33,7 @@ interface Slot {
   what: string;
 }
 
-function clock(min: number): string {
+export function clock(min: number): string {
   return `${Math.floor(min / 60)}:${String(min % 60).padStart(2, "0")}`;
 }
 
@@ -54,7 +54,13 @@ function lessonSlots(lessons: readonly NowLabelLesson[]): Slot[] {
   return out.sort((a, b) => a.startMin - b.startMin);
 }
 
-export function nowLabel({ lessons, events, nowMin }: NowLabelInput): string | null {
+/** Pilulka rozdelená na nadpis a doplnok (widget); `nowLabel` ich skladá do jednej vety. */
+export interface NowLabelParts {
+  title: string;
+  detail: string;
+}
+
+export function nowLabelParts({ lessons, events, nowMin }: NowLabelInput): NowLabelParts | null {
   const school = lessonSlots(lessons);
   const timed: Slot[] = events
     .filter((e) => e.endMin > e.startMin)
@@ -62,20 +68,33 @@ export function nowLabel({ lessons, events, nowMin }: NowLabelInput): string | n
     .sort((a, b) => a.startMin - b.startMin);
 
   const runningLesson = school.find((s) => s.startMin <= nowMin && nowMin < s.endMin);
-  if (runningLesson) return `Teraz ${runningLesson.what}, do ${clock(runningLesson.endMin)}`;
+  if (runningLesson) {
+    return { title: "Teraz", detail: `${runningLesson.what}, do ${clock(runningLesson.endMin)}` };
+  }
 
   const runningEvent = timed.find((s) => s.startMin <= nowMin && nowMin < s.endMin);
-  if (runningEvent) return `Teraz ${runningEvent.what}, do ${clock(runningEvent.endMin)}`;
+  if (runningEvent) {
+    return { title: "Teraz", detail: `${runningEvent.what}, do ${clock(runningEvent.endMin)}` };
+  }
 
   const nextLesson = school.find((s) => s.startMin > nowMin);
   if (nextLesson) {
     const wait = formatDuration(nextLesson.startMin - nowMin);
     const inBreak = school.some((s) => s.endMin <= nowMin);
-    return inBreak ? `Prestávka, o ${wait} ${nextLesson.what}` : `O ${wait} ${nextLesson.what}`;
+    return inBreak
+      ? { title: "Prestávka", detail: `o ${wait} ${nextLesson.what}` }
+      : { title: `O ${wait}`, detail: nextLesson.what };
   }
 
   const nextEvent = timed.find((s) => s.startMin > nowMin);
-  if (nextEvent) return `O ${clock(nextEvent.startMin)} ${nextEvent.what}`;
+  if (nextEvent) return { title: `O ${clock(nextEvent.startMin)}`, detail: nextEvent.what };
 
   return null;
+}
+
+export function nowLabel(input: NowLabelInput): string | null {
+  const parts = nowLabelParts(input);
+  if (parts === null) return null;
+  // „Prestávka, o 8 min …" má čiarku, ostatné vety len medzeru.
+  return parts.title === "Prestávka" ? `${parts.title}, ${parts.detail}` : `${parts.title} ${parts.detail}`;
 }

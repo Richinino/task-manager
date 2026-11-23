@@ -16,13 +16,13 @@ import { DayStrip } from "@/components/timeline/day-strip";
 import { useNowMinutes } from "@/components/views/rozvrh/use-now-minutes";
 import {
   addDays,
-  diffDays,
   formatDayMonthSk,
   formatDuration,
   formatLongSk,
   parseIsoDate,
   WEEKDAYS_SHORT_SK,
 } from "@/lib/dates";
+import { orderCardQueue } from "@/lib/card-queue";
 import { capitalizeSk, forDayPhrase, relativeDayLabel } from "@/lib/day-label";
 import { layoutDay, type TimelineInput } from "@/lib/day-timeline";
 import { nowLabel, type NowLabelEvent, type NowLabelLesson } from "@/lib/now-label";
@@ -64,11 +64,6 @@ export interface MobileTodayProps {
 }
 
 const ERROR_MS = 4000;
-
-function overdueDaysOf(task: TaskWithRelations, todayIso: string): number {
-  const from = task.dueDate ?? task.plannedDate;
-  return from === null ? 0 : Math.max(0, diffDays(from, todayIso));
-}
 
 function shortDate(date: string): string {
   const weekday = WEEKDAYS_SHORT_SK[parseIsoDate(date).getDay()] ?? "";
@@ -147,20 +142,15 @@ export function MobileToday({
   }, [isToday, timeline.busy, lessons, nowMin]);
 
   /* ── Balík: priorita dňa → po termíne → ostatné v poradí stránky ── */
-  const base = useMemo<QueueCard[]>(() => {
-    const frog = openTasks.find((task) => task.isFrog) ?? null;
-    const rest = openTasks.filter((task) => task !== frog);
-    const ordered: { task: TaskWithRelations; late: number | null }[] = [
-      ...(frog ? [{ task: frog, late: null }] : []),
-      ...overdueTasks.map((task) => ({ task, late: overdueDaysOf(task, todayIso) })),
-      ...rest.map((task) => ({ task, late: null })),
-    ];
-    return ordered.map((item, index) => ({
-      task: item.task,
-      overdueDays: item.late,
-      position: index + 1,
-    }));
-  }, [openTasks, overdueTasks, todayIso]);
+  const base = useMemo<QueueCard[]>(
+    () =>
+      orderCardQueue(openTasks, overdueTasks, todayIso).map((item, index) => ({
+        task: item.task,
+        overdueDays: item.overdueDays,
+        position: index + 1,
+      })),
+    [openTasks, overdueTasks, todayIso],
+  );
 
   // Odškrtnutá karta zmizne hneď; pri zlyhaní akcie ju React vráti späť.
   const [live, removeCard] = useOptimistic(base, (list, id: string) =>

@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="wa_frogDescription">Žaba: priorita dňa s odškrtnutím</string>
+    <string name="wa_stackDescription">Kopa: úlohy na dnes po jednej</string>
+    <string name="wa_captureWideDescription">Zapísať úlohu alebo nadiktovať</string>
+    <string name="wa_reserveDescription">Rezerva: koľko času dnes ostáva</string>
+    <string name="wa_pair">Pripoj widget v appke: Knižnica → Nastavenia → Telefón</string>
+    <string name="wa_loading">Načítavam…</string>
+    <string name="wa_bad_data">Dáta sa nepodarilo prečítať</string>
+    <string name="wa_nothing">Na dnes nič nezostáva</string>
+    <string name="wa_priority">Priorita dňa</string>
+    <string name="wa_next">Ďalšia</string>
+    <string name="wa_stack_pos">%1$d z %2$d</string>
+    <string name="wa_reserve_label">rezerva dnes</string>
+    <string name="wa_over_label">než sa dnes zmestí</string>
+    <string name="wa_over_more">o %1$s viac</string>
+    <string name="wa_over_plain">Dnes je toho viac</string>
+    <string name="wa_day_over">Deň sa skončil</string>
+    <string name="wa_hm">%1$d h %2$02d</string>
+    <string name="wa_h">%1$d h</string>
+    <string name="wa_min">%1$d min</string>
+    <string name="wa_done_cd">Hotovo</string>
+    <string name="wa_next_cd">Ďalšia úloha</string>
+    <string name="wa_capture_cd">Zapísať úlohu</string>
+    <string name="wa_dictate_cd">Nadiktovať úlohu</string>
+    <string name="wa_pill">Zapísať</string>
+</resources>

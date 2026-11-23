@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/widget_root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/w_background">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:paddingLeft="18dp"
+        android:paddingRight="12dp">
+
+        <ImageView
+            android:id="@+id/wb_now_dot"
+            android:layout_width="8dp"
+            android:layout_height="8dp"
+            android:layout_marginRight="10dp"
+            android:src="@drawable/widget_dot"
+            android:tint="#d9971c" />
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:orientation="vertical">
+
+            <TextView
+                android:id="@+id/wb_now_title"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:ellipsize="end"
+                android:singleLine="true"
+                android:text="Prestávka"
+                android:textColor="@color/w_fg"
+                android:textSize="15sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/wb_now_detail"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="2dp"
+                android:ellipsize="end"
+                android:singleLine="true"
+                android:text="o 8 min FYZ v F2"
+                android:textColor="@color/w_muted"
+                android:textSize="13sp" />
+        </LinearLayout>
+
+        <TextView
+            android:id="@+id/wb_now_pill"
+            android:layout_width="104dp"
+            android:layout_height="30dp"
+            android:layout_marginLeft="10dp"
+            android:layout_marginRight="8dp"
+            android:background="@drawable/wb_pill_bg"
+            android:ellipsize="end"
+            android:gravity="center_vertical"
+            android:paddingLeft="10dp"
+            android:paddingRight="10dp"
+            android:singleLine="true"
+            android:text="Dokončiť model držiaka"
+            android:textColor="@color/w_fg"
+            android:textSize="12sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/wb_now_add"
+            android:layout_width="44dp"
+            android:layout_height="44dp"
+            android:background="@drawable/wb_circle_accent"
+            android:contentDescription="Zapísať úlohu"
+            android:gravity="center"
+            android:includeFontPadding="false"
+            android:text="+"
+            android:textColor="@color/w_on_accent"
+            android:textSize="26sp"
+            android:textStyle="bold" />
+    </LinearLayout>
+</FrameLayout>

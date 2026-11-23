@@ -96,14 +96,14 @@ export function widgetSummary(figures: BudgetFigures, dayOver: boolean): string 
   return `O ${formatDuration(-figures.reserveMin)} viac než čas`;
 }
 
-function colorOf(task: WidgetTaskSource): string | null {
+export function colorOf(task: WidgetTaskSource): string | null {
   const named = task.area?.color ?? task.subject?.color ?? null;
   if (named === null) return null;
   // Neznáma farba spadne v `areaColorValue` na CSS premennú — tú widget nepozná.
   return cssColorToHex(areaColorValue(named));
 }
 
-function hexOrNull(named: string | null | undefined): string | null {
+export function hexOrNull(named: string | null | undefined): string | null {
   if (named === null || named === undefined) return null;
   return cssColorToHex(areaColorValue(named));
 }

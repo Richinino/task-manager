@@ -1,0 +1,137 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/widget_root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/w_background">
+
+    <ImageView
+        android:id="@+id/back2"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:layout_marginLeft="20dp"
+        android:layout_marginTop="20dp"
+        android:layout_marginRight="20dp"
+        android:layout_marginBottom="12dp"
+        android:scaleType="fitXY"
+        android:src="@drawable/wa_card_back_shape" />
+
+    <ImageView
+        android:id="@+id/back1"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:layout_marginLeft="14dp"
+        android:layout_marginTop="14dp"
+        android:layout_marginRight="14dp"
+        android:layout_marginBottom="18dp"
+        android:scaleType="fitXY"
+        android:src="@drawable/wa_card_back_shape" />
+
+    <ImageView
+        android:id="@+id/card"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:layout_marginLeft="8dp"
+        android:layout_marginTop="8dp"
+        android:layout_marginRight="8dp"
+        android:layout_marginBottom="24dp"
+        android:scaleType="fitXY"
+        android:src="@drawable/wa_card_shape" />
+
+    <LinearLayout
+        android:id="@+id/content"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:layout_marginLeft="8dp"
+        android:layout_marginTop="8dp"
+        android:layout_marginRight="8dp"
+        android:layout_marginBottom="24dp"
+        android:orientation="vertical"
+        android:padding="12dp">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="14dp"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
+            <TextView
+                android:id="@+id/pos"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:singleLine="true"
+                android:text="1 z 6"
+                android:textColor="#1d1405"
+                android:textSize="11sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/status"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginLeft="4dp"
+                android:layout_weight="1"
+                android:ellipsize="end"
+                android:gravity="end"
+                android:singleLine="true"
+                android:textColor="#1d1405"
+                android:textSize="10sp" />
+        </LinearLayout>
+
+        <TextView
+            android:id="@+id/title"
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_marginTop="6dp"
+            android:layout_weight="1"
+            android:ellipsize="end"
+            android:fontFamily="sans-serif-black"
+            android:maxLines="3"
+            android:text="Dokončiť model držiaka na 3D tlačiareň"
+            android:textColor="#1d1405"
+            android:textSize="14sp" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="32dp"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
+            <TextView
+                android:id="@+id/est"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:singleLine="true"
+                android:text="45 min"
+                android:textColor="#1d1405"
+                android:textSize="12sp"
+                android:textStyle="bold" />
+
+            <ImageView
+                android:id="@+id/check"
+                android:layout_width="32dp"
+                android:layout_height="32dp"
+                android:contentDescription="@string/wa_done_cd"
+                android:src="@drawable/wa_ic_ring_check" />
+
+            <ImageView
+                android:id="@+id/next"
+                android:layout_width="32dp"
+                android:layout_height="32dp"
+                android:layout_marginLeft="6dp"
+                android:contentDescription="@string/wa_next_cd"
+                android:src="@drawable/wa_ic_ring_next" />
+        </LinearLayout>
+    </LinearLayout>
+
+    <TextView
+        android:id="@+id/message"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:gravity="center"
+        android:padding="14dp"
+        android:textColor="@color/w_fg"
+        android:textSize="13sp"
+        android:visibility="gone" />
+</FrameLayout>
