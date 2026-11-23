@@ -24,6 +24,8 @@ const VEDOME_VYNECHANE: Record<string, string> = {
   oauthClients: "registrácie MCP klientov (Claude) — po obnove sa klient zaregistruje znova",
   oauthCodes: "jednorazové kódy s desaťminútovou platnosťou, v zálohe by boli mŕtve",
   oauthGrants: "prístupy MCP klientov — odtlačky tokenov do zálohy nepatria, Claude sa pripojí znova",
+  deviceTokens: "odtlačky tokenov widgetu — do zálohy nepatria, widget sa spáruje znova",
+  dailyPushes: "záznam, že denná notifikácia už dnes odišla — prechodný, do zálohy nepatrí",
 };
 
 const route = readFileSync(new URL("./route.ts", import.meta.url), "utf8");

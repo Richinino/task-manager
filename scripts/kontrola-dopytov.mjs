@@ -53,6 +53,7 @@ const TABULKY_POUZIVATELA = new Set([
      registrácie klientov (`oauthClients`) nie — sú spoločné. */
   "oauthCodes",
   "oauthGrants",
+  "deviceTokens",
   /* Aj samotná tabuľka ľudí. `db.select().from(users)` bez filtra vypíše
      všetkých — a odkedy sú v appke dvaja, je to únik ako každý iný. */
   "users",

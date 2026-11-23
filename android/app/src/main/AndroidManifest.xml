@@ -24,6 +24,7 @@
 
     
         <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
+    <uses-permission android:name="android.permission.INTERNET"/>
     
 
     
@@ -123,6 +124,9 @@
 
             <meta-data android:name="android.app.shortcuts" android:resource="@xml/shortcuts" />
 
+            <meta-data android:name="android.support.customtabs.trusted.METADATA_SHARE_TARGET"
+                android:resource="@string/shareTarget" />
+
             <meta-data android:name="android.support.customtabs.trusted.FALLBACK_STRATEGY"
                 android:value="@string/fallbackType" />
 
@@ -154,10 +158,47 @@
                 />
             </intent-filter>
 
+            <intent-filter>
+                <action android:name="android.intent.action.SEND" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="text/plain" />
+            </intent-filter>
+
             
 
             
         </activity>
+
+        <activity android:name=".PairActivity"
+            android:exported="true"
+            android:excludeFromRecents="true"
+            android:theme="@android:style/Theme.Translucent.NoTitleBar">
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="ulohy" android:host="pair" />
+            </intent-filter>
+        </activity>
+
+        <receiver android:name=".TodayWidget" android:exported="true"
+            android:label="Dnes">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data android:name="android.appwidget.provider"
+                android:resource="@xml/today_widget_info" />
+        </receiver>
+
+        <service android:name=".CaptureTileService"
+            android:exported="true"
+            android:icon="@drawable/ic_tile_plus"
+            android:label="@string/tileLabel"
+            android:permission="android.permission.BIND_QUICK_SETTINGS_TILE">
+            <intent-filter>
+                <action android:name="android.service.quicksettings.action.QS_TILE" />
+            </intent-filter>
+        </service>
 
         <activity android:name="com.google.androidbrowserhelper.trusted.FocusActivity" />
 

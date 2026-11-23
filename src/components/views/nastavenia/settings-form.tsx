@@ -6,6 +6,7 @@ import { LoaderCircle, TriangleAlert } from "lucide-react";
 import type { Settings } from "@/lib/settings";
 import { rulesToText, textToRules } from "@/lib/rules";
 import { placesToText } from "@/lib/places";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -294,6 +295,20 @@ export function SettingsForm({ settings, pushSetup }: SettingsFormProps) {
     );
   }
 
+  /** Zaškrtávacie políčko, ktoré sa ukladá hneď. */
+  function toggleField(key: "afterSchoolSummary" | "examEveningPush", label: string) {
+    return (
+      <label className="flex min-h-11 items-center gap-2.5 text-body text-fg">
+        <Checkbox
+          id={fieldId(key)}
+          checked={draft[key]}
+          onCheckedChange={(value) => commit({ [key]: value === true })}
+        />
+        {label}
+      </label>
+    );
+  }
+
   function hourField(key: "dayStartHour" | "dayEndHour") {
     return (
       <Select
@@ -414,6 +429,27 @@ export function SettingsForm({ settings, pushSetup }: SettingsFormProps) {
           >
             {numberField("reminderLeadMin", 0, 120)}
           </Field>
+
+          {toggleField("afterSchoolSummary", "Zhrnutie po škole")}
+          <Field
+            id={fieldId("summaryFallbackAt")}
+            label="Zhrnutie v dni bez vyučovania o"
+            hint="V školský deň príde štvrť hodiny po poslednej hodine. Cez víkend a prázdniny o tomto čase."
+          >
+            <Input
+              id={fieldId("summaryFallbackAt")}
+              type="time"
+              className="w-36"
+              value={draft.summaryFallbackAt}
+              onChange={(event) => {
+                const hodnota = event.target.value.trim();
+                // Prázdne pole by server odmietol a formulár by sa vrátil — radšej ho necháme.
+                if (hodnota !== "") commit({ summaryFallbackAt: hodnota });
+              }}
+            />
+          </Field>
+
+          {toggleField("examEveningPush", "Večer pred písomkou alebo skúšaním o 19:00")}
 
           {pushSetup}
         </Section>

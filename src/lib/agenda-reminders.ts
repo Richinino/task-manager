@@ -6,7 +6,7 @@ import {
   type AgendaLike,
   type AgendaReminder,
 } from "./agenda";
-import type { PushPayload } from "./push-payload";
+import { TASK_REMINDER_ACTIONS, type PushPayload } from "./push-payload";
 
 /**
  * Pripomienky udalostí — čistá logika.
@@ -157,5 +157,7 @@ export function prepReminderPayload(input: {
     body: parts.join(" · "),
     url: "/dnes",
     tag: `uloha-${input.taskId}`,
+    taskId: input.taskId,
+    actions: TASK_REMINDER_ACTIONS,
   };
 }

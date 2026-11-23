@@ -9,6 +9,7 @@
 
 /** Poradie musí sedieť s poradím sekcií vo formulári. */
 export const SETTINGS_SECTIONS = [
+  "Telefón",
   "Deň",
   "Pripomienky",
   "Odkladanie",
@@ -20,5 +21,7 @@ export const SETTINGS_SECTIONS = [
 
 /** Kotva sekcie — z názvu spraví id, na ktoré ukazuje bočný zoznam. */
 export function sectionId(title: string): string {
+  // Deep link z Androidu: `/nastavenia#telefon`.
+  if (title === "Telefón") return "telefon";
   return `nastavenia-${title.toLowerCase().replace(/[^a-z0-9\u00c0-\u024f]+/gi, "-")}`;
 }

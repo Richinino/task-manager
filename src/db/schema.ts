@@ -1024,6 +1024,55 @@ export const agendaReminders = pgTable(
   ],
 );
 
+/**
+ * Notifikácie, ktoré idú najviac raz za deň — zhrnutie po škole, upozornenie
+ * večer pred písomkou. `key` rozlišuje druh a predmet („po-skole",
+ * „pred-pisomkou:<agendaItemId>"); jedinečný index (používateľ, deň, kľúč) je
+ * poistka proti dvom behom plánovača naraz, rovnako ako pri `reminders`.
+ */
+export const dailyPushes = pgTable(
+  "daily_pushes",
+  {
+    id: text("id").primaryKey(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    /** Deň v pásme používateľa, ku ktorému notifikácia patrí. */
+    date: date("date").notNull(),
+    key: text("key").notNull(),
+    sentAt: timestamp("sent_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [uniqueIndex("daily_pushes_user_date_key_idx").on(t.userId, t.date, t.key)],
+);
+
+/**
+ * Dlhodobý token zariadenia — widget na ploche a dlaždica v Androide.
+ *
+ * Widget nevidí prihlásenie z Chromu, preto má vlastný kľúč. Vznikne
+ * jedným ťuknutím v Nastaveniach, appka ho odovzdá natívnej časti a ukladá
+ * sa len jeho odtlačok (SHA-256), rovnako ako pri OAuth. Zrušiť sa dá
+ * v Nastaveniach (`revokedAt`), bez vypršania — widget sa nemá odhlasovať sám.
+ */
+export const deviceTokens = pgTable(
+  "device_tokens",
+  {
+    id: text("id").primaryKey(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    /** Pomenovanie pre človeka, napr. „Widget v telefóne". */
+    name: text("name").notNull(),
+    tokenHash: text("token_hash").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    lastUsedAt: timestamp("last_used_at", { withTimezone: true }),
+    revokedAt: timestamp("revoked_at", { withTimezone: true }),
+  },
+  (t) => [
+    index("device_tokens_user_idx").on(t.userId),
+    uniqueIndex("device_tokens_hash_idx").on(t.tokenHash),
+  ],
+);
+
 /* ═══════════════════════════════════════════════════════════════════════════
    OAUTH PRE MCP (docs/MCP.md)
 

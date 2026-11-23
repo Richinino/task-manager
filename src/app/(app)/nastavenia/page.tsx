@@ -5,6 +5,7 @@ import { ScreenHeader } from "@/components/shell/screen-chrome";
 import { CalendarCard } from "@/components/views/nastavenia/calendar-card";
 import { ConnectedAppsCard } from "@/components/views/nastavenia/connected-apps-card";
 import { SettingsNav } from "@/components/views/nastavenia/settings-nav";
+import { PhoneCard } from "@/components/views/nastavenia/phone-card";
 import { PushSetup } from "@/components/views/nastavenia/push-setup";
 import { SettingsForm } from "@/components/views/nastavenia/settings-form";
 import { SubjectAliasesCard } from "@/components/views/nastavenia/subject-aliases-card";
@@ -13,6 +14,7 @@ import { pushPublicKey } from "@/server/push";
 import { requireUser } from "@/server/auth-guard";
 import { hasCalendarAccess } from "@/server/google-tokens";
 import { listCalendars } from "@/server/queries/calendar";
+import { listDeviceTokens } from "@/server/device-tokens";
 import { listConnectedApps, mcpResource, originOf } from "@/server/oauth";
 import { listSubjects } from "@/server/queries/school";
 
@@ -29,10 +31,11 @@ export const metadata: Metadata = {
  */
 export default async function NastaveniaPage() {
   const user = await requireUser();
-  const [calendarConnected, apps, subjects] = await Promise.all([
+  const [calendarConnected, apps, subjects, widgets] = await Promise.all([
     hasCalendarAccess(user.id),
     listConnectedApps(user.id),
     listSubjects(user.id),
+    listDeviceTokens(user.id),
   ]);
   const calendars = calendarConnected ? await listCalendars(user.id, user.settings) : [];
   const mcpUrl = mcpResource(originOf(await headers()));
@@ -92,6 +95,22 @@ export default async function NastaveniaPage() {
                   clientName: app.clientName,
                   createdLabel: when.format(app.createdAt),
                   lastUsedLabel: app.lastUsedAt === null ? null : when.format(app.lastUsedAt),
+                }))}
+              />
+            </div>
+          </section>
+
+          <section id="telefon" aria-label="Telefón" className="scroll-mt-12">
+            <h2 className="label border-b border-border bg-surface-2 px-5 py-[9px] text-fg-muted">
+              Telefón
+            </h2>
+            <div className="border-b border-border px-5 py-4">
+              <PhoneCard
+                widgets={widgets.map((widget) => ({
+                  id: widget.id,
+                  name: widget.name,
+                  createdLabel: when.format(widget.createdAt),
+                  lastUsedLabel: widget.lastUsedAt === null ? null : when.format(widget.lastUsedAt),
                 }))}
               />
             </div>

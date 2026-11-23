@@ -150,6 +150,16 @@ export const settingsSchema = z.object({
   reminderLeadMin: z.number().int().min(0).max(120).default(10),
 
   /**
+   * Denné zhrnutie „po škole" — jedna notifikácia, keď sa deň s hodinami
+   * skončí: koľko vecí ťa dnes čaká a od čoho začať.
+   */
+  afterSchoolSummary: z.boolean().default(true),
+  /** Kedy zhrnutie príde v dni bez vyučovania (alebo cez prázdniny). */
+  summaryFallbackAt: timeSchema.default("16:00"),
+  /** Večer pred písomkou alebo skúšaním: upozornenie, ako si s prípravou. */
+  examEveningPush: z.boolean().default(true),
+
+  /**
    * Školské skupiny, do ktorých človek patrí — napr. `2B j1.sk`.
    *
    * Odber rozvrhu je celej triedy, nie jedného žiaka: delené jazyky,
