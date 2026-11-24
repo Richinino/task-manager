@@ -35,7 +35,8 @@ export function TooltipContent({
         sideOffset={sideOffset}
         collisionPadding={collisionPadding}
         className={cn(
-          "animate-in-fast z-50 max-w-56 rounded border border-border bg-surface px-2 py-1",
+          "motion-tooltip [--motion-origin:var(--radix-tooltip-content-transform-origin)]",
+          "z-50 max-w-56 rounded border border-border bg-surface px-2 py-1",
           "text-meta leading-snug text-fg shadow-md",
           className,
         )}

@@ -143,6 +143,7 @@ export function AgendaDetail({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
         showClose={false}
+        motion="sheet"
         onCloseAutoFocus={(event) => {
           event.preventDefault();
           onRestoreFocus();

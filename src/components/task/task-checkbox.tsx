@@ -101,7 +101,10 @@ export function TaskCheckbox({
             Hotová úloha je ZELENÁ (`--succ`), nie akcentová: akcent v tomto
             návrhu znamená „tu si", nie „hotovo".
           */
-          "relative flex shrink-0 items-center justify-center border-[1.5px] transition-colors",
+          // Pri stlačení sa štvorček o kúsok stiahne — klik je cítiť ešte
+          // predtým, než sa prefarbí.
+          "relative flex shrink-0 items-center justify-center border-[1.5px]",
+          "transition-[background-color,border-color,scale] duration-150 ease-(--ease-out) active:scale-90",
           "cursor-pointer border-border-strong text-transparent hover:border-accent",
           optimisticDone && "border-success bg-success text-white hover:border-success",
           failed && "border-danger",
@@ -126,7 +129,23 @@ export function TaskCheckbox({
             : "before:-inset-[10px] sm:before:-inset-1",
         )}
       >
-        <Check aria-hidden="true" size={size === "sm" ? 10 : size === "lg" ? 13 : 12} strokeWidth={3} />
+        {/*
+          Odškrtnutie je odmena celej appky, tak nech je cítiť: fajka
+          „naskočí" zo 60 % a s ľahkým oneskorením za výplňou, takže oko
+          vidí najprv zelenú a potom potvrdenie. Bez pruženia — appka je
+          nástroj, nie hra. Pri odznačení zmizne rýchlejšie, než prišla.
+        */}
+        <Check
+          aria-hidden="true"
+          size={size === "sm" ? 10 : size === "lg" ? 13 : 12}
+          strokeWidth={3}
+          className={cn(
+            "transition-[opacity,scale] ease-(--ease-out)",
+            optimisticDone
+              ? "scale-100 opacity-100 delay-50 duration-200"
+              : "scale-60 opacity-0 duration-100",
+          )}
+        />
       </button>
 
       {children}

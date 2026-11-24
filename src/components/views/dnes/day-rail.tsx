@@ -38,19 +38,19 @@ export function DayRail({ budget, rituals, meetings, habits, areas }: DayRailPro
   return (
     <aside
       aria-label="Prehľad dňa"
-      className="sticky top-0 flex h-dvh w-[280px] shrink-0 flex-col overflow-hidden border-l border-border bg-surface"
+      className="sticky top-0 flex h-dvh w-[300px] shrink-0 flex-col overflow-hidden border-l border-border bg-surface"
     >
-      <div className="shrink-0 border-b border-border px-4 py-3.5">{budget}</div>
-      <div className="shrink-0 border-b border-border px-4 py-3.5">{rituals}</div>
+      <div className="shrink-0 border-b border-border px-5 py-5">{budget}</div>
+      <div className="shrink-0 border-b border-border px-5 py-5">{rituals}</div>
       {/* Prázdna sekcia by zabrala 29 px odsadenia a nepovedala nič. */}
       {habits ? (
-        <div className="shrink-0 border-b border-border px-4 py-3.5">{habits}</div>
+        <div className="shrink-0 border-b border-border px-5 py-5">{habits}</div>
       ) : null}
 
       {meetings ? (
-        <div className="shrink-0 border-b border-border px-4 py-3.5">{meetings}</div>
+        <div className="shrink-0 border-b border-border px-5 py-5">{meetings}</div>
       ) : null}
-      <div className="min-h-0 flex-1 px-4 py-3.5">{areas}</div>
+      <div className="min-h-0 flex-1 px-5 py-5">{areas}</div>
     </aside>
   );
 }

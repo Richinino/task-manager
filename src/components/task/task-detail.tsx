@@ -630,6 +630,9 @@ export function TaskDetail({
           obvyklý krížik vpravo.
         */
         showClose={false}
+        // Panel prichádza od okraja, pri ktorom stojí: sprava na počítači,
+        // zospodu na telefóne. Tak je jasné, odkiaľ prišiel a kam odíde.
+        motion="sheet"
         onOpenAutoFocus={(event) => {
           // Fokus patrí názvu — je to najčastejší dôvod, prečo sa panel otvára.
           event.preventDefault();

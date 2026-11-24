@@ -491,13 +491,12 @@ export interface AddTaskPopoverProps {
  * si zo servera berie `MAX_ENTRIES_PER_DAY`, takže sám hooky obsahovať nesmie.
  * Takto ostáva serverovo importovateľný a interaktívnu časť si len vloží.
  *
- * Obsah bubliny sa vykresľuje podmienene (`open ? … : null`), a to z konkrétneho
- * dôvodu: `PopoverContent` má natrvalo triedu `.animate-in-fast`, takže po
- * zatvorení mu `animationName` ostáva nastavené. Radix z toho usúdi, že beží
- * odchodová animácia, počká na `animationend` — a ten už nikdy nepríde. Uzol
- * potom v DOM ostane visieť: neviditeľný, ale stále zaostriteľný, s fokusom
- * uväzneným v skrytom poli. Vlastné odmontovanie to rieši bez zásahu do
- * spoločného primitívu.
+ * Obsah bubliny sa vykresľuje podmienene (`open ? … : null`). Pôvodný dôvod:
+ * `PopoverContent` mal natrvalo jednu animáciu a Radix po zatvorení čakal na
+ * `animationend`, ktorý neprišiel — uzol ostal v DOM neviditeľný, ale
+ * zaostriteľný. Dnes má `.motion-menu` pre zatvorenie samostatnú odchodovú
+ * animáciu, takže to nehrozí; podmienka ostáva ako poistka (bublina tu
+ * zmizne bez odchodu, čo pri rýchlom pridávaní úloh nevadí).
  *
  * Fokus po zatvorení vracia Radix na spúšťač sám (`onUnmountAutoFocus`), a pri
  * zatvorení kliknutím vedľa ho správne nevracia vôbec.

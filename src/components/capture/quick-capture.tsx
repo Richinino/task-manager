@@ -681,6 +681,9 @@ export function QuickCapture({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
         showClose={false}
+        // Zachytenie je skratka `n` odkiaľkoľvek — myšlienka sa má dať
+        // zapísať hneď, bez čakania na animáciu.
+        motion="none"
         aria-label="Rýchle zachytenie"
         /*
           Telefón (pod `md`): celá obrazovka. Od `md` je okno tam, kde bolo —

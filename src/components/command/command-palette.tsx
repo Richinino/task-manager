@@ -256,6 +256,8 @@ export function CommandPalette({
       */}
       <DialogContent
         showClose={false}
+        // Ctrl+K sa stláča desiatky ráz denne — paleta musí byť tam hneď.
+        motion="none"
         className="mt-3 max-w-[640px] overflow-hidden p-0 sm:mt-[104px]"
       >
         <DialogTitle className="sr-only">Paleta príkazov</DialogTitle>
@@ -280,6 +282,10 @@ export function CommandPalette({
                 // fokuse priblíži a stránka ostane zväčšená.
                 "h-11 w-full min-w-0 bg-transparent text-base text-fg sm:text-sm",
                 "placeholder:text-fg-subtle",
+                // Fokus tu nesie celé okno palety (je modálne a pole je v ňom
+                // jediné). Spoločný akcentový rámik kreslil druhý rám
+                // a pri hornom okraji ho `overflow-hidden` orezal.
+                "outline-none focus-visible:outline-none",
               )}
             />
           </div>

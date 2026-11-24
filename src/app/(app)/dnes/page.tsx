@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 
 import { DayHeader } from "@/components/views/dnes/day-header";
+import { DayProgress } from "@/components/views/dnes/day-progress";
 import { DayList } from "@/components/views/dnes/day-list";
 import { SchoolStrip } from "@/components/views/dnes/school-strip";
 import { AreasToday } from "@/components/views/dnes/areas-today";
@@ -63,6 +64,13 @@ import type { EveningFocus } from "@/components/rituals/evening-shutdown";
 export const metadata: Metadata = {
   title: "Dnes",
 };
+
+/**
+ * Karta v stĺpci obrazovky „Dnes" na počítači. Kreslí sa len vtedy, keď
+ * v nej niečo je — sekcie vnútri samy vracajú `null`, keď nemajú čo ukázať.
+ */
+const DNES_KARTA =
+  "hidden overflow-hidden rounded-lg border border-border bg-surface has-[>div>*]:block";
 
 /**
  * Obrazovka „Dnes" — prvá vec, ktorú človek ráno vidí.
@@ -402,17 +410,19 @@ export default async function DnesPage({ searchParams }: DnesPageProps) {
       />
     </div>
     {/*
-      Návrh nemá vonkajšie odsadenie ani `max-w`: stĺpec ide od kraja po kraj
-      a sekcie sa oddeľujú vlastnými linkami, nie medzerami. Pravá lišta stojí
-      vedľa hlavného stĺpca a siaha cez celú výšku okna.
+      Smer A („Terminál, vyladený"): stĺpec má vzduch okolo seba a skladá sa
+      z kariet — hlavička s veľkým dátumom, priebeh dňa, priorita a jeden
+      orámovaný zoznam. Pravá lišta stojí vedľa a siaha cez celú výšku okna.
     */}
     <div className="hidden w-full items-stretch md:flex">
       <div className="flex min-w-0 flex-1 flex-col">
+      <div className="flex flex-1 flex-col gap-6 px-6 pb-8 pt-7 lg:px-8 xl:px-10">
       <DayHeader
         date={date}
         todayIso={todayIso}
         doneCount={doneCount}
         totalCount={dayTasks.length}
+        plannedMin={plannedMin}
         /*
           Rozpočet je v návrhu na telefóne v hlavičke a na počítači v pravej
           lište. Od `lg:` sa tu preto skrýva — kreslí sa raz na každej šírke.
@@ -442,14 +452,25 @@ export default async function DnesPage({ searchParams }: DnesPageProps) {
         rozhodovaní pozeráš. Pod `lg` sa lišta nekreslí vôbec — podrobnosti
         v `DayRail`.
       */}
-      <div className="flex flex-col">
+          {/*
+            Priebeh dňa: celý deň na jeden pohľad, s čiarou „teraz". Pod
+            hlavičkou, lebo odpovedá na prvú otázku pri pohľade na zoznam —
+            zmestí sa to ešte?
+          */}
+          <DayProgress
+            timeline={timeline}
+            nowMin={nowMin}
+            timeZone={user.settings.timezone}
+            isToday={isToday}
+          />
+
           {/*
             Porady sedia nad prioritou dňa: najprv čím je deň obsadený, až
             potom čo s tým zvyškom. Od `lg` ich prevezme pravá lišta, preto sú
             tu skryté. Je to ten istý komponent dvakrát v strome, ale kreslí
             iba značky a bez stavu — lacnejšie než ho na telefóne stratiť.
           */}
-          <div className="lg:hidden">
+          <div className="empty:hidden lg:hidden">
             <DayMeetings events={events} />
           </div>
 
@@ -467,6 +488,14 @@ export default async function DnesPage({ searchParams }: DnesPageProps) {
             Udalosti dňa hneď pod prioritou: čím je deň pevne daný. Nad
             školou, lebo písomka je dôvod, prečo sa na ten pruh pozeráš.
           */}
+          {/*
+            Udalosti dňa a škola v jednej karte — obe hovoria, čím je deň
+            pevne daný. Keď nie je ani jedno, karta sa nekreslí vôbec
+            (`has-[>div>*]`). Vnútorné `-mb-px` schová spodnú linku poslednej
+            sekcie pod rám karty, aby nebola dvojitá.
+          */}
+          <div className={DNES_KARTA}>
+          <div className="-mb-px">
           <DayAgenda items={agendaDay} todayIso={todayIso} />
 
           {/*
@@ -505,6 +534,15 @@ export default async function DnesPage({ searchParams }: DnesPageProps) {
             nowMin={nowMin}
             timeZone={user.settings.timezone}
           />
+          </div>
+          </div>
+
+          {/*
+            Jeden orámovaný zoznam: po termíne, blíži sa a naplánované.
+            V návrhu je to jedna tabuľka so sekciami, nie tri samostatné bloky.
+          */}
+          <div className={DNES_KARTA}>
+          <div className="-mb-px">
 
           {/*
             Prepadnuté patria LEN k dnešku.
@@ -539,6 +577,8 @@ export default async function DnesPage({ searchParams }: DnesPageProps) {
             postponeWarnAt={user.settings.postponeWarnAt}
             postponeBlockAt={user.settings.postponeBlockAt}
           />
+          </div>
+          </div>
         </div>
 
         {/* Stavový riadok na spodku stĺpca — v návrhu posledných 34 px. */}

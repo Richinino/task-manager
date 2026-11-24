@@ -20,10 +20,9 @@ import { AREA_COLOR_OPTIONS, areaColorLabel } from "./area-colors";
  * úloh rozlišujú 8-pixelovou bodkou a odtiene, ktoré si používateľ namieša
  * sám, sú od seba nerozoznateľné. Zoznam je zámerne krátky a ustálený.
  *
- * Obsah bubliny sa vykresľuje podmienene (`open ? … : null`): `PopoverContent`
- * má natrvalo triedu `.animate-in-fast`, takže po zatvorení mu `animationName`
- * ostáva nastavené, Radix čaká na `animationend`, ktorý už nepríde, a uzol
- * ostane v DOM — neviditeľný, ale stále zaostriteľný.
+ * Obsah bubliny sa vykresľuje podmienene (`open ? … : null`) — poistka z čias,
+ * keď `PopoverContent` nemal samostatnú odchodovú animáciu a Radix po
+ * zatvorení čakal na `animationend`, ktorý neprišiel (viď `AddTaskPopover`).
  */
 export interface ColorPickerProps {
   /** Názov farby z palety, napr. „indigo". */
