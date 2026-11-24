@@ -2,8 +2,9 @@ import { and, eq, isNull } from "drizzle-orm";
 import { z } from "zod";
 
 import { getDb } from "@/db";
-import { tasks } from "@/db/schema";
+import { focusSessions, tasks } from "@/db/schema";
 import { minutesIn, todayIn } from "@/lib/dates";
+import { extendFocus, finishFocus } from "@/server/actions/focus";
 import { rescheduleTask, toggleTaskDone, updateTask } from "@/server/actions/tasks";
 import { getCurrentUser } from "@/server/auth-guard";
 
@@ -15,6 +16,9 @@ import { getCurrentUser } from "@/server/auth-guard";
  * z obrazovky. Bez relácie vráti 401 a worker otvorí appku ako pri bežnom
  * ťuknutí.
  *
+ * „+15 min" a „Hotovo" z notifikácie o vypršanom fokuse (`fokus-plus`,
+ * `fokus-hotovo`) volajú tie isté akcie ako tlačidlá na obrazovke fokusu.
+ *
  * „O hodinu" presunie úlohu na dnes o 60 minút neskôr. Pripomienky sú
  * jedinečné na (úloha, okamih), takže nový čas sám vyrobí novú pripomienku.
  */
@@ -23,7 +27,7 @@ export const dynamic = "force-dynamic";
 
 const bodySchema = z.object({
   taskId: z.string().min(1).max(100),
-  akcia: z.enum(["hotovo", "odlozit"]),
+  akcia: z.enum(["hotovo", "odlozit", "fokus-plus", "fokus-hotovo"]),
 });
 
 const NO_STORE = { "Cache-Control": "no-store" };
@@ -59,6 +63,37 @@ export async function POST(request: Request): Promise<Response> {
     .where(and(eq(tasks.id, taskId), eq(tasks.userId, user.id), isNull(tasks.deletedAt)))
     .limit(1);
   if (!uloha) return chyba("Úloha sa nenašla.", 404);
+
+  if (akcia === "fokus-plus" || akcia === "fokus-hotovo") {
+    /*
+      Tlačidlo patrí konkrétnej úlohe. Keď medzitým beží fokus na inej
+      (alebo žiadny), „+15 min" nesmie predĺžiť cudzí úsek — vrátime 409 a
+      service worker otvorí appku, kde človek uvidí skutočný stav.
+    */
+    const [beziaci] = await db
+      .select({ taskId: focusSessions.taskId })
+      .from(focusSessions)
+      .where(and(eq(focusSessions.userId, user.id), isNull(focusSessions.endedAt)))
+      .limit(1);
+    const beziNaTejtoUlohe = beziaci?.taskId === taskId;
+
+    if (akcia === "fokus-plus") {
+      if (!beziNaTejtoUlohe) return chyba("Fokus na tejto úlohe už nebeží.", 409);
+      const result = await extendFocus();
+      if (!result.ok) return chyba(result.error, 422);
+      return Response.json({ ok: true }, { headers: NO_STORE });
+    }
+
+    if (beziNaTejtoUlohe) {
+      const result = await finishFocus({ complete: true });
+      if (!result.ok) return chyba(result.error, 422);
+    } else if (uloha.status !== "done") {
+      // Fokus už skončil (napr. pauza), ale úloha ešte nie je hotová.
+      const result = await toggleTaskDone(taskId);
+      if (!result.ok) return chyba(result.error, 422);
+    }
+    return Response.json({ ok: true }, { headers: NO_STORE });
+  }
 
   if (akcia === "hotovo") {
     // Už hotovú úlohu nevraciame späť — druhé ťuknutie nemá nič prepnúť.

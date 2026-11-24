@@ -27,7 +27,8 @@
 // Zvýšením verzie sa pri aktivácii zahodia všetky staršie cache.
 // v2: vypnutý navigation preload, ktorý zdvojoval prihlasovací callback.
 // v3: tlačidlá akcií v notifikáciách (Hotovo / O hodinu).
-const VERSION = "tm-v3";
+// v4: tlačidlá notifikácie o vypršanom fokuse (+15 min / Hotovo).
+const VERSION = "tm-v4";
 const STATIC_CACHE = VERSION + "-static";
 const PAGES_CACHE = VERSION + "-pages";
 const OWN_CACHES = [STATIC_CACHE, PAGES_CACHE];
@@ -432,6 +433,9 @@ self.addEventListener("push", (event) => {
   );
 });
 
+// Tlačidlá, ktoré server vybaví bez otvorenia appky (/api/pripomienky/akcia).
+const AKCIE_NOTIFIKACII = ["hotovo", "odlozit", "fokus-plus", "fokus-hotovo"];
+
 /**
  * Ťuknutie na notifikáciu.
  *
@@ -452,7 +456,7 @@ self.addEventListener("notificationclick", (event) => {
         človek aspoň uvidí appku a môže sa prihlásiť. Pri úspechu sa neukáže
         nič: notifikácia už zmizla a úloha je vybavená.
       */
-      if ((event.action === "hotovo" || event.action === "odlozit") && taskId) {
+      if (AKCIE_NOTIFIKACII.indexOf(event.action) !== -1 && taskId) {
         try {
           const response = await fetch("/api/pripomienky/akcia", {
             method: "POST",

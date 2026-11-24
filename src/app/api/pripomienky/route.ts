@@ -5,6 +5,7 @@ import {
   agendaItems,
   agendaReminders,
   dailyPushes,
+  focusSessions,
   pushSubscriptions,
   reminders,
   schoolBreaks,
@@ -33,6 +34,8 @@ import {
   pickStartTask,
 } from "@/lib/daily-push";
 import { addDays, minutesIn, todayIn } from "@/lib/dates";
+import { DEFAULT_FOCUS_MIN, spentMinutes } from "@/lib/focus";
+import { decideFocusNotify, focusEndPayload } from "@/lib/focus-push";
 import { isSchoolBreak } from "@/lib/school";
 import { buildPushPayload, type PushPayload } from "@/lib/push-payload";
 import {
@@ -65,7 +68,7 @@ import { isPushConfigured, sendPush } from "@/server/push";
  *
  * Jedinečný index na (`task_id`, `at`) je poistka proti dvom behom naraz.
  *
- * ## Tri druhy pripomienok
+ * ## Štyri druhy pripomienok
  *
  * 1. **Úloha s hodinou** — naplánovaný čas alebo termín mínus predstih.
  * 2. **Udalosť** so zapnutou pripomienkou — večer vopred, ráno, alebo
@@ -74,6 +77,9 @@ import { isPushConfigured, sendPush } from "@/server/push";
  * 3. **Deň prípravy** — ráno v deň, na ktorý je naplánovaná úloha pod
  *    udalosťou so zapnutou pripomienkou. Je to pripomienka úlohy, takže
  *    záznam ide do `reminders` ako pri bode 1.
+ * 4. **Fokus vypršal** — odhad bežiaceho fokusu sa minul. Najviac jedna
+ *    notifikácia na `plannedEndAt`: stráži to `focus_sessions.notified_at`,
+ *    ktorý sa nastavuje atomicky PRED odoslaním (pozri nižšie).
  *
  * ## Radšej neskoro než skoro
  *
@@ -101,6 +107,10 @@ interface Suhrn {
    * „nebolo čo poslať" od „plánovač spal a zmeškal to".
    */
   zahodenychStarych: number;
+  /** Fokus: odhad vypršal a notifikácia odišla (aspoň na jedno prihlásenie). */
+  fokusOznamenych: number;
+  /** Fokus: pristará relácia — označená, nič sa neposlalo (pozri `FOCUS_MAX_MESKANIE_MIN`). */
+  fokusZahodenych: number;
 }
 
 function neopravneny(): Response {
@@ -181,6 +191,8 @@ export async function POST(request: Request): Promise<Response> {
     zlyhani: 0,
     zmazanychPrihlaseni: 0,
     zahodenychStarych: 0,
+    fokusOznamenych: 0,
+    fokusZahodenych: 0,
   };
 
   /** Prihlásenia si držíme na používateľa, nie na úlohu. */
@@ -196,7 +208,7 @@ export async function POST(request: Request): Promise<Response> {
    * prihlásenie ide von — bez toho by si ho plánovač vypýtal pri každom behu
    * a pri každom behu by mu push služba odpovedala 410.
    */
-  async function dorucit(userId: string, payload: PushPayload): Promise<void> {
+  async function nacitatPrihlasenia(userId: string) {
     let prihlasenia = prihlaseniaPodlaLudi.get(userId);
     if (prihlasenia === undefined) {
       prihlasenia = await db
@@ -209,6 +221,11 @@ export async function POST(request: Request): Promise<Response> {
         .where(eq(pushSubscriptions.userId, userId));
       prihlaseniaPodlaLudi.set(userId, prihlasenia);
     }
+    return prihlasenia;
+  }
+
+  async function dorucit(userId: string, payload: PushPayload): Promise<void> {
+    const prihlasenia = await nacitatPrihlasenia(userId);
 
     for (const prihlasenie of prihlasenia) {
       const vysledok = await sendPush(prihlasenie, payload);
@@ -638,6 +655,106 @@ export async function POST(request: Request): Promise<Response> {
         );
       }
     }
+  }
+
+  /* ── Fokus vypršal ───────────────────────────────────────────────────────
+     Bežiaci fokus, ktorému sa minul odhad. Jedna notifikácia na `plannedEndAt`
+     — „+15 min" v appke `notified_at` maže, takže nový koniec smie zazvoniť
+     raz znova.                                                             */
+
+  /*
+    bez-filtra: plánovač obsluhuje všetkých; notifikácia ide len na
+    prihlásenia vlastníka relácie (`userId` z toho istého riadka) a úloha
+    sa páruje s reláciou toho istého človeka.
+  */
+  const fokusy = await db
+    .select({
+      id: focusSessions.id,
+      userId: focusSessions.userId,
+      taskId: focusSessions.taskId,
+      startedAt: focusSessions.startedAt,
+      plannedEndAt: focusSessions.plannedEndAt,
+      title: tasks.title,
+      estimateMin: tasks.estimateMin,
+    })
+    .from(focusSessions)
+    .innerJoin(
+      tasks,
+      and(eq(tasks.id, focusSessions.taskId), eq(tasks.userId, focusSessions.userId)),
+    )
+    .where(
+      and(
+        isNull(focusSessions.endedAt),
+        isNull(focusSessions.notifiedAt),
+        lte(focusSessions.plannedEndAt, teraz),
+        isNull(tasks.deletedAt),
+        ne(tasks.status, "done"),
+        ne(tasks.status, "dropped"),
+      ),
+    )
+    .limit(100);
+  suhrn.preverenych += fokusy.length;
+
+  for (const fokus of fokusy) {
+    if (suhrn.odoslanych >= MAX_NA_BEH) break;
+
+    const rozhodnutie = decideFocusNotify(
+      { endedAt: null, notifiedAt: null, plannedEndAt: fokus.plannedEndAt },
+      teraz,
+    );
+    if (rozhodnutie === "preskocit") continue;
+
+    /*
+      Bez prihlásenia nie je komu poslať — a relácia sa NErezervuje, aby
+      klient (otvorená appka) mohol ešte ukázať vlastnú notifikáciu.
+    */
+    if (rozhodnutie === "poslat" && (await nacitatPrihlasenia(fokus.userId)).length === 0) continue;
+
+    /*
+      Rezervácia: jediný UPDATE s podmienkou `notified_at is null` je
+      atomický, takže dva súbežné behy (alebo beh a `markFocusNotified`
+      z appky) nemôžu notifikáciu poslať obaja — vyhrá ten, komu `returning`
+      vráti riadok. `planned_end_at = <načítaný>` navyše zaručí, že
+      „+15 min" medzi načítaním a rezerváciou nezhodí notifikáciu na starý
+      koniec. Pristará relácia sa označí tiež (a nič sa nepošle), inak by sa
+      pri každom behu skúšala znova.
+    */
+    const rezervovane = await db
+      .update(focusSessions)
+      .set({ notifiedAt: teraz })
+      .where(
+        and(
+          eq(focusSessions.id, fokus.id),
+          eq(focusSessions.userId, fokus.userId),
+          isNull(focusSessions.endedAt),
+          isNull(focusSessions.notifiedAt),
+          eq(focusSessions.plannedEndAt, fokus.plannedEndAt),
+        ),
+      )
+      .returning();
+    if (rezervovane.length === 0) continue;
+
+    if (rozhodnutie === "zahodit") {
+      suhrn.fokusZahodenych += 1;
+      continue;
+    }
+
+    const useky = await db
+      .select({ startedAt: focusSessions.startedAt, endedAt: focusSessions.endedAt })
+      .from(focusSessions)
+      .where(and(eq(focusSessions.userId, fokus.userId), eq(focusSessions.taskId, fokus.taskId)));
+
+    const odoslaneDoteraz = suhrn.odoslanych;
+    await dorucit(
+      fokus.userId,
+      focusEndPayload({
+        taskId: fokus.taskId,
+        title: fokus.title,
+        plannedMin: fokus.estimateMin ?? DEFAULT_FOCUS_MIN,
+        spentMin: spentMinutes(useky, teraz),
+      }),
+    );
+    if (suhrn.odoslanych > odoslaneDoteraz) suhrn.fokusOznamenych += 1;
   }
 
   return Response.json(
