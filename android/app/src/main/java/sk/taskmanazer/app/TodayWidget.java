@@ -187,10 +187,20 @@ public class TodayWidget extends AppWidgetProvider {
                 v.setViewVisibility(R.id.focus_row, View.VISIBLE);
                 v.setTextViewText(R.id.focus_title, "\u25B6 " + focus.optString("title", ""));
                 int remaining = focus.optInt("remainingMin", 0);
-                // Po termíne server posiela záporný zostatok alebo over — ukážeme „+N min".
                 boolean over = focus.optBoolean("over", false) || remaining < 0;
-                v.setTextViewText(R.id.focus_time,
-                        over ? "+" + Math.abs(remaining) + " min" : "zostáva " + remaining + " min");
+                /*
+                  Widget sa obnovuje raz za pol hodiny, takže „zostáva N min"
+                  by medzitým zastaralo. Čas konca („do 14:35") platí stále.
+                  Starší server `endClock` neposiela — vtedy ostáva zostatok.
+                */
+                String endClock = focus.optString("endClock", "");
+                String time;
+                if (!endClock.isEmpty()) {
+                    time = over ? "odhad do " + endClock : "do " + endClock;
+                } else {
+                    time = over ? "+" + Math.abs(remaining) + " min" : "zostáva " + remaining + " min";
+                }
+                v.setTextViewText(R.id.focus_time, time);
                 v.setOnClickPendingIntent(R.id.focus_row, openUrl(c, 5, BASE + "/dnes?fokus=1"));
             } else {
                 v.setViewVisibility(R.id.focus_row, View.GONE);

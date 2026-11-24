@@ -188,6 +188,7 @@ describe("widgetNext", () => {
 });
 
 describe("widgetFocus", () => {
+  const TZ = "Europe/Bratislava";
   const now = new Date("2026-11-24T10:00:00.000Z");
   const at = (min: number) => new Date(now.getTime() + min * 60_000).toISOString();
   const active = (plannedEndAt: string) => ({
@@ -198,21 +199,26 @@ describe("widgetFocus", () => {
   });
 
   it("bez fokusu je null", () => {
-    expect(widgetFocus(null, now)).toBeNull();
+    expect(widgetFocus(null, now, TZ)).toBeNull();
   });
 
   it("pred termínom ukáže zostávajúce minúty", () => {
-    expect(widgetFocus(active(at(12)), now)).toEqual({
+    expect(widgetFocus(active(at(12)), now, TZ)).toEqual({
       taskId: "t1",
       title: "Esej",
       remainingMin: 12,
       spentMin: 18,
       over: false,
+      endClock: "11:12",
     });
   });
 
+  it("čas konca je v pásme používateľa, nie v UTC", () => {
+    expect(widgetFocus(active(at(-7)), now, "UTC")?.endClock).toBe("09:53");
+  });
+
   it("po termíne je zostatok záporný a over true", () => {
-    expect(widgetFocus(active(at(-7)), now)).toMatchObject({ remainingMin: -7, over: true });
+    expect(widgetFocus(active(at(-7)), now, TZ)).toMatchObject({ remainingMin: -7, over: true });
   });
 });
 
@@ -224,7 +230,7 @@ describe("buildWidgetPayload focus", () => {
   });
 
   it("prenesie fokus do odpovede", () => {
-    const focus = { taskId: "t1", title: "Esej", remainingMin: 5, spentMin: 20, over: false };
+    const focus = { taskId: "t1", title: "Esej", remainingMin: 5, spentMin: 20, over: false, endClock: "10:05" };
     expect(buildWidgetPayload({ ...base, focus }).focus).toEqual(focus);
   });
 });
