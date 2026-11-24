@@ -1,8 +1,9 @@
 import { layoutDay } from "@/lib/day-timeline";
 import { minutesIn, todayIn } from "@/lib/dates";
 import { budgetFigures } from "@/lib/today-budget";
-import { buildWidgetPayload } from "@/lib/widget-payload";
+import { buildWidgetPayload, widgetFocus } from "@/lib/widget-payload";
 import { runAsUser } from "@/server/auth-guard";
+import { getActiveFocus } from "@/server/queries/focus";
 import { getDayTimelineInput } from "@/server/queries/day-timeline";
 import { getInboxTasks, getTasksForDay } from "@/server/queries/tasks";
 
@@ -25,10 +26,11 @@ export async function GET(request: Request): Promise<Response> {
     const date = todayIn(timeZone);
     const nowMin = minutesIn(timeZone);
 
-    const [dayTasks, inbox, timeline] = await Promise.all([
+    const [dayTasks, inbox, timeline, activeFocus] = await Promise.all([
       getTasksForDay(user.id, date),
       getInboxTasks(user.id),
       getDayTimelineInput(user.id, date, user.settings),
+      getActiveFocus(user.id),
     ]);
 
     const day = layoutDay({ ...timeline, nowMin });
@@ -39,6 +41,7 @@ export async function GET(request: Request): Promise<Response> {
       dayOver: nowMin >= timeline.dayEndMin,
       inboxCount: inbox.length,
       day,
+      focus: widgetFocus(activeFocus, new Date()),
     });
     return Response.json(payload, { headers: NO_STORE });
   });

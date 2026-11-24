@@ -4,8 +4,9 @@ import { useState, useTransition } from "react";
 import { CalendarArrowDown, Check, Trash2 } from "lucide-react";
 
 import type { RitualPeriod } from "@/lib/rituals";
-import { addDays } from "@/lib/dates";
+import { addDays, formatDuration } from "@/lib/dates";
 import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
   RitualShell,
@@ -13,6 +14,7 @@ import {
   type RitualPayload,
   type RitualStep,
 } from "@/components/rituals/ritual-shell";
+import { finishFocus, pauseFocus } from "@/server/actions/focus";
 import { saveJournalEntry } from "@/server/actions/rituals";
 import {
   dropTask,
@@ -48,6 +50,28 @@ const MOODS: { value: number; label: string }[] = [
   { value: 5, label: "Skvele" },
 ];
 
+/** Bežiaci fokus, ktorý rituál zastihol. */
+export interface EveningActiveFocus {
+  taskId: string;
+  title: string;
+  /** Odpracované minúty vrátane bežiaceho úseku. */
+  spentMin: number;
+  /** Je úloha naplánovaná na dnes? Len vtedy dáva zmysel ponúknuť presun. */
+  plannedToday: boolean;
+}
+
+/** Fokusové podklady večera — všetko pripravené serverom, klient nič nepočíta. */
+export interface EveningFocus {
+  active: EveningActiveFocus | null;
+  /** Hotová veta o dnešnom fokuse, alebo `null`, keď sa nesústredilo. */
+  summary: string | null;
+  /** Odhad vs. realita za 30 dní; `null`, keď je dát primálo. */
+  accuracy: { sentence: string; tasks: number } | null;
+}
+
+/** Ako človek naložil s bežiacim fokusom. */
+type FocusChoice = "done" | "paused" | "moved";
+
 export interface EveningShutdownProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -56,6 +80,7 @@ export interface EveningShutdownProps {
   tasks: TaskWithRelations[];
   /** Dnešok z pásma používateľa. */
   todayIso: string;
+  focus?: EveningFocus;
   initialPayload?: RitualPayload;
   /** Už uložený zápis v denníku, ak dnes nejaký je. */
   initialJournal?: { body: string | null; mood: number | null };
@@ -67,9 +92,18 @@ export function EveningShutdown({
   period,
   tasks,
   todayIso,
+  focus,
   initialPayload,
   initialJournal,
 }: EveningShutdownProps) {
+  /*
+    Bežiaci fokus si pamätáme aj po tom, čo ho server po akcii prestane hlásiť.
+    Inak by krok zmizol uprostred rituálu a všetky ďalšie by sa posunuli.
+  */
+  const [seenActive, setSeenActive] = useState<EveningActiveFocus | null>(null);
+  const activeFocus = seenActive ?? focus?.active ?? null;
+  const [focusChoice, setFocusChoice] = useState<FocusChoice | null>(null);
+  const [focusError, setFocusError] = useState<string | null>(null);
   /** Úlohy odškrtnuté počas rituálu — server ich prekreslí až po zavretí. */
   const [doneNow, setDoneNow] = useState<Set<string>>(new Set());
   /** Rozhodnutia o nedokončených, aby sa riadok po kliknutí upokojil. */
@@ -102,6 +136,50 @@ export function EveningShutdown({
           return next;
         });
         setRowError(result.error);
+      }
+    });
+  }
+
+  function resolveFocus(complete: boolean): void {
+    if (!activeFocus) return;
+    const active = activeFocus;
+    setSeenActive(active);
+    setFocusError(null);
+    startTransition(async () => {
+      try {
+        const result = complete ? await finishFocus({ complete: true }) : await pauseFocus();
+        if (!result.ok) {
+          setFocusError(result.error);
+          return;
+        }
+        if (complete) {
+          // Úloha je hotová — v ďalších krokoch ju nesmie ponúkať ako nedokončenú.
+          setDoneNow((current) => new Set(current).add(active.taskId));
+        }
+        setFocusChoice(complete ? "done" : "paused");
+      } catch {
+        setFocusError("Fokus sa nepodarilo ukončiť.");
+      }
+    });
+  }
+
+  function moveFocusTaskToTomorrow(): void {
+    if (!activeFocus) return;
+    const taskId = activeFocus.taskId;
+    setFocusError(null);
+    startTransition(async () => {
+      try {
+        // Rovnaký mechanizmus ako „Zajtra" pri nedokončených: priamo
+        // `rescheduleTask`, bez strážcu odkladov (večer je to poriadok, nie útek).
+        const result = await rescheduleTask(taskId, addDays(todayIso, 1));
+        if (!result.ok) {
+          setFocusError(result.error || "Úlohu sa nepodarilo presunúť.");
+          return;
+        }
+        setDecided((current) => ({ ...current, [taskId]: "tomorrow" }));
+        setFocusChoice("moved");
+      } catch {
+        setFocusError("Úlohu sa nepodarilo presunúť.");
       }
     });
   }
@@ -139,7 +217,65 @@ export function EveningShutdown({
     });
   }
 
+  const focusStep: RitualStep | null = activeFocus
+    ? {
+        key: "focus",
+        title: "Ešte ti beží fokus",
+        render: () => (
+          <div className="flex flex-col gap-3">
+            <p className="text-body leading-relaxed text-fg">
+              Stále máš rozbehnuté: <span className="font-medium">{activeFocus.title}</span>{" "}
+              ({formatDuration(activeFocus.spentMin)}). Je hotové?
+            </p>
+            {focusChoice === null ? (
+              <div className="flex flex-wrap gap-1.5">
+                <Button type="button" size="sm" onClick={() => resolveFocus(true)}>
+                  Hotovo
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="secondary"
+                  onClick={() => resolveFocus(false)}
+                >
+                  Nechať na zajtra
+                </Button>
+              </div>
+            ) : focusChoice === "done" ? (
+              <p className="text-body leading-relaxed text-fg-muted">
+                Hotovo, fokus je ukončený.
+              </p>
+            ) : focusChoice === "moved" ? (
+              <p className="text-body leading-relaxed text-fg-muted">
+                Fokus je pozastavený a úloha presunutá na zajtra.
+              </p>
+            ) : (
+              <>
+                <p className="text-body leading-relaxed text-fg-muted">
+                  Fokus je pozastavený.
+                  {activeFocus.plannedToday ? " Presunúť úlohu aj na zajtra?" : ""}
+                </p>
+                {activeFocus.plannedToday ? (
+                  <div className="flex flex-wrap gap-1.5">
+                    <DecisionButton
+                      onClick={moveFocusTaskToTomorrow}
+                      Icon={CalendarArrowDown}
+                      label="Presunúť na zajtra"
+                    />
+                  </div>
+                ) : null}
+              </>
+            )}
+            {focusError ? (
+              <p className="text-body leading-relaxed text-danger">{focusError}</p>
+            ) : null}
+          </div>
+        ),
+      }
+    : null;
+
   const steps: RitualStep[] = [
+    ...(focusStep ? [focusStep] : []),
     {
       key: "done",
       title: "Čo si dnes zvládol?",
@@ -190,6 +326,9 @@ export function EveningShutdown({
               );
             })
           )}
+          {focus?.summary ? (
+            <p className="pt-1 text-body leading-relaxed text-fg-muted">{focus.summary}</p>
+          ) : null}
         </div>
       ),
     },
@@ -241,6 +380,14 @@ export function EveningShutdown({
       canAdvance: () => true,
       render: () => (
         <div className="flex flex-col gap-3">
+          {focus?.accuracy ? (
+            <p className="text-body leading-relaxed text-fg-muted">
+              {focus.accuracy.sentence}{" "}
+              <span className="text-meta text-fg-subtle">
+                (z {focus.accuracy.tasks} {taskCountWord(focus.accuracy.tasks)})
+              </span>
+            </p>
+          ) : null}
           <Input
             value={journalBody}
             onChange={(event) => setJournalBody(event.target.value)}
@@ -324,4 +471,9 @@ function DecisionButton({
       {label}
     </button>
   );
+}
+
+/** „z 3 úloh" — po „z" ide druhý pád množného čísla. */
+function taskCountWord(count: number): string {
+  return count === 1 ? "úlohy" : "úloh";
 }

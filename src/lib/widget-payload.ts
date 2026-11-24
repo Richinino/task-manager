@@ -7,6 +7,7 @@ import {
   parseIsoDate,
 } from "@/lib/dates";
 import type { DayTimeline } from "@/lib/day-timeline";
+import { isFocusOver, remainingMinutes } from "@/lib/focus";
 import { cssColorToHex } from "@/lib/oklch";
 import type { BudgetFigures } from "@/lib/today-budget";
 
@@ -49,6 +50,20 @@ export interface WidgetPayload {
   dayOver: boolean;
   timeline: WidgetTimeline;
   next: WidgetNext[];
+  /** Bežiaci fokus, alebo `null`. Pole je prírastkové — staršie Android verzie ho ignorujú. */
+  focus: WidgetFocus | null;
+}
+
+export interface WidgetFocus {
+  taskId: string;
+  title: string;
+  /**
+   * Minúty do konca (nahor); po termíne záporné — widget z toho ukáže
+   * „+7 min", rovnako ako lišta fokusu v appke.
+   */
+  remainingMin: number;
+  spentMin: number;
+  over: boolean;
 }
 
 export interface WidgetTimelineBlock {
@@ -144,6 +159,22 @@ export function widgetNext(
     .map((t) => ({ id: t.id, title: t.title, color: colorOf(t) }));
 }
 
+/** Fokus pre widget; `now` je parameter, aby bol výpočet čistý a testovateľný. */
+export function widgetFocus(
+  active: { taskId: string; plannedEndAt: string; spentMin: number; task: { title: string } } | null,
+  now: Date,
+): WidgetFocus | null {
+  if (active === null) return null;
+  const plannedEnd = new Date(active.plannedEndAt);
+  return {
+    taskId: active.taskId,
+    title: active.task.title,
+    remainingMin: remainingMinutes(plannedEnd, now),
+    spentMin: active.spentMin,
+    over: isFocusOver(plannedEnd, now),
+  };
+}
+
 export interface WidgetInput {
   date: string;
   /** Úlohy dňa (aj hotové) v poradí stránky Dnes. */
@@ -153,6 +184,8 @@ export interface WidgetInput {
   inboxCount: number;
   /** Rozložený dnešok (s `nowMin`) — zdroj pravítka a `next`. */
   day: DayTimeline;
+  /** Bežiaci fokus už vo tvare pre widget (`widgetFocus`); bez neho `null`. */
+  focus?: WidgetFocus | null;
 }
 
 export function buildWidgetPayload(input: WidgetInput): WidgetPayload {
@@ -180,5 +213,6 @@ export function buildWidgetPayload(input: WidgetInput): WidgetPayload {
     dayOver: input.dayOver,
     timeline: widgetTimeline(input.day),
     next: widgetNext(input.day, open),
+    focus: input.focus ?? null,
   };
 }

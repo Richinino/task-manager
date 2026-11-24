@@ -35,6 +35,7 @@ import {
 } from "@/components/task/task-actions";
 import { FrogToggle } from "@/components/task/frog-toggle";
 import { TaskCheckbox } from "@/components/task/task-checkbox";
+import { useFocus } from "@/components/focus/focus-context";
 import { useTaskDetail } from "@/components/task/task-detail-provider";
 
 /**
@@ -188,6 +189,7 @@ export function TaskItem({
   postponeBlockAt = POSTPONE_DANGER_AT_DEFAULT,
   tags,
 }: TaskItemProps) {
+  const focus = useFocus();
   const compact = density === "compact";
   const hero = density === "hero";
 
@@ -481,25 +483,27 @@ export function TaskItem({
         <PriorityDot priority={shown.priority} />
 
         {/*
-          „Začať" otvára detail — tam sú poznámka, podúlohy a rozdelenie,
-          teda všetko, čím sa na úlohe naozaj začne. Vlastný stav „robím to"
-          appka nemá, takže by tlačidlo nemalo čo prepnúť.
+          „Začať" spúšťa fokus na tejto úlohe a otvorí jeho obrazovku. Kým
+          bola len skratkou na detail, ľudia mali dojem, že nerobí nič.
+          Bez providera fokusu (náhľady) padá späť na detail.
         */}
-        {openDetail ? (
+        {(focus || openDetail) && !isDone ? (
           <button
             type="button"
+            disabled={focus?.busy}
             onClick={(event) => {
               event.stopPropagation();
-              openDetail();
+              if (focus) void focus.start(shown);
+              else openDetail?.();
             }}
             onPointerDown={(event) => event.stopPropagation()}
             onMouseDown={(event) => event.stopPropagation()}
             className={cn(
-              "hidden h-11 shrink-0 cursor-pointer items-center rounded-sm px-3.5 text-sm font-medium sm:h-[30px]",
-              "bg-fg text-bg transition-opacity duration-100 ease-out hover:opacity-90 sm:flex",
+              "flex h-11 shrink-0 cursor-pointer items-center rounded-sm px-3.5 text-sm font-medium sm:h-[30px]",
+              "bg-fg text-bg transition-opacity duration-100 ease-out hover:opacity-90 disabled:opacity-45",
             )}
           >
-            Začať
+            {focus?.isActiveTask(task.id) ? "Pokračovať" : "Začať"}
           </button>
         ) : null}
 

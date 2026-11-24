@@ -2,6 +2,9 @@ import type { ReactNode } from "react";
 
 import { signOut } from "@/auth";
 import { CaptureProvider } from "@/components/capture/capture-provider";
+import { FocusBar } from "@/components/focus/focus-bar";
+import { FocusUi } from "@/components/focus/focus-ui";
+import { FocusProvider } from "@/components/focus/focus-provider";
 import { OfflineIndicator } from "@/components/pwa/offline-indicator";
 import { OutboxProvider } from "@/components/pwa/outbox-provider";
 import { AppShell } from "@/components/shell/app-shell";
@@ -24,11 +27,16 @@ import { listPillars, listSkills } from "@/server/queries/learning";
 import { listHabits } from "@/server/queries/habits";
 import { listSubjects } from "@/server/queries/school";
 import { getAgendaForPalette } from "@/server/queries/agenda";
+import { getActiveFocus } from "@/server/queries/focus";
 
 export default async function AppLayout({ children }: { children: ReactNode }) {
   const user = await requireUser();
   const todayIso = todayIn(user.settings.timezone);
-  const counts = await getCounts(user.id, todayIso);
+  const [counts, activeFocus] = await Promise.all([
+    getCounts(user.id, todayIso),
+    // Bežiaci fokus patrí do layoutu: lišta „Teraz robíš" je na každej obrazovke.
+    getActiveFocus(user.id),
+  ]);
 
   // Zoznamy pre výbery v paneli s detailom úlohy a pre našepkávanie
   // v zachytení. Kontexty sa odvodzujú z úloh — vlastný zoznam nikdy nebol.
@@ -95,6 +103,12 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
           autoTagRules={user.settings.autoTagRules}
           todayIso={todayIso}
         >
+          {/*
+            Fokus je NAD detailom úlohy: detail má vlastné „Začať fokus". Jeho
+            okná (`FocusUi`) sú naopak pod detailom aj strážcom odkladov,
+            lebo z nich detail otvárajú a odkladajú.
+          */}
+          <FocusProvider initial={activeFocus}>
           <TaskDetailProvider
             areas={areas}
             projects={projects}
@@ -142,10 +156,13 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
                 trvá minúty.
               */}
               <OfflineIndicator />
+              <FocusBar />
               {children}
+              <FocusUi todayIso={todayIso} />
             </PostponeGuardProvider>
             </AgendaDetailProvider>
           </TaskDetailProvider>
+          </FocusProvider>
           {/* Lišta je vnútri `CaptureProvider`, lebo jej „+" otvára zachytenie. */}
           <MobileNav counts={counts} />
         </CaptureProvider>

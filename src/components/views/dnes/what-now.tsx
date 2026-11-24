@@ -29,6 +29,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import { useFocus } from "@/components/focus/focus-context";
 import { useTaskDetail } from "@/components/task/task-detail-provider";
 import type { TaskWithRelations } from "@/server/queries/tasks";
 
@@ -109,6 +110,7 @@ export function WhatNow({ tasks, todayIso, contexts, places }: WhatNowProps) {
   const [locationNote, setLocationNote] = useState<string | null>(null);
 
   const detail = useTaskDetail();
+  const focus = useFocus();
 
   const byId = useMemo(
     () => new Map(tasks.map((task) => [task.id, task])),
@@ -413,9 +415,24 @@ export function WhatNow({ tasks, todayIso, contexts, places }: WhatNowProps) {
                   ) : null}
 
                   <div className="flex flex-wrap gap-2 pt-0.5">
+                    {focus ? (
+                      <Button
+                        type="button"
+                        variant="primary"
+                        size="sm"
+                        disabled={focus.busy}
+                        onClick={() => {
+                          setOpen(false);
+                          reset();
+                          void focus.start(picked);
+                        }}
+                      >
+                        {focus.isActiveTask(picked.id) ? "Pokračovať" : "Začať"}
+                      </Button>
+                    ) : null}
                     <Button
                       type="button"
-                      variant="primary"
+                      variant={focus ? "secondary" : "primary"}
                       size="sm"
                       onClick={() => {
                         setOpen(false);

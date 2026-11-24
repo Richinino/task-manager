@@ -15,6 +15,7 @@ import {
   updateAgendaItem,
 } from "@/server/actions/agenda";
 import { shiftPrep } from "@/server/actions/agenda-prep";
+import { extendFocus, finishFocus, startFocus } from "@/server/actions/focus";
 import { completeRitual } from "@/server/actions/rituals";
 import { attachTag, detachTag } from "@/server/actions/structure";
 import {
@@ -30,6 +31,7 @@ import {
 } from "@/server/actions/tasks";
 import { getAgendaForRange, getAgendaItem } from "@/server/queries/agenda";
 import { getCalendarEvents } from "@/server/queries/calendar";
+import { getActiveFocus } from "@/server/queries/focus";
 import { getRitualState } from "@/server/queries/rituals";
 import { listSubjects } from "@/server/queries/school";
 import { search } from "@/server/queries/search";
@@ -46,6 +48,7 @@ import {
 } from "@/server/queries/tasks";
 
 import { dayOverview } from "./day";
+import { mcpFocus } from "./focus";
 import {
   agendaCreateInput,
   agendaForm,
@@ -84,6 +87,8 @@ Morning routine (ranný rituál), in this order:
 5. finish_morning_ritual — marks the ritual done in the app.
 
 Editing: update_task changes a task's fields (title, note, due date, time, estimate, priority, energy, context, project, area, subject, tags); moving it to another day is always plan_task. reopen_task undoes complete_task and drop_task. Events, exams and deadlines: create_event and update_event (date, time, place, cancel, grade). get_structure lists valid project, area and subject names. Before bigger changes — moving events, editing several tasks at once, clearing notes — say what you will change and ask, unless the user told you to decide.
+
+Focus mode (fokus): get_day's \`focus\` field shows what the user is working on right now (null when nothing runs). start_focus begins a focus session on a task (it switches if another one runs), stop_focus ends it (complete=true also marks the task done, false only pauses), extend_focus adds minutes when the estimate runs out. Offer to start focus on the priority of the day, and don't start or stop it unasked.
 
 Use only task and event IDs returned by the tools. Nothing is ever hard-deleted: drop_task marks a task as dropped (recoverable in the app's archive or with reopen_task), and a cancelled event stays in the list crossed out.`;
 
@@ -650,6 +655,73 @@ export function createMcpServer(): McpServer {
         event: view,
         ...(tasksUnderEvent !== null ? { tasksUnderEvent } : {}),
       });
+    },
+  );
+
+  /* ── fokus ───────────────────────────────────────────────────────────── */
+
+  server.registerTool(
+    "start_focus",
+    {
+      title: "Začať fokus",
+      description:
+        "Start a focus session on a task (\"Začať\" in the app): the user is now working on it. If another task is in focus it is switched (the earlier one is paused, its time kept). The planned length is the task's estimate minus time already spent (25 min without an estimate). Starting a task that is already in focus changes nothing. Done or dropped tasks cannot be started.",
+      inputSchema: { task_id: idSchema },
+      annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false },
+    },
+    async ({ task_id }) => {
+      const user = await requireUser();
+      const result = await startFocus(task_id);
+      if (!result.ok) return errorResult(result.error);
+      const active = await getActiveFocus(user.id);
+      return jsonResult({
+        ok: true,
+        focus: active === null ? null : mcpFocus(active, new Date()),
+        plannedEndAt: result.data.plannedEndAt,
+        spentMin: result.data.spentMin,
+      });
+    },
+  );
+
+  server.registerTool(
+    "stop_focus",
+    {
+      title: "Ukončiť fokus",
+      description:
+        "End the running focus session. complete=true also marks the task as done (like complete_task, recurring tasks create the next occurrence); complete=false only pauses — the task stays open and the time spent is kept. Fails when no focus is running.",
+      inputSchema: { complete: z.boolean().describe("true = task is done; false = just pause.") },
+      annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
+    },
+    async ({ complete }) => {
+      const user = await requireUser();
+      // Úloha sa zistí pred ukončením — potom už nebeží nič, čo by ju prezradilo.
+      const before = await getActiveFocus(user.id);
+      const result = await finishFocus({ complete });
+      if (!result.ok) return errorResult(result.error);
+      return jsonResult({
+        ok: true,
+        completed: complete,
+        task: before === null ? null : await taskAfter(user.id, before.taskId),
+        spentMin: before?.spentMin ?? null,
+      });
+    },
+  );
+
+  server.registerTool(
+    "extend_focus",
+    {
+      title: "Predĺžiť fokus",
+      description:
+        "Give the running focus session more time (default 15 minutes, 1–240). Counted from now when the planned time already ran out. Fails when no focus is running.",
+      inputSchema: { minutes: z.number().int().min(1).max(240).optional().describe("Minutes to add. Default 15.") },
+      annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
+    },
+    async ({ minutes }) => {
+      const user = await requireUser();
+      const result = await extendFocus(minutes);
+      if (!result.ok) return errorResult(result.error);
+      const active = await getActiveFocus(user.id);
+      return jsonResult({ ok: true, focus: active === null ? null : mcpFocus(active, new Date()) });
     },
   );
 

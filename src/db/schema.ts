@@ -89,6 +89,7 @@ export const taskEventType = pgEnum("task_event_type", [
   "reopened",
   "edited",
   "deleted",
+  "started",
 ]);
 
 /**
@@ -418,6 +419,57 @@ export const taskEvents = pgTable(
   (t) => [
     index("task_events_task_idx").on(t.taskId),
     index("task_events_user_at_idx").on(t.userId, t.at),
+  ],
+);
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   FOKUS
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/**
+ * Jeden súvislý úsek práce na úlohe. Pozastavenie = ukončenie riadku,
+ * pokračovanie = nový riadok — takže súčet úsekov je skutočne odpracovaný
+ * čas a pauza sa don nikdy nezapočíta.
+ *
+ * Čas sa drží na minúty, nie na sekundy: appka nemá merať človeka, len
+ * povedať, koľko to trvalo oproti odhadu.
+ */
+export const focusSessions = pgTable(
+  "focus_sessions",
+  {
+    id: text("id").primaryKey(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    taskId: text("task_id")
+      .notNull()
+      .references(() => tasks.id, { onDelete: "cascade" }),
+    startedAt: timestamp("started_at", { withTimezone: true }).notNull().defaultNow(),
+    /** Kedy sa odhad minie. „+15 min" ho posúva. */
+    plannedEndAt: timestamp("planned_end_at", { withTimezone: true }).notNull(),
+    /** `null` = úsek práve beží. */
+    endedAt: timestamp("ended_at", { withTimezone: true }),
+    /**
+     * done | paused | switched | dropped | stuck. Text, nie enum — dôvod sa
+     * môže rozšíriť bez migrácie; platné hodnoty drží `src/lib/focus.ts`.
+     */
+    endReason: text("end_reason"),
+    /**
+     * Kedy odišla notifikácia „čas vypršal". Pri posune `plannedEndAt` sa
+     * vracia na `null`, inak by sa po predĺžení už nikdy neozvala.
+     */
+    notifiedAt: timestamp("notified_at", { withTimezone: true }),
+  },
+  (t) => [
+    index("focus_sessions_user_task_idx").on(t.userId, t.taskId),
+    /* Najviac jeden bežiaci úsek na človeka — drží to databáza, nie kód. */
+    uniqueIndex("focus_sessions_one_active_idx")
+      .on(t.userId)
+      .where(sql`${t.endedAt} is null`),
+    /* Cron hľadá úseky, ktorým vypršal čas a ešte sa o tom nevedelo. */
+    index("focus_sessions_due_idx")
+      .on(t.plannedEndAt)
+      .where(sql`${t.endedAt} is null and ${t.notifiedAt} is null`),
   ],
 );
 
@@ -1206,6 +1258,7 @@ export const tasksRelations = relations(tasks, ({ one, many }) => ({
   }),
   subtasks: many(tasks, { relationName: "subtasks" }),
   events: many(taskEvents),
+  focusSessions: many(focusSessions),
   /* Písomka alebo deadline, na ktorý úloha je. */
   agendaItem: one(agendaItems, {
     fields: [tasks.agendaItemId],
@@ -1222,6 +1275,11 @@ export const agendaItemsRelations = relations(agendaItems, ({ one, many }) => ({
   project: one(projects, { fields: [agendaItems.projectId], references: [projects.id] }),
   /* Príprava k písomke, kroky k deadlinu. */
   tasks: many(tasks),
+}));
+
+export const focusSessionsRelations = relations(focusSessions, ({ one }) => ({
+  task: one(tasks, { fields: [focusSessions.taskId], references: [tasks.id] }),
+  user: one(users, { fields: [focusSessions.userId], references: [users.id] }),
 }));
 
 export const taskEventsRelations = relations(taskEvents, ({ one }) => ({
@@ -1309,6 +1367,7 @@ export type SkillMilestone = typeof skillMilestones.$inferSelect;
 export type JournalEntry = typeof journal.$inferSelect;
 export type Review = typeof reviews.$inferSelect;
 export type TaskEvent = typeof taskEvents.$inferSelect;
+export type FocusSession = typeof focusSessions.$inferSelect;
 export type AgendaItem = typeof agendaItems.$inferSelect;
 export type NewAgendaItem = typeof agendaItems.$inferInsert;
 export type AgendaKind = AgendaItem["kind"];

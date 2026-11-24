@@ -5,6 +5,7 @@ import {
   buildWidgetPayload,
   dayLabelOf,
   estimateText,
+  widgetFocus,
   widgetNext,
   widgetSummary,
   widgetTimeline,
@@ -81,6 +82,7 @@ describe("buildWidgetPayload", () => {
       dayOver: false,
       timeline: { startMin: 420, endMin: 1320, nowMin: 600, blocks: [] },
       next: [],
+      focus: null,
     });
   });
 
@@ -182,5 +184,47 @@ describe("widgetNext", () => {
     ]);
     expect(next.map((n) => n.id)).toEqual(["x", "y"]);
     expect(next[0]?.color).toMatch(/^#[0-9a-f]{6}$/);
+  });
+});
+
+describe("widgetFocus", () => {
+  const now = new Date("2026-11-24T10:00:00.000Z");
+  const at = (min: number) => new Date(now.getTime() + min * 60_000).toISOString();
+  const active = (plannedEndAt: string) => ({
+    taskId: "t1",
+    plannedEndAt,
+    spentMin: 18,
+    task: { title: "Esej" },
+  });
+
+  it("bez fokusu je null", () => {
+    expect(widgetFocus(null, now)).toBeNull();
+  });
+
+  it("pred termínom ukáže zostávajúce minúty", () => {
+    expect(widgetFocus(active(at(12)), now)).toEqual({
+      taskId: "t1",
+      title: "Esej",
+      remainingMin: 12,
+      spentMin: 18,
+      over: false,
+    });
+  });
+
+  it("po termíne je zostatok záporný a over true", () => {
+    expect(widgetFocus(active(at(-7)), now)).toMatchObject({ remainingMin: -7, over: true });
+  });
+});
+
+describe("buildWidgetPayload focus", () => {
+  const base = { date: "2026-11-24", dayTasks: [], figures, dayOver: false, inboxCount: 0, day: dayOf() };
+
+  it("bez fokusu posiela null (kľúč tam je vždy)", () => {
+    expect(buildWidgetPayload(base).focus).toBeNull();
+  });
+
+  it("prenesie fokus do odpovede", () => {
+    const focus = { taskId: "t1", title: "Esej", remainingMin: 5, spentMin: 20, over: false };
+    expect(buildWidgetPayload({ ...base, focus }).focus).toEqual(focus);
   });
 });

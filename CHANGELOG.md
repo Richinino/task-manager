@@ -10,6 +10,23 @@ Všetky podstatné zmeny v projekte. Formát podľa
 
 ### Pribudlo
 
+- **Fokus režim — „Začať" konečne niečo robí** — tlačidlo pri priorite
+  dňa, na karte v telefóne, pri ďalšom kroku projektu, v „Čo teraz?"
+  aj v detaile úlohy spustí fokus: obrazovka s ďalším krokom (prvou
+  podúlohou), odpočtom podľa odhadu po minútach, tlačidlami Hotovo · Pauza ·
+  +15 min a lištou „Teraz robíš" na každej obrazovke. „Zasekol som sa"
+  ponúkne rozdeliť úlohu, zapísať najbližší 2-minútový krok alebo odložiť
+  s dôvodom. Naraz beží jediná úloha; čas sa ráta v úsekoch
+  (`focus_sessions`).
+- **Notifikácia, keď vyprší odhad** — jedna na každý odhad, s tlačidlami
+  „+15 min" a „Hotovo". Keď je appka otvorená, ukáže ju sama a server
+  potom druhú neposiela.
+- **Odhad vs. realita** — večerný rituál sa spýta na rozbehnutú úlohu,
+  ukáže, koľko si bol dnes sústredený, a z posledných 30 dní povie, o koľko
+  sa mýlia tvoje odhady. Rovnaká veta je v týždennej revízii.
+- **Fokus pre Claude a widget** — MCP nástroje `start_focus`, `stop_focus`,
+  `extend_focus` a fokus v `get_day`; widget Dnes ukáže rozbehnutú úlohu
+  (Android 1.5.0).
 - **Telefón v novom dizajne „Jedna karta"** — na telefóne je Dnes kopa
   kariet v plnej farbe (priorita dňa, po termíne, ostatné), pod ňou pravítko
   dňa a prepínač Karta | Deň s celou časovou osou. Lišta Dnes · Plán · + ·
@@ -153,6 +170,21 @@ All notable changes to this project. The format follows
 
 ### Added
 
+- **Focus mode — „Začať" finally does something** — the Start button
+  (priority of the day, phone card, project next step, „Čo teraz?", task
+  detail) starts a focus: a screen with the next step, a minute-based
+  countdown from the estimate, Done · Pause · +15 min, a „Teraz robíš" bar
+  on every screen, and a „stuck" flow (split, 2-minute first step,
+  postpone with a reason). One task at a time, time kept in sessions.
+- **Notification when the estimate runs out** — one per estimate, with
+  „+15 min" and „Hotovo" buttons; no duplicate when the open app already
+  showed it.
+- **Estimate vs reality** — the evening shutdown asks about a running
+  focus, shows today's focused time and how far off your estimates were
+  over the last 30 days; the weekly review shows the same sentence.
+- **Focus for Claude and the widget** — MCP tools `start_focus`,
+  `stop_focus`, `extend_focus`, focus in `get_day`; the Today widget shows
+  the running task (Android 1.5.0).
 - **Claude (MCP)** — the app has its own MCP server with OAuth sign-in.
   Claude on desktop, web and mobile reads your day (tasks, timetable,
   meetings, events, time budget) and runs the morning routine with you.

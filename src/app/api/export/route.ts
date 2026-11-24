@@ -5,6 +5,7 @@ import {
   agendaItems,
   agendaReminders,
   areas,
+  focusSessions,
   habitEntries,
   habits,
   ideas,
@@ -99,6 +100,7 @@ export async function GET(): Promise<Response> {
       userReminders,
       userAgendaItems,
       userAgendaReminders,
+      userFocusSessions,
     ] = await Promise.all([
       db.select().from(tasks).where(eq(tasks.userId, user.id)),
       db.select().from(taskEvents).where(eq(taskEvents.userId, user.id)),
@@ -131,6 +133,7 @@ export async function GET(): Promise<Response> {
       db.select().from(reminders).where(eq(reminders.userId, user.id)),
       db.select().from(agendaItems).where(eq(agendaItems.userId, user.id)),
       db.select().from(agendaReminders).where(eq(agendaReminders.userId, user.id)),
+      db.select().from(focusSessions).where(eq(focusSessions.userId, user.id)),
     ]);
 
     const payload = {
@@ -162,6 +165,8 @@ export async function GET(): Promise<Response> {
         milestones: userSkillMilestones,
       },
       reminders: userReminders,
+      // Úseky fokusu — z nich sa počíta odpracovaný čas oproti odhadu.
+      focusSessions: userFocusSessions,
       /*
         Udalosti vrátane zrušených a mäkko zmazaných. `reminders` je záznam
         odoslaných pripomienok — bez neho by obnovená záloha poslala každú
