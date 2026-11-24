@@ -7,6 +7,7 @@ import { FocusUi } from "@/components/focus/focus-ui";
 import { FocusProvider } from "@/components/focus/focus-provider";
 import { OfflineIndicator } from "@/components/pwa/offline-indicator";
 import { OutboxProvider } from "@/components/pwa/outbox-provider";
+import { RefreshOnReturn } from "@/components/pwa/refresh-on-return";
 import { AppShell } from "@/components/shell/app-shell";
 import { MobileNav } from "@/components/shell/mobile-nav";
 import { PostponeGuardProvider } from "@/components/task/postpone-guard";
@@ -156,6 +157,8 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
                 trvá minúty.
               */}
               <OfflineIndicator />
+              {/* Zmeny z iných zariadení (fokus z telefónu) po návrate do okna. */}
+              <RefreshOnReturn />
               <FocusBar />
               {children}
               <FocusUi todayIso={todayIso} />
