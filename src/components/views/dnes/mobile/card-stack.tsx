@@ -5,6 +5,7 @@ import { Check, Play, SkipForward, Star } from "lucide-react";
 
 import { useCapture } from "@/components/capture/capture-provider";
 import { cardFill } from "@/components/task/card-fill";
+import { useFocus } from "@/components/focus/focus-context";
 import { useTaskDetail } from "@/components/task/task-detail-provider";
 import { formatDuration } from "@/lib/dates";
 import { capitalizeSk, overdueLabel } from "@/lib/day-label";
@@ -105,6 +106,7 @@ function TopCard({
 }) {
   const { task } = card;
   const detail = useTaskDetail();
+  const focus = useFocus();
   const look = lookOf(card);
 
   const [dx, setDx] = useState(0);
@@ -218,14 +220,16 @@ function TopCard({
       </div>
 
       <div className="mt-auto flex gap-2.5">
-        {detail ? (
+        {focus || detail ? (
           <button
             type="button"
-            onClick={() => detail.open(task)}
-            className="flex h-[52px] flex-1 items-center justify-center gap-2 rounded-[14px] bg-accent text-row font-semibold text-accent-fg"
+            disabled={focus?.busy}
+            // Fokus na tejto úlohe; bez providera aspoň detail (ako doteraz).
+            onClick={() => (focus ? void focus.start(task) : detail?.open(task))}
+            className="flex h-[52px] flex-1 items-center justify-center gap-2 rounded-[14px] bg-accent text-row font-semibold text-accent-fg disabled:opacity-45"
           >
             <Play aria-hidden="true" className="size-[18px] fill-current" />
-            Začať
+            {focus?.isActiveTask(task.id) ? "Pokračovať" : "Začať"}
           </button>
         ) : (
           <span className="flex-1" />

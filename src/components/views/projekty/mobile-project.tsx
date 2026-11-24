@@ -17,6 +17,7 @@ import { useCapture } from "@/components/capture/capture-provider";
 import { areaColorValue } from "@/components/task/area-dot";
 import { cardFill } from "@/components/task/card-fill";
 import { TaskCheckbox } from "@/components/task/task-checkbox";
+import { useFocus } from "@/components/focus/focus-context";
 import { useTaskDetail } from "@/components/task/task-detail-provider";
 import type { ProjectWithCounts } from "@/server/queries/structure";
 import type { TaskWithRelations } from "@/server/queries/tasks";
@@ -52,6 +53,7 @@ function taskMeta(task: TaskWithRelations, todayIso: string): string {
 export function MobileProject({ project, areas, tasks, todayIso }: MobileProjectProps) {
   const { openCapture } = useCapture();
   const detail = useTaskDetail();
+  const focus = useFocus();
   const [doneOpen, setDoneOpen] = useState(false);
   const [manageOpen, setManageOpen] = useState(false);
   const manageRef = useRef<HTMLDivElement>(null);
@@ -192,10 +194,11 @@ export function MobileProject({ project, areas, tasks, todayIso }: MobileProject
             </div>
             <button
               type="button"
-              onClick={() => detail?.open(next)}
-              className="flex h-11 w-[72px] shrink-0 items-center justify-center rounded-xl bg-accent text-body font-semibold text-accent-fg"
+              disabled={focus?.busy}
+              onClick={() => (focus ? void focus.start(next) : detail?.open(next))}
+              className="flex h-11 min-w-[72px] shrink-0 items-center justify-center rounded-xl bg-accent px-3 text-body font-semibold text-accent-fg disabled:opacity-45"
             >
-              Začať
+              {focus?.isActiveTask(next.id) ? "Pokračovať" : "Začať"}
             </button>
           </article>
         </>

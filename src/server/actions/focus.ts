@@ -260,3 +260,21 @@ export async function finishFocus(opts: {
     return fail(error, "Fokus sa nepodarilo ukončiť.");
   }
 }
+
+/**
+ * Klient ukázal lokálne oznámenie „odhad vypršal" — zapíše to k úseku, aby
+ * serverový cron neposlal to isté ešte raz. Bez bežiaceho fokusu je to v poriadku.
+ */
+export async function markFocusNotified(): Promise<ActionResult> {
+  const user = await requireUser();
+  try {
+    const db = await getDb();
+    await db
+      .update(focusSessions)
+      .set({ notifiedAt: new Date() })
+      .where(and(eq(focusSessions.userId, user.id), isNull(focusSessions.endedAt)));
+    return { ok: true };
+  } catch (error) {
+    return fail(error, "Oznámenie sa nepodarilo zapísať.");
+  }
+}

@@ -8,7 +8,7 @@ import {
   useTransition,
   type ReactNode,
 } from "react";
-import { Check, LoaderCircle, Star, Trash2, Undo2, X } from "lucide-react";
+import { Check, LoaderCircle, Play, Star, Trash2, Undo2, X } from "lucide-react";
 
 import type { Area, Energy, Project, TaskStatus } from "@/db/schema";
 import { formatRelativeSk, parseIsoDate } from "@/lib/dates";
@@ -57,6 +57,9 @@ import {
 import { nextLessonForSubject } from "@/server/actions/school";
 import { syncLinks } from "@/server/actions/links";
 import { usePostponeGuard } from "@/components/task/postpone-guard";
+import { useFocus } from "@/components/focus/focus-context";
+import { loadSpentMinutes } from "@/components/focus/focus-data";
+import { spentLine } from "@/lib/focus-label";
 import {
   TASK_SCHOOL_KINDS,
   schoolKindLabel,
@@ -309,6 +312,21 @@ export function TaskDetail({
   const [tags, setTags] = useState<TagView[]>([]);
   const [tagSuggestions, setTagSuggestions] = useState<TagView[]>([]);
   const [extrasLoaded, setExtrasLoaded] = useState(false);
+
+  /* Odpracovaný čas z fokusu — dočíta sa raz na otvorenie, rovnako ako kroky. */
+  const focus = useFocus();
+  const [spentMin, setSpentMin] = useState(0);
+  useEffect(() => {
+    let cancelled = false;
+    void loadSpentMinutes(task.id)
+      .then((result) => {
+        if (!cancelled && result.ok) setSpentMin(result.data.spentMin);
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, [task.id]);
 
   /** Posledný stav potvrdený serverom — sem sa pole vracia, keď zápis zlyhá. */
   const savedRef = useRef<Draft>(toDraft(task));
@@ -778,6 +796,33 @@ export function TaskDetail({
                   {chip.label}
                 </span>
               ))}
+            </div>
+          ) : null}
+
+          {/* Fokus: začať práve na tejto úlohe a vidieť, koľko už je odpracované. */}
+          {(focus !== null && !isDone) || spentMin > 0 ? (
+            <div className="-mt-1 flex flex-wrap items-center gap-x-4 gap-y-2">
+              {focus !== null && !isDone ? (
+                <Button
+                  type="button"
+                  variant="primary"
+                  size="md"
+                  disabled={focus.busy}
+                  onClick={() => {
+                    // Zatvorenie uloží rozpísaný názov aj poznámku.
+                    handleOpenChange(false);
+                    void focus.start(task);
+                  }}
+                >
+                  <Play aria-hidden="true" size={14} className="fill-current" />
+                  {focus.isActiveTask(task.id) ? "Pokračovať vo fokuse" : "Začať fokus"}
+                </Button>
+              ) : null}
+              {spentMin > 0 ? (
+                <span className="font-mono text-meta tabular-nums text-fg-muted">
+                  {spentLine(spentMin, draft.estimateMin)}
+                </span>
+              ) : null}
             </div>
           ) : null}
 
