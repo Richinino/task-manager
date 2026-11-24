@@ -51,7 +51,8 @@ export function SelectContent({
         position={position}
         sideOffset={position === "popper" ? sideOffset : undefined}
         className={cn(
-          "animate-in-fast z-50 max-h-72 min-w-[9rem] overflow-hidden rounded border border-border",
+          "motion-menu [--motion-origin:var(--radix-select-content-transform-origin)]",
+          "z-50 max-h-72 min-w-[9rem] overflow-hidden rounded border border-border",
           "bg-surface text-sm text-fg shadow-md",
           position === "popper" && "w-full min-w-[var(--radix-select-trigger-width)]",
           className,

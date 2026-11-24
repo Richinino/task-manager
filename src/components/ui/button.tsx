@@ -13,11 +13,15 @@ type ButtonProps = React.ComponentProps<"button"> & {
 /**
  * Spoločný základ. Prechody sú zámerne krátke (100 ms) — tlačidlo má
  * reagovať okamžite, nie „doplávať" do stavu.
+ *
+ * Pri stlačení sa tlačidlo o 3 % zmenší. Je to najmenšia odozva, ktorá
+ * sa dá cítiť: potvrdí, že klik prišiel, ešte kým server odpovie.
  */
 const base = [
   "inline-flex shrink-0 select-none items-center justify-center gap-1.5",
   "whitespace-nowrap rounded border font-medium leading-none",
-  "transition-[background-color,border-color,color,opacity] duration-100 ease-out",
+  "transition-[background-color,border-color,color,opacity,scale] duration-100 ease-(--ease-out)",
+  "active:scale-[0.97]",
   "disabled:pointer-events-none disabled:opacity-45",
   "[&_svg]:pointer-events-none [&_svg]:shrink-0",
 ].join(" ");
