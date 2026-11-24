@@ -181,6 +181,20 @@ public class TodayWidget extends AppWidgetProvider {
             v.setViewVisibility(R.id.message, View.GONE);
 
             PendingIntent openToday = openUrl(c, 4, BASE + "/dnes");
+            // Fokus je prírastkové pole — starší server ho neposiela, preto optJSONObject.
+            JSONObject focus = o.isNull("focus") ? null : o.optJSONObject("focus");
+            if (focus != null) {
+                v.setViewVisibility(R.id.focus_row, View.VISIBLE);
+                v.setTextViewText(R.id.focus_title, "\u25B6 " + focus.optString("title", ""));
+                int remaining = focus.optInt("remainingMin", 0);
+                // Po termíne server posiela záporný zostatok alebo over — ukážeme „+N min".
+                boolean over = focus.optBoolean("over", false) || remaining < 0;
+                v.setTextViewText(R.id.focus_time,
+                        over ? "+" + Math.abs(remaining) + " min" : "zostáva " + remaining + " min");
+                v.setOnClickPendingIntent(R.id.focus_row, openUrl(c, 5, BASE + "/dnes?fokus=1"));
+            } else {
+                v.setViewVisibility(R.id.focus_row, View.GONE);
+            }
             JSONObject frog = o.isNull("frog") ? null : o.optJSONObject("frog");
             if (frog != null) {
                 v.setViewVisibility(R.id.priority_row, View.VISIBLE);
@@ -238,6 +252,7 @@ public class TodayWidget extends AppWidgetProvider {
         v.setTextViewText(R.id.summary, summary);
         v.setTextViewText(R.id.message, message);
         v.setViewVisibility(R.id.message, View.VISIBLE);
+        v.setViewVisibility(R.id.focus_row, View.GONE);
         v.setViewVisibility(R.id.priority_row, View.GONE);
         for (int i = 0; i < 4; i++) v.setViewVisibility(ROWS[i], View.GONE);
     }

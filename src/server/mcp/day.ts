@@ -13,11 +13,13 @@ import { remainingSchoolMinutes, schoolBreakOn } from "@/lib/school";
 import type { CurrentUser } from "@/server/auth-guard";
 import { getAgendaForRange } from "@/server/queries/agenda";
 import { getDayEvents, meetingMinutes } from "@/server/queries/calendar";
+import { getActiveFocus } from "@/server/queries/focus";
 import { listHabits } from "@/server/queries/habits";
 import { getRitualState } from "@/server/queries/rituals";
 import { getLessonsForDay, listBreaks } from "@/server/queries/school";
 import { getInboxTasks, getOverdueTasks, getTasksForDay } from "@/server/queries/tasks";
 
+import { mcpFocus } from "./focus";
 import { mcpAgenda, mcpEvent, mcpLesson, mcpTask } from "./format";
 
 /*
@@ -36,7 +38,7 @@ export async function dayOverview(user: CurrentUser, dateIso?: string) {
   const isToday = date === todayIso;
   const period = ritualPeriod("daily_plan", date, weekStartsOn);
 
-  const [planned, overdue, morning, events, lessons, breaks, habits, agenda, inbox] =
+  const [planned, overdue, morning, events, lessons, breaks, habits, agenda, inbox, activeFocus] =
     await Promise.all([
       getTasksForDay(user.id, date),
       getOverdueTasks(user.id, todayIso),
@@ -53,6 +55,7 @@ export async function dayOverview(user: CurrentUser, dateIso?: string) {
         : Promise.resolve([]),
       getAgendaForRange(user.id, date, addDays(date, 14)),
       getInboxTasks(user.id),
+      getActiveFocus(user.id),
     ]);
 
   const dayTasks = planned.filter((task) => task.status !== "dropped");
@@ -99,6 +102,8 @@ export async function dayOverview(user: CurrentUser, dateIso?: string) {
         ? "Ranný rituál je na tento deň uzavretý."
         : "Ranný rituál ešte neprebehol: prepadnuté → priorita dňa → rozpočet času.",
     },
+    /* Fokus je „teraz", nie „v ten deň" — ukáže sa pri každom dni, aby ho Claude nemohol minúť. */
+    focus: activeFocus === null ? null : mcpFocus(activeFocus, new Date()),
     priorityOfDay: frog === null ? null : { id: frog.id, title: frog.title, done: frog.status === "done" },
     tasks: {
       open: openTasks.map((task) => mcpTask(task)),

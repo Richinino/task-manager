@@ -49,6 +49,7 @@ opisuje poradie a ponúka aj hotový prompt **ranny-ritual**:
 | `complete_task` | odškrtnúť |
 | `reopen_task` | späť: hotovú otvoriť, zahodenú (aj zmazanú) vrátiť |
 | `set_priority_of_day` | priorita dňa |
+| `start_focus`, `stop_focus`, `extend_focus` | fokus: začať úlohu (prepne bežiaci), ukončiť (`complete` = hotovo, inak pauza), predĺžiť (štandardne o 15 min); bežiaci fokus je v `get_day` ako `focus` |
 | `create_event` | nová udalosť, písomka, skúšanie, deadline či výlet s presnými poľami |
 | `update_event` | upraviť udalosť: názov, druh, deň (ako „Presunúť"), koniec, čas, miesto, predmet, poznámka, zrušiť/obnoviť, známka |
 | `start_morning_ritual`, `finish_morning_ritual` | začiatok a koniec ranného rituálu |
