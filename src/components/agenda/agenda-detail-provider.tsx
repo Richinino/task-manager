@@ -136,7 +136,7 @@ export function AgendaDetailProvider({
       <div
         role="status"
         aria-live="polite"
-        style={{ bottom: "calc(var(--bar-inset) + 0.75rem)" }}
+        style={{ bottom: "calc(var(--bar-inset) + var(--focus-bar-inset) + 0.75rem)" }}
         className="pointer-events-none fixed left-4 right-20 z-40 md:left-auto md:right-4 md:w-96"
       >
         {flash !== null ? (

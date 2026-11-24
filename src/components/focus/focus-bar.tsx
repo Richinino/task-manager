@@ -13,7 +13,8 @@ import { useFocus } from "./focus-context";
 
    Tenký pás, kým fokus beží a obrazovka je zmenšená. Ťuknutie ju otvorí.
    Na telefóne sedí tesne nad spodnou navigáciou (provider pod obsah pridá
-   rezervu), na počítači lepí navrchu obsahu — pod pruhom o pripojení.
+   rezervu; `data-focus-bar` posunie hlášky nad lištu — `--focus-bar-inset`
+   v `globals.css`), na počítači lepí navrchu obsahu — pod pruhom o pripojení.
 
    Po vypršaní odhadu sa pás nezačne trhať ani blikať: len zmení text a
    ponúkne „+15 min".
@@ -28,6 +29,7 @@ export function FocusBar() {
 
   return (
     <div
+      data-focus-bar=""
       className={cn(
         "z-30 flex h-14 items-center md:h-12 gap-1 border-border bg-surface px-2",
         "max-md:fixed max-md:inset-x-0 max-md:bottom-[var(--bar-inset)] max-md:border-t",

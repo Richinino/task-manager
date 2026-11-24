@@ -4,6 +4,7 @@ import {
   WEEKDAYS_SK,
   formatDayMonthSk,
   formatDuration,
+  minutesIn,
   parseIsoDate,
 } from "@/lib/dates";
 import type { DayTimeline } from "@/lib/day-timeline";
@@ -64,6 +65,14 @@ export interface WidgetFocus {
   remainingMin: number;
   spentMin: number;
   over: boolean;
+  /**
+   * Kedy odhad vyprší, „HH:MM" v pásme používateľa.
+   *
+   * Widget sa obnovuje raz za pol hodiny, takže „zostáva 25 min" by medzitým
+   * klamalo. Čas konca platí bez ohľadu na to, kedy sa widget naposledy
+   * obnovil — preto ho widget ukazuje namiesto zostatku.
+   */
+  endClock: string;
 }
 
 export interface WidgetTimelineBlock {
@@ -159,10 +168,17 @@ export function widgetNext(
     .map((t) => ({ id: t.id, title: t.title, color: colorOf(t) }));
 }
 
+function clockOf(minutes: number): string {
+  const h = Math.floor(minutes / 60);
+  const m = minutes % 60;
+  return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
+}
+
 /** Fokus pre widget; `now` je parameter, aby bol výpočet čistý a testovateľný. */
 export function widgetFocus(
   active: { taskId: string; plannedEndAt: string; spentMin: number; task: { title: string } } | null,
   now: Date,
+  timeZone: string,
 ): WidgetFocus | null {
   if (active === null) return null;
   const plannedEnd = new Date(active.plannedEndAt);
@@ -172,6 +188,7 @@ export function widgetFocus(
     remainingMin: remainingMinutes(plannedEnd, now),
     spentMin: active.spentMin,
     over: isFocusOver(plannedEnd, now),
+    endClock: clockOf(minutesIn(timeZone, plannedEnd)),
   };
 }
 

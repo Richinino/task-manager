@@ -41,7 +41,7 @@ export async function GET(request: Request): Promise<Response> {
       dayOver: nowMin >= timeline.dayEndMin,
       inboxCount: inbox.length,
       day,
-      focus: widgetFocus(activeFocus, new Date()),
+      focus: widgetFocus(activeFocus, new Date(), timeZone),
     });
     return Response.json(payload, { headers: NO_STORE });
   });
