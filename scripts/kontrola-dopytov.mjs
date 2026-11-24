@@ -48,6 +48,8 @@ const TABULKY_POUZIVATELA = new Set([
   "settings",
   /* Udalosti a deadliny (docs/UDALOSTI.md). */
   "agendaItems",
+  /* Úseky fokusu — kto na čom práve pracuje, je vec človeka. */
+  "focusSessions",
   "agendaReminders",
   /* Prístupy MCP klientov (docs/MCP.md). Kódy a prístupy patria človeku;
      registrácie klientov (`oauthClients`) nie — sú spoločné. */
