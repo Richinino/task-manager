@@ -14,6 +14,7 @@ import { Button } from "@/components/ui/button";
 import { EveningShutdown } from "@/components/rituals/evening-shutdown";
 import { MorningPlan } from "@/components/rituals/morning-plan";
 import type { RitualPayload } from "@/components/rituals/ritual-shell";
+import type { EveningFocus } from "@/components/rituals/evening-shutdown";
 import type { TaskWithRelations } from "@/server/queries/tasks";
 
 /* ═══════════════════════════════════════════════════════════════════════════
@@ -70,6 +71,8 @@ export interface RitualHostProps {
   /** Dnešné úlohy. */
   tasks: TaskWithRelations[];
   todayIso: string;
+  /** Fokus pre večerný rituál (bežiaci, dnešný súhrn, odhad vs. realita). */
+  focus?: EveningFocus;
   timeZone: string;
   /** `settings.dayEndHour` — večerný shutdown sa viaže naň. */
   dayEndHour: number;
@@ -88,6 +91,7 @@ export function RitualHost({
   initialJournal,
   tasks,
   todayIso,
+  focus,
   timeZone,
   dayEndHour,
   autoOpen,
@@ -242,6 +246,7 @@ export function RitualHost({
         period={period}
         tasks={tasks}
         todayIso={todayIso}
+        {...(focus ? { focus } : {})}
         {...(initialPayload ? { initialPayload } : {})}
         {...(initialJournal ? { initialJournal } : {})}
       />

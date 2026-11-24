@@ -109,6 +109,8 @@ export interface WeeklyReviewProps {
    * krok revízie, ktorý sa na nič nepýta.
    */
   completed: TaskWithRelations[];
+  /** Odhad vs. realita za 30 dní — veta pripravená serverom, `null` bez dát. */
+  accuracy?: { sentence: string; tasks: number } | null;
 }
 
 export function WeeklyReview({
@@ -123,6 +125,7 @@ export function WeeklyReview({
   incubatorIdeas,
   projects,
   completed,
+  accuracy = null,
 }: WeeklyReviewProps) {
   /*
     Prechod cez zoznamy žije v pamäti komponentu, nie v odpovediach. Je to
@@ -649,6 +652,14 @@ export function WeeklyReview({
               ))}
             </>
           )}
+          {accuracy ? (
+            <p className="text-body leading-relaxed text-fg-muted">
+              {accuracy.sentence}{" "}
+              <span className="text-meta text-fg-subtle">
+                (z {accuracy.tasks} {accuracy.tasks === 1 ? "úlohy" : "úloh"})
+              </span>
+            </p>
+          ) : null}
         </div>
       ),
     },

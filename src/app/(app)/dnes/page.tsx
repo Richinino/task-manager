@@ -54,6 +54,11 @@ import {
 } from "@/server/queries/school";
 import { getJournalEntry, getRitualState } from "@/server/queries/rituals";
 import { getDayEvents, meetingMinutes } from "@/server/queries/calendar";
+import { getActiveFocus, getEstimateAccuracy } from "@/server/queries/focus";
+import { getFocusDaySummary } from "@/server/queries/focus-stats";
+import { focusDaySentence } from "@/lib/focus-summary";
+import { estimateAccuracySentence } from "@/lib/focus";
+import type { EveningFocus } from "@/components/rituals/evening-shutdown";
 
 export const metadata: Metadata = {
   title: "Dnes",
@@ -234,6 +239,40 @@ export default async function DnesPage({ searchParams }: DnesPageProps) {
       }));
   const nowMin = minutesIn(user.settings.timezone);
 
+  /*
+    Fokus vo večernom rituáli — len pre dnešok, rituál sa inde nespúšťa.
+    Počíta sa mimo hlavného `Promise.all`, aby zlyhanie štatistiky nezhodilo
+    celú obrazovku: veta o fokuse je doplnok, nie podklad dňa.
+  */
+  const eveningFocus: EveningFocus = { active: null, summary: null, accuracy: null };
+  if (isToday) {
+    try {
+      const from = addDays(todayIso, -29);
+      const [active, daySummary, accuracy] = await Promise.all([
+        getActiveFocus(user.id),
+        getFocusDaySummary(user.id, todayIso, user.settings.timezone),
+        getEstimateAccuracy(user.id, from, todayIso, user.settings.timezone),
+      ]);
+      if (active) {
+        eveningFocus.active = {
+          taskId: active.taskId,
+          title: active.task.title,
+          spentMin: active.spentMin,
+          plannedToday: active.task.plannedDate === todayIso,
+        };
+      }
+      eveningFocus.summary = focusDaySentence(daySummary);
+      if (accuracy) {
+        eveningFocus.accuracy = {
+          sentence: estimateAccuracySentence(accuracy),
+          tasks: accuracy.tasks,
+        };
+      }
+    } catch (error) {
+      console.error("[dnes] fokus pre večerný rituál sa nepodarilo načítať", error);
+    }
+  }
+
   const showFrogCard = frog !== null || openTasks.length > 0;
 
   // Priorita dňa má na obrazovke jedno miesto — kartu nad zoznamom. V zozname
@@ -307,6 +346,7 @@ export default async function DnesPage({ searchParams }: DnesPageProps) {
           : {})}
         tasks={dayTasks}
         todayIso={todayIso}
+        focus={eveningFocus}
         timeZone={user.settings.timezone}
         dayEndHour={user.settings.dayEndHour}
         autoOpen={user.settings.ritualAutoOpen}

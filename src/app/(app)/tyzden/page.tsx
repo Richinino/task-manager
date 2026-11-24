@@ -26,6 +26,8 @@ import {
 import { getIncubatorIdeas } from "@/server/queries/ideas";
 import { listProjects } from "@/server/queries/structure";
 import { getRitualState } from "@/server/queries/rituals";
+import { getEstimateAccuracy } from "@/server/queries/focus";
+import { estimateAccuracySentence } from "@/lib/focus";
 import { daysSinceTouch } from "@/lib/ideas";
 import { getAgendaForRange } from "@/server/queries/agenda";
 import { MobileWeek, type MobileWeekDay } from "@/components/views/tyzden/mobile-week";
@@ -120,6 +122,17 @@ export default async function TyzdenPage({ searchParams }: TyzdenPageProps) {
     listBreaks(user.id),
     getCalendarEvents(user.id, user.settings, weekStart, weekEnd),
   ]);
+
+  // Odhad vs. realita za 30 dní — doplnok revízie, jeho zlyhanie ju nezhodí.
+  const accuracy = await getEstimateAccuracy(
+    user.id,
+    addDays(todayIso, -29),
+    todayIso,
+    user.settings.timezone,
+  ).catch(() => null);
+  const accuracyLine = accuracy
+    ? { sentence: estimateAccuracySentence(accuracy), tasks: accuracy.tasks }
+    : null;
 
   // Vek nápadu počíta server. V klientovi by `new Date()` po hydratácii dal
   // iné číslo a v inom pásme aj iný deň — tá istá pasca ako pri nápadoch.
@@ -244,6 +257,7 @@ export default async function TyzdenPage({ searchParams }: TyzdenPageProps) {
             incubatorIdeas={incubatorIdeas}
             projects={projects}
             completedTasks={completedTasks}
+            accuracy={accuracyLine}
           />
         }
       />

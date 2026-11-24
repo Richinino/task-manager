@@ -84,6 +84,8 @@ export interface WeeklyReviewLauncherProps {
    * znamená uzavretú revíziu a dve veci pod jedným menom by sa raz pomýlili.
    */
   completedTasks: TaskWithRelations[];
+  /** Odhad vs. realita za 30 dní (hotová veta), `null` bez dát. */
+  accuracy?: { sentence: string; tasks: number } | null;
 }
 
 export function WeeklyReviewLauncher({
