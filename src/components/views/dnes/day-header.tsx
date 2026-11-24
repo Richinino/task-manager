@@ -4,18 +4,20 @@ import type { Route } from "next";
 import Link from "next/link";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 
-import { addDays, formatLongSk } from "@/lib/dates";
+import { addDays, formatDuration, formatLongSk } from "@/lib/dates";
 import { capitalizeSk, relativeDayLabel } from "@/lib/day-label";
 import { cn } from "@/lib/utils";
 
 export interface DayHeaderProps {
-  /** Dnešný dátum ako YYYY-MM-DD. */
+  /** Zobrazený deň ako YYYY-MM-DD. */
   date: string;
   doneCount: number;
   totalCount: number;
+  /** Súčet odhadov nedokončených úloh dňa — do súhrnu pod nadpisom. */
+  plannedMin?: number;
   /** Slot pre rozpočet času — hlavička nepotrebuje vedieť, ako sa počíta. */
   budget?: ReactNode;
-  /** Slot pre akciu vpravo od počtov — dnes „Čo teraz?". */
+  /** Slot pre akcie vpravo — dnes „Čo teraz?" a rituály. */
   action?: ReactNode;
   /**
    * Skutočný dnešok v pásme používateľa.
@@ -29,117 +31,142 @@ export interface DayHeaderProps {
 }
 
 /**
- * Dvojica šípok ako jeden prvok.
- *
- * V návrhu to nie sú dve samostatné tlačidlá, ale jeden orámovaný pár
- * s deliacou linkou — 26×26 na počítači. Na telefóne sa rozpadá na dva
- * samostatné 44 px ciele, lebo palec do 26 px netrafí.
+ * Dvojica šípok ako jeden orámovaný prvok s deliacou linkou.
  */
 const sipkaClass = [
-  "flex size-11 shrink-0 items-center justify-center rounded-md border border-border",
+  "flex size-[26px] shrink-0 items-center justify-center",
   "text-fg-muted transition-colors duration-100 ease-out hover:bg-surface-2 hover:text-fg",
-  "md:size-[26px] md:rounded-none md:border-0",
 ].join(" ");
 
+/** Viac dielikov by z lišty spravilo šum — vtedy sa kreslí ako jeden pruh. */
+const MAX_SEGMENTOV = 16;
+
+/** „utorok 24. novembra" → „Utorok, 24. novembra". */
+function nadpisDna(date: string): string {
+  const dlhy = capitalizeSk(formatLongSk(date));
+  const medzera = dlhy.indexOf(" ");
+  return medzera === -1 ? dlhy : `${dlhy.slice(0, medzera)},${dlhy.slice(medzera)}`;
+}
+
+/**
+ * Hlavička obrazovky „Dnes" na počítači (smer A, „Terminál, vyladený").
+ *
+ * Dátum je nadpis — je to prvá vec, ktorú ráno chceš vedieť, a predtým sa
+ * strácal v 48 px pásiku medzi tlačidlami. Nad ním tichý štítok („Dnes",
+ * „Zajtra") a šípky, pod ním jedna veta stavu v strojopise a pod celou
+ * hlavičkou lišta postupu: jeden dielik za úlohu, hotové zelené.
+ *
+ * Telefón má vlastnú hlavičku v `MobileToday` — toto sa kreslí len od `md`.
+ */
 export function DayHeader({
   date,
   doneCount,
   totalCount,
+  plannedMin = 0,
   budget,
   action,
   todayIso,
 }: DayHeaderProps) {
   const allDone = totalCount > 0 && doneCount === totalCount;
-  const label = relativeDayLabel(date, todayIso);
-  const jeDnes = date === todayIso;
+  const label = relativeDayLabel(date, todayIso) ?? "Deň";
 
-  const progress =
+  const stav =
     totalCount === 0
       ? "Nič naplánované"
       : allDone
         ? `Všetko hotové — ${doneCount} z ${totalCount}`
-        : `${doneCount} / ${totalCount} hotových`;
+        : [
+            `${doneCount} z ${totalCount} hotových`,
+            plannedMin > 0 ? `naplánované ${formatDuration(plannedMin)}` : null,
+          ]
+            .filter(Boolean)
+            .join(" · ");
+
+  const dieliky = totalCount > 0 && totalCount <= MAX_SEGMENTOV;
 
   return (
-    /*
-      Tvar je z návrhu: na počítači jeden 48 px pásik so spodnou linkou,
-      na telefóne dva riadky na podklade `surface` a pod nimi rozpočet.
-      Preto sa medzi `md:` mení smer aj odsadenie.
-    */
-    <header
-      className={cn(
-        "flex flex-col gap-2.5 border-b border-border bg-surface px-4 pb-2.5 pt-3",
-        "md:h-12 md:flex-row md:items-center md:gap-3 md:bg-transparent md:px-5 md:py-0",
-      )}
-    >
-      <div className="flex min-w-0 items-center gap-2 md:contents">
-        <div className="flex min-w-0 flex-1 flex-col md:contents">
-          <h1 className="min-w-0 truncate text-lg font-semibold tracking-tight text-fg md:text-row">
-            {label ?? capitalizeSk(formatLongSk(date))}
+    <header className="flex flex-col gap-5">
+      <div className="flex flex-wrap items-end gap-x-6 gap-y-4">
+        <div className="flex min-w-0 flex-col gap-2">
+          <div className="flex items-center gap-3">
+            <span className="label text-accent">{label}</span>
+            {/*
+              Šípky sú odkazy, nie tlačidlá: deň má byť v adrese, aby sa dal
+              poslať, uložiť do záložiek a vrátiť tlačidlom späť.
+            */}
+            <nav
+              aria-label="Prepínanie dní"
+              className="flex shrink-0 overflow-hidden rounded-md border border-border"
+            >
+              <Link
+                href={`/dnes?den=${addDays(date, -1)}` as Route}
+                aria-label="Predchádzajúci deň"
+                title="Predchádzajúci deň"
+                className={cn(sipkaClass, "border-r border-border")}
+              >
+                <ChevronLeft aria-hidden="true" className="size-3.5" />
+              </Link>
+              <Link
+                href={`/dnes?den=${addDays(date, 1)}` as Route}
+                aria-label="Nasledujúci deň"
+                title="Nasledujúci deň"
+                className={sipkaClass}
+              >
+                <ChevronRight aria-hidden="true" className="size-3.5" />
+              </Link>
+            </nav>
+          </div>
+
+          <h1 className="min-w-0 truncate text-3xl font-semibold leading-tight tracking-tight text-fg">
+            {nadpisDna(date)}
           </h1>
 
-          {/* „dnes" je v návrhu tichá pripomienka vedľa dátumu, nie nadpis. */}
-          {jeDnes && label !== null ? (
-            <span className="hidden shrink-0 font-mono text-meta text-fg-subtle md:inline">
-              dnes
-            </span>
-          ) : null}
-
-          {/* Na telefóne ide počet pod nadpis — vedľa sa nezmestí. */}
           <p
             className={cn(
-              "min-w-0 truncate font-mono text-meta tabular-nums md:hidden",
+              "min-w-0 truncate font-mono text-meta tabular-nums",
               allDone ? "font-medium text-success" : "text-fg-muted",
             )}
           >
-            {progress}
+            {stav}
           </p>
         </div>
 
         {/*
-          Šípky sú odkazy, nie tlačidlá: deň má byť v adrese, aby sa dal
-          poslať, uložiť do záložiek a vrátiť tlačidlom späť.
+          Od `lg:` rozpočet preberá pravá lišta. Medzi `md` a `lg` lišta nie
+          je, tak sa kreslí tu.
         */}
-        <nav
-          aria-label="Prepínanie dní"
-          className="flex shrink-0 gap-1 md:ml-1 md:gap-0 md:overflow-hidden md:rounded-md md:border md:border-border"
-        >
-          <Link
-            href={`/dnes?den=${addDays(date, -1)}` as Route}
-            aria-label="Predchádzajúci deň"
-            title="Predchádzajúci deň"
-            className={cn(sipkaClass, "md:border-r md:border-border")}
-          >
-            <ChevronLeft aria-hidden="true" className="size-4 md:size-3.5" />
-          </Link>
-          <Link
-            href={`/dnes?den=${addDays(date, 1)}` as Route}
-            aria-label="Nasledujúci deň"
-            title="Nasledujúci deň"
-            className={sipkaClass}
-          >
-            <ChevronRight aria-hidden="true" className="size-4 md:size-3.5" />
-          </Link>
-        </nav>
+        {budget ? <div className="lg:hidden">{budget}</div> : null}
+
+        {action ? (
+          <div className="ml-auto flex flex-wrap items-center gap-2">{action}</div>
+        ) : null}
       </div>
 
-      <p
-        className={cn(
-          "hidden shrink-0 font-mono text-meta tabular-nums md:block",
-          allDone ? "font-medium text-success" : "text-fg-muted",
-        )}
-      >
-        {progress}
-      </p>
-
       {/*
-        Od `lg:` rozpočet preberá pravá lišta — v návrhu je na počítači tam
-        a v hlavičke len na telefóne. Bez tohto by sa kreslil dvakrát.
+        Postup dňa. Obrázok, nie údaj — to isté číslo je v riadku stavu
+        vyššie, preto `aria-hidden`.
       */}
-      {budget ? <div className="lg:hidden">{budget}</div> : null}
-
-      {action ? (
-        <div className="flex items-center gap-2 md:ml-auto">{action}</div>
+      {totalCount > 0 ? (
+        <div aria-hidden="true" className="flex h-1 gap-[3px]">
+          {dieliky ? (
+            Array.from({ length: totalCount }, (_, i) => (
+              <span
+                key={i}
+                className={cn(
+                  "flex-1 rounded-full transition-colors duration-200 ease-out",
+                  i < doneCount ? "bg-success" : "bg-border",
+                )}
+              />
+            ))
+          ) : (
+            <span className="relative flex-1 overflow-hidden rounded-full bg-border">
+              <span
+                className="absolute inset-y-0 left-0 rounded-full bg-success transition-[width] duration-300 ease-(--ease-out)"
+                style={{ width: `${(doneCount / totalCount) * 100}%` }}
+              />
+            </span>
+          )}
+        </div>
       ) : null}
     </header>
   );

@@ -118,6 +118,25 @@ export function DayHabits({ habits, todayIso }: DayHabitsProps) {
                   Týždenný cieľ, nie denný. Návyk sa neláme v stredu, keď
                   zaprší — preto sa počíta na týždne a nie na sériu dní.
                 */}
+                {/*
+                  Smer A: cieľ týždňa ako bodky — jedna za každé splnenie,
+                  ktoré cieľ chce. Vidieť, koľko chýba, bez čítania čísla.
+                  Pri cieli nad sedem by bodky prestali byť čitateľné, tam
+                  ostáva len číslo.
+                */}
+                {habit.targetPerWeek <= 7 ? (
+                  <span aria-hidden="true" className="flex shrink-0 gap-1">
+                    {Array.from({ length: habit.targetPerWeek }, (_, i) => (
+                      <span
+                        key={i}
+                        className={cn(
+                          "size-1.5 rounded-full transition-colors duration-200 ease-out",
+                          i < habit.weekDone ? "bg-success" : "bg-border-strong",
+                        )}
+                      />
+                    ))}
+                  </span>
+                ) : null}
                 <span
                   title={`${habit.weekDone} z ${habit.targetPerWeek} za tento týždeň`}
                   className={cn(

@@ -195,7 +195,7 @@ export function RitualHost({
         type="button"
         variant="secondary"
         size="sm"
-        className="gap-1.5"
+        className="gap-1.5 md:h-9 md:px-3"
         onClick={() => setMorningOpen(true)}
         aria-label={`${morningMeta.title} — ${morningMeta.minutes} minúty`}
       >
@@ -230,7 +230,7 @@ export function RitualHost({
         type="button"
         variant="secondary"
         size="sm"
-        className="gap-1.5"
+        className="gap-1.5 md:h-9 md:px-3"
         onClick={() => setOpen(true)}
         aria-label={`${meta.title} — ${meta.minutes} minúty`}
       >

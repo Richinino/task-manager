@@ -199,7 +199,16 @@ export function WhatNow({ tasks, todayIso, contexts, places }: WhatNowProps) {
       }}
     >
       <DialogTrigger asChild>
-        <Button variant="secondary" size="sm" className="gap-1.5">
+        <Button
+          variant="secondary"
+          size="sm"
+          className={cn(
+            "gap-1.5",
+            // Na počítači je to hlavná akcia hlavičky: plné tlačidlo vpravo,
+            // za rituálmi. Telefón ostáva tichý — tam má hlavnú rolu karta.
+            "md:order-last md:h-9 md:border-transparent md:bg-accent md:px-3.5 md:text-accent-fg md:hover:bg-accent/90",
+          )}
+        >
           <Compass aria-hidden="true" size={14} />
           Čo teraz?
         </Button>

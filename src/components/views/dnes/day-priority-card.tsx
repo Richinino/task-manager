@@ -77,12 +77,10 @@ export function DayPriorityCard({
   */
   if (frog) {
     return (
-      <section
-        aria-labelledby={headingId}
-        className="border-b border-border px-4 pb-3 pt-3.5 sm:px-5"
-      >
+      <section aria-labelledby={headingId}>
         <div className="mb-2.5 flex items-center gap-2">
-          <h2 id={headingId} className="label shrink-0 font-medium text-frog">
+          <h2 id={headingId} className="label flex shrink-0 items-center gap-1.5 font-medium text-frog">
+            <Star aria-hidden="true" size={12} className="fill-current" />
             Priorita dňa
           </h2>
           <span className="font-mono text-micro text-fg-subtle">max 1 na deň</span>
@@ -110,7 +108,7 @@ export function DayPriorityCard({
   return (
     <section
       aria-labelledby={headingId}
-      className="rounded border border-dashed border-frog bg-surface p-3"
+      className="rounded-xl border border-dashed border-frog/60 bg-surface px-5 py-4"
     >
       {heading}
       <p className="mt-1 text-body leading-relaxed text-fg-muted sm:text-xs">

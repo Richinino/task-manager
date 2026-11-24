@@ -24,8 +24,12 @@ export interface DayStripProps {
   day: DayTimeline;
   /** Miesto pre úlohu, ktorá ešte neexistuje (zachytenie). */
   ghost?: TimelineGap | null;
-  /** `sm` = 20 px pás bez popisov hodín (do hlavičky), `md` = 28 px s popismi. */
-  size?: "sm" | "md";
+  /**
+   * `sm` = 20 px pás bez popisov hodín (do hlavičky), `md` = 28 px s popismi,
+   * `lg` = 40 px na počítači: bloky nesú vlastný popis (predmet, udalosť),
+   * keď sa doň zmestí, a hodiny sú popísané každé dve.
+   */
+  size?: "sm" | "md" | "lg";
   className?: string;
 }
 
@@ -35,13 +39,14 @@ function pct(min: number, day: DayTimeline): number {
   return ((Math.min(Math.max(min, day.dayStartMin), day.dayEndMin) - day.dayStartMin) / span) * 100;
 }
 
-function hourLabels(day: DayTimeline): number[] {
+function hourLabels(day: DayTimeline, dense = false): number[] {
   const first = Math.ceil(day.dayStartMin / 60);
   const last = Math.floor(day.dayEndMin / 60);
   const span = last - first;
   if (span <= 0) return [first];
-  // Najviac šesť popisov — na 360 px viac nie je čitateľných.
-  const step = Math.max(1, Math.ceil(span / 5));
+  // Najviac šesť popisov — na 360 px viac nie je čitateľných. Na počítači
+  // je miesta dosť na každú druhú hodinu.
+  const step = dense ? 2 : Math.max(1, Math.ceil(span / 5));
   const out: number[] = [];
   for (let h = first; h <= last; h += step) out.push(h);
   if (out[out.length - 1] !== last) out.push(last);
@@ -86,9 +91,25 @@ export function dayStripLabel(day: DayTimeline, ghost?: TimelineGap | null): str
   return parts.join(", ");
 }
 
+/**
+ * Popis vnútri bloku na veľkom páse. Len keď je blok aspoň takto široký
+ * (v percentách dňa) — užší by z textu nechal tri bodky.
+ */
+const LG_LABEL_MIN_PCT = 3.2;
+
+function lgBlockClass(block: TimelineBlock): string {
+  if (block.kind === "lesson") return "bg-border-strong/70 text-fg";
+  if (block.kind === "meeting" || block.kind === "event") {
+    return "border border-energy-low/60 bg-energy-low/20 text-fg";
+  }
+  if (block.isFrog) return "bg-frog-fill text-on-frog";
+  return "text-white";
+}
+
 export function DayStrip({ day, ghost = null, size = "md", className }: DayStripProps) {
   const now = day.nowMin;
   const showNow = now !== null && now > day.dayStartMin && now < day.dayEndMin;
+  const lg = size === "lg";
 
   return (
     <div className={cn("w-full", className)}>
@@ -96,17 +117,50 @@ export function DayStrip({ day, ghost = null, size = "md", className }: DayStrip
         role="img"
         aria-label={dayStripLabel(day, ghost)}
         className={cn(
-          "relative w-full overflow-hidden rounded-full bg-surface ring-1 ring-border",
-          size === "sm" ? "h-5" : "h-7",
+          "relative w-full overflow-hidden bg-surface ring-1 ring-border",
+          lg ? "h-10 rounded-md bg-surface-2" : "rounded-full",
+          size === "sm" ? "h-5" : size === "md" ? "h-7" : null,
         )}
       >
-        {day.blocks.map((block) => (
-          <span
-            key={`${block.kind}-${block.id}`}
-            className={cn("absolute inset-y-1 rounded-sm", blockClass(block))}
-            style={blockStyle(block, day)}
-          />
-        ))}
+        {/* Mriežka hodín — len na veľkom páse, aby sa dalo odčítať, kde čo je. */}
+        {lg
+          ? hourLabels(day, true).map((h) => (
+              <span
+                key={`g${h}`}
+                aria-hidden="true"
+                className="absolute inset-y-0 w-px bg-border"
+                style={{ left: `${pct(h * 60, day)}%` }}
+              />
+            ))
+          : null}
+
+        {day.blocks.map((block) => {
+          const style = blockStyle(block, day);
+          if (!lg) {
+            return (
+              <span
+                key={`${block.kind}-${block.id}`}
+                className={cn("absolute inset-y-1 rounded-sm", blockClass(block))}
+                style={style}
+              />
+            );
+          }
+          const widthPct = Math.max(pct(block.endMin, day) - pct(block.startMin, day), 0);
+          return (
+            <span
+              key={`${block.kind}-${block.id}`}
+              className={cn(
+                "absolute inset-y-1 flex items-center overflow-hidden rounded px-1.5",
+                lgBlockClass(block),
+              )}
+              style={style}
+            >
+              {widthPct >= LG_LABEL_MIN_PCT ? (
+                <span className="truncate font-mono text-micro font-medium">{block.label}</span>
+              ) : null}
+            </span>
+          );
+        })}
 
         {ghost && (
           <span
@@ -122,20 +176,20 @@ export function DayStrip({ day, ghost = null, size = "md", className }: DayStrip
           <>
             {/* Minulosť stlmená podkladom, nie skrytá — škola ráno sa ráta. */}
             <span
-              className="absolute inset-y-0 left-0 bg-bg opacity-60"
+              className={cn("absolute inset-y-0 left-0 bg-bg", lg ? "opacity-45" : "opacity-60")}
               style={{ width: `${pct(now, day)}%` }}
             />
             <span
-              className="absolute inset-y-0 w-0.5 -translate-x-1/2 bg-fg"
+              className={cn("absolute inset-y-0 w-0.5 -translate-x-1/2", lg ? "bg-accent" : "bg-fg")}
               style={{ left: `${pct(now, day)}%` }}
             />
           </>
         )}
       </div>
 
-      {size === "md" && (
+      {size !== "sm" && (
         <div className="relative mt-1 h-4 font-mono text-micro tabular-nums text-fg-subtle" aria-hidden="true">
-          {hourLabels(day).map((h, i, all) => (
+          {hourLabels(day, lg).map((h, i, all) => (
             <span
               key={h}
               className={cn(

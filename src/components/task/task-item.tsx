@@ -1,7 +1,7 @@
 "use client";
 
 import { useOptimistic } from "react";
-import { ListChecks, Star } from "lucide-react";
+import { ListChecks, Play, Star } from "lucide-react";
 
 import type { TaskWithRelations } from "@/server/queries/tasks";
 import { formatDuration, formatRelativeSk, isPast, parseIsoDate } from "@/lib/dates";
@@ -307,7 +307,7 @@ export function TaskItem({
       V karte priority dňa je názov 16 px polotučne a nesmie rásť do výšky:
       stojí v stĺpci nad riadkom s údajmi, takže `grow` by kartu roztiahlo.
     */
-    hero && "text-base font-semibold tracking-tight",
+    hero && "text-xl font-semibold tracking-tight",
     /*
       V riadku naopak `basis-24` nie je kozmetika: s `flex-1` (základ 0) by
       pri nedostatku miesta zmizol názov úplne a stĺpce by si šírku udržali.
@@ -447,11 +447,16 @@ export function TaskItem({
         size="lg"
         rowRole="group"
         rowLabel={summary}
+        /*
+          Smer A: karta stojí sama, s jantárovým nádychom a polopriehľadným
+          rámom — nie plná jantárová plocha. Jantár tak ostáva signálom,
+          nie podkladom, a názov 20 px je najväčší text pod nadpisom dňa.
+        */
         className={cn(
-          "flex items-center gap-3 rounded-md border border-frog bg-frog-soft px-3.5 py-3",
+          "flex items-center gap-4 rounded-xl border border-frog/45 bg-frog-tint px-5 py-4",
         )}
       >
-        <span className="flex size-7 shrink-0 items-center justify-center rounded-sm bg-frog-tint text-frog">
+        <span className="flex size-8 shrink-0 items-center justify-center rounded-md bg-frog-tint text-frog">
           {frogMark ?? <Star aria-hidden="true" size={16} className="fill-current" />}
         </span>
 
@@ -460,7 +465,7 @@ export function TaskItem({
 
           <span
             aria-hidden="true"
-            className="mt-1 flex min-w-0 items-center gap-2.5 truncate font-mono text-meta text-fg-muted"
+            className="mt-1.5 flex min-w-0 items-center gap-2.5 truncate font-mono text-meta text-fg-muted"
           >
             {task.area ? (
               <AreaDot
@@ -499,11 +504,13 @@ export function TaskItem({
             onPointerDown={(event) => event.stopPropagation()}
             onMouseDown={(event) => event.stopPropagation()}
             className={cn(
-              "flex h-11 shrink-0 cursor-pointer items-center rounded-sm px-3.5 text-sm font-medium sm:h-[30px]",
-              "bg-fg text-bg transition-opacity duration-100 ease-out hover:opacity-90 disabled:opacity-45",
+              "flex h-11 shrink-0 cursor-pointer items-center gap-1.5 rounded-md px-3.5 text-sm font-medium sm:h-9",
+              "bg-frog-fill text-on-frog disabled:opacity-45",
+              "transition-[opacity,scale] duration-100 ease-(--ease-out) hover:opacity-90 active:scale-[0.97]",
             )}
           >
-            {focus?.isActiveTask(task.id) ? "Pokračovať" : "Začať"}
+            <Play aria-hidden="true" size={13} className="fill-current" />
+            {focus?.isActiveTask(task.id) ? "Pokračovať" : "Začať fokus"}
           </button>
         ) : null}
 

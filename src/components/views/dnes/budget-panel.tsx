@@ -55,6 +55,20 @@ interface Segment {
   color: string;
 }
 
+function RiadokRozpoctu({ label, minutes, color }: { label: string; minutes: number; color: string }) {
+  return (
+    <p className="flex items-center gap-2">
+      <span
+        aria-hidden="true"
+        className="size-2 shrink-0 rounded-xs ring-1 ring-border-strong/40 ring-inset"
+        style={{ backgroundColor: color }}
+      />
+      <span>{label}</span>
+      <span className="ml-auto text-fg">{formatDuration(minutes)}</span>
+    </p>
+  );
+}
+
 export function BudgetPanel({
   tasks,
   plannedMin,
@@ -122,54 +136,50 @@ export function BudgetPanel({
         Rozpočet času
       </h2>
 
-      <p className="flex items-baseline gap-1.5">
-        <span className="font-mono text-2xl font-bold tracking-tight tabular-nums">
-          {plannedMin}
+      {/*
+        Smer A: veľké číslo je naplánovaný čas v hodinách („2 h 20"), nie
+        holé minúty — 140 sa v hlave na večer prepočítava, „2 h 20" nie.
+      */}
+      <p className="flex items-baseline gap-2">
+        <span className="text-3xl font-semibold tracking-tight">
+          {formatDuration(plannedMin)}
         </span>
         <span className="font-mono text-meta text-fg-muted tabular-nums">
-          / {celkom} min
+          z {formatDuration(celkom)}
         </span>
       </p>
 
       {segmenty.length > 0 ? (
-        <span aria-hidden="true" className="mt-2.5 flex h-2 gap-0.5">
+        <span aria-hidden="true" className="mt-3 flex h-2 gap-0.5 overflow-hidden rounded-full">
           {segmenty.map((segment) => (
             <span
               key={segment.key}
               style={{ flex: segment.minutes, backgroundColor: segment.color }}
-              className="rounded-xs"
             />
           ))}
         </span>
       ) : null}
 
-      <div className="mt-2.5 flex flex-col gap-1 font-mono text-mini text-fg-muted tabular-nums">
-        <p className="flex">
-          <span>úlohy</span>
-          <span className="ml-auto text-fg">{formatDuration(plannedMin)}</span>
-        </p>
+      {/*
+        Riadky nesú štvorček farby svojho segmentu, aby sa pruh dal prečítať.
+        Úlohy majú farbu prvého segmentu úloh (priorita alebo oblasť).
+      */}
+      <div className="mt-3 flex flex-col gap-1.5 font-mono text-meta text-fg-muted tabular-nums">
+        <RiadokRozpoctu
+          label="úlohy"
+          minutes={plannedMin}
+          color={segmenty.find((s) => s.key !== "porady" && s.key !== "udalosti" && s.key !== "skola" && s.key !== "volne")?.color ?? "var(--accent)"}
+        />
         {poradyMin > 0 ? (
-          <p className="flex">
-            <span>porady</span>
-            <span className="ml-auto text-fg">{formatDuration(poradyMin)}</span>
-          </p>
+          <RiadokRozpoctu label="porady" minutes={poradyMin} color="var(--border-strong)" />
         ) : null}
         {udalostiMin > 0 ? (
-          <p className="flex">
-            <span>udalosti</span>
-            <span className="ml-auto text-fg">{formatDuration(udalostiMin)}</span>
-          </p>
+          <RiadokRozpoctu label="udalosti" minutes={udalostiMin} color="var(--fg-subtle)" />
         ) : null}
         {skola > 0 ? (
-          <p className="flex">
-            <span>škola</span>
-            <span className="ml-auto text-fg">{formatDuration(skola)}</span>
-          </p>
+          <RiadokRozpoctu label="škola" minutes={skola} color="var(--border-strong)" />
         ) : null}
-        <p className="flex">
-          <span>voľné</span>
-          <span className="ml-auto text-fg">{formatDuration(volne)}</span>
-        </p>
+        <RiadokRozpoctu label="voľné" minutes={volne} color="var(--border)" />
       </div>
 
       {/*
